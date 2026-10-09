@@ -130,6 +130,203 @@
   outline-offset: -2px;
 }
 .sd-icon svg { width: 14px; height: 14px; }
+
+/* When and by whom the current copy was imported, quiet beside the name. */
+.sd-import-meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sd-import-meta[hidden] { display: none; }
+
+/* ---------- Import Data: the tab's primary action ----------
+   A labelled, blue-tinted button so a first-time user finds the import without
+   guessing an icon. Once the project holds data, an arrow joins it as a split
+   control and opens the import menu. */
+.sd-import-split {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.sd-import-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px 0 9px;
+  border: 1px solid color-mix(in srgb, var(--ar-color-accent, #2b6df6) 35%, transparent);
+  border-radius: 4px;
+  background: var(--ar-color-accent-soft, #eaf2ff);
+  color: var(--ar-color-accent, #2b6df6);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.sd-import-cta[hidden] { display: none; }
+.sd-import-cta svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.sd-import-cta:hover:not(:disabled),
+.sd-import-cta[aria-expanded="true"] {
+  background: var(--ar-color-accent-hover, #dbeafe);
+  border-color: var(--ar-color-accent, #2b6df6);
+}
+.sd-import-cta:focus-visible {
+  outline: 2px solid var(--ar-color-border-focus, #93c5fd);
+  outline-offset: 1px;
+}
+.sd-import-cta:disabled { opacity: 0.55; cursor: not-allowed; }
+/* Split form: the two halves share one border line. */
+.sd-import-split:has(.sd-import-caret:not([hidden])) .sd-import-cta:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.sd-import-caret {
+  position: relative;
+  width: 24px;
+  padding: 0;
+  margin-left: -1px;
+  border-radius: 0 4px 4px 0;
+}
+.sd-import-caret .sd-select-caret {
+  right: auto;
+  left: 50%;
+  margin-left: -4px;
+  border-top-color: var(--ar-color-accent, #2b6df6);
+}
+.sd-import-caret[aria-expanded="true"] .sd-select-caret {
+  transform: translateY(-75%) rotate(180deg);
+}
+/* Fixed so no scrolling ancestor clips it; the script places it under the arrow. */
+.sd-import-menu {
+  position: fixed;
+  z-index: 9480;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 4px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  background: var(--ar-color-surface, #fff);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  overflow-x: hidden;
+}
+.sd-import-menu[hidden] { display: none; }
+.sd-import-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sd-import-menu-item:hover,
+.sd-import-menu-item:focus-visible {
+  background: var(--ar-color-surface-hover, #e8eef6);
+  outline: none;
+}
+.sd-import-menu-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ar-color-text, #1f2937);
+}
+.sd-import-menu-note {
+  font-size: 11px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
+
+/* ---------- First run ----------
+   An empty project says what to do next, and each choice opens the import
+   window with that method already picked. */
+.sd-first-run {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  padding: 24px 12px;
+  text-align: center;
+}
+.sd-first-run[hidden] { display: none; }
+.sd-first-run-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ar-color-text-strong, #111827);
+}
+.sd-first-run-note,
+.sd-first-run-hint {
+  margin: 0;
+  max-width: 460px;
+  font-size: 12px;
+  color: var(--ar-color-text-muted, #64748b);
+}
+.sd-first-run-hint {
+  font-size: 11px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
+.sd-first-run-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 230px));
+  gap: 10px;
+}
+.sd-first-run-choice {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 1px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  background: var(--ar-color-surface, #fff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.sd-first-run-choice svg {
+  grid-row: 1 / span 2;
+  width: 24px;
+  height: 24px;
+  color: var(--ar-color-accent, #2b6df6);
+}
+.sd-first-run-choice:hover:not(:disabled) {
+  border-color: var(--ar-color-accent, #2b6df6);
+  background: var(--ar-color-accent-soft, #eaf2ff);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.sd-first-run-choice:focus-visible {
+  outline: 2px solid var(--ar-color-border-focus, #93c5fd);
+  outline-offset: 1px;
+}
+.sd-first-run-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ar-color-text, #1f2937);
+}
+.sd-first-run-detail {
+  min-width: 0;
+  font-size: 11px;
+  color: var(--ar-color-text-muted, #64748b);
+}
+@media (max-width: 560px) {
+  .sd-first-run-choices { grid-template-columns: minmax(0, 1fr); }
+}
 /* ---------- Inline status message ---------- */
 .sd-message {
   flex: 0 0 auto;
@@ -709,13 +906,16 @@
    Dataset Type and Reserving Class Type editors; only the body is local. */
 .sd-import-window {
   width: 800px;
+  /* A fixed height shared by every page, so moving between Import Settings and
+     the scope lists never makes the window jump; it fits below the 140px top. */
+  height: min(620px, calc(100vh - 172px));
   min-width: 520px;
   min-height: 360px;
   max-height: calc(100vh - 32px);
-  /* Resizing is driven by .sd-import-resizer, not the native `resize` property:
-     the window is centered with a transform, so a native resize grows it from
-     both edges at once. The custom grip pins the left/top corner first. Using
-     no native resizer also means no page-wide ::-webkit-resizer glyph. */
+  /* Resizing is driven by the .sd-import-resizer grips, not the native `resize`
+     property: the window is centered with a transform, so a native resize grows
+     it from both edges at once. A grip pins the left/top corner first. Using no
+     native resizer also means no page-wide ::-webkit-resizer glyph. */
   overflow: hidden;
 }
 /* Header and footer stay put; only the form body scrolls, so the primary
@@ -729,16 +929,31 @@
   border-radius: 7px 7px 0 0;
 }
 .sd-import-window .rct-row-editor-actions { flex: 0 0 auto; }
-/* Invisible bottom-right drag target: the grip is felt through the cursor, not
-   drawn, so the window keeps a clean corner at every size. */
+/* Invisible drag targets on every edge and corner: the grips are felt through
+   the cursor, not drawn, so the window keeps clean edges at every size. */
 .sd-import-resizer {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
+  z-index: 2;
+  width: 6px;
+  height: 6px;
   cursor: nwse-resize;
 }
+.sd-import-resizer[data-edge="n"],
+.sd-import-resizer[data-edge="s"] { left: 12px; right: 12px; width: auto; cursor: ns-resize; }
+.sd-import-resizer[data-edge="e"],
+.sd-import-resizer[data-edge="w"] { top: 12px; bottom: 12px; height: auto; cursor: ew-resize; }
+.sd-import-resizer[data-edge="n"] { top: 0; }
+.sd-import-resizer[data-edge="s"] { bottom: 0; }
+.sd-import-resizer[data-edge="e"] { right: 0; }
+.sd-import-resizer[data-edge="w"] { left: 0; }
+.sd-import-resizer[data-edge="nw"],
+.sd-import-resizer[data-edge="ne"],
+.sd-import-resizer[data-edge="sw"],
+.sd-import-resizer[data-edge="se"] { width: 12px; height: 12px; }
+.sd-import-resizer[data-edge="nw"] { top: 0; left: 0; }
+.sd-import-resizer[data-edge="ne"] { top: 0; right: 0; cursor: nesw-resize; }
+.sd-import-resizer[data-edge="sw"] { bottom: 0; left: 0; cursor: nesw-resize; }
+.sd-import-resizer[data-edge="se"] { bottom: 0; right: 0; width: 16px; height: 16px; }
 .sd-import-body {
   flex: 1 1 auto;
   display: flex;
@@ -772,14 +987,25 @@
 .sd-import-body[hidden] { display: none; }
 .rct-row-editor-actions .dialog-btn[hidden] { display: none; }
 .sd-import-window .sd-import-back { margin-right: auto; }
+/* Import Data is disabled while the scope is empty; it must look it. */
+.sd-import-window .dialog-btn:disabled,
+.sd-import-window .dialog-btn:disabled:hover {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sd-import-window .dialog-btn.primary:disabled:hover { background: #0d6efd; }
 .sd-import-scope { gap: 8px; }
+/* Datasets and Reserving Class Types are separate pages: one pane shows at a
+   time and takes the window's full width. */
 .sd-scope-panes {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 14px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
+.sd-scope-pane[hidden],
+.sd-scope-intro[hidden] { display: none; }
 .sd-scope-pane {
   display: flex;
   flex-direction: column;
@@ -799,6 +1025,19 @@
   color: var(--ar-color-text-subtle, #94a3b8);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+/* Filter plus Select all / Clear all on one 28px row above each list. */
+.sd-scope-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sd-scope-tools .sd-scope-filter { flex: 1 1 auto; }
+.sd-scope-bulk {
+  flex: 0 0 auto;
+  padding: 0 8px;
+  white-space: nowrap;
 }
 .sd-scope-filter {
   height: 28px;
@@ -822,23 +1061,32 @@
   color: var(--ar-color-text-disabled, #9ca3af);
   background: var(--ar-color-surface-muted, #eef2f6);
 }
-/* The lists scroll on their own so the window keeps a workable height on a
-   project with sixty dataset types; sideways scrolling is never allowed. */
+/* The lists fill the window's height and grow with it, scrolling on their own
+   past that; sideways scrolling is never allowed. */
 .sd-scope-list {
   flex: 1 1 auto;
   min-height: 180px;
-  max-height: 340px;
   box-sizing: border-box;
-  padding: 3px;
+  /* No top padding: the sticky group head must meet the list's top edge, or
+     rows scrolling under it peek through the gap above it. */
+  padding: 0 0 3px;
   border: 1px solid var(--ar-color-border, #d8dde3);
   border-radius: 4px;
   background: var(--ar-color-input, #fff);
   overflow-y: auto;
   overflow-x: hidden;
 }
-.sd-scope-group + .sd-scope-group { margin-top: 4px; }
+/* One dataset type or reserving class type per row, under its group head. */
+.sd-scope-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+.sd-scope-group + .sd-scope-group { margin-top: 2px; }
 .sd-scope-group[hidden] { display: none; }
 .sd-scope-group-head {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
   position: sticky;
   top: 0;
   z-index: 1;
@@ -847,8 +1095,9 @@
   gap: 6px;
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 6px;
-  border-radius: 3px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-bottom: 1px solid var(--ar-color-border, #d8dde3);
   background: var(--ar-color-surface-muted, #eef2f6);
   color: var(--ar-color-text-muted, #64748b);
   font-size: 11px;
@@ -874,13 +1123,19 @@
   gap: 6px;
   box-sizing: border-box;
   width: 100%;
-  padding: 3px 6px 3px 18px;
-  border-radius: 3px;
+  min-height: 24px;
+  padding: 3px 9px 3px 28px;
   color: var(--ar-color-text, #1f2937);
   font-size: 12px;
   cursor: pointer;
 }
 .sd-scope-row:hover { background: var(--ar-color-surface-hover, #e8eef6); }
+.sd-scope-group-head:hover { color: var(--ar-color-text, #1f2937); }
+.sd-scope-row input:focus-visible,
+.sd-scope-group-head input:focus-visible {
+  outline: 2px solid var(--ar-color-border-focus, #93c5fd);
+  outline-offset: 1px;
+}
 .sd-scope-row[hidden] { display: none; }
 .sd-scope-row-name {
   flex: 1 1 auto;
@@ -898,8 +1153,10 @@
   accent-color: var(--ar-color-accent, #2b6df6);
   cursor: pointer;
 }
+.sd-scope-status { min-height: 16px; }
+.sd-scope-empty[hidden] { display: none; }
 .sd-scope-empty {
-  padding: 8px 6px;
+  padding: 8px 9px;
   font-size: 11px;
   color: var(--ar-color-text-subtle, #94a3b8);
 }

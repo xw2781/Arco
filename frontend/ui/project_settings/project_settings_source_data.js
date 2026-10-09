@@ -299,9 +299,13 @@ export function createSourceDataFeature(deps = {}) {
     openFolderBtn: el("summaryOpenFolderBtn"),
     reloadBtn: el("summaryTablePathReloadBtn"),
     importSettingsBtn: el("summaryImportSettingsBtn"),
+    importMenuBtn: el("summaryImportMenuBtn"),
+    importMenu: el("summaryImportMenu"),
+    importMeta: el("summaryImportMeta"),
+    firstRun: el("summaryFirstRun"),
     sourcePanel: el("summaryImportWindow"),
     sourcePanelHeader: el("summaryImportWindowHeader"),
-    sourcePanelResizer: el("summaryImportWindowResizer"),
+    sourcePanelResizers: Array.from(el("summaryImportWindow")?.querySelectorAll(".sd-import-resizer") || []),
     sourcePanelClose: el("summaryImportWindowClose"),
     methodSelect: el("sdMethodSelect"),
     methodTrigger: el("sdMethodTrigger"),
@@ -336,6 +340,10 @@ export function createSourceDataFeature(deps = {}) {
     scopeClassTypesList: el("sdScopeClassTypesList"),
     scopeClassTypesFilter: el("sdScopeClassTypesFilter"),
     scopeClassTypesCount: el("sdScopeClassTypesCount"),
+    scopeDatasetsAllBtn: el("sdScopeDatasetsAllBtn"),
+    scopeDatasetsNoneBtn: el("sdScopeDatasetsNoneBtn"),
+    scopeClassTypesAllBtn: el("sdScopeClassTypesAllBtn"),
+    scopeClassTypesNoneBtn: el("sdScopeClassTypesNoneBtn"),
     scopeStatus: el("sdScopeStatus"),
     scopeRestored: el("sdScopeRestored"),
     mssqlStatus: el("sdMssqlStatus"),
@@ -801,6 +809,70 @@ export function createSourceDataFeature(deps = {}) {
     if (dom.openFolderBtn) dom.openFolderBtn.disabled = !parts.dir || isSql;
     if (dom.infoBtn) dom.infoBtn.disabled = !(hasPath || (isSql && identity.configured) || sourceState.masterTableExists);
     if (dom.infoBtn?.disabled) closeDetails();
+    syncImportEntry();
+  }
+
+  /**
+   * The header's import entry point follows the import record: the last import
+   * shows beside the name, and the arrow menu ("Import again", "Change source")
+   * appears only once there is an import to repeat.
+   */
+  function syncImportEntry() {
+    const lastImport = sourceState.lastImport || {};
+    const when = formatImportDate(lastImport.importedAt);
+    const meta = when
+      ? `Imported ${when}${lastImport.importedBy ? ` by ${lastImport.importedBy}` : ""}`
+      : "";
+    if (dom.importMeta) {
+      dom.importMeta.textContent = meta;
+      dom.importMeta.hidden = !meta;
+    }
+    const canRepeat = !!when || sourceState.masterTableExists;
+    if (dom.importMenuBtn) dom.importMenuBtn.hidden = !canRepeat;
+    if (!canRepeat) closeImportMenu();
+  }
+
+  function formatImportDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  /* ---- import menu: the arrow beside Import Data ---- */
+
+  function openImportMenu() {
+    if (!dom.importMenu || !dom.importMenuBtn || dom.importMenuBtn.hidden) return;
+    dom.importMenu.hidden = false;
+    dom.importMenuBtn.setAttribute("aria-expanded", "true");
+    // The menu is fixed so no scrolling ancestor clips it; right-align it to
+    // the split button and keep it on screen.
+    const anchor = (dom.importSettingsBtn?.closest(".sd-import-split") || dom.importMenuBtn).getBoundingClientRect();
+    const width = dom.importMenu.offsetWidth;
+    dom.importMenu.style.left = `${Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8))}px`;
+    dom.importMenu.style.top = `${anchor.bottom + 4}px`;
+    dom.importMenu.querySelector(".sd-import-menu-item")?.focus({ preventScroll: true });
+  }
+
+  function closeImportMenu({ restoreFocus = false } = {}) {
+    if (!dom.importMenu || dom.importMenu.hidden) return;
+    dom.importMenu.hidden = true;
+    dom.importMenuBtn?.setAttribute("aria-expanded", "false");
+    if (restoreFocus) dom.importMenuBtn?.focus();
+  }
+
+  function onImportMenuAction(action) {
+    closeImportMenu();
+    if (sourcePanelOpen) closeSourcePanel();
+    openSourcePanel();
+    // "Import again" keeps the saved source and goes straight to the scope.
+    if (action === "again") goToScopeStep();
+  }
+
+  /** The first-run panel stands in for the period band and column list. */
+  function setFirstRunVisible(visible) {
+    if (dom.firstRun) dom.firstRun.hidden = !visible;
   }
 
   /**
@@ -833,6 +905,7 @@ export function createSourceDataFeature(deps = {}) {
   }
 
   function setBodyVisible(visible) {
+    if (visible) setFirstRunVisible(false);
     if (dom.band) dom.band.hidden = !visible;
     if (dom.columnsPanel) dom.columnsPanel.hidden = !visible;
     if (!visible) closeMonthPicker({ force: true });
@@ -1528,10 +1601,12 @@ export function createSourceDataFeature(deps = {}) {
     }
   }
 
-  function openSourcePanel() {
+  function openSourcePanel({ method = "" } = {}) {
     if (!dom.sourcePanel) return;
-    // The window always opens on the project's saved method and saved values.
-    panelMethod = sourceState.sourceType;
+    closeImportMenu();
+    // The window opens on the project's saved method and saved values, unless
+    // the first-run panel already picked a method.
+    panelMethod = method === SOURCE_TYPE_MSSQL || method === SOURCE_TYPE_CSV ? method : sourceState.sourceType;
     methodSelect.setOptions(
       [
         { value: SOURCE_TYPE_CSV, label: "CSV File" },
@@ -1586,7 +1661,9 @@ export function createSourceDataFeature(deps = {}) {
     const value = String(text || "").trim();
     dom.scopeStatus.textContent = value;
     dom.scopeStatus.classList.toggle("error", tone === "error");
-    dom.scopeStatus.hidden = !value;
+    // The line keeps its height when empty, so the window and its footer
+    // buttons do not jump as the warning comes and goes.
+    dom.scopeStatus.hidden = false;
   }
 
   /** Say whose narrowed scope the step opened on, so a restored choice is never silent. */
@@ -1604,17 +1681,57 @@ export function createSourceDataFeature(deps = {}) {
     dom.scopeRestored.textContent = `Restored the scope chosen for the last import${who}${when}. Tick a group header to widen it.`;
   }
 
+  /**
+   * The window's three pages, in order. The two scope pages share one body:
+   * it shows the pane named by its `data-page`, so each list gets the whole
+   * window to itself.
+   */
+  const PANEL_STEPS = ["settings", "datasets", "classes"];
+  const PANEL_STEP_TITLES = {
+    settings: "Import Settings",
+    datasets: "Import Scope: Datasets",
+    classes: "Import Scope: Reserving Class Types",
+  };
+
   /** Show one page of the window; the title and footer follow the page. */
   function showPanelStep(step) {
-    panelStep = step === "scope" ? "scope" : "settings";
-    const onScope = panelStep === "scope";
+    panelStep = PANEL_STEPS.includes(step) ? step : "settings";
+    const onScope = panelStep !== "settings";
     if (dom.settingsStep) dom.settingsStep.hidden = onScope;
-    if (dom.scopeStep) dom.scopeStep.hidden = !onScope;
-    if (dom.importNextBtn) dom.importNextBtn.hidden = onScope;
+    if (dom.scopeStep) {
+      dom.scopeStep.hidden = !onScope;
+      if (onScope) dom.scopeStep.dataset.page = panelStep;
+    }
+    dom.scopeStep?.querySelectorAll(".sd-scope-pane[data-page]").forEach((pane) => {
+      pane.hidden = pane.dataset.page !== panelStep;
+    });
+    dom.scopeStep?.querySelectorAll(".sd-scope-intro[data-page]").forEach((note) => {
+      note.hidden = note.dataset.page !== panelStep;
+    });
+    if (dom.importNextBtn) dom.importNextBtn.hidden = panelStep === "classes";
     if (dom.importBackBtn) dom.importBackBtn.hidden = !onScope;
-    if (dom.importDataBtn) dom.importDataBtn.hidden = !onScope;
-    if (dom.sourcePanelTitle) dom.sourcePanelTitle.textContent = onScope ? "Import Scope" : "Import Settings";
+    if (dom.importDataBtn) dom.importDataBtn.hidden = panelStep !== "classes";
+    if (dom.sourcePanelTitle) dom.sourcePanelTitle.textContent = PANEL_STEP_TITLES[panelStep];
     syncScopeControls();
+  }
+
+  /** Next and Back walk the pages in order; Next from the settings checks them first. */
+  function goToNextPanelStep() {
+    if (panelStep === "settings") {
+      goToScopeStep();
+      return;
+    }
+    if (panelStep === "datasets" && !datasetScopeProblem()) {
+      showPanelStep("classes");
+      setTimeout(() => dom.scopeClassTypesFilter?.focus({ preventScroll: true }), 0);
+    }
+  }
+
+  function goToPreviousPanelStep() {
+    showPanelStep(panelStep === "classes" ? "datasets" : "settings");
+    if (panelStep === "datasets") {
+      setTimeout(() => dom.scopeDatasetsFilter?.focus({ preventScroll: true }), 0);
+    }
   }
 
   /** The settings the import needs, or the first thing missing from them. */
@@ -1751,8 +1868,10 @@ export function createSourceDataFeature(deps = {}) {
   }
 
   function applyScopeFilter(listEl, text) {
+    if (!listEl) return;
     const needle = String(text || "").trim().toLowerCase();
-    listEl?.querySelectorAll(".sd-scope-group").forEach((section) => {
+    let total = 0;
+    listEl.querySelectorAll(".sd-scope-group").forEach((section) => {
       let shown = 0;
       section.querySelectorAll(".sd-scope-row").forEach((row) => {
         const visible = !needle || String(row.dataset.text || "").includes(needle);
@@ -1760,7 +1879,42 @@ export function createSourceDataFeature(deps = {}) {
         if (visible) shown += 1;
       });
       section.hidden = shown === 0;
+      total += shown;
     });
+    // A filter that hides every row says so instead of leaving a blank box.
+    let noMatch = listEl.querySelector(".sd-scope-nomatch");
+    if (!noMatch && listEl.querySelector(".sd-scope-group")) {
+      noMatch = document.createElement("div");
+      noMatch.className = "sd-scope-empty sd-scope-nomatch";
+      listEl.appendChild(noMatch);
+    }
+    if (noMatch) {
+      noMatch.hidden = total > 0;
+      noMatch.textContent = total > 0 ? "" : `No matches for "${String(text || "").trim()}".`;
+    }
+    syncScopeControls();
+  }
+
+  /** Select all / Clear all reach the rows the filter shows, like a group tick. */
+  function setScopeListAll(listEl, selected, on) {
+    if (!listEl || !selected || sourceBusy) return;
+    listEl.querySelectorAll(".sd-scope-group:not([hidden]) .sd-scope-row:not([hidden]) input").forEach((box) => {
+      box.checked = on;
+      if (on) selected.add(box.dataset.key);
+      else selected.delete(box.dataset.key);
+    });
+    syncScopeGroupHeads(listEl);
+    syncScopeControls();
+  }
+
+  /** Each bulk button is live only when it would change something it can reach. */
+  function syncScopeBulkButtons(listEl, allBtn, noneBtn) {
+    const boxes = Array.from(
+      listEl?.querySelectorAll(".sd-scope-group:not([hidden]) .sd-scope-row:not([hidden]) input") || [],
+    );
+    const ticked = boxes.filter((box) => box.checked).length;
+    if (allBtn) allBtn.disabled = sourceBusy || ticked === boxes.length;
+    if (noneBtn) noneBtn.disabled = sourceBusy || ticked === 0;
   }
 
   /** Datasets are grouped by category like the Dataset Types table; class types by level. */
@@ -1829,10 +1983,20 @@ export function createSourceDataFeature(deps = {}) {
 
   /** Import Data needs something to refresh: a dataset, and a class type at every level. */
   function scopeProblem() {
+    return datasetScopeProblem() || classTypeScopeProblem();
+  }
+
+  /** The Datasets page cannot move on with nothing ticked. */
+  function datasetScopeProblem() {
     if (!scopeState) return "";
     if (scopeState.datasetTypes.length && scopeState.selectedDatasets.size === 0) {
       return "Choose at least one dataset.";
     }
+    return "";
+  }
+
+  function classTypeScopeProblem() {
+    if (!scopeState) return "";
     const tickedByLevel = new Map();
     scopeState.classTypes.forEach((item) => {
       const ticked = scopeState.selectedClassTypes.has(classTypeKeyOf(item)) ? 1 : 0;
@@ -1845,7 +2009,9 @@ export function createSourceDataFeature(deps = {}) {
 
   function syncScopeControls() {
     const problem = scopeProblem();
+    const datasetProblem = datasetScopeProblem();
     if (dom.importDataBtn) dom.importDataBtn.disabled = sourceBusy || !!problem;
+    if (dom.importNextBtn) dom.importNextBtn.disabled = sourceBusy || (panelStep === "datasets" && !!datasetProblem);
     if (scopeState) {
       if (dom.scopeDatasetsCount) {
         dom.scopeDatasetsCount.textContent = `${scopeState.selectedDatasets.size} of ${scopeState.datasetTypes.length}`;
@@ -1854,7 +2020,11 @@ export function createSourceDataFeature(deps = {}) {
         dom.scopeClassTypesCount.textContent = `${scopeState.selectedClassTypes.size} of ${scopeState.classTypes.length}`;
       }
     }
-    if (panelStep === "scope") setScopeStatus(problem, problem ? "error" : "");
+    syncScopeBulkButtons(dom.scopeDatasetsList, dom.scopeDatasetsAllBtn, dom.scopeDatasetsNoneBtn);
+    syncScopeBulkButtons(dom.scopeClassTypesList, dom.scopeClassTypesAllBtn, dom.scopeClassTypesNoneBtn);
+    // Each scope page warns only about its own list.
+    const pageProblem = panelStep === "datasets" ? datasetProblem : panelStep === "classes" ? problem : "";
+    if (panelStep !== "settings") setScopeStatus(pageProblem, pageProblem ? "error" : "");
   }
 
   /**
@@ -1903,7 +2073,7 @@ export function createSourceDataFeature(deps = {}) {
       setSourceStatus("");
       renderScopeStep();
       syncScopeRestoredNote();
-      showPanelStep("scope");
+      showPanelStep("datasets");
       setTimeout(() => dom.scopeDatasetsFilter?.focus({ preventScroll: true }), 0);
     } finally {
       setSourceBusy(false);
@@ -1948,14 +2118,20 @@ export function createSourceDataFeature(deps = {}) {
     event.preventDefault();
   }
 
-  /** Bottom-right grip: the top-left corner stays put and the box follows the pointer. */
+  /**
+   * Edge and corner grips: the grip's `data-edge` names the sides that follow
+   * the pointer ("n", "se", ...); the opposite sides stay put.
+   */
   function onWindowResizerMouseDown(event) {
     if (!dom.sourcePanel || event.button !== 0) return;
     const rect = dom.sourcePanel.getBoundingClientRect();
     pinSourcePanelPosition(rect);
     windowResizeState = {
+      edge: event.currentTarget?.dataset?.edge || "se",
       startX: event.clientX,
       startY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
       startWidth: rect.width,
       startHeight: rect.height,
       ...sourcePanelSizeLimits(),
@@ -1966,13 +2142,27 @@ export function createSourceDataFeature(deps = {}) {
 
   function onWindowResizeMove(event) {
     const state = windowResizeState;
-    const rect = dom.sourcePanel.getBoundingClientRect();
-    const maxWidth = Math.max(state.minWidth, window.innerWidth - rect.left - 8);
-    const maxHeight = Math.max(state.minHeight, window.innerHeight - rect.top - 8);
-    const width = state.startWidth + (event.clientX - state.startX);
-    const height = state.startHeight + (event.clientY - state.startY);
-    dom.sourcePanel.style.width = `${Math.max(state.minWidth, Math.min(maxWidth, width))}px`;
-    dom.sourcePanel.style.height = `${Math.max(state.minHeight, Math.min(maxHeight, height))}px`;
+    const clamp = (value, min, max) => Math.max(min, Math.min(Math.max(min, max), value));
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+    if (state.edge.includes("e")) {
+      const width = clamp(state.startWidth + dx, state.minWidth, window.innerWidth - state.startLeft - 8);
+      dom.sourcePanel.style.width = `${width}px`;
+    } else if (state.edge.includes("w")) {
+      const right = state.startLeft + state.startWidth;
+      const width = clamp(state.startWidth - dx, state.minWidth, right - 8);
+      dom.sourcePanel.style.width = `${width}px`;
+      dom.sourcePanel.style.left = `${right - width}px`;
+    }
+    if (state.edge.includes("s")) {
+      const height = clamp(state.startHeight + dy, state.minHeight, window.innerHeight - state.startTop - 8);
+      dom.sourcePanel.style.height = `${height}px`;
+    } else if (state.edge.includes("n")) {
+      const bottom = state.startTop + state.startHeight;
+      const height = clamp(state.startHeight - dy, state.minHeight, bottom - 8);
+      dom.sourcePanel.style.height = `${height}px`;
+      dom.sourcePanel.style.top = `${bottom - height}px`;
+    }
     repositionSourceLists();
   }
 
@@ -2059,7 +2249,8 @@ export function createSourceDataFeature(deps = {}) {
     }
     const problem = scopeProblem();
     if (problem) {
-      setScopeStatus(problem, "error");
+      // Send the person to the page whose list needs a tick.
+      showPanelStep(datasetScopeProblem() ? "datasets" : "classes");
       return;
     }
     const scope = readScopeSelection();
@@ -2117,10 +2308,11 @@ export function createSourceDataFeature(deps = {}) {
    * would get a tooltip hidden behind its own panel.
    */
   function wireTooltips() {
+    // Import Data carries its own visible label; only its arrow is icon-only.
     const fromAriaLabel = [
       dom.infoBtn,
       dom.reloadBtn,
-      dom.importSettingsBtn,
+      dom.importMenuBtn,
     ];
     fromAriaLabel.forEach((control) => {
       attachArcrhoTooltip(control, control?.getAttribute("aria-label"));
@@ -2152,13 +2344,45 @@ export function createSourceDataFeature(deps = {}) {
       if (sourcePanelOpen) closeSourcePanel({ restoreFocus: true });
       else openSourcePanel();
     });
+    dom.importMenuBtn?.addEventListener("click", () => {
+      if (dom.importMenu?.hidden === false) closeImportMenu();
+      else openImportMenu();
+    });
+    dom.importMenu?.addEventListener("click", (event) => {
+      const item = event.target.closest(".sd-import-menu-item");
+      if (item) onImportMenuAction(item.dataset.importAction);
+    });
+    dom.importMenu?.addEventListener("keydown", (event) => {
+      const items = Array.from(dom.importMenu.querySelectorAll(".sd-import-menu-item"));
+      const index = items.indexOf(document.activeElement);
+      if (event.key === "Escape") {
+        closeImportMenu({ restoreFocus: true });
+        event.stopPropagation();
+      } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        items[(index + step + items.length) % items.length]?.focus();
+        event.preventDefault();
+      }
+    });
+    document.addEventListener("mousedown", (event) => {
+      if (dom.importMenu?.hidden !== false) return;
+      if (event.target.closest("#summaryImportMenu, #summaryImportMenuBtn")) return;
+      closeImportMenu();
+    });
+    window.addEventListener("resize", () => closeImportMenu());
+    dom.firstRun?.querySelectorAll(".sd-first-run-choice").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (sourcePanelOpen) closeSourcePanel();
+        openSourcePanel({ method: choice.dataset.method });
+      });
+    });
     dom.sourcePanelClose?.addEventListener("click", () => closeSourcePanel({ restoreFocus: true }));
     dom.sourcePanelHeader?.addEventListener("mousedown", onWindowHeaderMouseDown);
-    dom.sourcePanelResizer?.addEventListener("mousedown", onWindowResizerMouseDown);
+    dom.sourcePanelResizers.forEach((grip) => grip.addEventListener("mousedown", onWindowResizerMouseDown));
     dom.csvBrowseBtn?.addEventListener("click", () => browseForCsv());
     dom.mssqlLoadTablesBtn?.addEventListener("click", () => loadTableOptions());
-    dom.importNextBtn?.addEventListener("click", () => goToScopeStep());
-    dom.importBackBtn?.addEventListener("click", () => showPanelStep("settings"));
+    dom.importNextBtn?.addEventListener("click", () => goToNextPanelStep());
+    dom.importBackBtn?.addEventListener("click", () => goToPreviousPanelStep());
     dom.importDataBtn?.addEventListener("click", () => importData());
     dom.scopeDatasetsList?.addEventListener("change", (event) => {
       onScopeListChange(event, scopeState?.selectedDatasets);
@@ -2167,12 +2391,23 @@ export function createSourceDataFeature(deps = {}) {
       onScopeListChange(event, scopeState?.selectedClassTypes);
     });
     [
-      [dom.scopeDatasetsFilter, dom.scopeDatasetsList],
-      [dom.scopeClassTypesFilter, dom.scopeClassTypesList],
-    ].forEach(([filter, list]) => {
+      [dom.scopeDatasetsFilter, dom.scopeDatasetsList, () => scopeState?.selectedDatasets],
+      [dom.scopeClassTypesFilter, dom.scopeClassTypesList, () => scopeState?.selectedClassTypes],
+    ].forEach(([filter, list, selected]) => {
       filter?.addEventListener("input", () => applyScopeFilter(list, filter.value));
       filter?.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeSourcePanel({ restoreFocus: true });
+        if (event.key !== "Escape") return;
+        // Escape clears a filter first; an empty filter closes the window.
+        if (filter.value) {
+          filter.value = "";
+          applyScopeFilter(list, "");
+          event.stopPropagation();
+        } else {
+          closeSourcePanel({ restoreFocus: true });
+        }
+      });
+      list?.closest(".sd-scope-pane")?.querySelectorAll(".sd-scope-bulk").forEach((button) => {
+        button.addEventListener("click", () => setScopeListAll(list, selected(), button.dataset.bulk === "all"));
       });
     });
 
@@ -2440,7 +2675,10 @@ export function createSourceDataFeature(deps = {}) {
     showNoPath(message = "No source file is configured for this project.") {
       setSummaryLoading(false);
       setBodyVisible(false);
-      showMessage(message, false);
+      // The first-run panel says what to do next, so it replaces the bare
+      // "nothing configured" line; the message stays for a page without it.
+      setFirstRunVisible(!!dom.firstRun);
+      showMessage(dom.firstRun ? "" : message, false);
       columns = [];
       statsData = null;
       hidePreview();

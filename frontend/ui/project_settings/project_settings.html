@@ -148,6 +148,7 @@
                     <button class="sd-info-trigger" id="summaryInfoBtn" type="button" aria-expanded="false" aria-controls="summaryStatsCard" aria-label="Table details">
                       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.4"/><path d="M8 4.4v4.6"/><path d="M8 11.5h.01"/></svg>
                     </button>
+                    <span class="sd-import-meta" id="summaryImportMeta" hidden></span>
                   </div>
                   <input id="summaryTablePathInput" class="sd-path-input" type="text" autocomplete="off" spellcheck="false" aria-label="Source table path" hidden>
                   <div class="sd-head-spacer"></div>
@@ -155,13 +156,49 @@
                     <button class="sd-icon" id="summaryTablePathReloadBtn" type="button" aria-label="Reload table summary">
                       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 4v3.2h-3.2"/><path d="M2.5 12V8.8h3.2"/><path d="M12.4 6.2A5 5 0 0 0 4 4.6L2.6 6"/><path d="M3.6 9.8a5 5 0 0 0 8.4 1.6L13.4 10"/></svg>
                     </button>
-                    <button class="sd-icon" id="summaryImportSettingsBtn" type="button" aria-expanded="false" aria-controls="summarySourcePanel" aria-label="Import settings">
-                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.4 6.87v2.26l-1.98.48-.82 1.41.58 1.96-1.96 1.13-1.4-1.48H7.18l-1.4 1.48-1.96-1.13.58-1.96-.82-1.41-1.98-.48V6.87l1.98-.48.82-1.41-.58-1.96 1.96-1.13 1.4 1.48h1.64l1.4-1.48 1.96 1.13-.58 1.96.82 1.41z"/><circle cx="8" cy="8" r="1.9"/></svg>
+                  </div>
+                  <!-- The import entry point: a labelled button, plus a menu once the project holds imported data. -->
+                  <div class="sd-import-split" id="summaryImportSplit">
+                    <button class="sd-import-cta" id="summaryImportSettingsBtn" type="button" aria-expanded="false" aria-controls="summaryImportWindow">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5v7.5"/><path d="m4.8 7 3.2 3.2L11.2 7"/><path d="M2.8 11.5v1.7h10.4v-1.7"/></svg>
+                      <span>Import Data</span>
                     </button>
+                    <button class="sd-import-cta sd-import-caret" id="summaryImportMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="summaryImportMenu" aria-label="More import options" hidden>
+                      <span class="sd-select-caret" aria-hidden="true"></span>
+                    </button>
+                    <div class="sd-import-menu" id="summaryImportMenu" role="menu" aria-label="Import options" hidden>
+                      <button class="sd-import-menu-item" type="button" role="menuitem" data-import-action="again">
+                        <span class="sd-import-menu-name">Import again</span>
+                        <span class="sd-import-menu-note">Same source, choose what to refresh</span>
+                      </button>
+                      <button class="sd-import-menu-item" type="button" role="menuitem" data-import-action="change">
+                        <span class="sd-import-menu-name">Change source</span>
+                        <span class="sd-import-menu-note">Pick another file or SQL Server table</span>
+                      </button>
+                    </div>
                   </div>
                 </header>
 
                 <div class="sd-message" id="summaryMessage" hidden></div>
+
+                <!-- First run: shown until the project has a source, in place of the period band and column list. -->
+                <div class="sd-first-run" id="summaryFirstRun" hidden>
+                  <div class="sd-first-run-title">Import your source table to start</div>
+                  <p class="sd-first-run-note">Arco copies the table into this project. Field mapping, dataset types and reserving classes are all built from that copy.</p>
+                  <div class="sd-first-run-choices">
+                    <button class="sd-first-run-choice" type="button" data-method="csv">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M6 2.8h8l4.5 4.5v13.9H6z"/><path d="M14 2.8v4.5h4.5"/><path d="M9 12.5h6M9 15.5h6M9 18.5h4"/></svg>
+                      <span class="sd-first-run-name">CSV File</span>
+                      <span class="sd-first-run-detail">A .csv on this PC or a share</span>
+                    </button>
+                    <button class="sd-first-run-choice" type="button" data-method="mssql">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="7" ry="2.7"/><path d="M5 5.5v13c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7v-13"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></svg>
+                      <span class="sd-first-run-name">SQL Server</span>
+                      <span class="sd-first-run-detail">A table or view, read as your Windows account</span>
+                    </button>
+                  </div>
+                  <p class="sd-first-run-hint">Next you choose which datasets and reserving class types to refresh.</p>
+                </div>
 
                 <div class="sd-band" id="summaryPeriodsBand">
                   <span class="sd-band-group">
@@ -460,6 +497,15 @@
           </div>
         </div>
       </div>
+      <div class="detail-switch-cover" id="detailSwitchCover" hidden>
+        <div class="detail-switch-box" role="status" aria-live="polite">
+          <div class="detail-switch-title">Switching project</div>
+          <div class="detail-switch-label" id="detailSwitchLabel"></div>
+          <div class="detail-switch-track" aria-hidden="true">
+            <div class="detail-switch-fill"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -660,36 +706,53 @@
       <div class="sd-source-status" id="sdMssqlStatus" hidden></div>
     </div>
 
-    <!-- Step 2: which datasets and reserving classes the import refreshes -->
-    <div class="sd-import-body sd-import-scope" id="sdImportScope" data-step="scope" hidden>
-      <p class="sd-source-note">Choose which datasets and reserving classes are refreshed from the imported table. The step opens on the scope of the project's last import; whatever is left out keeps its current values.</p>
+    <!-- Steps 2 and 3: which datasets, then which reserving classes, the import refreshes.
+         One body holds both pages; the step logic shows the pane for the current page. -->
+    <div class="sd-import-body sd-import-scope" id="sdImportScope" data-step="scope" data-page="datasets" hidden>
+      <p class="sd-source-note sd-scope-intro" data-page="datasets">Choose the datasets this import refreshes. Anything left out keeps its current values.</p>
+      <p class="sd-source-note sd-scope-intro" data-page="classes" hidden>Choose the reserving class types this import refreshes. Anything left out keeps its current values.</p>
       <p class="sd-source-note sd-scope-restored" id="sdScopeRestored" hidden></p>
       <div class="sd-scope-panes">
-        <section class="sd-scope-pane" aria-labelledby="sdScopeDatasetsTitle">
+        <section class="sd-scope-pane" data-page="datasets" aria-labelledby="sdScopeDatasetsTitle">
           <div class="sd-scope-head">
             <span class="sd-field-label" id="sdScopeDatasetsTitle">Datasets</span>
             <span class="sd-scope-count" id="sdScopeDatasetsCount"></span>
           </div>
-          <input class="sd-scope-filter" id="sdScopeDatasetsFilter" type="text" autocomplete="off" spellcheck="false" placeholder="Type to filter" aria-label="Filter datasets">
+          <div class="sd-scope-tools">
+            <input class="sd-scope-filter" id="sdScopeDatasetsFilter" type="text" autocomplete="off" spellcheck="false" placeholder="Type to filter" aria-label="Filter datasets">
+            <button class="sd-btn sd-scope-bulk" id="sdScopeDatasetsAllBtn" type="button" data-bulk="all">Select all</button>
+            <button class="sd-btn sd-scope-bulk" id="sdScopeDatasetsNoneBtn" type="button" data-bulk="none">Clear all</button>
+          </div>
           <div class="sd-scope-list" id="sdScopeDatasetsList" role="group" aria-labelledby="sdScopeDatasetsTitle"></div>
         </section>
-        <section class="sd-scope-pane" aria-labelledby="sdScopeClassTypesTitle">
+        <section class="sd-scope-pane" data-page="classes" aria-labelledby="sdScopeClassTypesTitle" hidden>
           <div class="sd-scope-head">
             <span class="sd-field-label" id="sdScopeClassTypesTitle">Reserving Class Types</span>
             <span class="sd-scope-count" id="sdScopeClassTypesCount"></span>
           </div>
-          <input class="sd-scope-filter" id="sdScopeClassTypesFilter" type="text" autocomplete="off" spellcheck="false" placeholder="Type to filter" aria-label="Filter reserving class types">
+          <div class="sd-scope-tools">
+            <input class="sd-scope-filter" id="sdScopeClassTypesFilter" type="text" autocomplete="off" spellcheck="false" placeholder="Type to filter" aria-label="Filter reserving class types">
+            <button class="sd-btn sd-scope-bulk" id="sdScopeClassTypesAllBtn" type="button" data-bulk="all">Select all</button>
+            <button class="sd-btn sd-scope-bulk" id="sdScopeClassTypesNoneBtn" type="button" data-bulk="none">Clear all</button>
+          </div>
           <div class="sd-scope-list" id="sdScopeClassTypesList" role="group" aria-labelledby="sdScopeClassTypesTitle"></div>
         </section>
       </div>
-      <div class="sd-source-status" id="sdScopeStatus" hidden></div>
+      <div class="sd-source-status sd-scope-status" id="sdScopeStatus"></div>
     </div>
     <div class="rct-row-editor-actions">
       <button class="dialog-btn sd-import-back" id="sdImportBackBtn" type="button" hidden>Back</button>
       <button class="dialog-btn primary" id="sdImportNextBtn" type="button">Next</button>
       <button class="dialog-btn primary" id="sdImportDataBtn" type="button" hidden>Import Data</button>
     </div>
-    <div class="sd-import-resizer" id="summaryImportWindowResizer" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="n" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="s" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="e" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="w" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="nw" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="ne" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="sw" aria-hidden="true"></div>
+    <div class="sd-import-resizer" data-edge="se" id="summaryImportWindowResizer" aria-hidden="true"></div>
   </div>
 
   <!-- Reserving Class Types Row Context Menu -->

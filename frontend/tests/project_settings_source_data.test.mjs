@@ -837,9 +837,18 @@ test("the window resizes from its own grip, anchored at the top-left corner", ()
     "the native resizer pseudo-element is still being styled",
   );
 
-  // An invisible corner hit-area carries the resize affordance instead.
+  // Invisible hit-areas on every edge and corner carry the resize affordance.
   assert.match(projectSettingsHtml, /id="summaryImportWindowResizer"/);
-  assert.match(summaryCss, /\.sd-import-resizer \{[\s\S]*?position: absolute;[\s\S]*?cursor: nwse-resize;/);
+  for (const edge of ["n", "s", "e", "w", "nw", "ne", "sw", "se"]) {
+    assert.match(projectSettingsHtml, new RegExp(`class="sd-import-resizer" data-edge="${edge}"`));
+  }
+  assert.match(summaryCss, /\.sd-import-resizer \{[\s\S]*?position: absolute;/);
+  assert.match(summaryCss, /\.sd-import-resizer\[data-edge="ne"\] \{[^}]*cursor: nesw-resize;/);
+  // Every page shares one window height, so changing pages never makes it jump.
+  assert.match(summaryCss, /\.sd-import-window \{[^}]*height: min\(620px, calc\(100vh - 172px\)\);/);
+  // A top or left grip moves that edge and keeps the opposite one still.
+  assert.match(moduleSource, /dom\.sourcePanel\.style\.left = `\$\{right - width\}px`/);
+  assert.match(moduleSource, /dom\.sourcePanel\.style\.top = `\$\{bottom - height\}px`/);
 
   // Pinning left/top before sizing is what keeps the left edge still: while the
   // centering transform is in place, `left` names the window's midpoint.
@@ -851,7 +860,7 @@ test("the window resizes from its own grip, anchored at the top-left corner", ()
     resizerDown.indexOf("pinSourcePanelPosition") < resizerDown.indexOf("windowResizeState ="),
     "the resize drag starts before the window position is pinned",
   );
-  assert.match(moduleSource, /dom\.sourcePanelResizer\?\.addEventListener\("mousedown", onWindowResizerMouseDown\)/);
+  assert.match(moduleSource, /grip\.addEventListener\("mousedown", onWindowResizerMouseDown\)/);
 
   // CSS stays the single owner of the minimum size; JS only reads it back.
   assert.match(moduleSource, /function sourcePanelSizeLimits\(\)/);
@@ -1115,7 +1124,7 @@ test("Import Data rebuilds the master table from whichever method is selected", 
 test("Import Data is preceded by an Import Scope step that narrows the refresh", () => {
   // The window has two pages sharing one body class; Next validates the
   // settings and opens the scope page, Back returns, Import Data runs from it.
-  assert.match(projectSettingsHtml, /<div class="sd-import-body sd-import-scope" id="sdImportScope" data-step="scope" hidden>/);
+  assert.match(projectSettingsHtml, /<div class="sd-import-body sd-import-scope" id="sdImportScope" data-step="scope" data-page="datasets" hidden>/);
   for (const id of [
     "sdImportNextBtn",
     "sdImportBackBtn",
@@ -1131,9 +1140,20 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
     assert.ok(projectSettingsHtml.includes(`id="${id}"`), `missing #${id} in markup`);
     assert.ok(moduleSource.includes(`el("${id}")`), `#${id} is not bound by the Source Data module`);
   }
-  assert.match(moduleSource, /importNextBtn\?\.addEventListener\("click", \(\) => goToScopeStep\(\)\)/);
-  assert.match(moduleSource, /importBackBtn\?\.addEventListener\("click", \(\) => showPanelStep\("settings"\)\)/);
-  assert.match(moduleSource, /textContent = onScope \? "Import Scope" : "Import Settings"/);
+  assert.match(moduleSource, /importNextBtn\?\.addEventListener\("click", \(\) => goToNextPanelStep\(\)\)/);
+  assert.match(moduleSource, /importBackBtn\?\.addEventListener\("click", \(\) => goToPreviousPanelStep\(\)\)/);
+  // Datasets and reserving class types are separate pages, in that order.
+  assert.match(moduleSource, /const PANEL_STEPS = \["settings", "datasets", "classes"\]/);
+  assert.match(moduleSource, /datasets: "Import Scope: Datasets"/);
+  assert.match(moduleSource, /classes: "Import Scope: Reserving Class Types"/);
+  assert.match(moduleSource, /if \(panelStep === "settings"\) \{\s*goToScopeStep\(\);/);
+  assert.match(moduleSource, /if \(panelStep === "datasets" && !datasetScopeProblem\(\)\) \{\s*showPanelStep\("classes"\)/);
+  assert.match(moduleSource, /importDataBtn\.hidden = panelStep !== "classes"/);
+  assert.match(projectSettingsHtml, /<section class="sd-scope-pane" data-page="datasets"/);
+  assert.match(projectSettingsHtml, /<section class="sd-scope-pane" data-page="classes" [^>]*hidden>/);
+  assert.match(summaryCss, /\.sd-scope-pane\[hidden\],\s*\.sd-scope-intro\[hidden\] \{ display: none; \}/);
+  // The Datasets page cannot move on with nothing ticked.
+  assert.match(moduleSource, /importNextBtn\.disabled = sourceBusy \|\| \(panelStep === "datasets" && !!datasetProblem\)/);
   // The body class sets display, so the hidden page needs its own rule.
   assert.match(summaryCss, /\.sd-import-body\[hidden\] \{ display: none; \}/);
   assert.match(summaryCss, /\.rct-row-editor-actions \.dialog-btn\[hidden\] \{ display: none; \}/);
@@ -1153,6 +1173,24 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
   assert.match(moduleSource, /\(tickedByLevel\.get\(item\.level\) \|\| 0\) < totalByLevel\.get\(item\.level\)/);
   // A group tick only reaches the rows a filter still shows.
   assert.match(moduleSource, /\.sd-scope-row:not\(\[hidden\]\) input/);
+  // Each list has Select all / Clear all, reaching the same shown rows.
+  for (const id of [
+    "sdScopeDatasetsAllBtn",
+    "sdScopeDatasetsNoneBtn",
+    "sdScopeClassTypesAllBtn",
+    "sdScopeClassTypesNoneBtn",
+  ]) {
+    assert.ok(projectSettingsHtml.includes(`id="${id}"`), `missing #${id} in markup`);
+    assert.ok(moduleSource.includes(`el("${id}")`), `#${id} is not bound by the Source Data module`);
+  }
+  assert.match(moduleSource, /function setScopeListAll\(listEl, selected, on\)/);
+  assert.match(moduleSource, /setScopeListAll\(list, selected\(\), button\.dataset\.bulk === "all"\)/);
+  assert.match(moduleSource, /allBtn\.disabled = sourceBusy \|\| ticked === boxes\.length/);
+  assert.match(moduleSource, /noneBtn\.disabled = sourceBusy \|\| ticked === 0/);
+  // A filter that hides everything says so.
+  assert.match(moduleSource, /No matches for/);
+  // The sticky group head meets the list's top edge, so no row peeks above it.
+  assert.match(summaryCss, /\.sd-scope-list \{[\s\S]*?padding: 0 0 3px;/);
   // Lists scroll vertically only (design rule C16).
   assert.match(summaryCss, /\.sd-scope-list \{[\s\S]*?overflow-y: auto;\s*overflow-x: hidden;/);
 
@@ -1260,15 +1298,48 @@ test("Source Data header actions carry shared ArcRho tooltips", () => {
   for (const control of [
     "dom.infoBtn",
     "dom.reloadBtn",
-    "dom.importSettingsBtn",
+    "dom.importMenuBtn",
   ]) {
     assert.ok(block.includes(control), `${control} has no tooltip`);
   }
+  // Import Data shows its label, so it needs no tooltip of its own.
+  assert.ok(!block.includes("dom.importSettingsBtn"), "the labelled Import Data button repeats its label as a tooltip");
   // Tooltip wording is not duplicated; it reads each control's accessible name.
   assert.match(block, /control\?\.getAttribute\("aria-label"\)/);
   // Controls inside the floating panels would sit above the shared tooltip.
   assert.ok(!block.includes("dom.openFolderBtn"), "tooltip attached inside a floating panel");
   assert.ok(!block.includes("dom.mssqlTestBtn"), "tooltip attached inside a floating panel");
+});
+
+test("a first-time user finds the import from a labelled button and a first-run panel", () => {
+  // The header's entry point is a labelled button, not a gear icon.
+  assert.match(
+    projectSettingsHtml,
+    /<button class="sd-import-cta" id="summaryImportSettingsBtn"[\s\S]*?<span>Import Data<\/span>/,
+  );
+  assert.ok(!projectSettingsHtml.includes('aria-label="Import settings"'), "the gear-icon entry point remains");
+  // The arrow menu appears only once there is an import to repeat.
+  assert.match(projectSettingsHtml, /id="summaryImportMenuBtn"[^>]*hidden>/);
+  assert.match(projectSettingsHtml, /data-import-action="again"/);
+  assert.match(projectSettingsHtml, /data-import-action="change"/);
+  assert.match(moduleSource, /const canRepeat = !!when \|\| sourceState\.masterTableExists;/);
+  assert.match(moduleSource, /if \(action === "again"\) goToScopeStep\(\);/);
+  // The header names the last import.
+  assert.match(projectSettingsHtml, /id="summaryImportMeta" hidden/);
+  assert.match(moduleSource, /`Imported \$\{when\}/);
+  // An empty project offers both methods, and each opens the window on it.
+  assert.match(projectSettingsHtml, /class="sd-first-run" id="summaryFirstRun" hidden/);
+  assert.match(projectSettingsHtml, /class="sd-first-run-choice" type="button" data-method="csv"/);
+  assert.match(projectSettingsHtml, /class="sd-first-run-choice" type="button" data-method="mssql"/);
+  assert.match(moduleSource, /openSourcePanel\(\{ method: choice\.dataset\.method \}\)/);
+  assert.match(moduleSource, /function openSourcePanel\(\{ method = "" \} = \{\}\)/);
+  assert.match(moduleSource, /setFirstRunVisible\(!!dom\.firstRun\);/);
+  // Any summary on screen retires the first-run panel.
+  assert.match(moduleSource, /function setBodyVisible\(visible\) \{\s*if \(visible\) setFirstRunVisible\(false\);/);
+  // The primary action is blue-tinted, not a filled block (design rule C02).
+  assert.match(summaryCss, /\.sd-import-cta \{[^}]*background: var\(--ar-color-accent-soft, #eaf2ff\);/);
+  // The menu is a vertical list that never scrolls sideways (design rule C16).
+  assert.match(summaryCss, /\.sd-import-menu \{[^}]*overflow-x: hidden;/);
 });
 
 test("unknown source types and auth modes fall back to the supported defaults", () => {

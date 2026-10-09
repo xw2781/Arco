@@ -15,7 +15,7 @@ import { createFieldMappingFeature } from "/ui/project_settings/project_settings
 import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20260927smb18";
 import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20260901dup1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20260905scope1";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261008scope2";
 import {
   applyProjectSettingsTablePreferences,
   getConfiguredTableColumnWidthMap,
@@ -34,6 +34,7 @@ import { createTreeViewFeature } from "/ui/project_settings/project_settings_tre
 import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261004lock1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
 import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261004lock1";
+import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
 import { createSourceRefreshFeature } from "/ui/project_settings/project_settings_source_refresh.js?v=20260927smb18";
 import { loadProjectUserPreferences } from "/ui/shared/services/project_user_preferences.js?v=20260816a";
 import "/ui/shared/integrations/zoom_bridge.js?v=20260521a";
@@ -48,6 +49,7 @@ const detailEmpty = document.getElementById("detailEmpty");
 const detailView = document.getElementById("detailView");
 const detailTitle = document.getElementById("detailTitle");
 const detailForm = document.getElementById("detailForm");
+const switchCover = createSwitchCover(document.getElementById("detailSwitchCover"));
 const openProjectFolderBtn = document.getElementById("openProjectFolderBtn");
 const treePanel = document.getElementById("treePanel");
 const resizeHandle = document.getElementById("resizeHandle");
@@ -631,6 +633,7 @@ async function loadProjectData(sourceKey = DEFAULT_SOURCE) {
 function clearProjectSelection() {
   selectedProject = null;
   treeViewFeature.clearSelectedProjectFromSession();
+  switchCover.cancel();
   detailEmpty.style.display = "flex";
   detailView.style.display = "none";
 }
@@ -688,9 +691,11 @@ async function selectProject(project) {
   reservingClassTypesFeature?.closeReservingClassTypeEditor();
   dataProcessingRulesFeature?.closeEditor();
   const selectionKey = normalizeProjectKey(project?.name);
+  let coverHandle = null;
   // Reselecting the current project refreshes it in place; only a real
   // selection change has stale content to drop.
   if (normalizeProjectKey(selectedProject?.name) !== selectionKey) {
+    coverHandle = switchCover.show(project?.name);
     clearProjectDetailPanels(project);
   }
   selectedProject = project;
@@ -705,7 +710,8 @@ async function selectProject(project) {
   if (!selectedProject || normalizeProjectKey(selectedProject.name) !== selectionKey) return;
   applyProjectSettingsTablePreferences(preferences);
   sourceDataFeature.applyConfiguredColumnWidths();
-  showProjectDetails(project);
+  const loads = showProjectDetails(project);
+  void switchCover.hide(coverHandle, loads);
   // Update tree header to show the last part of the folder name
   if (treeHeader && project.folder) {
     const parts = project.folder.split("\\");
@@ -739,14 +745,14 @@ function showProjectDetails(project) {
   void projectLockFeature.load(project.name);
 
   // Load the summary of the table this project has imported.
-  loadTableSummary(project.name);
+  const summaryLoad = loadTableSummary(project.name);
   // A refresh submitted before the page was reloaded is still running on the
   // server; re-attach to it so its progress is visible again.
   void resumePendingSourceRefresh(project.name);
-  datasetTypesFeature?.loadDatasetTypes(project.name);
-  reservingClassTypesFeature?.loadReservingClassTypes(project.name);
-  dataProcessingRulesFeature?.loadRules(project.name);
-  loadAuditLog(project.name);
+  // Returned so a project switch can wait on the page loads.
+  return [summaryLoad, datasetTypesFeature?.loadDatasetTypes(project.name),
+    reservingClassTypesFeature?.loadReservingClassTypes(project.name),
+    dataProcessingRulesFeature?.loadRules(project.name), loadAuditLog(project.name)];
 }
 
 // ============ Source Table Path ============
