@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 7 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, its Combine step shows the Join Map, Row Match and Preview, and Import Data imports a combined source end to end with the Source Data header describing it); next is deploying the server parts.
+Status: In progress: 8 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, its Combine step shows the Join Map, Row Match and Preview, and Import Data imports a combined source end to end with the Source Data header describing it, and the server parts are deployed); next is the demo and GUI check in the Aug fake project.
 Last updated: 2026-10-12
 
 ## Progress
@@ -16,10 +16,10 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 5 | The import window lists several tables, each with a nickname and a details window | [x] | 2026-10-12 | 75 min | 15 min | The import window has an Add Table button: several tables can be listed with nicknames, grouped by connection, dragged into join order and opened in a details window that shows their columns, while a single-table import looks and works exactly as before; importing several tables comes in a later step. |
 | 6 | The import window shows how the tables join and what the result will look like | [x] | 2026-10-12 | 80 min | 25 min | With two or more tables the import window gains a Combine step: a map lines up the matching columns across the tables, each key, row rule and column can be changed in place, and a Row Match tab and a Preview tab show how well the tables match and the first rows of the result before anything is imported; the table list no longer shows connection details. |
 | 7 | Importing a combined source runs end to end and the Source Data tab describes it | [x] | 2026-10-12 | 50 min | 19 min | Import Data now imports a combined source from start to finish, the Source Data tab names it with its tables and keys, and the import window reopens on its saved tables, nicknames, keys and rules, while single-table projects look and work exactly as before. |
-| 8 | The server parts are live | [ ] | | 25 min | | |
+| 8 | The server parts are live | [x] | 2026-10-12 | 25 min | 8 min | The server now runs the combined-source code, and a single-table project's source settings read back exactly as before the update. |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 7 of 9 steps done. Estimated 510 min, actual so far 83 min.
+Overall: 8 of 9 steps done. Estimated 510 min, actual so far 91 min.
 
 ## How agents work this plan
 
@@ -281,15 +281,15 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 **Read first.** Memory notes [deploy-only-when-released-app-is-safe](../../agent-memory/deploy-only-when-released-app-is-safe.md), [deploy-without-asking](../../agent-memory/deploy-without-asking.md), [remote-component-deploy](../../agent-memory/remote-component-deploy.md), [local-test-root](../../agent-memory/local-test-root.md).
 
 **Do.**
-- [ ] Re-check the ship-impact statement against the landed diff: no request or response the released app uses changed shape, and single-table records are unchanged. If that fails, stop and record it under "Open decisions".
-- [ ] Check `git status` for other sessions' uncommitted work; deploy with `--ref <sha>` if present.
-- [ ] `py -3.10 server-components/deploy.py --stale`, then deploy what is stale (expected: Gateway and Engine), and confirm with the deployed canonical copy (`grep -c save_combined_source`).
+- [x] Re-check the ship-impact statement against the landed diff: no request or response the released app uses changed shape, and single-table records are unchanged. If that fails, stop and record it under "Open decisions".
+- [x] Check `git status` for other sessions' uncommitted work; deploy with `--ref <sha>` if present.
+- [x] `py -3.10 server-components/deploy.py --stale`, then deploy what is stale (expected: Gateway and Engine), and confirm with the deployed canonical copy (`grep -c save_combined_source`).
 
 **Tests.** The deploy's own verification and a `GET /source_table` of a single-table project through the dev app showing the same answer as before.
 
 **Done when.** The deployed copies carry the new service and the single-table answer is unchanged.
 
-**Estimate.** Estimate: code edit 0 min, test/validation 25 min, total 25 min.
+**Estimate.** Estimate: code edit 0 min, test/validation 25 min, total 25 min. Actual: code edit 2 min, test/validation 6 min, total 8 min (the build server's warm slots made the four-component deploy take about 3 minutes).
 
 ### Step 9 — Demo and GUI check in the Aug fake project
 
