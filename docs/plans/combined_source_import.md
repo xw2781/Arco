@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 1 of 9 session-sized steps done (the record can hold a combined source); next is the combine engine.
+Status: In progress: 2 of 9 session-sized steps done (the record can hold a combined source, and the combine engine joins tables); next is the server half: save, commit and guards.
 Last updated: 2026-10-12
 
 ## Progress
@@ -10,7 +10,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | # | Step | Done | Date | Est. | Actual | What changed for the user |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A project can record a source made of several tables, and single-table projects record exactly what they do today | [x] | 2026-10-12 | 45 min | 3 min | Nothing visible yet; a project's source record can now describe several joined tables, and single-table projects are recorded exactly as before. |
-| 2 | Arco can combine several tables into one the way the merge notebook does | [ ] | | 70 min | | |
+| 2 | Arco can combine several tables into one the way the merge notebook does | [x] | 2026-10-12 | 70 min | 5 min | Nothing visible yet; Arco can now join several tables into one the way the merge notebook does and report how well each table matched. |
 | 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [ ] | | 60 min | | |
 | 4 | The app can read every table of a combined source, preview the result and import it | [ ] | | 60 min | | |
 | 5 | The import window lists several tables, each with a nickname and a details window | [ ] | | 75 min | | |
@@ -19,7 +19,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 1 of 9 steps done. Estimated 510 min, actual so far 3 min.
+Overall: 2 of 9 steps done. Estimated 510 min, actual so far 8 min.
 
 ## How agents work this plan
 
@@ -142,7 +142,7 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Done when.** The new tests pass under `py -3.10 -m unittest` from `frontend/tests`.
 
-**Estimate.** Estimate: code edit 50 min, test/validation 20 min, total 70 min.
+**Estimate.** Estimate: code edit 50 min, test/validation 20 min, total 70 min. Actual: code edit 3 min, test/validation 2 min, total 5 min (a small pure module whose behaviour the prototype already spelled out; the tests passed first run).
 
 ### Step 3 — Server half: save, commit and guards
 
