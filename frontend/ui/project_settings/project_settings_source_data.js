@@ -2615,7 +2615,9 @@ export function createSourceDataFeature(deps = {}) {
       if (dom.pathInput) {
         dom.pathInput.value = sourceState.sourceType === SOURCE_TYPE_MSSQL ? "" : sourceState.csvPath;
       }
-      if (sourcePanelOpen) syncSourcePanelFields();
+      // While an import runs the window keeps showing the source being
+      // imported; the answers that arrive mid-import must not blank it.
+      if (sourcePanelOpen && !sourceBusy) syncSourcePanelFields();
       syncPathDisplay(sourceState.sourceType === SOURCE_TYPE_MSSQL ? "" : sourceState.csvPath);
       if (sourceState.driverAvailable) setSourceStatus("");
       return sourceState;
