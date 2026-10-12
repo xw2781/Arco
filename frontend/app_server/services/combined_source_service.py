@@ -1,6 +1,6 @@
 """Combining several source tables into one master table.
 
-A combined source (decision 3 of docs/plans/combined_source_import.md) names
+A combined source (decision 3 of docs/plans/completed/combined_source_import.md) names
 several tables, the keys they share and how each joins onto the running
 result. The first half of this module is the pure combine engine: it reads
 the given local CSV files, joins them as the spec says, and reports what

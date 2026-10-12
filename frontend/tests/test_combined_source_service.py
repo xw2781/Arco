@@ -1,4 +1,4 @@
-"""The combine engine behind a combined source (docs/plans/combined_source_import.md, step 2)."""
+"""The combine engine behind a combined source (docs/plans/completed/combined_source_import.md, step 2)."""
 from __future__ import annotations
 
 import csv

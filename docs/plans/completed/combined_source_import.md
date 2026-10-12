@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 8 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, its Combine step shows the Join Map, Row Match and Preview, and Import Data imports a combined source end to end with the Source Data header describing it, and the server parts are deployed); next is the demo and GUI check in the Aug fake project.
+Status: Done 2026-10-12: all 9 steps landed. A project's source can now be several CSV and SQL Server tables joined in the Source Data import window; the server parts are deployed and the window reaches users with the next app release. The demo in the Aug fake project rebuilt its master table from three CSV tables, identical to the original, and a single-table project looked and behaved as before.
 Last updated: 2026-10-12
 
 ## Progress
@@ -17,16 +17,16 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 6 | The import window shows how the tables join and what the result will look like | [x] | 2026-10-12 | 80 min | 25 min | With two or more tables the import window gains a Combine step: a map lines up the matching columns across the tables, each key, row rule and column can be changed in place, and a Row Match tab and a Preview tab show how well the tables match and the first rows of the result before anything is imported; the table list no longer shows connection details. |
 | 7 | Importing a combined source runs end to end and the Source Data tab describes it | [x] | 2026-10-12 | 50 min | 19 min | Import Data now imports a combined source from start to finish, the Source Data tab names it with its tables and keys, and the import window reopens on its saved tables, nicknames, keys and rules, while single-table projects look and work exactly as before. |
 | 8 | The server parts are live | [x] | 2026-10-12 | 25 min | 8 min | The server now runs the combined-source code, and a single-table project's source settings read back exactly as before the update. |
-| 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
+| 9 | A combined source is built and checked in the Aug fake project | [x] | 2026-10-12 | 45 min | 29 min | The Aug fake project now takes its source from three tables joined in the import window, and the imported table came out identical to the one it had before; a single-table project looks and works as before. |
 
-Overall: 8 of 9 steps done. Estimated 510 min, actual so far 91 min.
+Overall: 9 of 9 steps done. Estimated 510 min, actual 120 min.
 
 ## How agents work this plan
 
 - Take the first unticked step in the Progress table. One step is one context (a session or one workflow subagent), one commit.
 - Note the clock before the first file is read and again at the commit, keeping the two parts apart: time spent reading and editing, and time spent running tests, checks and deploys.
 - Read the sections between here and the Plan before starting, then only the files the step names. Do not read ahead into later steps.
-- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](README.md).
+- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](../README.md).
 - If a step turns out to need a decision that is not in "Open decisions", stop, record the question there, commit that note alone, and report it rather than guessing.
 - Do not start a step while the previous one is uncommitted.
 
@@ -40,11 +40,11 @@ Overall: 8 of 9 steps done. Estimated 510 min, actual so far 91 min.
 
 Today a project's source is one CSV file or one SQL Server table. Monthly work such as `E:\ResQ\Automations\Monthly Project\202609\Arco - Merge Tables.ipynb` first outer-merges several tables (three SQL Server tables and one CSV) on shared keys, renaming keys that differ only in case, filling a key a table lacks (`sys_yrmo = 0`), dropping a column (`FACID`), and cleaning empty `Unnamed: n` columns and blank rows. The user wants Arco to do this in the Source Data tab with a visual join, mixing SQL and CSV tables, while everything downstream stays the same.
 
-The agreed UX is the prototype [project_settings_combined_source_demo.html](../../frontend/docs/ui/project_settings_combined_source_demo.html). Read it before any frontend step; it is the specification for the window's behaviour and wording.
+The agreed UX is the prototype [project_settings_combined_source_demo.html](../../../frontend/docs/ui/project_settings_combined_source_demo.html). Read it before any frontend step; it is the specification for the window's behaviour and wording.
 
 ## How it fits
 
-Everything after an import reads one file, `<project>/source/master_table.csv` (see [source_table domain](../../frontend/docs/app_server/domains/source_table.md)). A combined source produces that same file, so field mapping, dataset types, reserving classes and the Engine refresh are unchanged.
+Everything after an import reads one file, `<project>/source/master_table.csv` (see [source_table domain](../../../frontend/docs/app_server/domains/source_table.md)). A combined source produces that same file, so field mapping, dataset types, reserving classes and the Engine refresh are unchanged.
 
 A combined source is imported **on the client**, like a SQL Server source today: the client app server reads every table (CSV with the client's drive mappings, SQL Server with the user's own Windows login), combines them, and sends the result through the existing chunked upload (`source_table_upload_chunk` / `source_table_upload_commit`). The refresh job then runs with `import_source` off, exactly as it does after a SQL Server upload.
 
@@ -102,8 +102,8 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Read first.**
 - Decisions 1-3 and 10 above.
-- [source_table_contract.py](../../python-api/src/arcrho_api/source_table_contract.py) (whole file).
-- [test_source_table_contract.py](../../frontend/tests/test_source_table_contract.py).
+- [source_table_contract.py](../../../python-api/src/arcrho_api/source_table_contract.py) (whole file).
+- [test_source_table_contract.py](../../../frontend/tests/test_source_table_contract.py).
 - Skill `arcrho-json-contract`.
 
 **Do.**
@@ -125,9 +125,9 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 **Goal.** A pure Python service that takes table files and a combine spec and returns the combined table, per-table match statistics, warnings and preview rows.
 
 **Read first.**
-- Decisions 3-6 above, and the prototype's `combine()`, `columnPlan()` and `alertsFor()` functions in [project_settings_combined_source_demo.html](../../frontend/docs/ui/project_settings_combined_source_demo.html) for the exact statistics and warnings.
+- Decisions 3-6 above, and the prototype's `combine()`, `columnPlan()` and `alertsFor()` functions in [project_settings_combined_source_demo.html](../../../frontend/docs/ui/project_settings_combined_source_demo.html) for the exact statistics and warnings.
 - Step 1's `normalize_combined_source`.
-- [pandas-read-csv-not-round-trip memory](../../agent-memory/pandas-read-csv-not-round-trip.md).
+- [pandas-read-csv-not-round-trip memory](../../../agent-memory/pandas-read-csv-not-round-trip.md).
 
 **Do.**
 - [ ] New `frontend/app_server/services/combined_source_service.py`, no I/O beyond reading the given local CSV files and writing a given output path:
@@ -150,12 +150,12 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Read first.**
 - Decisions 2 and 8 above; "How it fits".
-- [source_table_service.py](../../frontend/app_server/services/source_table_service.py) `save_source_profile`, `ensure_master_table`, `read_source_table_settings`, `_master_status`, `get_source_file_status` (a combined source has no single file to stat).
-- [source_table_upload_service.py](../../frontend/app_server/services/source_table_upload_service.py) `commit_source_table_upload`.
-- [source_refresh_service.py](../../frontend/app_server/services/source_refresh_service.py) `describe_source_refresh_plan`.
-- [arcrho_workspace_mutation_contract.py](../../python-api/src/arcrho_workspace_mutation_contract.py) entries `source_profile_save` and `source_table_upload_commit`.
-- Memory notes [adding-a-hosted-save-kind](../../agent-memory/adding-a-hosted-save-kind.md) and [propagation-hold-and-test-isolation](../../agent-memory/propagation-hold-and-test-isolation.md).
-- Tests [test_source_table_upload.py](../../frontend/tests/test_source_table_upload.py), [test_source_data_writes_hosted.py](../../frontend/tests/test_source_data_writes_hosted.py), [test_source_refresh_jobs.py](../../frontend/tests/test_source_refresh_jobs.py).
+- [source_table_service.py](../../../frontend/app_server/services/source_table_service.py) `save_source_profile`, `ensure_master_table`, `read_source_table_settings`, `_master_status`, `get_source_file_status` (a combined source has no single file to stat).
+- [source_table_upload_service.py](../../../frontend/app_server/services/source_table_upload_service.py) `commit_source_table_upload`.
+- [source_refresh_service.py](../../../frontend/app_server/services/source_refresh_service.py) `describe_source_refresh_plan`.
+- [arcrho_workspace_mutation_contract.py](../../../python-api/src/arcrho_workspace_mutation_contract.py) entries `source_profile_save` and `source_table_upload_commit`.
+- Memory notes [adding-a-hosted-save-kind](../../../agent-memory/adding-a-hosted-save-kind.md) and [propagation-hold-and-test-isolation](../../../agent-memory/propagation-hold-and-test-isolation.md).
+- Tests [test_source_table_upload.py](../../../frontend/tests/test_source_table_upload.py), [test_source_data_writes_hosted.py](../../../frontend/tests/test_source_data_writes_hosted.py), [test_source_refresh_jobs.py](../../../frontend/tests/test_source_refresh_jobs.py).
 
 **Do.**
 - [x] `save_combined_source(project_name, combined)` in `source_table_service`: normalize (step 1), require at least two tables and at least one key, reject `sql_login`, store `source_type: combined` plus the block under the project lock, audit `Saved combined source (<label>)`, answer `read_source_table_settings`.
@@ -165,9 +165,9 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - [x] `commit_source_table_upload` accepts `combined`: `last_import.source_label` from `combined_source_label`, no CSV identity, no SQL pair remembered; audit `Imported combined source (<label>, N rows)`. Add nothing to the mutation's argument list unless needed.
 - [x] `ensure_master_table` treats `combined` like `mssql` (never re-read; missing master answers the "import in Project Settings > Source Data" error).
 - [x] `describe_source_refresh_plan` answers `server_can_import: false` for `combined`.
-- [x] Confirm the Engine's import branch in [source_table_refresh.py](../../server-components/src/arcrho_engine/source_table_refresh.py) reaches `ensure_master_table` for `combined` and so never re-reads it; add a test there rather than code.
+- [x] Confirm the Engine's import branch in [source_table_refresh.py](../../../server-components/src/arcrho_engine/source_table_refresh.py) reaches `ensure_master_table` for `combined` and so never re-reads it; add a test there rather than code.
 
-**Tests.** Extend the three test files above: combined save round-trip; single save after a combined save writes exactly the single-table record (golden); combined commit records the label and leaves the CSV identity empty; `ensure_master_table` on a combined project does not touch the master; the refresh plan says client import; existing single-table tests pass unchanged. Add the Engine case to [test_source_table_refresh.py](../../server-components/tests/test_source_table_refresh.py).
+**Tests.** Extend the three test files above: combined save round-trip; single save after a combined save writes exactly the single-table record (golden); combined commit records the label and leaves the CSV identity empty; `ensure_master_table` on a combined project does not touch the master; the refresh plan says client import; existing single-table tests pass unchanged. Add the Engine case to [test_source_table_refresh.py](../../../server-components/tests/test_source_table_refresh.py).
 
 **Done when.** The touched test modules pass, and the mutation contract tests (`grep -l source_profile_save frontend/tests python-api/tests`) pass with the new kind.
 
@@ -179,8 +179,8 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Read first.**
 - "How it fits" and decision 8.
-- [source_table_router.py](../../frontend/app_server/api/source_table_router.py), [schemas/source_table.py](../../frontend/app_server/schemas/source_table.py).
-- [source_table_upload_service.py](../../frontend/app_server/services/source_table_upload_service.py) `_mssql_blocks`, `_chunks`, `upload_source_table`.
+- [source_table_router.py](../../../frontend/app_server/api/source_table_router.py), [schemas/source_table.py](../../../frontend/app_server/schemas/source_table.py).
+- [source_table_upload_service.py](../../../frontend/app_server/services/source_table_upload_service.py) `_mssql_blocks`, `_chunks`, `upload_source_table`.
 - Step 2's `combined_source_service`.
 
 **Do.**
@@ -190,7 +190,7 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
   - `preview_combined(project_name, combined)`: per-table description, statistics, warnings, first 14 rows, combined row and column counts.
   - `import_combined(project_name)`: reads the saved `combined` block through the `source_table_settings` read, re-reads every table, combines, writes a temporary CSV, then uploads it with the same chunk and commit mutations as `upload_source_table` using `source_type: combined` and the same progress reporting. Refactor `upload_source_table` so both share one chunk-and-commit helper; the CSV and SQL behaviour must not change.
 - [x] Routes `POST /source_table/combined/describe`, `POST /source_table/combined/preview`, `POST /source_table/combined/save` (forwards `source_combined_save`, translating CSV paths with `normalize_import_source_path` first), `POST /source_table/combined/import`.
-- [x] Update the [source_table domain doc](../../frontend/docs/app_server/domains/source_table.md) manual sections and regenerate the docs index.
+- [x] Update the [source_table domain doc](../../../frontend/docs/app_server/domains/source_table.md) manual sections and regenerate the docs index.
 
 **Tests.** New cases in `frontend/tests/test_combined_source_service.py` with CSV fixtures and a fake pyodbc driver: describe, preview statistics, import uploads one chunk set and commits `combined`; the existing `test_source_table_upload.py` passes unchanged for CSV and SQL.
 
@@ -206,15 +206,15 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - The prototype's Source step, Add Table popover and details window (`renderSource`, `renderModal`, the `add-table` and `details` actions).
 - Decisions 7 and 9.
 - Skill `arcrho-ui-design`.
-- [project_settings.html](../../frontend/ui/project_settings/project_settings.html) import window markup; [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `openSourcePanel`, `showPanelStep`, `validateImportSettings`, `PANEL_STEPS`; [project_settings.css](../../frontend/ui/project_settings/project_settings.css) import-window rules.
-- [project_settings_module_split.test.mjs](../../frontend/tests/project_settings_module_split.test.mjs) and [project_settings_source_data.test.mjs](../../frontend/tests/project_settings_source_data.test.mjs).
-- Memory notes [arcrho-dev-ui-cache-restart](../../agent-memory/arcrho-dev-ui-cache-restart.md), [theme-css-version-pins](../../agent-memory/theme-css-version-pins.md), [frontend-node-test-suite](../../agent-memory/frontend-node-test-suite.md).
-- Version and size guards: [project_settings_data_processing_rules.test.mjs](../../frontend/tests/project_settings_data_processing_rules.test.mjs) pins the page's stylesheet list and one shared `?v=` stamp for every Project Settings stylesheet; [project_settings_module_split.test.mjs](../../frontend/tests/project_settings_module_split.test.mjs) caps the coordinator below 1,800 lines and pins the split modules to the coordinator's stamp; [color_theme.test.mjs](../../frontend/tests/color_theme.test.mjs) pins the coordinator stamp.
+- [project_settings.html](../../../frontend/ui/project_settings/project_settings.html) import window markup; [project_settings_source_data.js](../../../frontend/ui/project_settings/project_settings_source_data.js) `openSourcePanel`, `showPanelStep`, `validateImportSettings`, `PANEL_STEPS`; [project_settings.css](../../../frontend/ui/project_settings/project_settings.css) import-window rules.
+- [project_settings_module_split.test.mjs](../../../frontend/tests/project_settings_module_split.test.mjs) and [project_settings_source_data.test.mjs](../../../frontend/tests/project_settings_source_data.test.mjs).
+- Memory notes [arcrho-dev-ui-cache-restart](../../../agent-memory/arcrho-dev-ui-cache-restart.md), [theme-css-version-pins](../../../agent-memory/theme-css-version-pins.md), [frontend-node-test-suite](../../../agent-memory/frontend-node-test-suite.md).
+- Version and size guards: [project_settings_data_processing_rules.test.mjs](../../../frontend/tests/project_settings_data_processing_rules.test.mjs) pins the page's stylesheet list and one shared `?v=` stamp for every Project Settings stylesheet; [project_settings_module_split.test.mjs](../../../frontend/tests/project_settings_module_split.test.mjs) caps the coordinator below 1,800 lines and pins the split modules to the coordinator's stamp; [color_theme.test.mjs](../../../frontend/tests/color_theme.test.mjs) pins the coordinator stamp.
 
 **Do.**
 - [x] New module `frontend/ui/project_settings/project_settings_combined_source.js` (and a CSS file if the rules exceed a screenful) owning the combined state: tables, keys, rows, exclude, rename; key auto-detection by name (decision 5); serialization to and from the decision 3 block.
 - [x] Add Table on the single-table form: menu of tables in the current connection (from `/source_table/tables`), recent CSV via the existing browse, "Another SQL Server database…". Picking one opens the details window in add mode with the nickname box focused and suggested.
-- [x] Table list grouped by SQL connection and CSV, drag to reorder (pointer capture, per memory [pointer-capture-drag-fix](../../agent-memory/pointer-capture-drag-fix.md)), base tag, remove, join-order note; no paths on the list.
+- [x] Table list grouped by SQL connection and CSV, drag to reorder (pointer capture, per memory [pointer-capture-drag-fix](../../../agent-memory/pointer-capture-drag-fix.md)), base tag, remove, join-order note; no paths on the list.
 - [x] Details window (second-level window over the import window): nickname, source fields, column table with "Used As", Remove Table, Save; Escape and backdrop close it.
 - [x] Removing tables back to one returns to today's form with that table's settings.
 - [x] The single-table form, its validation and its save are unchanged when only one table exists.
@@ -222,7 +222,7 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Tests.** New `frontend/tests/project_settings_combined_source.test.mjs` for the state module: add/remove/reorder, key auto-detection, nickname fallback, serialization round trip, back-to-one. Existing source data tests pass.
 
-**Done when.** Node tests pass (diff against a baseline per the memory note) and the window renders the list and details window in a dev app launch or an Electron screenshot check ([electron-ui-screenshot-check](../../agent-memory/electron-ui-screenshot-check.md)).
+**Done when.** Node tests pass (diff against a baseline per the memory note) and the window renders the list and details window in a dev app launch or an Electron screenshot check ([electron-ui-screenshot-check](../../../agent-memory/electron-ui-screenshot-check.md)).
 
 **Estimate.** Estimate: code edit 50 min, test/validation 25 min, total 75 min. Actual: code edit 11 min, test/validation 4 min, total 15 min (the prototype already spelled out the list and details window, and the state tests passed first run; the only rework was the coordinator line cap and the shared stylesheet stamp).
 
@@ -233,8 +233,8 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 **Read first.**
 - The prototype's `renderCombine`, `renderResult`, `renderPreview`, the `key`, `join`, `chip`, `add-key`, `remove-key`, `convert` actions, and the popover.
 - Step 5's module; step 4's preview route.
-- [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `showPanelStep`, `goToNextPanelStep`, `goToPreviousPanelStep`, `setSourceStatus`, and the step-list pins in [project_settings_source_data.test.mjs](../../frontend/tests/project_settings_source_data.test.mjs) ("Import Data is preceded by an Import Scope step").
-- [combined_source_service.py](../../frontend/app_server/services/combined_source_service.py) `combine_tables`: the coverage bar needs the combined row count by number of tables, which the preview did not return.
+- [project_settings_source_data.js](../../../frontend/ui/project_settings/project_settings_source_data.js) `showPanelStep`, `goToNextPanelStep`, `goToPreviousPanelStep`, `setSourceStatus`, and the step-list pins in [project_settings_source_data.test.mjs](../../../frontend/tests/project_settings_source_data.test.mjs) ("Import Data is preceded by an Import Scope step").
+- [combined_source_service.py](../../../frontend/app_server/services/combined_source_service.py) `combine_tables`: the coverage bar needs the combined row count by number of tables, which the preview did not return.
 - The dark theme paints every `button` like an input (`dark.css`, `:is(..., button)` at 0-3-0); flat buttons need a stronger dark rule.
 - Skill `arcrho-ui-design`.
 
@@ -256,10 +256,10 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 **Goal.** Import Data on a combined source saves it, imports it on the client with progress, runs the refresh job, and the Source Data tab describes the combined source and reopens on it.
 
 **Read first.**
-- [project_settings.js](../../frontend/ui/project_settings/project_settings.js) `saveImportSettings`, the import functions around the `/source_table/import` call and `server_can_import`, and the source state read near `sourceState.sourceType`.
-- [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `importData`, `normalizeSourceState`, `getSourceIdentity`, `syncImportEntry`.
+- [project_settings.js](../../../frontend/ui/project_settings/project_settings.js) `saveImportSettings`, the import functions around the `/source_table/import` call and `server_can_import`, and the source state read near `sourceState.sourceType`.
+- [project_settings_source_data.js](../../../frontend/ui/project_settings/project_settings_source_data.js) `importData`, `normalizeSourceState`, `getSourceIdentity`, `syncImportEntry`.
 - Step 4's routes.
-- [project_settings_combined_source.js](../../frontend/ui/project_settings/project_settings_combined_source.js) `fromCombinedBlock`, `setTableColumns` (a base read re-proposes the keys, so a restored table needs its own column store), `describeInto`, `combineProblem` (needs a fresh preview, which Import Again never has).
+- [project_settings_combined_source.js](../../../frontend/ui/project_settings/project_settings_combined_source.js) `fromCombinedBlock`, `setTableColumns` (a base read re-proposes the keys, so a restored table needs its own column store), `describeInto`, `combineProblem` (needs a fresh preview, which Import Again never has).
 - The coordinator was 2 lines under its 1,800-line cap, and the page modules have no DOM test harness, so the save and import sequence moved into its own module to be testable with a stub fetch.
 
 **Do.**
@@ -278,7 +278,7 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Goal.** Gateway and Engine run the new server code.
 
-**Read first.** Memory notes [deploy-only-when-released-app-is-safe](../../agent-memory/deploy-only-when-released-app-is-safe.md), [deploy-without-asking](../../agent-memory/deploy-without-asking.md), [remote-component-deploy](../../agent-memory/remote-component-deploy.md), [local-test-root](../../agent-memory/local-test-root.md).
+**Read first.** Memory notes [deploy-only-when-released-app-is-safe](../../../agent-memory/deploy-only-when-released-app-is-safe.md), [deploy-without-asking](../../../agent-memory/deploy-without-asking.md), [remote-component-deploy](../../../agent-memory/remote-component-deploy.md), [local-test-root](../../../agent-memory/local-test-root.md).
 
 **Do.**
 - [x] Re-check the ship-impact statement against the landed diff: no request or response the released app uses changed shape, and single-table records are unchanged. If that fails, stop and record it under "Open decisions".
@@ -295,17 +295,24 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Goal.** A combined source is built in the Aug fake project through the app, imported, and every screen of the flow is checked by screenshots; a single-table project is checked unchanged.
 
-**Read first.** Memory notes [arcrho-launch-electron-detached](../../agent-memory/arcrho-launch-electron-detached.md), [desktop-input-control-works](../../agent-memory/desktop-input-control-works.md), [arco-is-the-app-name](../../agent-memory/arco-is-the-app-name.md), [agent-share-listing-blocked-use-python](../../agent-memory/agent-share-listing-blocked-use-python.md). The user allowed edits to the Aug fake project (`NJ_Annual_Prod_202608_Fake` on the production server) on 2026-10-12; no other project may be edited.
+**Read first.** Memory notes [arcrho-launch-electron-detached](../../../agent-memory/arcrho-launch-electron-detached.md), [desktop-input-control-works](../../../agent-memory/desktop-input-control-works.md), [arco-is-the-app-name](../../../agent-memory/arco-is-the-app-name.md), [agent-share-listing-blocked-use-python](../../../agent-memory/agent-share-listing-blocked-use-python.md). The user allowed edits to the Aug fake project (`NJ_Annual_Prod_202608_Fake` on the production server) on 2026-10-12; no other project may be edited.
 
 **Do.**
-- [ ] Record the project's current `source_import.json` and field mapping so the demo can be undone.
-- [ ] Build the combined source from the project's current source table plus at least one more table (split columns of its own source into two CSVs if no second real table exists), with at least one renamed key, one filled key and one left-out column.
-- [ ] Walk the flow with screenshots: Add Table and nickname, details window, list reorder, Combine step, a key fix, Row Match, Preview, Import, the header after import, Import Again.
-- [ ] Open a single-table project's Source Data tab and import window and confirm they look and behave as before.
-- [ ] Fix any defect found in a follow-up commit within this step, or record it under "Open decisions" if it needs a decision.
+- [x] Record the project's current `source_import.json` and field mapping so the demo can be undone.
+- [x] Build the combined source from the project's current source table plus at least one more table (split columns of its own source into two CSVs if no second real table exists), with at least one renamed key, one filled key and one left-out column.
+- [x] Walk the flow with screenshots: Add Table and nickname, details window, list reorder, Combine step, a key fix, Row Match, Preview, Import, the header after import, Import Again.
+- [x] Open a single-table project's Source Data tab and import window and confirm they look and behave as before.
+- [x] Fix any defect found in a follow-up commit within this step, or record it under "Open decisions" if it needs a decision.
 
 **Tests.** The screenshots and the import's status JSON (rows and columns as the preview predicted).
 
 **Done when.** The combined import succeeded in the Aug fake project, the screenshots match the prototype's behaviour, and the single-table check found no change.
 
-**Estimate.** Estimate: code edit 5 min, test/validation 40 min, total 45 min.
+**Result (2026-10-12).**
+- **Demo source.** The project's master table split into three CSV files under `E:\XWSpace\Repos\ArcRho\tmp_data\combined_source_demo\` (they must stay while the project uses them): `Loss A` (base, keys and 12 loss columns, 306,210 rows), `Loss B` (the same rows, `CO_CD` spelled `Co_Cd`, the other 11 loss columns, a junk `FACID` column left out and an empty column dropped on read), and `EP` (39,915 premium rows without `sys_yrmo`, filled with `0`). Seven keys, both joins `All Rows`.
+- **Import.** The preview and the import both gave 346,125 rows and 34 columns, and the new master table is identical, cell for cell and in order, to the one it replaced. Import Again gave the same. The refresh scope was narrowed to Earned Premium and one class path, so the Engine job refreshed nothing downstream.
+- **Undo.** The previous `source_import.json`, `field_mapping.json` and `table_summary.json` are kept under `tmp_data\combined_source\undo\`; the field mapping did not change. Choosing the original CSV again through Change source and importing restores the single-table record.
+- **Single-table check.** `NJ_Annual_Prod_202605_Fake`'s Source Data tab and import window opened as before and were closed without saving.
+- **Not defects.** A drag in the table list driven by the Arco window tool's synthetic input stayed half-finished until the next click; the same drag with the real mouse reordered correctly. The Engine refresh status reports `column_count` 0 after any client upload (SQL Server as well), while the source record holds the right count.
+
+**Estimate.** Estimate: code edit 5 min, test/validation 40 min, total 45 min. Actual: code edit 6 min, test/validation 23 min, total 29 min (the demo split the project's own master table into three CSV tables, so no second real table was needed and the result could be checked cell for cell).

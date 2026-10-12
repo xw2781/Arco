@@ -74,7 +74,7 @@ class SourceRefreshJobSubmitRequest(BaseModel):
 
 class CombinedTableDescribeRequest(BaseModel):
     # One table of a combined source, in the shape of decision 3 of
-    # docs/plans/combined_source_import.md (id optional here).
+    # docs/plans/completed/combined_source_import.md (id optional here).
     table: Dict[str, Any]
     # Re-read a SQL Server table instead of answering from this session's copy.
     refresh: bool = False

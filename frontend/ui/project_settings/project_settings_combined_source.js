@@ -4,7 +4,7 @@
  * Owns the combined state of the Import Settings window: the tables in join
  * order, their nicknames, the shared keys, the row rules, left-out columns and
  * renames, and their serialization to and from the `combined` block of
- * `source_import.json` (decision 3 of docs/plans/combined_source_import.md).
+ * `source_import.json` (decision 3 of docs/plans/completed/combined_source_import.md).
  *
  * With one table the window is today's single-table form and this module only
  * adds the Add Table button. Adding a second table turns the form into the
