@@ -234,6 +234,7 @@ export function moveTable(state, id, targetId, after = false) {
 export function setTableColumns(state, id, description) {
   const table = state.tables.find((item) => item.id === id);
   if (!table) return;
+  delete table.restored;
   const firstRead = !Array.isArray(table.columns);
   table.columns = (Array.isArray(description?.columns) ? description.columns : []).map(String);
   table.row_count = Number.isFinite(Number(description?.row_count)) ? Number(description.row_count) : null;
@@ -248,6 +249,20 @@ export function setTableColumns(state, id, description) {
       key.map[id] = autoMapKey(table, key.name);
     }
   });
+}
+
+/**
+ * Store what a read found in a table restored from the saved block. The saved
+ * keys, row rules and columns stand as they are; only a table the person
+ * changes afterwards goes back to matching its keys by name.
+ */
+export function restoreTableColumns(state, id, description) {
+  const table = state.tables.find((item) => item.id === id);
+  if (!table) return;
+  delete table.restored;
+  table.columns = (Array.isArray(description?.columns) ? description.columns : []).map(String);
+  table.row_count = Number.isFinite(Number(description?.row_count)) ? Number(description.row_count) : null;
+  table.dropped_columns = (Array.isArray(description?.dropped_columns) ? description.dropped_columns : []).map(String);
 }
 
 /** Tables grouped for the list: one group per SQL connection, one for CSV files. */
@@ -327,6 +342,7 @@ export function fromCombinedBlock(block) {
       row_count: null,
       dropped_columns: [],
       color: freeColor(state),
+      restored: true,
     });
   });
   const ids = new Set(state.tables.map((table) => table.id));
@@ -344,6 +360,27 @@ export function fromCombinedBlock(block) {
   });
   if (state.tables[0]) delete state.rows[state.tables[0].id];
   return state;
+}
+
+/** Where a table comes from, in words: the CSV path, or server · database · table. */
+export function tableSourceText(table) {
+  if (table?.source_type !== SOURCE_TYPE_MSSQL) return String(table?.csv_path || "");
+  return [table.mssql?.server, table.mssql?.database, table.mssql?.table].filter(Boolean).join(" · ");
+}
+
+/** What the Source Data header and its details panel say about a saved combined source. */
+export function combinedSourceSummary(block) {
+  const state = fromCombinedBlock(block);
+  return {
+    tableCount: state.tables.length,
+    keyCount: state.keys.length,
+    tables: state.tables.map((table) => ({
+      label: tableLabel(table),
+      kind: tableKindText(table),
+      source: tableSourceText(table),
+      color: table.color,
+    })),
+  };
 }
 
 /** The single-table form's values as one table, or the form's own first problem. */
@@ -650,6 +687,11 @@ export function previewCombinedRequest(fetchImpl, body) {
   return postJson(fetchImpl, "/source_table/combined/preview", body);
 }
 
+/** Save the combined source as the project's source; answers the project's source settings. */
+export function saveCombinedRequest(fetchImpl, body) {
+  return postJson(fetchImpl, "/source_table/combined/save", body);
+}
+
 export function createCombinedSourceFeature(deps = {}) {
   const {
     settingsBody = null,
@@ -665,6 +707,7 @@ export function createCombinedSourceFeature(deps = {}) {
     fetchImpl = null,
     onDescribeTable = (table) => describeTableRequest(fetchImpl, table),
     onPreview = (body) => previewCombinedRequest(fetchImpl, body),
+    onSave = (body) => saveCombinedRequest(fetchImpl, body),
     getProjectName = () => "",
     // Called when the Combine step can no longer show (tables back to one).
     onLeaveCombine = () => {},
@@ -690,6 +733,9 @@ export function createCombinedSourceFeature(deps = {}) {
   let previewToken = 0;
   let resultTab = "match";
   const dismissed = new Set();
+  // The block as last saved or reopened, so unchanged saved settings import
+  // again without reading every table first.
+  let savedBlock = "";
 
   const bar = doc?.createElement("div");
   const list = doc?.createElement("div");
@@ -926,7 +972,7 @@ export function createCombinedSourceFeature(deps = {}) {
     const current = tableById(id);
     if (!current || !sameTableSpec(current, spec)) return;
     current.reading = false;
-    if (result?.ok) setTableColumns(state, id, result);
+    if (result?.ok) (current.restored ? restoreTableColumns : setTableColumns)(state, id, result);
     else current.readError = String(result?.error || "Could not read the table.");
     if (isActive()) renderList();
     if (combineVisible) {
@@ -1792,7 +1838,32 @@ export function createCombinedSourceFeature(deps = {}) {
       previewToken += 1;
       dismissed.clear();
       resultTab = "match";
+      savedBlock = "";
       syncMode();
+    },
+    /**
+     * Reopen on a saved combined source: its tables, nicknames, keys and rules.
+     * The tables are read for their columns unless `read` is false (Import
+     * Again goes straight to the scope and never shows them).
+     */
+    load(block, { read = true } = {}) {
+      this.reset();
+      state = fromCombinedBlock(block);
+      if (state.tables.length < 2) {
+        state = createCombinedState();
+        return;
+      }
+      savedBlock = currentBlock();
+      applySingleSettings(singleSettingsFromTable(state.tables[0]));
+      syncMode();
+      if (read) state.tables.forEach((table) => describeInto(table.id));
+    },
+    /** Save the combined settings as the project's source; answers the source settings. */
+    async save() {
+      const block = toCombinedBlock(state);
+      const result = await onSave({ project_name: getProjectName(), combined: block });
+      if (result?.ok) savedBlock = JSON.stringify(block);
+      return result;
     },
     /** Close this module's popover and details window. */
     close() {
@@ -1819,6 +1890,7 @@ export function createCombinedSourceFeature(deps = {}) {
     },
     /** Whether the combined settings can go on past the Combine step. */
     validate() {
+      if (isActive() && savedBlock && currentBlock() === savedBlock) return { ok: true, error: "" };
       const error = combineProblem(state, preview, dismissed);
       return { ok: !error, error };
     },

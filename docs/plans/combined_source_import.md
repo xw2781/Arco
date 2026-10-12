@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 6 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, and its Combine step shows the Join Map, Row Match and Preview); next is the end-to-end import and the Source Data header.
+Status: In progress: 7 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, its Combine step shows the Join Map, Row Match and Preview, and Import Data imports a combined source end to end with the Source Data header describing it); next is deploying the server parts.
 Last updated: 2026-10-12
 
 ## Progress
@@ -15,11 +15,11 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 4 | The app can read every table of a combined source, preview the result and import it | [x] | 2026-10-12 | 60 min | 9 min | Nothing visible yet; Arco can now read each table of a combined source, preview the joined result and import it the same way a single table is uploaded, while single-table imports work exactly as before. |
 | 5 | The import window lists several tables, each with a nickname and a details window | [x] | 2026-10-12 | 75 min | 15 min | The import window has an Add Table button: several tables can be listed with nicknames, grouped by connection, dragged into join order and opened in a details window that shows their columns, while a single-table import looks and works exactly as before; importing several tables comes in a later step. |
 | 6 | The import window shows how the tables join and what the result will look like | [x] | 2026-10-12 | 80 min | 25 min | With two or more tables the import window gains a Combine step: a map lines up the matching columns across the tables, each key, row rule and column can be changed in place, and a Row Match tab and a Preview tab show how well the tables match and the first rows of the result before anything is imported; the table list no longer shows connection details. |
-| 7 | Importing a combined source runs end to end and the Source Data tab describes it | [ ] | | 50 min | | |
+| 7 | Importing a combined source runs end to end and the Source Data tab describes it | [x] | 2026-10-12 | 50 min | 19 min | Import Data now imports a combined source from start to finish, the Source Data tab names it with its tables and keys, and the import window reopens on its saved tables, nicknames, keys and rules, while single-table projects look and work exactly as before. |
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 6 of 9 steps done. Estimated 510 min, actual so far 64 min.
+Overall: 7 of 9 steps done. Estimated 510 min, actual so far 83 min.
 
 ## How agents work this plan
 
@@ -259,18 +259,20 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - [project_settings.js](../../frontend/ui/project_settings/project_settings.js) `saveImportSettings`, the import functions around the `/source_table/import` call and `server_can_import`, and the source state read near `sourceState.sourceType`.
 - [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `importData`, `normalizeSourceState`, `getSourceIdentity`, `syncImportEntry`.
 - Step 4's routes.
+- [project_settings_combined_source.js](../../frontend/ui/project_settings/project_settings_combined_source.js) `fromCombinedBlock`, `setTableColumns` (a base read re-proposes the keys, so a restored table needs its own column store), `describeInto`, `combineProblem` (needs a fresh preview, which Import Again never has).
+- The coordinator was 2 lines under its 1,800-line cap, and the page modules have no DOM test harness, so the save and import sequence moved into its own module to be testable with a stub fetch.
 
 **Do.**
-- [ ] `normalizeSourceState` carries `combined`; the window opens on the saved tables, keys and rules.
-- [ ] `importData` for a combined source: save through `/source_table/combined/save`, import through `/source_table/combined/import` with the existing upload progress, then submit the refresh job with `import_source` off, as the SQL path does.
-- [ ] Header: stacked table dots, "Combined source", "N tables · K keys", row and column counts; Import Again re-imports with the saved settings; the details panel lists each table's nickname and source.
-- [ ] Single-table save, import, Import Again and header are unchanged.
+- [x] `normalizeSourceState` carries `combined`; the window opens on the saved tables, keys and rules.
+- [x] `importData` for a combined source: save through `/source_table/combined/save`, import through `/source_table/combined/import` with the existing upload progress, then submit the refresh job with `import_source` off, as the SQL path does.
+- [x] Header: stacked table dots, "Combined source", "N tables · K keys", row and column counts; Import Again re-imports with the saved settings; the details panel lists each table's nickname and source.
+- [x] Single-table save, import, Import Again and header are unchanged.
 
 **Tests.** Extend the Node tests for state normalization, the import call sequence for combined, and unchanged single-table sequences (CSV share, CSV local, SQL).
 
 **Done when.** Node and Python suites touched by the plan pass against their baselines.
 
-**Estimate.** Estimate: code edit 30 min, test/validation 20 min, total 50 min.
+**Estimate.** Estimate: code edit 30 min, test/validation 20 min, total 50 min. Actual: code edit 15 min, test/validation 4 min, total 19 min (the C: drive filled up before the commit, which the orchestrating session made after re-running the tests).
 
 ### Step 8 — Deploy the server parts
 

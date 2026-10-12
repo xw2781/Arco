@@ -8,7 +8,9 @@ const {
   autoMapKey,
   columnUses,
   combineProblem,
+  combinedSourceSummary,
   coverageSegments,
+  createCombinedSourceFeature,
   createCombinedState,
   describeTableRequest,
   detectKeys,
@@ -23,7 +25,9 @@ const {
   previewRequestBody,
   removeKey,
   removeTable,
+  restoreTableColumns,
   rowRule,
+  saveCombinedRequest,
   setKeyEntry,
   setRename,
   setRowRule,
@@ -33,6 +37,7 @@ const {
   tableFromSingleSettings,
   tableGroups,
   tableLabel,
+  tableSourceText,
   toCombinedBlock,
   toggleExclude,
   toggleKeyConvert,
@@ -268,14 +273,14 @@ test("combined settings need two read tables and a shared key", () => {
 });
 
 test("the source data tab only mounts the combined module and keeps the single path", () => {
-  assert.match(sourceDataJs, /import \{ createCombinedSourceFeature \} from "\.\/project_settings_combined_source\.js\?v=20261012combined2";/);
-  assert.match(sourceDataJs, /function validateImportSettings\(\) \{\n\s+if \(combinedSource\.isActive\(\)\) return combinedSource\.validate\(\);/);
+  assert.match(sourceDataJs, /createCombinedSourceFeature,\n\} from "\.\/project_settings_combined_source\.js\?v=20261012combined3";/);
+  assert.match(sourceDataJs, /function validateImportSettings\(\) \{\n\s+if \(combinedSource\.isActive\(\)\) \{\n\s+return \{ \.\.\.combinedSource\.validate\(\), method: SOURCE_TYPE_COMBINED/);
   // With one table the single-table checks run exactly as before.
   assert.match(sourceDataJs, /if \(method === SOURCE_TYPE_MSSQL\) \{\n\s+if \(!profile\.server \|\| !profile\.database\) error = "Enter the server and database name first\.";/);
-  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined2/);
+  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined3/);
   assert.match(coordinatorJs, /createSourceDataFeature\(\{[\s\S]*fetchImpl: fetch\.bind\(window\),/);
   assert.match(html, /project_settings_combined_source\.css\?v=/);
-  assert.match(html, /project_settings\.js\?v=20261012combined2/);
+  assert.match(html, /project_settings\.js\?v=20261012combined3/);
 });
 
 test("a table is described through the client route with the table spec", async () => {
@@ -450,4 +455,113 @@ test("the import window's steps come from the combined module and its group head
   assert.match(coordinatorJs, /getSelectedProject: \(\) => selectedProject,\n\s+\/\/ Admin-editable defaults/);
   assert.doesNotMatch(combinedJs, /group\.server|group\.database/);
   assert.match(combinedJs, /one shared connection/);
+});
+
+/* ---------------- Saved source: reopen, save, import, header ---------------- */
+
+const SAVED = {
+  tables: [
+    { id: "t1", nickname: "Loss", source_type: "mssql", mssql: { server: "IBNRSQL01", database: "ResQ_Monthly", table: "dbo.Loss", authentication: "windows" } },
+    { id: "t4", nickname: "", source_type: "csv", csv_path: "\\\\share\\NJ\\EP.csv" },
+  ],
+  keys: [
+    { name: "CO_CD", map: { t1: { column: "CO_CD" }, t4: { column: "Co_Cd" } } },
+    { name: "sys_yrmo", map: { t1: { column: "sys_yrmo" }, t4: { fill: "0" } } },
+  ],
+  rows: { t4: "match" },
+  exclude: { t4: ["FACID"] },
+  rename: { t4: { "Earned Premium": "Budget Premium" } },
+};
+
+test("a saved combined source reopens with its tables, nicknames, keys and rules", () => {
+  const state = fromCombinedBlock(SAVED);
+  assert.deepEqual(state.tables.map((table) => [table.id, tableLabel(table), table.restored]), [
+    ["t1", "Loss", true],
+    ["t4", "EP.csv", true],
+  ]);
+  assert.deepEqual(toCombinedBlock(state), SAVED);
+  // Reading a restored table's columns keeps the saved keys, even the base's,
+  // where a fresh read would propose the keys again.
+  restoreTableColumns(state, "t1", { columns: ["CO_CD", "sys_yrmo", "co_cd2"], row_count: 9, dropped_columns: ["Unnamed: 9"] });
+  restoreTableColumns(state, "t4", { columns: ["Co_Cd", "FACID", "Earned Premium"], row_count: 72 });
+  assert.deepEqual(toCombinedBlock(state), SAVED);
+  assert.equal(state.tables[0].restored, undefined);
+  assert.deepEqual(state.tables[0].dropped_columns, ["Unnamed: 9"]);
+  assert.equal(state.tables[1].row_count, 72);
+  assert.deepEqual(validateCombinedState(state), { ok: true, error: "" });
+  // Once the person changes a table, its keys are matched by name again.
+  setTableColumns(state, "t1", { columns: ["CO_CD", "Other"], row_count: 1 });
+  assert.deepEqual(state.keys.map((key) => key.name), ["CO_CD"]);
+});
+
+test("the header and its details panel describe a saved combined source", () => {
+  assert.deepEqual(combinedSourceSummary(SAVED), {
+    tableCount: 2,
+    keyCount: 2,
+    tables: [
+      { label: "Loss", kind: "SQL table", source: "IBNRSQL01 · ResQ_Monthly · dbo.Loss", color: 0 },
+      { label: "EP.csv", kind: "CSV file", source: "\\\\share\\NJ\\EP.csv", color: 1 },
+    ],
+  });
+  assert.equal(tableSourceText({ source_type: "csv", csv_path: "E:\\a.csv" }), "E:\\a.csv");
+  assert.deepEqual(combinedSourceSummary(null), { tableCount: 0, keyCount: 0, tables: [] });
+});
+
+test("the combined source is saved through its own client route", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push([url, JSON.parse(init.body)]);
+    return { ok: true, json: async () => ({ ok: true, source_type: "combined", combined: SAVED }) };
+  };
+  const body = { project_name: "P", combined: SAVED };
+  assert.deepEqual(await saveCombinedRequest(fetchImpl, body), { ok: true, source_type: "combined", combined: SAVED });
+  assert.deepEqual(calls, [["/source_table/combined/save", body]]);
+  const refused = async () => ({ ok: false, status: 400, json: async () => ({ detail: "A combined source needs at least two tables." }) });
+  assert.deepEqual(await saveCombinedRequest(refused, body), { ok: false, error: "A combined source needs at least two tables." });
+});
+
+test("reopened settings import again unchanged, and a change needs the Combine check again", async () => {
+  const calls = [];
+  const feature = createCombinedSourceFeature({
+    fetchImpl: async (url, init) => {
+      calls.push([url, JSON.parse(init.body)]);
+      return { ok: true, json: async () => ({ ok: true, source_type: "combined" }) };
+    },
+    getProjectName: () => "NJ_Annual_Prod_202608_Fake",
+    applySingleSettings: (settings) => calls.push(["single", settings]),
+  });
+  assert.equal(feature.isActive(), false);
+  // Import Again opens without reading the tables and goes straight to the scope.
+  feature.load(SAVED, { read: false });
+  assert.equal(feature.isActive(), true);
+  assert.deepEqual(feature.getCombinedBlock(), SAVED);
+  assert.deepEqual(feature.validate(), { ok: true, error: "" });
+  // The single-table form underneath holds the base table, for going back to one.
+  assert.deepEqual(calls, [["single", { method: "mssql", csvPath: "", profile: SAVED.tables[0].mssql }]]);
+  calls.length = 0;
+  assert.deepEqual(await feature.save(), { ok: true, source_type: "combined" });
+  assert.deepEqual(calls, [["/source_table/combined/save", { project_name: "NJ_Annual_Prod_202608_Fake", combined: SAVED }]]);
+  // A changed rule is no longer the saved settings: the tables must be read and previewed.
+  feature.getState().rows.t4 = "all";
+  assert.equal(feature.validate().ok, false);
+  feature.reset();
+  assert.equal(feature.isActive(), false);
+  // A block with fewer than two tables opens the single-table form.
+  feature.load({ tables: [SAVED.tables[0]] }, { read: false });
+  assert.equal(feature.isActive(), false);
+});
+
+test("Import Data saves a combined source through its own route, then imports it", () => {
+  // Single-table settings still save through the coordinator's profile save.
+  assert.match(sourceDataJs, /const saved = combined \? await saveCombinedSource\(\) : await onProfileSave\(method, profile, csvPath\);/);
+  assert.match(sourceDataJs, /const result = await onImportData\(method, scope\);/);
+  assert.match(sourceDataJs, /async function saveCombinedSource\(\) \{\n\s+const result = await combinedSource\.save\(\);/);
+  assert.doesNotMatch(sourceDataJs, /Importing a combined source is not available yet/);
+  // The window reopens on a saved combined source; Import Again skips reading its tables.
+  assert.match(sourceDataJs, /if \(!method && sourceState\.sourceType === SOURCE_TYPE_COMBINED\) \{\n\s+combinedSource\.load\(sourceState\.combined, \{ read: readTables \}\);/);
+  assert.match(sourceDataJs, /openSourcePanel\(\{ readTables: action !== "again" \}\);/);
+  // The header's dots and chip exist only for a combined source.
+  assert.match(html, /<span class="sd-file-dots" id="summaryPathDots" aria-hidden="true" hidden><\/span>/);
+  assert.match(html, /<span class="sd-file-chip" id="summaryPathChip" hidden><\/span>/);
+  assert.match(coordinatorJs, /project_settings_source_import\.js\?v=20261012combined3/);
 });

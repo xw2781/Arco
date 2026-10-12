@@ -723,6 +723,38 @@
 :root[data-arcrho-theme="dark"] body :is(.cs-add-key, .cs-pop-item):hover { background-color: var(--ar-color-accent-soft); }
 :root[data-arcrho-theme="dark"] body .cs-tab.is-active { border-bottom-color: var(--ar-color-accent); }
 
+/* Source Data header for a combined source: stacked table dots, the name, and
+   a quiet "N tables · K keys" chip. Hidden for a single table. */
+/* A combined source has no folder; its details panel lists the tables instead. */
+#summaryPathDirRow[hidden] { display: none; }
+.sd-file-dots:not([hidden]) {
+  display: inline-flex;
+  flex: none;
+  margin-right: 6px;
+}
+.sd-file-dots i {
+  width: 10px;
+  height: 10px;
+  margin-left: -3px;
+  border: 2px solid var(--ar-color-surface, #fff);
+  border-radius: 50%;
+}
+.sd-file-dots i:first-child { margin-left: 0; }
+.sd-file-chip:not([hidden]) {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 999px;
+  background: var(--ar-color-surface-muted, #f4f7fa);
+  color: var(--ar-color-text-muted, #64748b);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cs-pop, .cs-modal-back { animation: none; }
   .cs-mbar i, .cs-pane, .cs-cc, .cs-rail, .cs-lc .cs-icon-btn { transition: none; }

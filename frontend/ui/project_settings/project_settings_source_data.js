@@ -27,7 +27,10 @@ import {
   SKELETON_BAR_CLASS,
   SKELETON_ROW_COUNT,
 } from "./project_settings_skeleton.js?v=20260821pstree1";
-import { createCombinedSourceFeature } from "./project_settings_combined_source.js?v=20261012combined2";
+import {
+  combinedSourceSummary,
+  createCombinedSourceFeature,
+} from "./project_settings_combined_source.js?v=20261012combined3";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -38,6 +41,7 @@ const AREA_VIEWBOX_HEIGHT = 20;
 
 export const SOURCE_TYPE_CSV = "csv";
 export const SOURCE_TYPE_MSSQL = "mssql";
+export const SOURCE_TYPE_COMBINED = "combined";
 export const MSSQL_AUTH_WINDOWS = "windows";
 
 /** Normalize an app-server `/source_table` payload into the shape this tab renders. */
@@ -46,9 +50,8 @@ export function normalizeSourceState(state) {
   const mssql = data.mssql && typeof data.mssql === "object" ? data.mssql : {};
   const lastImport = data.last_import && typeof data.last_import === "object" ? data.last_import : {};
   const refreshScope = data.refresh_scope && typeof data.refresh_scope === "object" ? data.refresh_scope : {};
-  const sourceType = String(data.source_type || "").trim().toLowerCase() === SOURCE_TYPE_MSSQL
-    ? SOURCE_TYPE_MSSQL
-    : SOURCE_TYPE_CSV;
+  const rawType = String(data.source_type || "").trim().toLowerCase();
+  const sourceType = rawType === SOURCE_TYPE_MSSQL || rawType === SOURCE_TYPE_COMBINED ? rawType : SOURCE_TYPE_CSV;
   return {
     // What the last Engine refresh covered, shared by everyone on the project;
     // the Import Scope step opens on it. Empty lists mean everything.
@@ -63,6 +66,10 @@ export function normalizeSourceState(state) {
       chosenAt: String(refreshScope.chosen_at || ""),
     },
     sourceType,
+    // The saved tables, keys and rules of a combined source; null otherwise.
+    combined: sourceType === SOURCE_TYPE_COMBINED && data.combined && typeof data.combined === "object"
+      ? data.combined
+      : null,
     csvPath: String(data.csv_path || ""),
     masterTablePath: String(data.master_table_path || ""),
     masterTableExists: !!data.master_table_exists,
@@ -90,6 +97,14 @@ export function normalizeSourceState(state) {
 /** Header identity for the configured import source. */
 export function getSourceIdentity(sourceState) {
   const state = sourceState || {};
+  if (state.sourceType === SOURCE_TYPE_COMBINED) {
+    const summary = combinedSourceSummary(state.combined);
+    return {
+      name: "Combined source",
+      detail: summary.tables.map((table) => table.label).join(", "),
+      configured: summary.tableCount >= 2,
+    };
+  }
   if (state.sourceType === SOURCE_TYPE_MSSQL) {
     const profile = state.mssql || {};
     const scope = [profile.server, profile.database].filter(Boolean).join(" · ");
@@ -301,6 +316,8 @@ export function createSourceDataFeature(deps = {}) {
     pathIdentity: el("summaryPathIdentity"),
     pathDisplay: el("summaryPathDisplay"),
     pathName: el("summaryPathName"),
+    pathDots: el("summaryPathDots"),
+    pathChip: el("summaryPathChip"),
     pathDir: el("summaryPathDir"),
     pathDirRow: el("summaryPathDirRow"),
     pathInput: el("summaryTablePathInput"),
@@ -675,7 +692,7 @@ export function createSourceDataFeature(deps = {}) {
 
   /** Read the source file's own identity, at most once every few seconds. */
   async function refreshFileStatus() {
-    if (sourceState.sourceType === SOURCE_TYPE_MSSQL || fileStatusPending) return;
+    if (sourceState.sourceType !== SOURCE_TYPE_CSV || fileStatusPending) return;
     if (fileStatus && Date.now() - fileStatusAt < FILE_STATUS_FRESH_MS) return;
     fileStatusPending = true;
     try {
@@ -697,6 +714,14 @@ export function createSourceDataFeature(deps = {}) {
     const importedFrom = lastImport.sourceType === SOURCE_TYPE_MSSQL
       ? `SQL Server · ${lastImport.sourceLabel || ""}`
       : lastImport.sourceLabel;
+    // A combined source lists each table under its nickname, with its source.
+    const tableRows = sourceState.sourceType === SOURCE_TYPE_COMBINED
+      ? combinedSourceSummary(sourceState.combined).tables.map((table) => ({
+        key: table.label,
+        value: table.source,
+        note: table.kind,
+      }))
+      : [];
     const rows = [
       { key: "Rows", value: Number(data?.row_count || 0).toLocaleString(), note: "" },
       { key: "Columns", value: String(data?.column_count ?? columns.length), note: "" },
@@ -712,6 +737,7 @@ export function createSourceDataFeature(deps = {}) {
         value: formatIsoTimestamp(lastImport.importedAt),
         note: lastImport.importedBy ? `by ${lastImport.importedBy}` : "",
       },
+      ...tableRows,
     ].filter((row) => row.value);
 
     dom.stats.innerHTML = rows.map((row) =>
@@ -797,12 +823,15 @@ export function createSourceDataFeature(deps = {}) {
   /* ---------------- path display ---------------- */
 
   function syncPathDisplay(path) {
-    const isSql = sourceState.sourceType === SOURCE_TYPE_MSSQL;
+    // SQL Server and a combined source have no single path; the header names them.
+    const isSql = sourceState.sourceType !== SOURCE_TYPE_CSV;
     if (!isSql && path !== undefined) sourceState.csvPath = String(path ?? "");
     const identity = getSourceIdentity(sourceState);
     // Open folder acts on the external CSV selection; SQL Server has no path.
     const value = isSql ? "" : String(path ?? dom.pathInput?.value ?? "");
-    const parts = isSql ? { name: identity.name, dir: identity.detail } : splitPath(value);
+    const combined = sourceState.sourceType === SOURCE_TYPE_COMBINED;
+    // A combined source lists its tables in the details panel, not as a folder.
+    const parts = isSql ? { name: identity.name, dir: combined ? "" : identity.detail } : splitPath(value);
 
     if (dom.pathName) dom.pathName.textContent = identity.name;
     if (dom.pathDir) dom.pathDir.textContent = parts.dir;
@@ -811,14 +840,33 @@ export function createSourceDataFeature(deps = {}) {
       dom.pathDisplay.title = isSql ? [identity.detail, identity.name].filter(Boolean).join(" · ") : value;
       dom.pathDisplay.setAttribute(
         "aria-label",
-        isSql ? "SQL Server source table" : "Edit source table path",
+        combined ? "Combined source" : isSql ? "SQL Server source table" : "Edit source table path",
       );
     }
     const hasPath = !isSql && !!value.trim();
     if (dom.openFolderBtn) dom.openFolderBtn.disabled = !parts.dir || isSql;
     if (dom.infoBtn) dom.infoBtn.disabled = !(hasPath || (isSql && identity.configured) || sourceState.masterTableExists);
     if (dom.infoBtn?.disabled) closeDetails();
+    syncCombinedIdentity();
     syncImportEntry();
+  }
+
+  /** Stacked table dots and "N tables · K keys" beside a combined source's name. */
+  function syncCombinedIdentity() {
+    const combined = sourceState.sourceType === SOURCE_TYPE_COMBINED;
+    const summary = combined ? combinedSourceSummary(sourceState.combined) : null;
+    if (dom.pathDots) {
+      dom.pathDots.innerHTML = combined
+        ? summary.tables.map((table) => `<i class="cs-color-${table.color + 1}"></i>`).join("")
+        : "";
+      dom.pathDots.hidden = !combined;
+    }
+    if (dom.pathChip) {
+      dom.pathChip.textContent = combined
+        ? `${summary.tableCount} tables · ${summary.keyCount} ${summary.keyCount === 1 ? "key" : "keys"}`
+        : "";
+      dom.pathChip.hidden = !combined;
+    }
   }
 
   /**
@@ -829,9 +877,14 @@ export function createSourceDataFeature(deps = {}) {
   function syncImportEntry() {
     const lastImport = sourceState.lastImport || {};
     const when = formatImportDate(lastImport.importedAt);
-    const meta = when
+    let meta = when
       ? `Imported ${when}${lastImport.importedBy ? ` by ${lastImport.importedBy}` : ""}`
       : "";
+    // A combined source has no file to point at, so its size shows here.
+    if (meta && sourceState.sourceType === SOURCE_TYPE_COMBINED && lastImport.sourceType === SOURCE_TYPE_COMBINED) {
+      const size = `${formatSummaryNumber(lastImport.rowCount)} rows · ${formatSummaryNumber(lastImport.columnCount)} columns`;
+      meta = `${size} · ${meta}`;
+    }
     if (dom.importMeta) {
       dom.importMeta.textContent = meta;
       dom.importMeta.hidden = !meta;
@@ -874,7 +927,8 @@ export function createSourceDataFeature(deps = {}) {
   function onImportMenuAction(action) {
     closeImportMenu();
     if (sourcePanelOpen) closeSourcePanel();
-    openSourcePanel();
+    // Import Again never shows the tables, so a combined source is not read first.
+    openSourcePanel({ readTables: action !== "again" });
     // "Import again" keeps the saved source and goes straight to the scope.
     if (action === "again") goToScopeStep();
   }
@@ -1643,7 +1697,7 @@ export function createSourceDataFeature(deps = {}) {
     }
   }
 
-  function openSourcePanel({ method = "" } = {}) {
+  function openSourcePanel({ method = "", readTables = true } = {}) {
     if (!dom.sourcePanel) return;
     closeImportMenu();
     // The window opens on the project's saved method and saved values, unless
@@ -1661,6 +1715,10 @@ export function createSourceDataFeature(deps = {}) {
     syncSourcePanelFields();
     syncPanelMethod();
     combinedSource.reset();
+    // A saved combined source reopens on its tables, nicknames, keys and rules.
+    if (!method && sourceState.sourceType === SOURCE_TYPE_COMBINED) {
+      combinedSource.load(sourceState.combined, { read: readTables });
+    }
     // The scope is re-read from the project on each visit to the step, so a
     // dataset type added since the last import is offered.
     scopeState = null;
@@ -1789,7 +1847,9 @@ export function createSourceDataFeature(deps = {}) {
 
   /** The settings the import needs, or the first thing missing from them. */
   function validateImportSettings() {
-    if (combinedSource.isActive()) return combinedSource.validate();
+    if (combinedSource.isActive()) {
+      return { ...combinedSource.validate(), method: SOURCE_TYPE_COMBINED, profile: null, csvPath: "" };
+    }
     const method = selectedMethod();
     const profile = readProfileFromPanel();
     const csvPath = readCsvPathFromPanel();
@@ -2294,11 +2354,6 @@ export function createSourceDataFeature(deps = {}) {
    * file; SQL Server streams the selected table.
    */
   async function importData() {
-    if (combinedSource.isActive()) {
-      showPanelStep("settings");
-      setSourceStatus("Importing a combined source is not available yet.", "error");
-      return;
-    }
     const settings = validateImportSettings();
     const { method, profile, csvPath } = settings;
     if (!settings.ok) {
@@ -2318,11 +2373,16 @@ export function createSourceDataFeature(deps = {}) {
     // window returns there while the import runs.
     showPanelStep("settings");
     setSourceBusy(true);
-    setSourceStatus(method === SOURCE_TYPE_MSSQL
-      ? "Importing the table from SQL Server..."
-      : "Importing the CSV file into this project...");
+    const combined = method === SOURCE_TYPE_COMBINED;
+    if (combined) setSourceStatus("Combining the tables and importing them into this project...");
+    else {
+      setSourceStatus(method === SOURCE_TYPE_MSSQL
+        ? "Importing the table from SQL Server..."
+        : "Importing the CSV file into this project...");
+    }
     try {
-      const saved = await onProfileSave(method, profile, csvPath);
+      // A combined source is saved through its own route, then imported the same way.
+      const saved = combined ? await saveCombinedSource() : await onProfileSave(method, profile, csvPath);
       if (!saved) {
         setSourceStatus("Could not save the import settings.", "error");
         return;
@@ -2330,7 +2390,7 @@ export function createSourceDataFeature(deps = {}) {
       setBodyVisible(true);
       setSummaryLoading(
         true,
-        method === SOURCE_TYPE_MSSQL
+        method !== SOURCE_TYPE_CSV
           ? "Importing and reading the source table..."
           : "Copying and reading the source table...",
       );
@@ -2351,6 +2411,37 @@ export function createSourceDataFeature(deps = {}) {
     } finally {
       setSourceBusy(false);
     }
+  }
+
+  /** Apply a `/source_table` payload; owns which import source the tab shows. */
+  function applySourceState(state) {
+    sourceState = normalizeSourceState(state);
+    // A new selection, or a fresh import, retires what the panel last read
+    // from the file: both the path and what it is being compared with move.
+    fileStatus = null;
+    fileStatusAt = 0;
+    // The hidden path input is the page's record of the CSV selection; the
+    // `/source_table` payload is its single source of truth. SQL Server and a
+    // combined source have no path.
+    const path = sourceState.sourceType === SOURCE_TYPE_CSV ? sourceState.csvPath : "";
+    if (dom.pathInput) dom.pathInput.value = path;
+    // While an import runs the window keeps showing the source being
+    // imported; the answers that arrive mid-import must not blank it.
+    if (sourcePanelOpen && !sourceBusy) syncSourcePanelFields();
+    syncPathDisplay(path);
+    if (sourceState.driverAvailable) setSourceStatus("");
+    return sourceState;
+  }
+
+  /** Save the window's combined settings as the project's source. */
+  async function saveCombinedSource() {
+    const result = await combinedSource.save();
+    if (!result?.ok) {
+      setSourceStatus(result?.error || "Could not save the import settings.", "error");
+      return false;
+    }
+    applySourceState(result);
+    return true;
   }
 
   /* ---------------- tooltips ---------------- */
@@ -2662,25 +2753,7 @@ export function createSourceDataFeature(deps = {}) {
     syncPathDisplay,
     endPathEdit,
     refreshOriginSpanNote,
-    /** Apply a `/source_table` payload; owns which import source the tab shows. */
-    applySourceState(state) {
-      sourceState = normalizeSourceState(state);
-      // A new selection, or a fresh import, retires what the panel last read
-      // from the file: both the path and what it is being compared with move.
-      fileStatus = null;
-      fileStatusAt = 0;
-      // The hidden path input is the page's record of the CSV selection; the
-      // `/source_table` payload is its single source of truth.
-      if (dom.pathInput) {
-        dom.pathInput.value = sourceState.sourceType === SOURCE_TYPE_MSSQL ? "" : sourceState.csvPath;
-      }
-      // While an import runs the window keeps showing the source being
-      // imported; the answers that arrive mid-import must not blank it.
-      if (sourcePanelOpen && !sourceBusy) syncSourcePanelFields();
-      syncPathDisplay(sourceState.sourceType === SOURCE_TYPE_MSSQL ? "" : sourceState.csvPath);
-      if (sourceState.driverAvailable) setSourceStatus("");
-      return sourceState;
-    },
+    applySourceState,
     getSourceState() {
       return sourceState;
     },

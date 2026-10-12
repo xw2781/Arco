@@ -15,7 +15,8 @@ import { createFieldMappingFeature } from "/ui/project_settings/project_settings
 import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20260927smb18";
 import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20260901dup1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261012combined2";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261012combined3";
+import { createSourceImport } from "/ui/project_settings/project_settings_source_import.js?v=20261012combined3";
 import {
   applyProjectSettingsTablePreferences,
   getConfiguredTableColumnWidthMap,
@@ -23,15 +24,15 @@ import {
   normalizeTableColumnPreferenceKey,
   resizeCellTextarea,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261012combined2";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261012combined3";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261012combined2";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261012combined2";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261012combined2";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261012combined2";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261012combined3";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261012combined3";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261012combined3";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261012combined3";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
 import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261004lock1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
@@ -381,15 +382,16 @@ const sourceDataFeature = createSourceDataFeature({
   // Project Settings runs in the shell's iframe, so the bridge lives on the
   // host window; `window.ADAHost` alone is undefined here.
   getHostApi: () => window.ADAHost || window.parent?.ADAHost || window.top?.ADAHost,
-  onProfileSave: (...args) => saveImportSettings(...args),
+  onProfileSave: (...args) => sourceImport.saveImportSettings(...args),
   onListTables: (...args) => listSourceTables(...args),
   onListConnections: () => listSourceConnections(),
   onForgetConnection: (...args) => forgetSourceConnection(...args),
   onCsvPathPick: (...args) => pickTablePathFromHost(...args),
-  onImportData: (...args) => importSourceData(...args),
+  onImportData: (...args) => sourceImport.importSourceData(...args),
   onLoadImportScope: () => loadImportScopeOptions(),
   onSourceFileStatus: () => loadSourceFileStatus(),
-  fetchImpl: fetch.bind(window), getSelectedProject: () => selectedProject,
+  fetchImpl: fetch.bind(window),
+  getSelectedProject: () => selectedProject,
   // Admin-editable defaults stay owned by the shared table preference JSON.
   getConfiguredColumnWidths: () => {
     const configured = getConfiguredTableColumnWidthMap("summaryColumnsTable");
@@ -864,37 +866,6 @@ async function loadSourceFileStatus() {
   }
 }
 
-/**
- * Persist the import settings chosen in the panel.
- *
- * The whole import source description goes through `/source_table/profile`:
- * the SQL Server profile lives in the project's own import record, and a CSV
- * selection is written into `field_mapping.json::table_path` by that same
- * endpoint, so each value keeps a single writer.
- */
-async function saveImportSettings(sourceType, mssql, csvPath) {
-  const name = String(selectedProject?.name || "").trim();
-  if (!name) return false;
-  try {
-    const body = { project_name: name, source_type: sourceType, mssql };
-    if (sourceType === "csv") {
-      body.csv_path = String(csvPath || "").trim();
-    }
-    const res = await fetch("/source_table/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(await readResponseErrorDetail(res));
-    sourceDataFeature.applySourceState(await res.json());
-    return true;
-  } catch (err) {
-    sourceDataFeature.setSourceStatus(err.message || "Could not save the import settings.", "error");
-    setStatus(`Failed to save the import settings: ${err.message}`);
-    return false;
-  }
-}
-
 /** Tables and views available in the database the panel is pointed at. */
 async function listSourceTables(profile) {
   try {
@@ -975,57 +946,6 @@ async function loadImportScopeOptions() {
   }
 }
 
-/** How far the upload has got, for the progress window's title. */
-function describeSourceUploadProgress(progress) {
-  if (progress?.phase === "committing") return "Writing the table on Arco Server...";
-  const mb = (bytes) => (Number(bytes || 0) / (1024 * 1024)).toFixed(1);
-  const sent = progress?.total_bytes
-    ? `${mb(progress.bytes_sent)} of ${mb(progress.total_bytes)} MB`
-    : `${mb(progress?.bytes_sent)} MB`;
-  return `${sent}, ${Number(progress?.rows_sent || 0).toLocaleString("en-US")} rows`;
-}
-
-/**
- * Read a source only this PC can open - a SQL Server table, as the user's own
- * login, or a CSV on a drive only this PC has - and upload it to Arco Server,
- * which writes the project master table. An interrupted CSV upload resumes on
- * the next try while the file is unchanged.
- */
-async function importSourceDataLocally(name, isSql) {
-  const title = isSql ? "Uploading table from SQL Server..." : "Uploading CSV file...";
-  showProjectOperationProgress(title);
-  let finished = false;
-  const query = new URLSearchParams({ project_name: name }).toString();
-  const timer = setInterval(async () => {
-    try {
-      const res = await fetch(`/source_table/upload_progress?${query}`);
-      const progress = res.ok ? await res.json() : null;
-      if (!finished && progress?.active) {
-        showProjectOperationProgress(`${title} ${describeSourceUploadProgress(progress)}`);
-      }
-    } catch {
-      // The import's own answer reports a failure.
-    }
-  }, 500);
-  try {
-    const res = await fetch(isSql ? "/source_table/import" : "/source_table/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_name: name }),
-    });
-    if (!res.ok) return { ok: false, error: await readResponseErrorDetail(res) };
-    const out = await res.json();
-    sourceDataFeature.applySourceState(out);
-    return { ok: true, rowCount: Number(out?.last_import?.row_count || 0) };
-  } catch (err) {
-    return { ok: false, error: err.message || "The import failed." };
-  } finally {
-    finished = true;
-    clearInterval(timer);
-    hideProjectOperationProgress();
-  }
-}
-
 /** Everything the page shows about the source table, reloaded after a refresh. */
 async function reloadSourceDataViews(name, { forceRefresh }) {
   await loadSourceTableState(name);
@@ -1036,86 +956,19 @@ async function reloadSourceDataViews(name, { forceRefresh }) {
   });
 }
 
-/**
- * Rebuild the project-owned master table from the saved import settings, then
- * refresh everything derived from it.
- *
- * The work runs on the ArcRho Server host as one Engine job: the import lands
- * on local disk instead of crossing this machine twice, and the job continues
- * into the project's dependency graph, regenerating every engine-built dataset
- * and re-running the methods that depend on them. Only when the server cannot
- * reach the configured source - a SQL Server profile, which authenticates as
- * the caller, or a CSV path only this machine can open - is it read here and
- * uploaded, and even then the dependent refresh still runs on the server.
- *
- * `scope` is what the Import Scope step chose: the engine-built dataset types
- * to regenerate and the reserving class types whose classes are refreshed.
- * Either list left empty means all of them.
- *
- * With no Engine available, a source the server can read is not imported at
- * all: the import is the job. A source only this PC can read has already been
- * copied in by then, so the server rebuilds the table summary and the
- * reserving-class values from it and the generated caches are cleared, which
- * covers the whole project regardless of the chosen scope.
- */
-async function importSourceData(sourceType, scope = {}) {
-  const name = String(selectedProject?.name || "").trim();
-  if (!name) return { ok: false, error: "Select a project first." };
-  if (sourceRefreshFeature.isRunning()) return { ok: false, error: "A source table refresh is already running." };
-
-  const isSql = sourceType === "mssql";
-  const plan = await sourceRefreshFeature.loadPlan(name);
-  // Without the plan this page cannot tell a source the server imports from
-  // one only this PC can read, so it imports nothing rather than guess.
-  if (!plan) return { ok: false, error: "Could not reach Arco Server to plan the import. Try again." };
-  if (plan.busy) {
-    return {
-      ok: false,
-      error: "A source table refresh is already running for this project. Wait for it to finish.",
-    };
-  }
-
-  // Importing has always meant "the raw data changed": this page used to
-  // delete every generated dataset cache so each one recomputed whenever it
-  // was next opened. The job rebuilds them instead, which touches the same
-  // objects and leaves none of them empty in the meantime.
-  const importOnServer = !isSql && !!plan?.server_can_import;
-  let rowCount = 0;
-  if (!importOnServer) {
-    const local = await importSourceDataLocally(name, isSql);
-    if (!local.ok) return local;
-    rowCount = local.rowCount;
-  }
-
-  const job = await sourceRefreshFeature.runJob(name, {
-    importSource: importOnServer,
-    refreshDependents: true,
-    datasetTypes: scope?.datasetTypes || [],
-    reservingClassTypes: scope?.reservingClassTypes || [],
-  });
-  if (job.unavailable) {
-    // No Engine. A server-readable source is imported only by the job, so
-    // nothing ran; this PC never copies it over the share instead.
-    if (importOnServer) {
-      return {
-        ok: false,
-        error: "Arco Engine is unavailable, so the table could not be imported. Try again once it is running.",
-      };
-    }
-    setStatus(
-      `Imported ${rowCount.toLocaleString("en-US")} row(s) into "${name}". `
-      + "Arco Engine is unavailable, so dependents will refresh when each object is opened.",
-    );
-    await reloadSourceDataViews(name, { forceRefresh: true });
-    return { ok: true, rowCount };
-  }
-  if (!job.ok) {
-    await reloadSourceDataViews(name, { forceRefresh: false });
-    return { ok: false, error: job.error };
-  }
-  await reloadSourceDataViews(name, { forceRefresh: false });
-  return { ok: true, rowCount: Number(job.result?.row_count || rowCount || 0) };
-}
+/** Save the settings and run an import; see project_settings_source_import.js. */
+const sourceImport = createSourceImport({
+  fetchImpl: fetch.bind(window),
+  readResponseErrorDetail,
+  getProjectName: () => selectedProject?.name,
+  sourceRefresh: sourceRefreshFeature,
+  applySourceState: (state) => sourceDataFeature.applySourceState(state),
+  setSourceStatus: (...args) => sourceDataFeature.setSourceStatus(...args),
+  setStatus,
+  showProgress: showProjectOperationProgress,
+  hideProgress: hideProjectOperationProgress,
+  reloadViews: reloadSourceDataViews,
+});
 
 // ============ Table Summary ============
 function normalizeSummaryColumnKey(value) {

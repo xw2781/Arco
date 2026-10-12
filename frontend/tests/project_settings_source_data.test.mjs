@@ -26,6 +26,11 @@ const projectSettingsJs = await readFile(
   new URL("../ui/project_settings/project_settings.js", import.meta.url),
   "utf8",
 );
+// Saving the import settings and running an import moved out of the coordinator.
+const sourceImportJs = await readFile(
+  new URL("../ui/project_settings/project_settings_source_import.js", import.meta.url),
+  "utf8",
+);
 const projectSettingsHtml = await readFile(
   new URL("../ui/project_settings/project_settings.html", import.meta.url),
   "utf8",
@@ -1069,9 +1074,11 @@ test("Source Data reports the project-owned imported table, not the external sou
   // Every app-server call stays in the coordinator.
   assert.ok(!moduleSource.includes("fetch("), "feature module calls the app server directly");
   assert.match(projectSettingsJs, /\/source_table\?project_name=/);
-  assert.match(projectSettingsJs, /"\/source_table\/profile"/);
-  assert.match(projectSettingsJs, /"\/source_table\/import"/);
-  assert.match(projectSettingsJs, /"\/source_table\/refresh"/);
+  assert.match(sourceImportJs, /"\/source_table\/profile"/);
+  assert.match(sourceImportJs, /"\/source_table\/import"/);
+  assert.match(sourceImportJs, /"\/source_table\/refresh"/);
+  assert.match(projectSettingsJs, /onProfileSave: \(\.\.\.args\) => sourceImport\.saveImportSettings\(\.\.\.args\)/);
+  assert.match(projectSettingsJs, /onImportData: \(\.\.\.args\) => sourceImport\.importSourceData\(\.\.\.args\)/);
 });
 
 test("Opening the details panel reads the source file's own modified time", () => {
@@ -1084,8 +1091,8 @@ test("Opening the details panel reads the source file's own modified time", () =
   assert.match(moduleSource, /Number\(live \?\? sourceState\.lastImport\?\.csvMtimeNs\)/);
   // Hover opens the panel, so repeated opens must not re-read the file.
   assert.match(moduleSource, /Date\.now\(\) - fileStatusAt < FILE_STATUS_FRESH_MS/);
-  // A SQL Server project has no source file to read.
-  assert.match(moduleSource, /sourceState\.sourceType === SOURCE_TYPE_MSSQL \|\| fileStatusPending/);
+  // A SQL Server or combined project has no source file to read.
+  assert.match(moduleSource, /sourceState\.sourceType !== SOURCE_TYPE_CSV \|\| fileStatusPending/);
   // A new selection or a finished import retires the comparison.
   assert.match(moduleSource, /sourceState = normalizeSourceState\(state\);[\s\S]{0,240}?fileStatus = null;/);
   assert.match(moduleSource, /note: sourceCsvMtimeNote\(\)/);
@@ -1115,8 +1122,9 @@ test("Import Data rebuilds the master table from whichever method is selected", 
   assert.match(moduleSource, /Choose a CSV file to import\./);
 
   // A source only this PC can read is read here and uploaded, SQL or CSV.
-  assert.match(projectSettingsJs, /isSql \? "\/source_table\/import" : "\/source_table\/refresh"/);
-  assert.match(projectSettingsJs, /body: JSON\.stringify\(\{ project_name: name \}\)/);
+  assert.match(sourceImportJs, /if \(sourceType === "mssql"\) return \{ url: "\/source_table\/import"/);
+  assert.match(sourceImportJs, /return \{ url: "\/source_table\/refresh", title: "Uploading CSV file\.\.\." \};/);
+  assert.match(sourceImportJs, /body: JSON\.stringify\(\{ project_name: name \}\)/);
   // A finished import refreshes everything derived from the table.
   assert.match(projectSettingsJs, /forceReservingClassTypesReload: true/);
 });
@@ -1196,24 +1204,21 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
   assert.match(summaryCss, /\.sd-scope-list \{[\s\S]*?overflow-y: auto;\s*overflow-x: hidden;/);
 
   // The scope reaches the job, and the job reaches the server.
-  assert.match(projectSettingsJs, /async function importSourceData\(sourceType, scope = \{\}\)/);
-  assert.match(projectSettingsJs, /datasetTypes: scope\?\.datasetTypes \|\| \[\]/);
-  assert.match(projectSettingsJs, /reservingClassTypes: scope\?\.reservingClassTypes \|\| \[\]/);
+  assert.match(sourceImportJs, /async function importSourceData\(sourceType, scope = \{\}\)/);
+  assert.match(sourceImportJs, /datasetTypes: scope\?\.datasetTypes \|\| \[\]/);
+  assert.match(sourceImportJs, /reservingClassTypes: scope\?\.reservingClassTypes \|\| \[\]/);
   assert.match(sourceTableRouter, /if req\.dataset_types:/);
   assert.match(sourceTableRouter, /if req\.reserving_class_types:/);
 
   // A source the server can read is imported only by the job: with no plan or
   // no Engine this PC imports nothing rather than copy it over the share.
-  const importFlow = projectSettingsJs.slice(
-    projectSettingsJs.indexOf("async function importSourceData("),
-    projectSettingsJs.indexOf("// ============ Table Summary ============"),
-  );
+  const importFlow = sourceImportJs.slice(sourceImportJs.indexOf("async function importSourceData("));
   assert.match(importFlow, /if \(!plan\) return \{ ok: false, error: "Could not reach Arco Server/);
   assert.match(importFlow, /if \(job\.unavailable\) \{[\s\S]*?if \(importOnServer\) \{\s*return \{\s*ok: false,/);
   assert.equal(importFlow.match(/importSourceDataLocally\(/g).length, 1, "a second local import came back");
   // A client-only source is uploaded; the page shows how far it has got.
-  assert.match(projectSettingsJs, /fetch\(`\/source_table\/upload_progress\?\$\{query\}`\)/);
-  assert.match(projectSettingsJs, /if \(!finished && progress\?\.active\)/);
+  assert.match(sourceImportJs, /fetch\(`\/source_table\/upload_progress\?\$\{query\}`\)/);
+  assert.match(sourceImportJs, /if \(!finished && progress\?\.active\)/);
   assert.match(sourceTableRouter, /upload_source_table\(req\.project_name, SOURCE_TYPE_MSSQL\)/);
   assert.match(sourceTableRouter, /upload_source_table\(req\.project_name, SOURCE_TYPE_CSV\)/);
   // The rebuild a client-only import still asks for runs on the server.
@@ -1333,7 +1338,7 @@ test("a first-time user finds the import from a labelled button and a first-run 
   assert.match(projectSettingsHtml, /class="sd-first-run-choice" type="button" data-method="csv"/);
   assert.match(projectSettingsHtml, /class="sd-first-run-choice" type="button" data-method="mssql"/);
   assert.match(moduleSource, /openSourcePanel\(\{ method: choice\.dataset\.method \}\)/);
-  assert.match(moduleSource, /function openSourcePanel\(\{ method = "" \} = \{\}\)/);
+  assert.match(moduleSource, /function openSourcePanel\(\{ method = "", readTables = true \} = \{\}\)/);
   assert.match(moduleSource, /setFirstRunVisible\(!!dom\.firstRun\);/);
   // Any summary on screen retires the first-run panel.
   assert.match(moduleSource, /function setBodyVisible\(visible\) \{\s*if \(visible\) setFirstRunVisible\(false\);/);
@@ -1350,4 +1355,32 @@ test("unknown source types and auth modes fall back to the supported defaults", 
   // The UI only ever offers Windows authentication today.
   assert.equal(state.mssql.authentication, "kerberos");
   assert.match(moduleSource, /authentication: MSSQL_AUTH_WINDOWS,/);
+});
+
+test("a combined source state carries its saved block, and single-table states do not", () => {
+  const { getSourceIdentity, normalizeSourceState } = sourceDataModule;
+  const block = {
+    tables: [
+      { id: "t1", nickname: "Loss", source_type: "mssql", mssql: { server: "S", database: "D", table: "dbo.Loss" } },
+      { id: "t2", nickname: "EP", source_type: "csv", csv_path: "\\\\share\\EP.csv" },
+    ],
+    keys: [{ name: "CO_CD", map: { t1: { column: "CO_CD" }, t2: { column: "Co_Cd" } } }],
+  };
+  const combined = normalizeSourceState({ source_type: "combined", combined: block, csv_path: "E:\old.csv" });
+  assert.equal(combined.sourceType, "combined");
+  assert.equal(combined.combined, block);
+  assert.deepEqual(getSourceIdentity(combined), { name: "Combined source", detail: "Loss, EP", configured: true });
+
+  // Single-table states read exactly as before; a stray block is ignored.
+  for (const sourceType of ["csv", "mssql"]) {
+    const state = normalizeSourceState({ source_type: sourceType, combined: block, csv_path: "E:\\raw\\a.csv" });
+    assert.equal(state.sourceType, sourceType);
+    assert.equal(state.combined, null);
+  }
+  assert.deepEqual(getSourceIdentity(normalizeSourceState({ source_type: "csv", csv_path: "E:\\raw\\a.csv" })), {
+    name: "a.csv",
+    detail: "E:\\raw",
+    configured: true,
+  });
+  assert.equal(normalizeSourceState({ source_type: "union" }).sourceType, "csv");
 });
