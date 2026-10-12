@@ -15,7 +15,7 @@ import { createFieldMappingFeature } from "/ui/project_settings/project_settings
 import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20260927smb18";
 import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20260901dup1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261008scope2";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261012combined1";
 import {
   applyProjectSettingsTablePreferences,
   getConfiguredTableColumnWidthMap,
@@ -23,15 +23,15 @@ import {
   normalizeTableColumnPreferenceKey,
   resizeCellTextarea,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261004lock1";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261012combined1";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261004lock1";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261004lock1";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261004lock1";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261004lock1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261012combined1";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261012combined1";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261012combined1";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261012combined1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
 import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261004lock1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
@@ -389,6 +389,7 @@ const sourceDataFeature = createSourceDataFeature({
   onImportData: (...args) => importSourceData(...args),
   onLoadImportScope: () => loadImportScopeOptions(),
   onSourceFileStatus: () => loadSourceFileStatus(),
+  fetchImpl: fetch.bind(window),
   // Admin-editable defaults stay owned by the shared table preference JSON.
   getConfiguredColumnWidths: () => {
     const configured = getConfiguredTableColumnWidthMap("summaryColumnsTable");

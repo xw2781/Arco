@@ -736,7 +736,7 @@ test("changed theme and chart owners are reached through current cache-version c
     ["../ui/method_pages/cape_cod/cape_cod.html", "cape_cod_main.js?v=20260927c"],
     ["../ui/method_pages/result_selection/result_selection.html", "result_selection_main.js?v=20260927c"],
     ["../ui/method_pages/dfm/dfm.html", "dfm_main.js?v=20260927smb19"],
-    ["../ui/project_settings/project_settings.html", "project_settings.js?v=20261004lock1"],
+    ["../ui/project_settings/project_settings.html", "project_settings.js?v=20261012combined1"],
     ["../ui/project_settings/project_settings.js", "project_settings_dataset_types.js?v=20260927smb18"],
     ["../ui/arcode/code-editor/index.html", "code-editor/index.js?v=20260927b"],
     ["../ui/arcode/code-editor/index.js", "shared/editor_framework.js?v=20260927b"],

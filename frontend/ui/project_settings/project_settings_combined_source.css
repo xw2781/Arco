@@ -1,0 +1,333 @@
+/* Source Data - combined source: Add Table, the grouped table list, the Add
+   Table menu and the table details window (project_settings_combined_source.js). */
+
+:root {
+  --cs-t1: #2b6df6;
+  --cs-t2: #0f766e;
+  --cs-t3: #b45309;
+  --cs-t4: #7a55d6;
+  --cs-t5: #be185d;
+  --cs-t6: #4d7c0f;
+}
+:root[data-arcrho-theme="dark"] {
+  --cs-t1: #6d9bff;
+  --cs-t2: #2dd4bf;
+  --cs-t3: #f0a85a;
+  --cs-t4: #a78bfa;
+  --cs-t5: #f472b6;
+  --cs-t6: #a3e635;
+}
+.cs-color-1 { background: var(--cs-t1); }
+.cs-color-2 { background: var(--cs-t2); }
+.cs-color-3 { background: var(--cs-t3); }
+.cs-color-4 { background: var(--cs-t4); }
+.cs-color-5 { background: var(--cs-t5); }
+.cs-color-6 { background: var(--cs-t6); }
+.cs-text-color-1 { color: var(--cs-t1); }
+.cs-text-color-2 { color: var(--cs-t2); }
+.cs-text-color-3 { color: var(--cs-t3); }
+.cs-text-color-4 { color: var(--cs-t4); }
+.cs-text-color-5 { color: var(--cs-t5); }
+.cs-text-color-6 { color: var(--cs-t6); }
+
+/* With two or more tables the list replaces the single-table form. */
+.sd-import-body.cs-active > .sd-field,
+.sd-import-body.cs-active > .sd-source-method { display: none !important; }
+
+.cs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.cs-bar-note { margin-right: auto; }
+.cs-bar-note[hidden] { display: none; }
+.cs-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.cs-add-btn svg { width: 12px; height: 12px; }
+
+.cs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.cs-list[hidden] { display: none; }
+.cs-group {
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cs-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--ar-color-surface-muted, #f8fafc);
+  border-bottom: 1px solid var(--ar-color-border, #d8dde3);
+  font-size: 12px;
+  min-width: 0;
+}
+.cs-group-head svg { width: 15px; height: 15px; flex: none; color: var(--ar-color-text-muted, #64748b); }
+.cs-where {
+  color: var(--ar-color-text-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-row {
+  display: grid;
+  grid-template-columns: 18px 10px minmax(0, 1fr) auto auto 24px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--ar-color-border, #d8dde3);
+  background: var(--ar-color-surface, #fff);
+  cursor: pointer;
+  transition: background 140ms ease, opacity 140ms ease;
+}
+.cs-group-head + .cs-row { border-top: 0; }
+.cs-row:hover { background: var(--ar-color-surface-hover, #f4f7fa); }
+.cs-row:focus-visible { outline: 2px solid var(--ar-color-border-focus, #93c5fd); outline-offset: -2px; }
+.cs-row.is-dragging { opacity: 0.45; }
+.cs-row.cs-drop-before { box-shadow: inset 0 2px 0 var(--ar-color-accent, #2b6df6); }
+.cs-row.cs-drop-after { box-shadow: inset 0 -2px 0 var(--ar-color-accent, #2b6df6); }
+.cs-grip {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+  cursor: grab;
+  touch-action: none;
+}
+.cs-row.is-dragging .cs-grip { cursor: grabbing; }
+.cs-grip svg { width: 12px; height: 14px; }
+.cs-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.cs-name { display: flex; flex-direction: column; min-width: 0; }
+.cs-name b {
+  font-weight: normal;
+  font-size: 12px;
+  color: var(--ar-color-text-strong, #111827);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-name span {
+  font-size: 11px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
+.cs-size {
+  font-size: 11px;
+  color: var(--ar-color-text-muted, #64748b);
+  white-space: nowrap;
+}
+.cs-num { font-variant-numeric: tabular-nums; }
+.cs-row-error { color: var(--ar-color-danger, #be123c); }
+.cs-base-tag {
+  padding: 0 7px;
+  border: 1px solid var(--ar-color-accent-border, #bcd0fb);
+  border-radius: 999px;
+  background: var(--ar-color-accent-soft, #eaf2ff);
+  color: var(--ar-color-accent, #2b6df6);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.cs-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ar-color-text-subtle, #94a3b8);
+  cursor: pointer;
+}
+.cs-icon-btn:hover { background: var(--ar-color-surface-soft, #eef2f6); color: var(--ar-color-text, #1f2937); }
+.cs-icon-btn svg { width: 14px; height: 14px; }
+.cs-order-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px dashed var(--ar-color-border-strong, #cbd5e1);
+  border-radius: 4px;
+  background: var(--ar-color-surface-muted, #f8fafc);
+  color: var(--ar-color-text-muted, #64748b);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.cs-order-note svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+.cs-mono { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; font-size: 11.5px; }
+
+/* Add Table menu: rendered in document.body above the import window. */
+.cs-pop {
+  position: fixed;
+  z-index: 3800;
+  min-width: 240px;
+  max-width: 360px;
+  max-height: 360px;
+  padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--ar-color-border-strong, #cbd5e1);
+  border-radius: 4px;
+  background: var(--ar-color-surface-raised, #fff);
+  box-shadow: var(--ar-shadow-floating, 0 8px 20px rgba(15, 23, 42, 0.08));
+  animation: cs-pop-in 140ms ease-out;
+}
+.cs-pop[hidden] { display: none; }
+@keyframes cs-pop-in { from { opacity: 0; transform: translateY(-3px); } }
+.cs-pop-head {
+  padding: 6px 8px 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ar-color-text-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-pop-quiet { font-weight: normal; }
+.cs-pop-error { font-weight: normal; color: var(--ar-color-danger, #be123c); white-space: normal; }
+.cs-pop-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ar-color-text, #1f2937);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.cs-pop-item:hover,
+.cs-pop-item:focus-visible { background: var(--ar-color-accent-soft, #eaf2ff); outline: none; }
+.cs-pop-item svg { width: 14px; height: 14px; flex: none; color: var(--ar-color-text-muted, #64748b); }
+.cs-pop-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-pop-note { display: block; font-size: 11px; color: var(--ar-color-text-muted, #64748b); }
+.cs-pop-sep { height: 1px; margin: 4px 2px; background: var(--ar-color-border, #d8dde3); }
+
+/* Table details window: a second-level window over the import window. */
+.cs-modal-back {
+  position: fixed;
+  inset: 0;
+  z-index: 3700;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--ar-color-overlay, rgba(15, 23, 42, 0.32));
+  animation: cs-fade-in 140ms ease-out;
+}
+@keyframes cs-fade-in { from { opacity: 0; } }
+.rct-row-editor.cs-detail {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+}
+.cs-detail .rct-row-editor-header { gap: 8px; }
+.cs-detail .rct-row-editor-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-d-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+}
+.cs-d-sec { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cs-d-grid {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 12px;
+}
+.cs-d-label { font-size: 12px; color: var(--ar-color-text-muted, #64748b); }
+.cs-d-static { font-size: 12px; color: var(--ar-color-text, #1f2937); }
+.cs-d-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  background: var(--ar-color-input, #fff);
+  color: var(--ar-color-text, #1f2937);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.cs-d-input:hover { border-color: var(--ar-color-border-strong, #cbd5e1); }
+.cs-d-input:focus {
+  border-color: var(--ar-color-border-focus, #93c5fd);
+  box-shadow: 0 0 0 3px var(--ar-color-focus-ring, rgba(96, 165, 250, 0.16));
+}
+.cs-d-with-btn { display: flex; gap: 6px; min-width: 0; }
+.cs-d-with-btn .sd-btn { flex: 0 0 auto; }
+.cs-d-quiet,
+.cs-d-error { margin: 0; font-size: 12px; color: var(--ar-color-text-muted, #64748b); }
+.cs-d-error { color: var(--ar-color-danger, #be123c); overflow-wrap: anywhere; }
+.cs-d-cols {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+}
+.cs-d-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.cs-d-table th,
+.cs-d-table td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--ar-color-border, #d8dde3);
+  text-align: left;
+  white-space: nowrap;
+}
+.cs-d-table th {
+  position: sticky;
+  top: 0;
+  background: var(--ar-color-surface-muted, #f8fafc);
+  font-size: 11px;
+  color: var(--ar-color-text-muted, #64748b);
+}
+.cs-d-table tr:last-child td { border-bottom: 0; }
+.cs-d-table td.cs-use { width: 50%; color: var(--ar-color-text-muted, #64748b); }
+.cs-d-table td.cs-faint { color: var(--ar-color-text-subtle, #94a3b8); }
+.cs-detail .rct-row-editor-actions .cs-d-remove {
+  margin-right: auto;
+  color: var(--ar-color-danger, #be123c);
+}
+.cs-detail .dialog-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-pop, .cs-modal-back { animation: none; }
+}

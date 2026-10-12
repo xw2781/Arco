@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 4 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, and the client app server can describe, preview and import one); next is the import window's table list.
+Status: In progress: 5 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, and the import window lists several tables with nicknames and a details window); next is the Combine step.
 Last updated: 2026-10-12
 
 ## Progress
@@ -13,13 +13,13 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 2 | Arco can combine several tables into one the way the merge notebook does | [x] | 2026-10-12 | 70 min | 5 min | Nothing visible yet; Arco can now join several tables into one the way the merge notebook does and report how well each table matched. |
 | 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [x] | 2026-10-12 | 60 min | 7 min | Nothing visible yet; the server can now keep a combined source and accept its imported table, and it never re-reads one on its own, while single-table projects save and import exactly as before. |
 | 4 | The app can read every table of a combined source, preview the result and import it | [x] | 2026-10-12 | 60 min | 9 min | Nothing visible yet; Arco can now read each table of a combined source, preview the joined result and import it the same way a single table is uploaded, while single-table imports work exactly as before. |
-| 5 | The import window lists several tables, each with a nickname and a details window | [ ] | | 75 min | | |
+| 5 | The import window lists several tables, each with a nickname and a details window | [x] | 2026-10-12 | 75 min | 15 min | The import window has an Add Table button: several tables can be listed with nicknames, grouped by connection, dragged into join order and opened in a details window that shows their columns, while a single-table import looks and works exactly as before; importing several tables comes in a later step. |
 | 6 | The import window shows how the tables join and what the result will look like | [ ] | | 80 min | | |
 | 7 | Importing a combined source runs end to end and the Source Data tab describes it | [ ] | | 50 min | | |
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 4 of 9 steps done. Estimated 510 min, actual so far 24 min.
+Overall: 5 of 9 steps done. Estimated 510 min, actual so far 39 min.
 
 ## How agents work this plan
 
@@ -209,21 +209,22 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - [project_settings.html](../../frontend/ui/project_settings/project_settings.html) import window markup; [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `openSourcePanel`, `showPanelStep`, `validateImportSettings`, `PANEL_STEPS`; [project_settings.css](../../frontend/ui/project_settings/project_settings.css) import-window rules.
 - [project_settings_module_split.test.mjs](../../frontend/tests/project_settings_module_split.test.mjs) and [project_settings_source_data.test.mjs](../../frontend/tests/project_settings_source_data.test.mjs).
 - Memory notes [arcrho-dev-ui-cache-restart](../../agent-memory/arcrho-dev-ui-cache-restart.md), [theme-css-version-pins](../../agent-memory/theme-css-version-pins.md), [frontend-node-test-suite](../../agent-memory/frontend-node-test-suite.md).
+- Version and size guards: [project_settings_data_processing_rules.test.mjs](../../frontend/tests/project_settings_data_processing_rules.test.mjs) pins the page's stylesheet list and one shared `?v=` stamp for every Project Settings stylesheet; [project_settings_module_split.test.mjs](../../frontend/tests/project_settings_module_split.test.mjs) caps the coordinator below 1,800 lines and pins the split modules to the coordinator's stamp; [color_theme.test.mjs](../../frontend/tests/color_theme.test.mjs) pins the coordinator stamp.
 
 **Do.**
-- [ ] New module `frontend/ui/project_settings/project_settings_combined_source.js` (and a CSS file if the rules exceed a screenful) owning the combined state: tables, keys, rows, exclude, rename; key auto-detection by name (decision 5); serialization to and from the decision 3 block.
-- [ ] Add Table on the single-table form: menu of tables in the current connection (from `/source_table/tables`), recent CSV via the existing browse, "Another SQL Server database…". Picking one opens the details window in add mode with the nickname box focused and suggested.
-- [ ] Table list grouped by SQL connection and CSV, drag to reorder (pointer capture, per memory [pointer-capture-drag-fix](../../agent-memory/pointer-capture-drag-fix.md)), base tag, remove, join-order note; no paths on the list.
-- [ ] Details window (second-level window over the import window): nickname, source fields, column table with "Used As", Remove Table, Save; Escape and backdrop close it.
-- [ ] Removing tables back to one returns to today's form with that table's settings.
-- [ ] The single-table form, its validation and its save are unchanged when only one table exists.
-- [ ] Bump the module version stamps and their test pins.
+- [x] New module `frontend/ui/project_settings/project_settings_combined_source.js` (and a CSS file if the rules exceed a screenful) owning the combined state: tables, keys, rows, exclude, rename; key auto-detection by name (decision 5); serialization to and from the decision 3 block.
+- [x] Add Table on the single-table form: menu of tables in the current connection (from `/source_table/tables`), recent CSV via the existing browse, "Another SQL Server database…". Picking one opens the details window in add mode with the nickname box focused and suggested.
+- [x] Table list grouped by SQL connection and CSV, drag to reorder (pointer capture, per memory [pointer-capture-drag-fix](../../agent-memory/pointer-capture-drag-fix.md)), base tag, remove, join-order note; no paths on the list.
+- [x] Details window (second-level window over the import window): nickname, source fields, column table with "Used As", Remove Table, Save; Escape and backdrop close it.
+- [x] Removing tables back to one returns to today's form with that table's settings.
+- [x] The single-table form, its validation and its save are unchanged when only one table exists.
+- [x] Bump the module version stamps and their test pins.
 
 **Tests.** New `frontend/tests/project_settings_combined_source.test.mjs` for the state module: add/remove/reorder, key auto-detection, nickname fallback, serialization round trip, back-to-one. Existing source data tests pass.
 
 **Done when.** Node tests pass (diff against a baseline per the memory note) and the window renders the list and details window in a dev app launch or an Electron screenshot check ([electron-ui-screenshot-check](../../agent-memory/electron-ui-screenshot-check.md)).
 
-**Estimate.** Estimate: code edit 50 min, test/validation 25 min, total 75 min.
+**Estimate.** Estimate: code edit 50 min, test/validation 25 min, total 75 min. Actual: code edit 11 min, test/validation 4 min, total 15 min (the prototype already spelled out the list and details window, and the state tests passed first run; the only rework was the coordinator line cap and the shared stylesheet stamp).
 
 ### Step 6 — Combine step: Join Map, Row Match, Preview
 

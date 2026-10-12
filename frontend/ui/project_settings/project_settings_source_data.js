@@ -12,6 +12,10 @@
  * centered on open, draggable by its title bar, and closes only from its close
  * button or Escape - never from an outside click.
  *
+ * Several tables combined into one source are owned by
+ * project_settings_combined_source.js; this module only mounts it on the
+ * settings page and defers to it once the window lists two or more tables.
+ *
  * Path/date persistence stays in the coordinator-composed General Settings
  * feature, and every app-server call for the imported table is injected by the
  * coordinator.
@@ -22,6 +26,7 @@ import {
   SKELETON_BAR_CLASS,
   SKELETON_ROW_COUNT,
 } from "./project_settings_skeleton.js?v=20260821pstree1";
+import { createCombinedSourceFeature } from "./project_settings_combined_source.js?v=20261012combined1";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -284,6 +289,8 @@ export function createSourceDataFeature(deps = {}) {
     // The dataset types and reserving class types the Import Scope step offers.
     onLoadImportScope = async () => ({ ok: false, error: "Not available." }),
     onSourceFileStatus = async () => null,
+    // Reaches the combined-source routes; see project_settings_combined_source.js.
+    fetchImpl = null,
   } = deps;
 
   const el = (id) => document.getElementById(id);
@@ -1470,6 +1477,34 @@ export function createSourceDataFeature(deps = {}) {
     onRemove: (database) => forgetConnection(String(dom.mssqlServer?.value || "").trim(), database),
   });
 
+  // Add Table, the table list and the details window for a combined source.
+  const combinedSource = createCombinedSourceFeature({
+    settingsBody: dom.settingsStep,
+    escapeHtml,
+    setStatus: (text, tone) => setSourceStatus(text, tone),
+    readSingleSettings: () => ({
+      method: selectedMethod(),
+      csvPath: readCsvPathFromPanel(),
+      profile: readProfileFromPanel(),
+    }),
+    applySingleSettings: ({ method, csvPath, profile }) => {
+      panelMethod = method;
+      methodSelect.setValue(method);
+      if (method === SOURCE_TYPE_MSSQL) {
+        if (dom.mssqlServer) dom.mssqlServer.value = profile.server;
+        if (dom.mssqlDatabase) dom.mssqlDatabase.value = profile.database;
+        tableSelect.setOptions([], { keepSelection: false });
+        tableSelect.setValue(profile.table);
+      } else if (dom.csvPath) {
+        dom.csvPath.value = csvPath;
+      }
+      syncPanelMethod();
+    },
+    onListTables: (profile) => onListTables(profile),
+    onCsvPathPick: (current) => onCsvPathPick(current),
+    fetchImpl,
+  });
+
   /** Databases recorded for the server currently typed in. */
   function syncDatabaseHistory() {
     const currentServer = String(dom.mssqlServer?.value || "").trim().toLowerCase();
@@ -1565,6 +1600,7 @@ export function createSourceDataFeature(deps = {}) {
       if (control) control.disabled = sourceBusy;
     });
     methodSelect.setDisabled(sourceBusy);
+    combinedSource.setBusy(sourceBusy);
     tableSelect.setDisabled(sourceBusy);
     serverCombo.setDisabled(sourceBusy);
     databaseCombo.setDisabled(sourceBusy);
@@ -1618,6 +1654,7 @@ export function createSourceDataFeature(deps = {}) {
     tableSelect.setOptions([], { keepSelection: false });
     syncSourcePanelFields();
     syncPanelMethod();
+    combinedSource.reset();
     // The scope is re-read from the project on each visit to the step, so a
     // dataset type added since the last import is offered.
     scopeState = null;
@@ -1642,6 +1679,7 @@ export function createSourceDataFeature(deps = {}) {
     tableSelect.close();
     serverCombo.close();
     databaseCombo.close();
+    combinedSource.close();
     sourcePanelOpen = false;
     windowDragState = null;
     windowResizeState = null;
@@ -1736,6 +1774,7 @@ export function createSourceDataFeature(deps = {}) {
 
   /** The settings the import needs, or the first thing missing from them. */
   function validateImportSettings() {
+    if (combinedSource.isActive()) return combinedSource.validate();
     const method = selectedMethod();
     const profile = readProfileFromPanel();
     const csvPath = readCsvPathFromPanel();
@@ -2240,6 +2279,11 @@ export function createSourceDataFeature(deps = {}) {
    * file; SQL Server streams the selected table.
    */
   async function importData() {
+    if (combinedSource.isActive()) {
+      showPanelStep("settings");
+      setSourceStatus("Importing a combined source is not available yet.", "error");
+      return;
+    }
     const settings = validateImportSettings();
     const { method, profile, csvPath } = settings;
     if (!settings.ok) {
