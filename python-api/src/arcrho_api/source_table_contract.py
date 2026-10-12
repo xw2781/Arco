@@ -36,7 +36,17 @@ SOURCE_IMPORT_JSON_FORMAT = "arcrho-source-import-v4"
 # --- Source kinds ---------------------------------------------------------
 SOURCE_TYPE_CSV = "csv"
 SOURCE_TYPE_MSSQL = "mssql"
-SOURCE_TYPES = (SOURCE_TYPE_CSV, SOURCE_TYPE_MSSQL)
+# A source built by joining several CSV and SQL Server tables on the client.
+SOURCE_TYPE_COMBINED = "combined"
+SOURCE_TYPES = (SOURCE_TYPE_CSV, SOURCE_TYPE_MSSQL, SOURCE_TYPE_COMBINED)
+
+# --- Combined source rules ------------------------------------------------
+COMBINED_ROWS_ALL = "all"      # outer join (default)
+COMBINED_ROWS_BASE = "base"    # left join onto the running result
+COMBINED_ROWS_MATCH = "match"  # inner join
+COMBINED_ROW_RULES = (COMBINED_ROWS_ALL, COMBINED_ROWS_BASE, COMBINED_ROWS_MATCH)
+COMBINED_KEY_CONVERT_YYYYMM = "yyyymm"
+COMBINED_NICKNAME_MAX = 24
 
 # --- SQL Server authentication -------------------------------------------
 # Only Windows authentication is wired up. The SQL login mode is reserved so
@@ -248,14 +258,141 @@ def normalize_source_import(payload: Any, project_name: str = "") -> Dict[str, A
     payloads stay identical for the same logical inputs.
     """
     data = payload if isinstance(payload, dict) else {}
-    return {
+    source_type = normalize_source_type(data.get("source_type"))
+    out = {
         "json_format": SOURCE_IMPORT_JSON_FORMAT,
         "project_name": _text(data.get("project_name")) or _text(project_name),
-        "source_type": normalize_source_type(data.get("source_type")),
+        "source_type": source_type,
         "mssql": normalize_mssql_profile(data.get("mssql")),
         "last_import": normalize_last_import(data.get("last_import")),
         "refresh_scope": normalize_refresh_scope(data.get("refresh_scope")),
     }
+    # Single-table records keep exactly their historical shape: the block is
+    # emitted only for a combined source.
+    if source_type == SOURCE_TYPE_COMBINED:
+        out["combined"] = normalize_combined_source(data.get("combined"))
+    return out
+
+
+def _normalize_combined_table(item: Any) -> Dict[str, Any]:
+    data = item if isinstance(item, dict) else {}
+    table_type = SOURCE_TYPE_MSSQL if _text(data.get("source_type")).lower() == SOURCE_TYPE_MSSQL else SOURCE_TYPE_CSV
+    table: Dict[str, Any] = {
+        "id": _text(data.get("id")),
+        "nickname": _text(data.get("nickname"))[:COMBINED_NICKNAME_MAX].strip(),
+        "source_type": table_type,
+    }
+    if table_type == SOURCE_TYPE_MSSQL:
+        table["mssql"] = normalize_mssql_profile(data.get("mssql"))
+    else:
+        # Only stripped here; translating a drive letter to the share is the
+        # caller's job (`normalize_import_source_path`).
+        table["csv_path"] = _text(data.get("csv_path"))
+    return table
+
+
+def _normalize_key_map_entry(entry: Any) -> Optional[Dict[str, Any]]:
+    data = entry if isinstance(entry, dict) else {}
+    column = _text(data.get("column"))
+    if column:
+        out: Dict[str, Any] = {"column": column}
+        if _text(data.get("convert")).lower() == COMBINED_KEY_CONVERT_YYYYMM:
+            out["convert"] = COMBINED_KEY_CONVERT_YYYYMM
+        return out
+    if "fill" in data and data.get("fill") is not None:
+        return {"fill": _text(data.get("fill"))}
+    if data.get("any") is True:
+        return {"any": True}
+    return None
+
+
+def normalize_combined_source(payload: Any) -> Dict[str, Any]:
+    """Canonical `combined` block of a combined source's `source_import.json`.
+
+    The first table is the base; the others join onto the running result in
+    list order. Table ids are de-duplicated (first wins), entries naming an
+    unknown table are dropped, and every per-table map follows table order so
+    the payload is deterministic.
+    """
+    data = payload if isinstance(payload, dict) else {}
+    tables = []
+    seen_ids: set = set()
+    for item in data.get("tables") if isinstance(data.get("tables"), list) else []:
+        table = _normalize_combined_table(item)
+        if not table["id"] or table["id"] in seen_ids:
+            continue
+        seen_ids.add(table["id"])
+        tables.append(table)
+    ids = [table["id"] for table in tables]
+
+    keys = []
+    seen_keys: set = set()
+    for item in data.get("keys") if isinstance(data.get("keys"), list) else []:
+        key = item if isinstance(item, dict) else {}
+        name = _text(key.get("name"))
+        if not name or name.casefold() in seen_keys:
+            continue
+        seen_keys.add(name.casefold())
+        raw_map = key.get("map") if isinstance(key.get("map"), dict) else {}
+        key_map: Dict[str, Any] = {}
+        for table_id in ids:
+            entry = _normalize_key_map_entry(raw_map.get(table_id))
+            if entry is not None:
+                key_map[table_id] = entry
+        keys.append({"name": name, "map": key_map})
+
+    raw_rows = data.get("rows") if isinstance(data.get("rows"), dict) else {}
+    rows = {}
+    for table_id in ids[1:]:
+        rule = _text(raw_rows.get(table_id)).lower()
+        rows[table_id] = rule if rule in COMBINED_ROW_RULES else COMBINED_ROWS_ALL
+
+    raw_exclude = data.get("exclude") if isinstance(data.get("exclude"), dict) else {}
+    exclude: Dict[str, Any] = {}
+    for table_id in ids:
+        columns = []
+        for column in raw_exclude.get(table_id) if isinstance(raw_exclude.get(table_id), list) else []:
+            name = _text(column)
+            if name and name not in columns:
+                columns.append(name)
+        if columns:
+            exclude[table_id] = columns
+
+    raw_rename = data.get("rename") if isinstance(data.get("rename"), dict) else {}
+    rename: Dict[str, Any] = {}
+    for table_id in ids:
+        source = raw_rename.get(table_id) if isinstance(raw_rename.get(table_id), dict) else {}
+        names = {}
+        for old, new in source.items():
+            old_name, new_name = _text(old), _text(new)
+            if old_name and new_name and old_name != new_name:
+                names[old_name] = new_name
+        if names:
+            rename[table_id] = names
+
+    return {
+        "tables": tables,
+        "keys": keys,
+        "rows": rows,
+        "exclude": exclude,
+        "rename": rename,
+    }
+
+
+def combined_table_name(table: Any) -> str:
+    """A combined-source table's own name: the SQL table, or the CSV file name."""
+    data = _normalize_combined_table(table)
+    if data["source_type"] == SOURCE_TYPE_MSSQL:
+        return data["mssql"]["table"]
+    base = data["csv_path"].replace("/", "\\").rsplit("\\", 1)[-1]
+    return os.path.splitext(base)[0]
+
+
+def combined_source_label(combined: Any) -> str:
+    """Display label such as ``Combined: Loss, Closed, Reported, EP``."""
+    tables = normalize_combined_source(combined)["tables"]
+    names = [table["nickname"] or combined_table_name(table) for table in tables]
+    return "Combined: " + ", ".join(names)
 
 
 def csv_identity(csv_path: str) -> Dict[str, Any]:

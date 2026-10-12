@@ -132,6 +132,227 @@ class SourceImportNormalizationTests(unittest.TestCase):
         self.assertNotIn("password", json.dumps(payload))
 
 
+_STRAY_COMBINED = {
+    "tables": [
+        {"id": "t1", "nickname": "Loss", "source_type": "mssql",
+         "mssql": {"server": "S", "database": "D", "table": "dbo.Loss"}},
+        {"id": "t2", "source_type": "csv", "csv_path": "C:\\x\\EP.csv"},
+    ],
+    "keys": [{"name": "CO_CD", "map": {"t1": {"column": "CO_CD"}, "t2": {"column": "Co_Cd"}}}],
+}
+
+_LAST_IMPORT_CSV = {
+    "source_type": "csv",
+    "source_label": "\\\\share\\raw.csv",
+    "imported_at": "2026-10-01T12:00:00Z",
+    "imported_by": "tester",
+    "row_count": 10,
+    "column_count": 3,
+    "csv_path": "\\\\share\\raw.csv",
+    "csv_mtime_ns": 123,
+    "csv_size": 456,
+}
+
+_REFRESH_SCOPE = {
+    "dataset_types": ["Gross Loss--Paid"],
+    "reserving_class_types": [{"Name": "HOL", "Level": 5}],
+    "chosen_by": "tester",
+    "chosen_at": "2026-10-01T12:00:00Z",
+}
+
+
+class SingleTableGoldenPayloadTests(unittest.TestCase):
+    """Single-table records normalize to exactly the historical payload."""
+
+    def test_csv_record_is_unchanged_even_with_a_stray_combined_block(self) -> None:
+        payload = source_table_contract.normalize_source_import(
+            {
+                "project_name": "Demo",
+                "source_type": "csv",
+                "mssql": {"server": "", "database": "", "table": "", "authentication": "windows"},
+                "last_import": dict(_LAST_IMPORT_CSV),
+                "refresh_scope": dict(_REFRESH_SCOPE),
+                "combined": _STRAY_COMBINED,
+            }
+        )
+        self.assertEqual(
+            payload,
+            {
+                "json_format": "arcrho-source-import-v4",
+                "project_name": "Demo",
+                "source_type": "csv",
+                "mssql": {"server": "", "database": "", "table": "", "authentication": "windows"},
+                "last_import": _LAST_IMPORT_CSV,
+                "refresh_scope": _REFRESH_SCOPE,
+            },
+        )
+        self.assertEqual(
+            list(payload),
+            ["json_format", "project_name", "source_type", "mssql", "last_import", "refresh_scope"],
+        )
+
+    def test_mssql_record_is_unchanged_even_with_a_stray_combined_block(self) -> None:
+        last_import = {
+            "source_type": "mssql",
+            "source_label": "SQLPRD01.DW.dbo.Claims",
+            "imported_at": "2026-10-01T12:00:00Z",
+            "imported_by": "tester",
+            "row_count": 7,
+            "column_count": 2,
+            "csv_path": "",
+            "csv_mtime_ns": None,
+            "csv_size": None,
+        }
+        payload = source_table_contract.normalize_source_import(
+            {
+                "source_type": "mssql",
+                "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Claims"},
+                "last_import": dict(last_import),
+                "combined": _STRAY_COMBINED,
+            },
+            "Demo",
+        )
+        self.assertEqual(
+            payload,
+            {
+                "json_format": "arcrho-source-import-v4",
+                "project_name": "Demo",
+                "source_type": "mssql",
+                "mssql": {
+                    "server": "SQLPRD01",
+                    "database": "DW",
+                    "table": "dbo.Claims",
+                    "authentication": "windows",
+                },
+                "last_import": last_import,
+                "refresh_scope": source_table_contract.empty_refresh_scope(),
+            },
+        )
+
+    def test_empty_and_unknown_records_still_fall_back_to_csv_without_combined(self) -> None:
+        for raw in ({}, {"source_type": "oracle", "combined": _STRAY_COMBINED}):
+            with self.subTest(raw=raw):
+                payload = source_table_contract.normalize_source_import(raw, "Demo")
+                self.assertEqual(payload["source_type"], "csv")
+                self.assertNotIn("combined", payload)
+
+    def test_csv_identity_match_stays_csv_only(self) -> None:
+        identity = {"csv_path": "\\\\share\\raw.csv", "csv_mtime_ns": 123, "csv_size": 456}
+        self.assertTrue(source_table_contract.same_csv_identity(_LAST_IMPORT_CSV, identity))
+        for other in ("mssql", "combined"):
+            with self.subTest(source_type=other):
+                self.assertFalse(
+                    source_table_contract.same_csv_identity(
+                        dict(_LAST_IMPORT_CSV, source_type=other), identity
+                    )
+                )
+
+
+class CombinedSourceContractTests(unittest.TestCase):
+    canonical = {
+        "tables": [
+            {"id": "t1", "nickname": "Loss", "source_type": "mssql",
+             "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Loss",
+                       "authentication": "windows"}},
+            {"id": "t2", "nickname": "", "source_type": "mssql",
+             "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Closed",
+                       "authentication": "windows"}},
+            {"id": "t4", "nickname": "EP", "source_type": "csv",
+             "csv_path": "\\\\share\\monthly\\EP.csv"},
+        ],
+        "keys": [
+            {"name": "CO_CD", "map": {"t1": {"column": "CO_CD"}, "t4": {"column": "Co_Cd"}}},
+            {"name": "sys_yrmo", "map": {"t1": {"column": "sys_yrmo"}, "t2": {"any": True},
+                                          "t4": {"fill": "0"}}},
+            {"name": "acc_yrmo", "map": {"t1": {"column": "acc_yrmo"},
+                                          "t4": {"column": "acc_yrmo", "convert": "yyyymm"}}},
+        ],
+        "rows": {"t2": "base", "t4": "match"},
+        "exclude": {"t4": ["FACID"]},
+        "rename": {"t2": {"Earned Premium": "Budget Premium"}},
+    }
+
+    def test_a_combined_record_round_trips(self) -> None:
+        payload = source_table_contract.normalize_source_import(
+            {"source_type": "combined", "combined": self.canonical}, "Demo"
+        )
+        self.assertEqual(payload["source_type"], "combined")
+        self.assertEqual(payload["combined"], self.canonical)
+        self.assertEqual(list(payload)[-1], "combined")
+        again = source_table_contract.normalize_source_import(json.loads(json.dumps(payload)))
+        self.assertEqual(again, payload)
+
+    def test_last_import_accepts_combined(self) -> None:
+        record = source_table_contract.normalize_last_import({"source_type": "Combined"})
+        self.assertEqual(record["source_type"], "combined")
+        self.assertEqual(source_table_contract.normalize_source_type("combined"), "combined")
+
+    def test_missing_block_normalizes_to_an_empty_one(self) -> None:
+        payload = source_table_contract.normalize_source_import({"source_type": "combined"})
+        self.assertEqual(
+            payload["combined"],
+            {"tables": [], "keys": [], "rows": {}, "exclude": {}, "rename": {}},
+        )
+
+    def test_normalization_drops_bad_entries_and_keeps_order(self) -> None:
+        combined = source_table_contract.normalize_combined_source(
+            {
+                "tables": [
+                    {"id": "t1", "nickname": "  A nickname that is far too long  ",
+                     "source_type": "mssql", "mssql": {"server": "S", "database": "D",
+                                                       "table": "dbo.X", "password": "p"}},
+                    {"id": "t1", "source_type": "csv", "csv_path": "dup.csv"},
+                    {"id": "", "source_type": "csv", "csv_path": "noid.csv"},
+                    {"id": "t3", "source_type": "oracle", "csv_path": "  Z:\\x\\Y.csv  "},
+                    "junk",
+                ],
+                "keys": [
+                    {"name": "K", "map": {"t9": {"column": "K"}, "t3": {"column": "k", "convert": "bad"},
+                                          "t1": {"column": "K"}}},
+                    {"name": "k", "map": {"t1": {"column": "dup"}}},
+                    {"name": "", "map": {"t1": {"column": "X"}}},
+                    {"name": "F", "map": {"t1": {}, "t3": {"fill": ""}}},
+                ],
+                "rows": {"t1": "match", "t3": "sideways", "t9": "base"},
+                "exclude": {"t3": ["A", " A ", "", "B"], "t9": ["X"], "t1": []},
+                "rename": {"t3": {"A": "B", "C": "", "D": "D"}, "t9": {"X": "Y"}},
+            }
+        )
+        self.assertEqual(
+            combined,
+            {
+                "tables": [
+                    {"id": "t1", "nickname": "A nickname that is far t", "source_type": "mssql",
+                     "mssql": {"server": "S", "database": "D", "table": "dbo.X",
+                               "authentication": "windows"}},
+                    {"id": "t3", "nickname": "", "source_type": "csv", "csv_path": "Z:\\x\\Y.csv"},
+                ],
+                "keys": [
+                    {"name": "K", "map": {"t1": {"column": "K"}, "t3": {"column": "k"}}},
+                    {"name": "F", "map": {"t3": {"fill": ""}}},
+                ],
+                "rows": {"t3": "all"},
+                "exclude": {"t3": ["A", "B"]},
+                "rename": {"t3": {"A": "B"}},
+            },
+        )
+        self.assertLessEqual(
+            len(combined["tables"][0]["nickname"]), source_table_contract.COMBINED_NICKNAME_MAX
+        )
+
+    def test_label_uses_nicknames_then_table_names_in_order(self) -> None:
+        self.assertEqual(
+            source_table_contract.combined_source_label(self.canonical),
+            "Combined: Loss, dbo.Closed, EP",
+        )
+        self.assertEqual(
+            source_table_contract.combined_source_label(
+                {"tables": [{"id": "a", "source_type": "csv", "csv_path": "\\\\s\\d\\Reported.csv"}]}
+            ),
+            "Combined: Reported",
+        )
+
+
 class MssqlConnectionHistoryTests(unittest.TestCase):
     """The server-shared list of previously used server/database pairs."""
 
