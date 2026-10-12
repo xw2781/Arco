@@ -1,0 +1,862 @@
+<title>Project Settings Compare</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+/* Layout: PS shell kept as is (project tree | detail), detail becomes a project-by-row matrix with a right inspector and a pending-changes bar. */
+:root {
+  --bg: #eef2f6;
+  --panel: #ffffff;
+  --panel-2: #f8fafc;
+  --panel-3: #f4f7fa;
+  --line: #d8dde3;
+  --line-2: #e6eaef;
+  --text: #1f2937;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --accent: #2b6df6;
+  --accent-soft: #e8f0fe;
+  --diff: #b45309;
+  --diff-soft: #fff6e6;
+  --miss: #be123c;
+  --miss-soft: #fdf0f3;
+  --edit: #2b6df6;
+  --edit-soft: #eef4ff;
+  --ok: #15803d;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08);
+  --font: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
+  --mono: Consolas, "Cascadia Mono", "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #12161c; --panel: #1a1f27; --panel-2: #1e242d; --panel-3: #222934;
+    --line: #313946; --line-2: #2a313c; --text: #e2e8f0; --muted: #9aa7b8; --faint: #6b7787;
+    --accent: #6c9cff; --accent-soft: #1f2d4a;
+    --diff: #f0a54a; --diff-soft: #3a2a14; --miss: #f37291; --miss-soft: #3a1b24;
+    --edit: #6c9cff; --edit-soft: #1d2a44; --ok: #4ade80;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3); --shadow-md: 0 8px 20px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12161c; --panel: #1a1f27; --panel-2: #1e242d; --panel-3: #222934;
+  --line: #313946; --line-2: #2a313c; --text: #e2e8f0; --muted: #9aa7b8; --faint: #6b7787;
+  --accent: #6c9cff; --accent-soft: #1f2d4a;
+  --diff: #f0a54a; --diff-soft: #3a2a14; --miss: #f37291; --miss-soft: #3a1b24;
+  --edit: #6c9cff; --edit-soft: #1d2a44; --ok: #4ade80;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3); --shadow-md: 0 8px 20px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 12px/1.4 var(--font); padding-inline: 16px; padding-block: 16px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.num { font-variant-numeric: tabular-nums; }
+
+.page { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.intro { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.intro h1 { margin: 0; font-size: 20px; line-height: 1.15; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); max-width: 90ch; }
+
+/* App frame */
+.frame { display: grid; grid-template-columns: 236px 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; height: 720px; box-shadow: var(--shadow-sm); }
+
+/* Tree */
+.tree { border-right: 1px solid var(--line); background: var(--panel-2); display: flex; flex-direction: column; min-height: 0; }
+.tree-head { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-bottom: 1px solid var(--line); font-weight: bold; }
+.tree-head .grow { flex: 1; }
+.tree-head .count { font-weight: normal; color: var(--muted); }
+.link-btn { border: 0; background: none; color: var(--accent); padding: 2px 4px; border-radius: 3px; }
+.link-btn:hover { background: var(--accent-soft); }
+.tree-body { overflow: auto; padding: 6px 0; flex: 1; }
+.folder { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; color: var(--muted); font-weight: bold; font-size: 11px; }
+.proj { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 22px; cursor: pointer; transition: background .12s; }
+.proj:hover { background: var(--panel-3); }
+.proj.on { background: var(--accent-soft); }
+.proj input { margin: 0; accent-color: var(--accent); }
+.proj .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-foot { border-top: 1px solid var(--line); padding: 8px 10px; color: var(--muted); font-size: 11px; }
+
+.swatch { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.lock { width: 11px; height: 11px; color: var(--faint); flex: none; }
+
+/* Detail */
+.detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.dhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line-2); }
+.dtitle { font-size: 15px; font-weight: bold; margin-right: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 4px 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.chip.base { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chip .tag { font-size: 10px; color: var(--accent); font-weight: bold; }
+.chip .x { border: 0; background: none; color: var(--faint); width: 18px; height: 18px; border-radius: 3px; padding: 0; line-height: 1; }
+.chip .x:hover { background: var(--panel-3); color: var(--text); }
+
+.ribbon { display: flex; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.rtab { position: relative; border: 1px solid transparent; border-bottom: 0; background: none; padding: 7px 12px 8px; border-radius: 4px 4px 0 0; color: var(--muted); white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.rtab:hover:not(:disabled) { color: var(--text); background: var(--panel-3); }
+.rtab.on { color: var(--accent); background: var(--panel); border-color: var(--line); margin-bottom: -1px; font-weight: bold; }
+.rtab:disabled { color: var(--faint); cursor: not-allowed; }
+.badge { min-width: 18px; height: 16px; padding: 0 5px; border-radius: 8px; font-size: 10px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; background: var(--diff-soft); color: var(--diff); }
+.badge.zero { background: var(--panel-3); color: var(--faint); }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 14px; border-bottom: 1px solid var(--line-2); }
+.search { height: 26px; width: 200px; border: 1px solid var(--line); border-radius: 4px; padding: 0 8px; background: var(--panel); color: var(--text); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid var(--line); background: var(--panel); padding: 4px 9px; color: var(--muted); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: bold; }
+.switch { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; }
+.switch .trk { width: 28px; height: 16px; border-radius: 8px; background: var(--line); position: relative; transition: background .15s; }
+.switch .trk::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: var(--shadow-sm); }
+.switch[aria-checked="true"] .trk { background: var(--accent); }
+.switch[aria-checked="true"] .trk::after { transform: translateX(12px); }
+.legend { margin-left: auto; display: flex; gap: 10px; color: var(--muted); font-size: 11px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.lg { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--line); }
+.lg.same { background: var(--panel); }
+.lg.diff { background: var(--diff-soft); border-color: var(--diff); }
+.lg.miss { background: var(--miss-soft); border-color: var(--miss); border-style: dashed; }
+.lg.edit { background: var(--edit-soft); border-color: var(--edit); }
+
+.work { flex: 1; display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+.grid-wrap { overflow: auto; min-width: 0; }
+table.cmp { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+.cmp th, .cmp td { border-bottom: 1px solid var(--line-2); border-right: 1px solid var(--line-2); padding: 6px 8px; text-align: left; vertical-align: top; }
+.cmp thead th { position: sticky; top: 0; z-index: 2; background: var(--panel-2); font-weight: bold; border-bottom-color: var(--line); }
+.cmp .rk { position: sticky; left: 0; z-index: 1; background: var(--panel); width: 170px; min-width: 170px; font-weight: bold; }
+.cmp thead .rk { z-index: 3; background: var(--panel-2); }
+.cmp td.rk { box-shadow: inset 3px 0 0 transparent; }
+.cmp tr.rdiff td.rk { box-shadow: inset 3px 0 0 var(--diff); }
+.cmp tr.sel td { background-color: var(--panel-3); }
+.cmp tr.sel td.rk { background: var(--panel-3); }
+.ph { display: flex; flex-direction: column; gap: 3px; min-width: 196px; }
+.ph-top { display: flex; align-items: center; gap: 6px; }
+.ph-top .nm { white-space: nowrap; }
+.ph-sub { font-weight: normal; color: var(--muted); font-size: 11px; display: flex; gap: 8px; align-items: center; }
+.star { border: 0; background: none; padding: 0 2px; color: var(--faint); font-size: 13px; line-height: 1; }
+.star.on { color: var(--accent); }
+.star:hover { color: var(--accent); }
+
+td.c { cursor: default; width: 220px; max-width: 260px; position: relative; }
+td.c.diff { background: var(--diff-soft); }
+td.c.miss { background: var(--miss-soft); }
+td.c.edit { background: var(--edit-soft); }
+td.c.edit::before { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--edit); }
+td.c.focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+td.c.locked { color: var(--muted); }
+.fl { display: grid; grid-template-columns: 74px 1fr; gap: 6px; line-height: 1.45; }
+.fk { color: var(--faint); font-size: 11px; }
+.fv { overflow-wrap: anywhere; }
+.fv.d { color: var(--diff); font-weight: bold; }
+.fv.e { color: var(--edit); font-weight: bold; }
+.mono { font-family: var(--mono); font-size: 11.5px; }
+.missing { display: flex; align-items: center; gap: 6px; color: var(--miss); font-style: italic; }
+.add-btn { border: 1px dashed var(--miss); color: var(--miss); background: none; border-radius: 3px; padding: 1px 6px; font-style: normal; font-size: 11px; }
+.add-btn:hover { background: var(--panel); }
+.cell-input { width: 100%; height: 24px; border: 1px solid var(--accent); border-radius: 3px; padding: 0 6px; background: var(--panel); color: var(--text); font: inherit; }
+.empty-row td { color: var(--muted); padding: 24px; text-align: center; }
+
+/* Inspector */
+.insp { border-left: 1px solid var(--line); background: var(--panel-2); display: flex; flex-direction: column; min-height: 0; }
+.insp-head { padding: 10px 12px; border-bottom: 1px solid var(--line-2); }
+.insp-head .t { font-weight: bold; font-size: 13px; }
+.insp-head .s { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.insp-body { overflow: auto; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+.insp-empty { color: var(--muted); padding: 18px 12px; }
+.fgroup { display: flex; flex-direction: column; gap: 4px; }
+.fgroup .lbl { font-size: 11px; font-weight: bold; color: var(--muted); display: flex; justify-content: space-between; }
+.fgroup .lbl .st { font-weight: normal; }
+.fgroup .lbl .st.d { color: var(--diff); }
+.prow { display: grid; grid-template-columns: 8px 1fr auto; gap: 6px; align-items: center; }
+.prow input, .prow select { width: 100%; height: 24px; border: 1px solid var(--line); border-radius: 3px; padding: 0 6px; background: var(--panel); color: var(--text); font: inherit; min-width: 0; }
+.prow input.d, .prow select.d { border-color: var(--diff); background: var(--diff-soft); }
+.prow input.e, .prow select.e { border-color: var(--edit); background: var(--edit-soft); }
+.prow input:disabled, .prow select:disabled { color: var(--muted); background: var(--panel-3); }
+.prow .miss-txt { color: var(--miss); font-style: italic; font-size: 11px; }
+.use-all { border: 1px solid var(--line); background: var(--panel); border-radius: 3px; padding: 2px 6px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.use-all:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.use-all:disabled { opacity: .45; cursor: default; }
+.insp-actions { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line-2); padding-top: 10px; }
+.btn { height: 26px; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 0 10px; transition: border-color .12s, background .12s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* Pending bar */
+.pending { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--panel-2); min-height: 44px; flex-wrap: wrap; position: relative; }
+.pending .msg { flex: 1; color: var(--muted); min-width: 200px; }
+.pending .msg b { color: var(--text); }
+.pending .msg .projs { display: inline-flex; gap: 6px; margin-left: 6px; flex-wrap: wrap; }
+.pp { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.review { position: absolute; bottom: calc(100% + 6px); right: 14px; width: 440px; max-width: calc(100% - 28px); max-height: 340px; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow-md); padding: 8px 0; z-index: 20; }
+.review h4 { margin: 6px 12px 4px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.rv { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 4px 12px; align-items: start; }
+.rv:hover { background: var(--panel-3); }
+.rv .path { color: var(--muted); font-size: 11px; }
+.rv .chg { overflow-wrap: anywhere; }
+.rv .old { color: var(--faint); text-decoration: line-through; }
+.rv .new { color: var(--edit); font-weight: bold; }
+.saving { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.srow { display: flex; align-items: center; gap: 8px; }
+.bar { flex: 1; max-width: 180px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .18s; }
+.srow.done .bar i { background: var(--ok); }
+.srow .st { color: var(--muted); font-size: 11px; min-width: 140px; }
+.srow.done .st { color: var(--ok); }
+
+/* Context menu, toast */
+.menu { position: fixed; z-index: 50; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; box-shadow: var(--shadow-md); padding: 4px 0; min-width: 220px; font-size: 11px; }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 6px 12px; }
+.menu button:hover:not(:disabled) { background: var(--accent-soft); }
+.menu button:disabled { color: var(--faint); cursor: default; }
+.menu hr { border: 0; border-top: 1px solid var(--line-2); margin: 4px 0; }
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 12px); opacity: 0; background: var(--text); color: var(--panel); padding: 8px 14px; border-radius: 5px; box-shadow: var(--shadow-md); transition: opacity .18s, transform .18s; pointer-events: none; z-index: 60; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.empty-detail { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); flex-direction: column; gap: 6px; }
+
+/* Notes under the demo */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.note h3 { margin: 0 0 6px; font-size: 12px; }
+.note ul { margin: 0; padding-left: 16px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 900px) {
+  .frame { grid-template-columns: 1fr; height: auto; }
+  .tree { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .work { grid-template-columns: 1fr; }
+  .grid-wrap { max-height: 460px; }
+  .insp { border-left: 0; border-top: 1px solid var(--line); }
+  .legend { margin-left: 0; }
+}
+</style>
+
+<div class="page">
+  <div class="intro">
+    <h1>Project Settings: Compare Mode</h1>
+    <p>Concept demo. Tick two or more projects in the tree to compare them side by side. Edits stage until you save, then go to each project in one pass. All data below is sample data.</p>
+  </div>
+
+  <div class="frame">
+    <aside class="tree">
+      <div class="tree-head"><span>Projects</span><span class="count num" id="selCount"></span><span class="grow"></span><button class="link-btn" id="clearSel" type="button">Clear</button></div>
+      <div class="tree-body" id="tree"></div>
+      <div class="tree-foot">Tick projects to compare. One ticked project opens the normal single-project view.</div>
+    </aside>
+
+    <section class="detail" id="detail">
+      <div class="dhead" id="dhead"></div>
+      <div class="ribbon" id="ribbon" role="tablist"></div>
+      <div class="toolbar">
+        <input class="search" id="search" type="search" placeholder="Filter rows" aria-label="Filter rows">
+        <div class="seg" id="fieldSeg" role="group" aria-label="Fields shown"></div>
+        <button class="switch" id="diffOnly" type="button" role="switch" aria-checked="false"><span class="trk"></span><span>Differences only</span></button>
+        <div class="legend">
+          <span><i class="lg same"></i>Same as base</span>
+          <span><i class="lg diff"></i>Differs</span>
+          <span><i class="lg miss"></i>Not defined</span>
+          <span><i class="lg edit"></i>Unsaved edit</span>
+        </div>
+      </div>
+      <div class="work">
+        <div class="grid-wrap" id="gridWrap"><table class="cmp" id="grid"></table></div>
+        <aside class="insp" id="insp"></aside>
+      </div>
+      <div class="pending" id="pending"></div>
+    </section>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h3>Selecting Projects</h3><ul>
+      <li>Tree rows get a tick box. One tick keeps today's page; two or more switch the detail area to compare mode.</li>
+      <li>The first ticked project is the base. Click the star on any column to change it.</li>
+      <li>Locked projects show as read-only columns.</li>
+    </ul></div>
+    <div class="note"><h3>Reading Differences</h3><ul>
+      <li>Each tab shows how many rows differ from the base, so you can see where to look first.</li>
+      <li>Rows are the union of every project's entries. A row a project lacks shows as Not Defined.</li>
+      <li>Pick one field to compare, or All Fields for the full row. Differences Only hides matching rows.</li>
+    </ul></div>
+    <div class="note"><h3>Editing Many Projects</h3><ul>
+      <li>Double-click a cell to edit it, or edit every project's value for a row in the right panel.</li>
+      <li>Use For All copies one project's value to the others. Right-click a cell for row-level copies.</li>
+      <li>Compare mode stages edits instead of auto-saving. Save writes each project in turn and starts its usual refresh jobs.</li>
+    </ul></div>
+    <div class="note"><h3>Out of Scope</h3><ul>
+      <li>Source Data and Audit Log stay single-project; their tabs are disabled in compare mode.</li>
+      <li>Reserving period and table import differ by design between projects, so they are left out of the comparison.</li>
+    </ul></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const PROJECTS = [
+  { id: "nj05", name: "NJ_Annual_Prod_202605", folder: "NJ", color: "#2b6df6" },
+  { id: "nj02", name: "NJ_Annual_Prod_202602", folder: "NJ", color: "#0f766e" },
+  { id: "nj03", name: "NJ_Quarterly_202603", folder: "NJ", color: "#7c3aed" },
+  { id: "ma", name: "Fake MA BI Total", folder: "Test", color: "#b45309" },
+  { id: "ny", name: "Fake NY Q2-May Test", folder: "Test", color: "#be123c", locked: true },
+  { id: "pa", name: "PA_Annual_202605", folder: "PA", color: "#15803d" },
+];
+const P = Object.fromEntries(PROJECTS.map(p => [p.id, p]));
+
+// Rows: base values plus per-project overrides; null means the project lacks the row.
+const SECTIONS = {
+  datasetTypes: {
+    label: "Dataset Types",
+    fields: ["Data Format", "Category", "Calculated", "Formula"],
+    choices: { "Calculated": ["Yes", "No"], "Data Format": ["Number", "Ratio", "Count", "Percent"] },
+    mono: ["Formula"],
+    rows: [
+      { key: "Paid Loss", base: { "Data Format": "Number", "Category": "Loss", "Calculated": "No", "Formula": "" } },
+      { key: "Incurred Loss", base: { "Data Format": "Number", "Category": "Loss", "Calculated": "No", "Formula": "" } },
+      { key: "Case Reserve", base: { "Data Format": "Number", "Category": "Loss", "Calculated": "Yes", "Formula": "[Incurred Loss] - [Paid Loss]" },
+        over: { ma: { "Calculated": "No", "Formula": "" } } },
+      { key: "Paid ALAE", base: { "Data Format": "Number", "Category": "Expense", "Calculated": "No", "Formula": "" }, over: { pa: null } },
+      { key: "Paid Loss + ALAE", base: { "Data Format": "Number", "Category": "Loss", "Calculated": "Yes", "Formula": "[Paid Loss] + [Paid ALAE]" },
+        over: { nj02: { "Formula": "[Paid Loss]+[Paid ALAE]" }, ny: null, pa: null } },
+      { key: "Reported Count", base: { "Data Format": "Count", "Category": "Count", "Calculated": "No", "Formula": "" } },
+      { key: "Closed Count", base: { "Data Format": "Count", "Category": "Count", "Calculated": "No", "Formula": "" }, over: { ny: { "Data Format": "Number" } } },
+      { key: "Earned Premium", base: { "Data Format": "Number", "Category": "Exposure", "Calculated": "No", "Formula": "" }, over: { ma: { "Category": "Premium" }, ny: { "Category": "Premium" } } },
+      { key: "Paid Severity", base: { "Data Format": "Number", "Category": "Severity", "Calculated": "Yes", "Formula": "[Paid Loss] / [Closed Count]" },
+        over: { nj02: { "Formula": "[Paid Loss] / [Reported Count]" } } },
+      { key: "Loss Ratio", base: { "Data Format": "Percent", "Category": "Ratio", "Calculated": "Yes", "Formula": "[Incurred Loss] / [Earned Premium]" },
+        over: { ma: { "Data Format": "Ratio" } } },
+      { key: "Salvage & Subro", base: { "Data Format": "Number", "Category": "Recovery", "Calculated": "No", "Formula": "" }, over: { nj05: null, nj02: null, nj03: null } },
+      { key: "Net Paid Loss", base: { "Data Format": "Number", "Category": "Loss", "Calculated": "Yes", "Formula": "[Paid Loss] - [Salvage & Subro]" }, over: { nj05: null, nj02: null, nj03: null } },
+    ],
+  },
+  reservingClassTypes: {
+    label: "Reserving Class Types",
+    fields: ["Level", "Formula"],
+    mono: ["Formula"],
+    rows: [
+      { key: "State", base: { "Level": "1", "Formula": "{ST}" } },
+      { key: "Line", base: { "Level": "2", "Formula": "{LOB}" } },
+      { key: "Coverage", base: { "Level": "3", "Formula": "{COV}" }, over: { ma: { "Formula": "{COVERAGE_CD}" } } },
+      { key: "BI Total", base: { "Level": "3", "Formula": "{COV} in ('BI','UM','UIM')" }, over: { nj02: { "Formula": "{COV} in ('BI','UM')" } } },
+      { key: "PD Total", base: { "Level": "3", "Formula": "{COV} in ('PD','COLL','COMP')" } },
+      { key: "Program", base: { "Level": "4", "Formula": "{PGM}" }, over: { ma: null, ny: null } },
+      { key: "Territory Group", base: { "Level": "4", "Formula": "left({TERR}, 2)" }, over: { nj05: null, nj02: null, nj03: null, pa: null } },
+    ],
+  },
+  fieldMapping: {
+    label: "Field Mapping",
+    fields: ["Mapped To", "Data Type"],
+    choices: { "Data Type": ["Date", "Text", "Number"] },
+    rows: [
+      { key: "ACC_DT", base: { "Mapped To": "Origin Date", "Data Type": "Date" } },
+      { key: "EVAL_DT", base: { "Mapped To": "Development Date", "Data Type": "Date" } },
+      { key: "ST", base: { "Mapped To": "State", "Data Type": "Text" } },
+      { key: "LOB", base: { "Mapped To": "Line", "Data Type": "Text" } },
+      { key: "COV", base: { "Mapped To": "Coverage", "Data Type": "Text" }, over: { ma: null } },
+      { key: "COVERAGE_CD", base: { "Mapped To": "Coverage", "Data Type": "Text" }, over: { nj05: null, nj02: null, nj03: null, ny: null, pa: null } },
+      { key: "PD_LOSS", base: { "Mapped To": "Paid Loss", "Data Type": "Number" } },
+      { key: "INC_LOSS", base: { "Mapped To": "Incurred Loss", "Data Type": "Number" } },
+      { key: "PD_ALAE", base: { "Mapped To": "Paid ALAE", "Data Type": "Number" }, over: { pa: { "Mapped To": "(Ignored)" } } },
+      { key: "RPT_CNT", base: { "Mapped To": "Reported Count", "Data Type": "Number" } },
+      { key: "EP", base: { "Mapped To": "Earned Premium", "Data Type": "Number" }, over: { ny: { "Data Type": "Text" } } },
+    ],
+  },
+  dataProcessing: {
+    label: "Data Processing",
+    fields: ["When", "Then", "Enabled"],
+    choices: { "Enabled": ["Yes", "No"] },
+    rows: [
+      { key: "Cap BI at 1M", base: { "When": "Coverage = BI", "Then": "Cap Incurred Loss at 1,000,000", "Enabled": "Yes" },
+        over: { nj02: { "Then": "Cap Incurred Loss at 500,000" }, ma: { "Enabled": "No" } } },
+      { key: "Drop Test Claims", base: { "When": "Program = TEST", "Then": "Exclude Row", "Enabled": "Yes" }, over: { ma: null, ny: null } },
+      { key: "Merge UM Into BI", base: { "When": "Coverage = UM", "Then": "Set Coverage to BI", "Enabled": "No" } },
+      { key: "Large Loss Flag", base: { "When": "Incurred Loss > 250,000", "Then": "Set Flag LL", "Enabled": "Yes" }, over: { nj05: null, pa: null } },
+    ],
+  },
+  general: {
+    label: "Project Settings",
+    fields: ["Value"],
+    rows: [
+      { key: "Origin Length", base: { "Value": "12 Months" }, over: { nj03: { "Value": "3 Months" }, ny: { "Value": "3 Months" } } },
+      { key: "Development Length", base: { "Value": "12 Months" }, over: { nj03: { "Value": "3 Months" }, ny: { "Value": "3 Months" } } },
+      { key: "Display Precision", base: { "Value": "0" }, over: { ma: { "Value": "2" } } },
+      { key: "Default Average", base: { "Value": "5-Yr Volume Weighted" }, over: { nj02: { "Value": "3-Yr Volume Weighted" } } },
+      { key: "Tail Method", base: { "Value": "Inverse Power" } },
+      { key: "Owner", base: { "Value": "Reserving - Personal Auto" }, over: { ma: { "Value": "Model Validation" }, ny: { "Value": "Model Validation" } } },
+    ],
+  },
+};
+const TAB_ORDER = [
+  ["sourceData", "Source Data", true],
+  ["fieldMapping", "Field Mapping"],
+  ["reservingClassTypes", "Reserving Class Types"],
+  ["datasetTypes", "Dataset Types"],
+  ["dataProcessing", "Data Processing"],
+  ["auditLog", "Audit Log", true],
+  ["general", "Project Settings"],
+];
+
+const state = {
+  selected: ["nj05", "nj02", "ma", "ny"],
+  base: "nj05",
+  section: "datasetTypes",
+  field: "all",
+  diffOnly: false,
+  query: "",
+  selRow: "Paid Severity",
+  focus: null,          // { pid, key }
+  editing: null,        // { pid, key, field }
+  edits: {},            // "pid|sec|key" -> { fields: {}, added: bool }
+  reviewOpen: false,
+  saving: null,
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ek = (pid, sec, key) => `${pid}|${sec}|${key}`;
+const lockSvg = '<svg class="lock" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>';
+
+function rowOf(sec, key) { return SECTIONS[sec].rows.find(r => r.key === key); }
+function origMissing(pid, row) { return row.over && row.over[pid] === null; }
+function isMissing(pid, sec, row) {
+  const e = state.edits[ek(pid, sec, row.key)];
+  return origMissing(pid, row) && !(e && e.added);
+}
+function origVal(pid, row, f) {
+  if (origMissing(pid, row)) return undefined;
+  const o = row.over && row.over[pid];
+  return o && f in o ? o[f] : row.base[f];
+}
+function val(pid, sec, row, f) {
+  if (isMissing(pid, sec, row)) return undefined;
+  const e = state.edits[ek(pid, sec, row.key)];
+  if (e && f in e.fields) return e.fields[f];
+  if (e && e.added) return origVal(state.base, row, f) ?? row.base[f];
+  return origVal(pid, row, f);
+}
+function isEdited(pid, sec, row, f) {
+  const e = state.edits[ek(pid, sec, row.key)];
+  if (!e) return false;
+  if (e.added) return true;
+  return f ? f in e.fields : Object.keys(e.fields).length > 0;
+}
+function setVal(pid, sec, key, f, v) {
+  if (P[pid].locked) return;
+  const row = rowOf(sec, key);
+  const k = ek(pid, sec, key);
+  const e = state.edits[k] || { fields: {}, added: false };
+  if (isMissing(pid, sec, row)) e.added = true;
+  if (!e.added && v === origVal(pid, row, f)) delete e.fields[f]; else e.fields[f] = v;
+  if (!e.added && !Object.keys(e.fields).length) delete state.edits[k]; else state.edits[k] = e;
+}
+function addRow(pid, sec, key) {
+  if (P[pid].locked) return;
+  state.edits[ek(pid, sec, key)] = { fields: {}, added: true };
+}
+function cellStatus(pid, sec, row, f) {
+  if (isMissing(pid, sec, row)) return "miss";
+  if (pid === state.base) return "same";
+  if (isMissing(state.base, sec, row)) return "diff";
+  const fs = f ? [f] : SECTIONS[sec].fields;
+  return fs.some(x => val(pid, sec, row, x) !== val(state.base, sec, row, x)) ? "diff" : "same";
+}
+function rowDiffers(sec, row, f) {
+  return state.selected.some(pid => cellStatus(pid, sec, row, f) !== "same");
+}
+function diffCount(sec) { return SECTIONS[sec].rows.filter(r => rowDiffers(sec, r)).length; }
+function projDiffCount(pid, sec) {
+  if (pid === state.base) return null;
+  return SECTIONS[sec].rows.filter(r => cellStatus(pid, sec, r) !== "same").length;
+}
+function show(v) { return v === "" ? "(blank)" : v; }
+
+/* Tree */
+function renderTree() {
+  const folders = [...new Set(PROJECTS.map(p => p.folder))];
+  $("tree").innerHTML = folders.map(f => `
+    <div class="folder"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 4.5h4l1.5 1.5h7.5v7.5h-13z"/></svg>${esc(f)}</div>
+    ${PROJECTS.filter(p => p.folder === f).map(p => {
+      const on = state.selected.includes(p.id);
+      return `<label class="proj ${on ? "on" : ""}" title="${esc(p.name)}">
+        <input type="checkbox" id="tick-${p.id}" data-pid="${p.id}" ${on ? "checked" : ""}>
+        <span class="swatch" style="background:${p.color}"></span>
+        <span class="nm">${esc(p.name)}</span>${p.locked ? lockSvg : ""}</label>`;
+    }).join("")}`).join("");
+  $("selCount").textContent = state.selected.length ? `· ${state.selected.length} Selected` : "";
+}
+$("tree").addEventListener("change", e => {
+  const pid = e.target.dataset.pid;
+  if (!pid) return;
+  toggleProject(pid, e.target.checked);
+});
+$("clearSel").addEventListener("click", () => { state.selected = []; render(); });
+function toggleProject(pid, on) {
+  if (on && !state.selected.includes(pid)) state.selected.push(pid);
+  if (!on) state.selected = state.selected.filter(x => x !== pid);
+  if (!state.selected.includes(state.base)) state.base = state.selected[0] || null;
+  render();
+}
+
+/* Header */
+function renderHead() {
+  const n = state.selected.length;
+  $("dhead").innerHTML = `<span class="dtitle">${n >= 2 ? `Comparing ${n} Projects` : n === 1 ? esc(P[state.selected[0]].name) : "No Project Selected"}</span>` +
+    state.selected.map(pid => {
+      const p = P[pid], b = pid === state.base;
+      return `<span class="chip ${b ? "base" : ""}"><span class="swatch" style="background:${p.color}"></span>${esc(p.name)}${p.locked ? lockSvg : ""}${b ? '<span class="tag">Base</span>' : ""}<button class="x" type="button" data-remove="${pid}" aria-label="Remove ${esc(p.name)} from comparison">×</button></span>`;
+    }).join("");
+}
+$("dhead").addEventListener("click", e => {
+  const pid = e.target.closest("[data-remove]")?.dataset.remove;
+  if (pid) toggleProject(pid, false);
+});
+
+/* Ribbon */
+function renderRibbon() {
+  const compare = state.selected.length >= 2;
+  $("ribbon").innerHTML = TAB_ORDER.map(([id, label, single]) => {
+    const dis = single && compare;
+    const c = !single && compare ? diffCount(id) : null;
+    return `<button class="rtab ${state.section === id ? "on" : ""}" type="button" role="tab" data-tab="${id}" ${dis ? 'disabled title="Open one project to use this tab"' : ""}>${label}${c !== null ? `<span class="badge num ${c ? "" : "zero"}" title="${c} rows differ">${c}</span>` : ""}</button>`;
+  }).join("");
+}
+$("ribbon").addEventListener("click", e => {
+  const t = e.target.closest("[data-tab]");
+  if (!t || t.disabled || !SECTIONS[t.dataset.tab]) return;
+  state.section = t.dataset.tab;
+  state.field = "all"; state.focus = null; state.editing = null;
+  state.selRow = SECTIONS[state.section].rows.find(r => rowDiffers(state.section, r))?.key || null;
+  render();
+});
+
+/* Toolbar */
+function renderSeg() {
+  const fs = SECTIONS[state.section].fields;
+  const opts = fs.length > 1 ? ["all", ...fs] : fs;
+  if (fs.length === 1) state.field = fs[0];
+  $("fieldSeg").innerHTML = opts.map(f => `<button type="button" data-field="${esc(f)}" class="${state.field === f ? "on" : ""}">${f === "all" ? "All Fields" : esc(f)}</button>`).join("");
+}
+$("fieldSeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-field]"); if (!b) return;
+  state.field = b.dataset.field; state.editing = null; render();
+});
+$("diffOnly").addEventListener("click", () => {
+  state.diffOnly = !state.diffOnly;
+  $("diffOnly").setAttribute("aria-checked", state.diffOnly);
+  render();
+});
+$("search").addEventListener("input", e => { state.query = e.target.value.trim().toLowerCase(); renderGrid(); });
+
+/* Grid */
+function cellHtml(pid, sec, row) {
+  const S = SECTIONS[sec];
+  const locked = P[pid].locked;
+  const single = state.field !== "all";
+  const st = cellStatus(pid, sec, row, single ? state.field : null);
+  const edited = isEdited(pid, sec, row, single ? state.field : null);
+  const focus = state.focus && state.focus.pid === pid && state.focus.key === row.key;
+  const cls = ["c", st === "same" ? "" : st, edited ? "edit" : "", focus ? "focus" : "", locked ? "locked" : ""].join(" ");
+  let inner;
+  if (st === "miss") {
+    inner = `<span class="missing">Not defined${!locked && !isMissing(state.base, sec, row) ? `<button class="add-btn" type="button" data-add="${pid}">+ Add from base</button>` : ""}</span>`;
+  } else if (single) {
+    const ed = state.editing;
+    if (ed && ed.pid === pid && ed.key === row.key && ed.field === state.field) {
+      const choices = S.choices && S.choices[state.field];
+      const v = val(pid, sec, row, state.field);
+      inner = choices
+        ? `<select class="cell-input" id="cellEditor">${choices.map(c => `<option ${c === v ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`
+        : `<input class="cell-input ${S.mono?.includes(state.field) ? "mono" : ""}" id="cellEditor" value="${esc(v)}">`;
+    } else {
+      const v = val(pid, sec, row, state.field);
+      inner = `<span class="fv ${S.mono?.includes(state.field) ? "mono" : ""}">${esc(show(v))}</span>`;
+    }
+  } else {
+    inner = S.fields.map(f => {
+      const v = val(pid, sec, row, f);
+      const d = pid !== state.base && !isMissing(state.base, sec, row) && v !== val(state.base, sec, row, f);
+      const e = isEdited(pid, sec, row, f);
+      if (f === "Formula" && v === "" && !d && !e) return "";
+      return `<div class="fl"><span class="fk">${esc(f)}</span><span class="fv ${S.mono?.includes(f) ? "mono" : ""} ${e ? "e" : d ? "d" : ""}">${esc(show(v))}</span></div>`;
+    }).join("");
+  }
+  return `<td class="${cls}" data-pid="${pid}" data-key="${esc(row.key)}" title="${locked ? "Project is locked" : "Double-click to edit"}">${inner}</td>`;
+}
+function visibleRows() {
+  const sec = state.section;
+  const single = state.field !== "all" ? state.field : null;
+  return SECTIONS[sec].rows.filter(r => {
+    if (state.diffOnly && !rowDiffers(sec, r, single)) return false;
+    if (!state.query) return true;
+    if (r.key.toLowerCase().includes(state.query)) return true;
+    return state.selected.some(pid => SECTIONS[sec].fields.some(f => String(val(pid, sec, r, f) ?? "").toLowerCase().includes(state.query)));
+  });
+}
+function renderGrid() {
+  const sec = state.section, S = SECTIONS[sec];
+  if (!S) return;
+  const single = state.field !== "all" ? state.field : null;
+  const head = `<thead><tr><th class="rk">${sec === "fieldMapping" ? "Source Column" : sec === "general" ? "Setting" : "Name"}</th>${state.selected.map(pid => {
+    const p = P[pid], b = pid === state.base, c = projDiffCount(pid, sec);
+    return `<th><div class="ph"><div class="ph-top"><span class="swatch" style="background:${p.color}"></span><span class="nm">${esc(p.name)}</span>${p.locked ? lockSvg : ""}<button class="star ${b ? "on" : ""}" type="button" data-base="${pid}" aria-label="Use ${esc(p.name)} as base" title="${b ? "Base project" : "Use as base"}">${b ? "★" : "☆"}</button></div>
+      <div class="ph-sub num">${b ? "Base" : c ? `${c} Rows Differ` : "Matches Base"}${p.locked ? " · Locked" : ""}</div></div></th>`;
+  }).join("")}</tr></thead>`;
+  const rows = visibleRows();
+  const body = rows.length ? rows.map(r => `<tr class="${rowDiffers(sec, r, single) ? "rdiff" : ""} ${state.selRow === r.key ? "sel" : ""}" data-row="${esc(r.key)}"><td class="rk">${esc(r.key)}</td>${state.selected.map(pid => cellHtml(pid, sec, r)).join("")}</tr>`).join("")
+    : `<tr class="empty-row"><td colspan="${state.selected.length + 1}">${state.diffOnly ? "Every row matches the base project." : "No rows match the filter."}</td></tr>`;
+  $("grid").innerHTML = head + `<tbody>${body}</tbody>`;
+  const ed = $("cellEditor");
+  if (ed) { ed.focus(); if (ed.select) ed.select(); }
+}
+$("grid").addEventListener("click", e => {
+  const star = e.target.closest("[data-base]");
+  if (star) { state.base = star.dataset.base; render(); return; }
+  const add = e.target.closest("[data-add]");
+  const td = e.target.closest("td.c");
+  if (add && td) { addRow(add.dataset.add, state.section, td.dataset.key); toast(`Added ${td.dataset.key} to ${P[add.dataset.add].name}`); render(); return; }
+  if (e.target.id === "cellEditor") return;
+  const tr = e.target.closest("tr[data-row]");
+  if (!tr) return;
+  state.selRow = tr.dataset.row;
+  state.focus = td ? { pid: td.dataset.pid, key: td.dataset.key } : null;
+  if (state.editing) commitEdit();
+  render();
+});
+$("grid").addEventListener("dblclick", e => {
+  const td = e.target.closest("td.c");
+  if (!td) return;
+  const pid = td.dataset.pid, key = td.dataset.key;
+  if (P[pid].locked) { toast(`${P[pid].name} is locked`); return; }
+  if (isMissing(pid, state.section, rowOf(state.section, key))) return;
+  if (state.field === "all") { state.selRow = key; render(); document.querySelector(`#insp [data-pid="${pid}"]`)?.focus(); return; }
+  state.editing = { pid, key, field: state.field };
+  renderGrid();
+});
+$("grid").addEventListener("keydown", e => {
+  if (e.target.id !== "cellEditor") return;
+  if (e.key === "Enter") { commitEdit(); render(); }
+  if (e.key === "Escape") { state.editing = null; renderGrid(); }
+});
+$("grid").addEventListener("focusout", e => {
+  if (e.target.id === "cellEditor" && state.editing) { commitEdit(); render(); }
+});
+$("grid").addEventListener("change", e => {
+  if (e.target.tagName === "SELECT" && e.target.id === "cellEditor") { commitEdit(); render(); }
+});
+function commitEdit() {
+  const ed = state.editing, inp = $("cellEditor");
+  if (!ed || !inp) { state.editing = null; return; }
+  setVal(ed.pid, state.section, ed.key, ed.field, inp.value);
+  state.editing = null;
+}
+
+/* Context menu */
+let menuEl = null;
+function closeMenu() { menuEl?.remove(); menuEl = null; }
+$("grid").addEventListener("contextmenu", e => {
+  const td = e.target.closest("td.c");
+  if (!td) return;
+  e.preventDefault();
+  closeMenu();
+  const pid = td.dataset.pid, key = td.dataset.key, sec = state.section, row = rowOf(sec, key);
+  state.selRow = key; state.focus = { pid, key }; render();
+  const miss = isMissing(pid, sec, row);
+  const others = state.selected.filter(x => x !== pid && !P[x].locked);
+  const fieldLabel = state.field === "all" ? "Row" : state.field;
+  const items = [
+    { t: `Copy This ${fieldLabel} to All Projects`, dis: miss || !others.length, fn: () => copyFrom(pid, key, state.field === "all" ? null : state.field) },
+    { t: `Copy Row From Base (${P[state.base].name})`, dis: pid === state.base || P[pid].locked || isMissing(state.base, sec, row), fn: () => copyRow(state.base, pid, key) },
+    { hr: true },
+    { t: "Discard Edits in This Cell", dis: !isEdited(pid, sec, row), fn: () => { delete state.edits[ek(pid, sec, key)]; } },
+  ];
+  menuEl = document.createElement("div");
+  menuEl.className = "menu";
+  menuEl.innerHTML = items.map((it, i) => it.hr ? "<hr>" : `<button type="button" data-i="${i}" ${it.dis ? "disabled" : ""}>${esc(it.t)}</button>`).join("");
+  document.body.appendChild(menuEl);
+  const r = menuEl.getBoundingClientRect();
+  menuEl.style.left = Math.min(e.clientX, innerWidth - r.width - 8) + "px";
+  menuEl.style.top = Math.min(e.clientY, innerHeight - r.height - 8) + "px";
+  menuEl.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-i]"); if (!b || b.disabled) return;
+    items[+b.dataset.i].fn(); closeMenu(); render();
+  });
+});
+document.addEventListener("click", e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeMenu(); if (state.reviewOpen) { state.reviewOpen = false; renderPending(); } } });
+
+function copyFrom(src, key, field) {
+  const sec = state.section, row = rowOf(sec, key);
+  const fs = field ? [field] : SECTIONS[sec].fields;
+  const targets = state.selected.filter(x => x !== src && !P[x].locked);
+  targets.forEach(pid => {
+    if (isMissing(pid, sec, row)) addRow(pid, sec, key);
+    fs.forEach(f => setVal(pid, sec, key, f, val(src, sec, row, f)));
+  });
+  const skipped = state.selected.filter(x => x !== src && P[x].locked).length;
+  toast(`Copied to ${targets.length} project${targets.length === 1 ? "" : "s"}${skipped ? ` · ${skipped} locked skipped` : ""}`);
+}
+function copyRow(src, dst, key) {
+  const sec = state.section, row = rowOf(sec, key);
+  if (isMissing(dst, sec, row)) addRow(dst, sec, key);
+  SECTIONS[sec].fields.forEach(f => setVal(dst, sec, key, f, val(src, sec, row, f)));
+  toast(`Copied ${key} from ${P[src].name}`);
+}
+
+/* Inspector */
+function renderInsp() {
+  const sec = state.section, S = SECTIONS[sec];
+  const row = state.selRow && rowOf(sec, state.selRow);
+  if (!row) { $("insp").innerHTML = `<div class="insp-head"><div class="t">Row Details</div></div><div class="insp-empty">Select a row to compare and edit every project's values together.</div>`; return; }
+  const groups = S.fields.map(f => {
+    const vals = state.selected.map(pid => val(pid, sec, row, f));
+    const present = vals.filter(v => v !== undefined);
+    const distinct = new Set(present).size;
+    return `<div class="fgroup"><div class="lbl"><span>${esc(f)}</span><span class="st ${distinct > 1 ? "d" : ""}">${distinct > 1 ? `${distinct} Values` : "Same"}</span></div>
+      ${state.selected.map(pid => {
+        const p = P[pid], v = val(pid, sec, row, f);
+        const miss = v === undefined;
+        const d = !miss && pid !== state.base && !isMissing(state.base, sec, row) && v !== val(state.base, sec, row, f);
+        const e = isEdited(pid, sec, row, f);
+        const cls = e ? "e" : d ? "d" : "";
+        const choices = S.choices && S.choices[f];
+        const ctrl = miss ? `<span class="miss-txt">Not defined</span>`
+          : choices ? `<select class="${cls}" data-pid="${pid}" data-f="${esc(f)}" aria-label="${esc(f)} for ${esc(p.name)}" ${p.locked ? "disabled" : ""}>${choices.map(c => `<option ${c === v ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`
+          : `<input class="${cls} ${S.mono?.includes(f) ? "mono" : ""}" data-pid="${pid}" data-f="${esc(f)}" value="${esc(v)}" aria-label="${esc(f)} for ${esc(p.name)}" title="${esc(p.name)}" ${p.locked ? "disabled" : ""}>`;
+        const canAll = !miss && distinct > 1 || (!miss && present.length < state.selected.length);
+        return `<div class="prow"><span class="swatch" style="background:${p.color}" title="${esc(p.name)}"></span>${ctrl}<button class="use-all" type="button" data-useall="${pid}" data-f="${esc(f)}" ${canAll ? "" : "disabled"} title="Copy ${esc(p.name)}'s value to the other projects">Use for all</button></div>`;
+      }).join("")}</div>`;
+  }).join("");
+  const missingIn = state.selected.filter(pid => isMissing(pid, sec, row));
+  const editable = state.selected.filter(pid => !P[pid].locked && pid !== state.base);
+  $("insp").innerHTML = `<div class="insp-head"><div class="t">${esc(row.key)}</div><div class="s">${esc(S.label)}${missingIn.length ? ` · Not defined in ${missingIn.length}` : ""}</div></div>
+    <div class="insp-body">${groups}
+      <div class="insp-actions">
+        <button class="btn" type="button" id="copyBaseAll" ${editable.length && !isMissing(state.base, sec, row) ? "" : "disabled"}>Copy whole row from base to ${editable.length} project${editable.length === 1 ? "" : "s"}</button>
+      </div>
+    </div>`;
+}
+$("insp").addEventListener("change", e => {
+  const el = e.target; if (!el.dataset.pid) return;
+  setVal(el.dataset.pid, state.section, state.selRow, el.dataset.f, el.value);
+  render();
+});
+$("insp").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") e.target.blur(); });
+$("insp").addEventListener("click", e => {
+  const u = e.target.closest("[data-useall]");
+  if (u && !u.disabled) { copyFrom(u.dataset.useall, state.selRow, u.dataset.f); render(); return; }
+  if (e.target.id === "copyBaseAll") { copyFrom(state.base, state.selRow, null); render(); }
+});
+
+/* Pending bar */
+function editList() {
+  return Object.entries(state.edits).map(([k, e]) => {
+    const [pid, sec, key] = k.split("|");
+    return { pid, sec, key, e };
+  });
+}
+function changeCount() {
+  return editList().reduce((n, x) => n + (x.e.added ? 1 : Object.keys(x.e.fields).length), 0);
+}
+function renderPending() {
+  const el = $("pending");
+  if (state.saving) {
+    el.innerHTML = `<div class="saving">${state.saving.map(s => `<div class="srow ${s.done ? "done" : ""}"><span class="swatch" style="background:${P[s.pid].color}"></span><span style="min-width:170px">${esc(P[s.pid].name)}</span><span class="bar"><i style="width:${s.pct}%"></i></span><span class="st">${s.done ? `Saved ${s.n} change${s.n === 1 ? "" : "s"}${s.jobs ? " · refresh queued" : ""}` : "Saving…"}</span></div>`).join("")}</div>`;
+    return;
+  }
+  const list = editList();
+  const n = changeCount();
+  const projs = [...new Set(list.map(x => x.pid))];
+  if (!n) {
+    el.innerHTML = `<span class="msg">${state.selected.length >= 2 ? "No unsaved changes. Compare mode stages edits so you can review them before they reach each project." : ""}</span>`;
+    return;
+  }
+  el.innerHTML = `<span class="msg"><b class="num">${n} unsaved change${n === 1 ? "" : "s"}</b> in <b class="num">${projs.length}</b> project${projs.length === 1 ? "" : "s"}<span class="projs">${projs.map(pid => `<span class="pp"><span class="swatch" style="background:${P[pid].color}"></span>${esc(P[pid].name)}</span>`).join("")}</span></span>
+    <button class="btn" type="button" id="reviewBtn" aria-expanded="${state.reviewOpen}">${state.reviewOpen ? "Hide changes" : "Review changes"}</button>
+    <button class="btn" type="button" id="discardBtn">Discard all</button>
+    <button class="btn primary" type="button" id="saveBtn">Save to ${projs.length} project${projs.length === 1 ? "" : "s"}</button>
+    ${state.reviewOpen ? reviewHtml(list) : ""}`;
+}
+function reviewHtml(list) {
+  const byP = {};
+  list.forEach(x => (byP[x.pid] ||= []).push(x));
+  return `<div class="review" role="dialog" aria-label="Unsaved changes">${Object.entries(byP).map(([pid, xs]) => `
+    <h4><span class="swatch" style="background:${P[pid].color}"></span>${esc(P[pid].name)}</h4>
+    ${xs.map(x => {
+      const row = rowOf(x.sec, x.key);
+      const chg = x.e.added ? `<span class="new">Add row from base</span>`
+        : Object.entries(x.e.fields).map(([f, v]) => `${esc(f)}: <span class="old">${esc(show(origVal(pid, row, f)))}</span> → <span class="new">${esc(show(v))}</span>`).join("<br>");
+      return `<div class="rv"><div><div class="path">${esc(SECTIONS[x.sec].label)} › ${esc(x.key)}</div><div class="chg">${chg}</div></div><button class="link-btn" type="button" data-undo="${esc(ek(pid, x.sec, x.key))}">Undo</button></div>`;
+    }).join("")}`).join("")}</div>`;
+}
+$("pending").addEventListener("click", e => {
+  const t = e.target;
+  if (t.id === "reviewBtn") { state.reviewOpen = !state.reviewOpen; renderPending(); }
+  else if (t.id === "discardBtn") { state.edits = {}; state.reviewOpen = false; toast("Discarded all unsaved changes"); render(); }
+  else if (t.id === "saveBtn") save();
+  else if (t.dataset.undo) { delete state.edits[t.dataset.undo]; if (!changeCount()) state.reviewOpen = false; render(); }
+});
+function save() {
+  const list = editList();
+  const projs = [...new Set(list.map(x => x.pid))];
+  state.reviewOpen = false;
+  state.saving = projs.map(pid => {
+    const xs = list.filter(x => x.pid === pid);
+    return { pid, pct: 0, done: false, n: xs.reduce((n, x) => n + (x.e.added ? 1 : Object.keys(x.e.fields).length), 0),
+      jobs: xs.some(x => x.sec === "dataProcessing" || x.sec === "datasetTypes" || x.sec === "reservingClassTypes") };
+  });
+  renderPending();
+  let i = 0;
+  const tick = () => {
+    const s = state.saving[i];
+    s.pct = Math.min(100, s.pct + 34);
+    if (s.pct >= 100) { s.done = true; i++; }
+    renderPending();
+    if (i < state.saving.length) setTimeout(tick, 170);
+    else setTimeout(() => {
+      list.forEach(({ pid, sec, key, e }) => {
+        const row = rowOf(sec, key);
+        row.over ||= {};
+        const merged = e.added ? {} : { ...(row.over[pid] || {}) };
+        if (e.added) SECTIONS[sec].fields.forEach(f => merged[f] = val(pid, sec, row, f));
+        Object.assign(merged, e.fields);
+        row.over[pid] = merged;
+      });
+      const n = changeCount();
+      state.edits = {}; state.saving = null;
+      toast(`Saved ${n} change${n === 1 ? "" : "s"} to ${projs.length} project${projs.length === 1 ? "" : "s"}`);
+      render();
+    }, 900);
+  };
+  setTimeout(tick, 150);
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function render() {
+  renderTree();
+  renderHead();
+  if (state.selected.length < 2 && !SECTIONS[state.section]) state.section = "datasetTypes";
+  renderRibbon();
+  const compare = state.selected.length >= 1;
+  document.querySelector(".toolbar").hidden = !compare;
+  document.querySelector(".work").hidden = !compare;
+  let emptyEl = document.querySelector(".empty-detail");
+  if (!compare) {
+    if (!emptyEl) {
+      emptyEl = document.createElement("div"); emptyEl.className = "empty-detail";
+      emptyEl.innerHTML = "<b>Select a project</b><span>Tick two or more projects to compare them.</span>";
+      $("detail").insertBefore(emptyEl, $("pending"));
+    }
+  } else emptyEl?.remove();
+  if (compare) { renderSeg(); renderGrid(); renderInsp(); }
+  renderPending();
+}
+render();
+})();
+</script>
