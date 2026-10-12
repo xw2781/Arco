@@ -23,6 +23,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
   - `get_audit_log_path`
   - `get_client_read_latency_log_path`
   - `get_client_save_latency_log_path`
+  - `get_client_temp_dir`
   - `get_data_processing_rules_path`
   - `get_data_processing_values_path`
   - `get_dataset_number_formats_path`

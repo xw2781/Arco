@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 3 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, and the server saves a combined source and never re-reads it); next is the client routes: describe, preview, import.
+Status: In progress: 4 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, and the client app server can describe, preview and import one); next is the import window's table list.
 Last updated: 2026-10-12
 
 ## Progress
@@ -12,14 +12,14 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 1 | A project can record a source made of several tables, and single-table projects record exactly what they do today | [x] | 2026-10-12 | 45 min | 3 min | Nothing visible yet; a project's source record can now describe several joined tables, and single-table projects are recorded exactly as before. |
 | 2 | Arco can combine several tables into one the way the merge notebook does | [x] | 2026-10-12 | 70 min | 5 min | Nothing visible yet; Arco can now join several tables into one the way the merge notebook does and report how well each table matched. |
 | 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [x] | 2026-10-12 | 60 min | 7 min | Nothing visible yet; the server can now keep a combined source and accept its imported table, and it never re-reads one on its own, while single-table projects save and import exactly as before. |
-| 4 | The app can read every table of a combined source, preview the result and import it | [ ] | | 60 min | | |
+| 4 | The app can read every table of a combined source, preview the result and import it | [x] | 2026-10-12 | 60 min | 9 min | Nothing visible yet; Arco can now read each table of a combined source, preview the joined result and import it the same way a single table is uploaded, while single-table imports work exactly as before. |
 | 5 | The import window lists several tables, each with a nickname and a details window | [ ] | | 75 min | | |
 | 6 | The import window shows how the tables join and what the result will look like | [ ] | | 80 min | | |
 | 7 | Importing a combined source runs end to end and the Source Data tab describes it | [ ] | | 50 min | | |
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 3 of 9 steps done. Estimated 510 min, actual so far 15 min.
+Overall: 4 of 9 steps done. Estimated 510 min, actual so far 24 min.
 
 ## How agents work this plan
 
@@ -184,19 +184,19 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - Step 2's `combined_source_service`.
 
 **Do.**
-- [ ] `combined_source_service` gains the client half:
+- [x] `combined_source_service` gains the client half:
   - `fetch_table(spec)`: a CSV is read from its path (drive letters work on the client); a SQL table is streamed with the user's Windows login into a temporary CSV under the app's temp folder (never the share). Cache by table spec and, for a CSV, its identity, for the life of the app session; a SQL table is re-read only when the person asks to refresh the preview or imports.
   - `describe_table(spec)`: columns, row count, dropped empty columns.
   - `preview_combined(project_name, combined)`: per-table description, statistics, warnings, first 14 rows, combined row and column counts.
   - `import_combined(project_name)`: reads the saved `combined` block through the `source_table_settings` read, re-reads every table, combines, writes a temporary CSV, then uploads it with the same chunk and commit mutations as `upload_source_table` using `source_type: combined` and the same progress reporting. Refactor `upload_source_table` so both share one chunk-and-commit helper; the CSV and SQL behaviour must not change.
-- [ ] Routes `POST /source_table/combined/describe`, `POST /source_table/combined/preview`, `POST /source_table/combined/save` (forwards `source_combined_save`, translating CSV paths with `normalize_import_source_path` first), `POST /source_table/combined/import`.
-- [ ] Update the [source_table domain doc](../../frontend/docs/app_server/domains/source_table.md) manual sections and regenerate the docs index.
+- [x] Routes `POST /source_table/combined/describe`, `POST /source_table/combined/preview`, `POST /source_table/combined/save` (forwards `source_combined_save`, translating CSV paths with `normalize_import_source_path` first), `POST /source_table/combined/import`.
+- [x] Update the [source_table domain doc](../../frontend/docs/app_server/domains/source_table.md) manual sections and regenerate the docs index.
 
 **Tests.** New cases in `frontend/tests/test_combined_source_service.py` with CSV fixtures and a fake pyodbc driver: describe, preview statistics, import uploads one chunk set and commits `combined`; the existing `test_source_table_upload.py` passes unchanged for CSV and SQL.
 
 **Done when.** The tests pass and `docs_index_builder.py --check` is clean.
 
-**Estimate.** Estimate: code edit 40 min, test/validation 20 min, total 60 min.
+**Estimate.** Estimate: code edit 40 min, test/validation 20 min, total 60 min. Actual: code edit 6 min, test/validation 3 min, total 9 min (the upload already had one clean chunk-and-commit loop to lift out, and every new test passed first run).
 
 ### Step 5 — Import window: table list, nicknames, details window
 

@@ -7,7 +7,9 @@ stays here is what only this PC can do: translate its own drive letters, stat
 an external CSV on a drive only it has, and talk to SQL Server as the user's
 Windows login. A source only this PC can read (``/source_table/import`` for SQL
 Server, ``/source_table/refresh`` for a CSV) is read here and uploaded to the
-Gateway, which writes the master table.
+Gateway, which writes the master table. A combined source
+(``/source_table/combined/*``) is read, previewed and joined here for the same
+reason, and uploaded the same way.
 """
 from __future__ import annotations
 
@@ -22,6 +24,10 @@ from arcrho_api.source_table_contract import (
 )
 
 from app_server.schemas.source_table import (
+    CombinedSourceImportRequest,
+    CombinedSourcePreviewRequest,
+    CombinedSourceSaveRequest,
+    CombinedTableDescribeRequest,
     MssqlConnectionForgetRequest,
     MssqlConnectionTestRequest,
     MssqlTableListRequest,
@@ -31,6 +37,7 @@ from app_server.schemas.source_table import (
     SourceTableRefreshRequest,
 )
 from app_server.services import (
+    combined_source_service,
     source_refresh_service,
     source_table_service,
     source_table_upload_service,
@@ -178,6 +185,44 @@ def import_source_table(req: SourceTableImportRequest) -> Dict[str, Any]:
 def refresh_source_table(req: SourceTableRefreshRequest) -> Dict[str, Any]:
     """Read the configured CSV on this PC and upload it as the master table."""
     return source_table_upload_service.upload_source_table(req.project_name, SOURCE_TYPE_CSV)
+
+
+@router.post("/source_table/combined/describe")
+def describe_combined_table(req: CombinedTableDescribeRequest) -> Dict[str, Any]:
+    """Columns and row count of one table of a combined source, read on this PC."""
+    return combined_source_service.describe_table(req.table, req.refresh)
+
+
+@router.post("/source_table/combined/preview")
+def preview_combined_source(req: CombinedSourcePreviewRequest) -> Dict[str, Any]:
+    """What importing the combined source would produce, without importing it."""
+    return combined_source_service.preview_combined(req.project_name, req.combined, req.refresh)
+
+
+@router.post("/source_table/combined/save")
+def save_combined_source(req: CombinedSourceSaveRequest) -> Dict[str, Any]:
+    combined = dict(req.combined)
+    tables = combined.get("tables") if isinstance(combined.get("tables"), list) else []
+    # Saved as the share each CSV stands for: only this PC knows its drive letters.
+    combined["tables"] = [
+        {**table, "csv_path": normalize_import_source_path(table.get("csv_path"))}
+        if isinstance(table, dict) and table.get("source_type") != SOURCE_TYPE_MSSQL
+        else table
+        for table in tables
+    ]
+    kwargs: Dict[str, Any] = {"project_name": req.project_name, "combined": combined}
+    settings = _mutate(
+        "source_combined_save",
+        kwargs,
+        lambda: source_table_service.save_combined_source(**kwargs),
+    )
+    return {"ok": True, **source_table_service.get_source_table_state(req.project_name, settings)}
+
+
+@router.post("/source_table/combined/import")
+def import_combined_source(req: CombinedSourceImportRequest) -> Dict[str, Any]:
+    """Read and join every table of the saved combined source here and upload the result."""
+    return combined_source_service.import_combined(req.project_name)
 
 
 @router.get("/source_table/upload_progress")

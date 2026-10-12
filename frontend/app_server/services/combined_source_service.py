@@ -2,29 +2,43 @@
 
 A combined source (decision 3 of docs/plans/combined_source_import.md) names
 several tables, the keys they share and how each joins onto the running
-result. This module is the pure combine engine: it reads the given local CSV
-files, joins them as the spec says, and reports what happened to every table.
-It does no other I/O; fetching a SQL Server table into a local CSV and
-uploading the result belong to the callers.
+result. The first half of this module is the pure combine engine: it reads
+the given local CSV files, joins them as the spec says, and reports what
+happened to every table.
+
+The second half runs in the client app server, like a SQL Server import
+(decision 8): it reads every table on this PC (a CSV through this PC's drive
+mappings, a SQL Server table as the user's own Windows login), previews the
+result, and imports it through the same chunked upload a single table uses.
 
 Every table is read with all columns as text (decision 4), so keys compare
 exactly and no value is ever reformatted on its way to the master table.
 """
 from __future__ import annotations
 
+import os
 import re
+import tempfile
+import threading
+import uuid
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import pandas as pd
+from fastapi import HTTPException
 
 from arcrho_api.source_table_contract import (
     COMBINED_KEY_CONVERT_YYYYMM,
     COMBINED_ROWS_ALL,
     COMBINED_ROWS_BASE,
     COMBINED_ROWS_MATCH,
+    SOURCE_TYPE_COMBINED,
+    SOURCE_TYPE_MSSQL,
     combined_table_name,
+    csv_identity,
     normalize_combined_source,
 )
+from app_server import config
+from app_server.services import source_table_service, source_table_upload_service, workspace_read_client
 
 _UNNAMED_COLUMN = re.compile(r"Unnamed: \d+")
 _YYYYMM = re.compile(r"\d{6}")
@@ -280,3 +294,189 @@ def preview_rows(frame: pd.DataFrame, key_names: List[str], limit: int = 14) -> 
     """The first ``limit`` rows ordered by the keys as text."""
     ordered = frame.sort_values(list(key_names), kind="stable") if key_names else frame
     return ordered.head(limit).to_dict(orient="records")
+
+
+# --- Client half ------------------------------------------------------------
+
+PREVIEW_ROW_LIMIT = 14
+
+_CACHE_LOCK = threading.Lock()
+# Table identity -> (CSV identity or None, frame, dropped columns). A CSV entry
+# is reused while its path, modified time and size are unchanged; a SQL Server
+# entry until the person asks to refresh the preview or imports. Lives as long
+# as the app session.
+_TABLE_CACHE: Dict[Tuple[str, ...], Tuple[Optional[Tuple[Any, ...]], pd.DataFrame, List[str]]] = {}
+
+
+def _temp_dir() -> str:
+    """This PC's scratch folder for fetched and combined tables; never the share."""
+    folder = os.path.join(config.get_client_temp_dir(), "combined_source")
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+
+def _table_spec(spec: Any) -> Dict[str, Any]:
+    """One table of a combined source in its canonical shape."""
+    data = dict(spec) if isinstance(spec, dict) else {}
+    data["id"] = str(data.get("id") or "").strip() or "t"
+    table = normalize_combined_source({"tables": [data]})["tables"][0]
+    if table["source_type"] == SOURCE_TYPE_MSSQL:
+        table["mssql"] = source_table_service._require_complete_mssql_profile(table["mssql"])
+    elif not table["csv_path"]:
+        raise HTTPException(400, "The table has no CSV path.")
+    return table
+
+
+def _read_text_or_error(path: str, label: str) -> Tuple[pd.DataFrame, List[str]]:
+    try:
+        return read_table_text(path)
+    except PermissionError:
+        raise HTTPException(423, f"Source table file is locked: {label}")
+    except FileNotFoundError:
+        raise HTTPException(404, f"Source table file was not found: {label}")
+    except (ValueError, pd.errors.ParserError) as error:  # EmptyDataError is a ValueError.
+        raise HTTPException(400, f"The table {label} could not be read: {error}") from error
+
+
+def _fetch_mssql(profile: Dict[str, str]) -> Tuple[pd.DataFrame, List[str]]:
+    """Stream a SQL Server table into a local temporary CSV and read it as text."""
+    handle, path = tempfile.mkstemp(suffix=".csv", dir=_temp_dir())
+    try:
+        with os.fdopen(handle, "wb") as target:
+            for block in source_table_upload_service._mssql_blocks(profile):
+                target.write(block)
+        return _read_text_or_error(path, profile["table"])
+    finally:
+        os.remove(path)
+
+
+def fetch_table(spec: Any, refresh: bool = False) -> Tuple[pd.DataFrame, List[str]]:
+    """One table of a combined source as text, and the empty columns dropped from it."""
+    table = _table_spec(spec)
+    if table["source_type"] == SOURCE_TYPE_MSSQL:
+        profile = table["mssql"]
+        cache_key: Tuple[str, ...] = (
+            SOURCE_TYPE_MSSQL,
+            profile["server"].casefold(),
+            profile["database"].casefold(),
+            profile["table"].casefold(),
+            profile["authentication"],
+        )
+        identity = None
+    else:
+        path = table["csv_path"]
+        cache_key = ("csv", os.path.normcase(os.path.normpath(path)))
+        try:
+            stat = csv_identity(path)
+        except FileNotFoundError:
+            raise HTTPException(404, f"Source table file was not found: {path}")
+        except PermissionError:
+            raise HTTPException(423, f"Source table file is locked: {path}")
+        identity = (stat["csv_mtime_ns"], stat["csv_size"])
+    with _CACHE_LOCK:
+        cached = _TABLE_CACHE.get(cache_key)
+    if cached is not None and not refresh and cached[0] == identity:
+        return cached[1], cached[2]
+    if table["source_type"] == SOURCE_TYPE_MSSQL:
+        frame, dropped = _fetch_mssql(table["mssql"])
+    else:
+        frame, dropped = _read_text_or_error(table["csv_path"], table["csv_path"])
+    with _CACHE_LOCK:
+        _TABLE_CACHE[cache_key] = (identity, frame, dropped)
+    return frame, dropped
+
+
+def describe_table(spec: Any, refresh: bool = False) -> Dict[str, Any]:
+    """A table's columns, row count and the empty columns left out of it."""
+    frame, dropped = fetch_table(spec, refresh)
+    return {
+        "ok": True,
+        "columns": [str(column) for column in frame.columns],
+        "row_count": int(len(frame)),
+        "dropped_columns": dropped,
+    }
+
+
+def _require_combinable(combined: Any) -> Dict[str, Any]:
+    spec = normalize_combined_source(combined)
+    if len(spec["tables"]) < 2:
+        raise HTTPException(400, "A combined source needs at least two tables.")
+    if not spec["keys"]:
+        raise HTTPException(400, "A combined source needs at least one key.")
+    return spec
+
+
+def _combine(spec: Dict[str, Any], refresh: bool) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Fetch every table and combine them; also describes each table."""
+    frames: Dict[str, pd.DataFrame] = {}
+    tables = []
+    missing = []
+    for table in spec["tables"]:
+        frame, dropped = fetch_table(table, refresh)
+        frames[table["id"]] = frame
+        name = combined_table_name(table)
+        tables.append({
+            "id": table["id"],
+            "name": name,
+            "nickname": table["nickname"],
+            "source_type": table["source_type"],
+            "columns": [str(column) for column in frame.columns],
+            "row_count": int(len(frame)),
+            "dropped_columns": dropped,
+        })
+        for key in spec["keys"]:
+            column = key["map"].get(table["id"], {}).get("column")
+            if column and column not in frame.columns:
+                missing.append(f"{column} in {table['nickname'] or name}")
+    if missing:
+        raise HTTPException(400, f"Key columns were not found: {', '.join(missing)}.")
+    return combine_tables(frames, spec), tables
+
+
+def preview_combined(project_name: str, combined: Any, refresh: bool = False) -> Dict[str, Any]:
+    """What importing this combined source would produce, without importing it."""
+    source_table_service._require_project_name(project_name)
+    spec = _require_combinable(combined)
+    result, tables = _combine(spec, refresh)
+    frame = result["frame"]
+    key_names = [key["name"] for key in spec["keys"]]
+    return {
+        "ok": True,
+        "tables": tables,
+        "stats": result["stats"],
+        "warnings": result["warnings"],
+        "plan": result["plan"],
+        "columns": [str(column) for column in frame.columns],
+        "rows": preview_rows(frame, key_names, PREVIEW_ROW_LIMIT),
+        "row_count": int(len(frame)),
+        "column_count": int(len(frame.columns)),
+    }
+
+
+def import_combined(project_name: str) -> Dict[str, Any]:
+    """Re-read every table of the saved combined source, combine and upload it.
+
+    The upload is the one a single table uses, committed as ``combined``; the
+    server labels the import from the saved record.
+    """
+    name = source_table_service._require_project_name(project_name)
+    settings = workspace_read_client.run_workspace_read(
+        "source_table_settings",
+        {"project_name": name},
+        local=lambda: source_table_service.read_source_table_settings(name),
+    )
+    if settings.get("source_type") != SOURCE_TYPE_COMBINED:
+        raise HTTPException(400, "Save the combined source before importing it.")
+    result, _tables = _combine(_require_combinable(settings.get("combined")), refresh=True)
+    path = os.path.join(_temp_dir(), f"combined_{uuid.uuid4().hex}.csv")
+    try:
+        write_combined_csv(result["frame"], path)
+        return source_table_upload_service.upload_blocks(
+            name,
+            SOURCE_TYPE_COMBINED,
+            source_table_upload_service._csv_blocks(path),
+            total_bytes=os.path.getsize(path),
+        )
+    finally:
+        if os.path.exists(path):
+            os.remove(path)

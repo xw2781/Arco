@@ -448,7 +448,6 @@ def _mutate(kind: str, kwargs: Dict[str, Any], local) -> Dict[str, Any]:
 def upload_source_table(project_name: str, source_type: str) -> Dict[str, Any]:
     """Read the project's client-only source here and upload it as the master table."""
     name = source_table_service._require_project_name(project_name)
-    key = _project_key(name)
     settings = workspace_read_client.run_workspace_read(
         "source_table_settings",
         {"project_name": name},
@@ -474,6 +473,27 @@ def upload_source_table(project_name: str, source_type: str) -> Dict[str, Any]:
         total_bytes = identity["csv_size"]
         blocks = _csv_blocks(csv_path)
 
+    commit_type = SOURCE_TYPE_MSSQL if source_type == SOURCE_TYPE_MSSQL else SOURCE_TYPE_CSV
+    return upload_blocks(name, commit_type, blocks, signature, total_bytes, commit_extras)
+
+
+def upload_blocks(
+    project_name: str,
+    source_type: str,
+    blocks: Iterator[bytes],
+    signature: Optional[Tuple[Any, ...]] = None,
+    total_bytes: Optional[int] = None,
+    commit_extras: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Send CSV bytes as numbered chunks and commit them as the master table.
+
+    *signature* identifies a file whose unfinished upload may resume; without
+    one every attempt starts a new upload. Progress is reported for the page
+    while the request is open.
+    """
+    name = project_name
+    key = _project_key(name)
+    commit_extras = commit_extras or {}
     with _STATE_LOCK:
         pending = _PENDING.get(key)
         upload_id = pending[0] if pending and signature is not None and pending[1] == signature else ""
@@ -525,7 +545,7 @@ def upload_source_table(project_name: str, source_type: str) -> Dict[str, Any]:
         commit_kwargs = {
             "project_name": name,
             "upload_id": upload_id,
-            "source_type": SOURCE_TYPE_MSSQL if source_type == SOURCE_TYPE_MSSQL else SOURCE_TYPE_CSV,
+            "source_type": source_type,
             "chunk_count": index + 1,
             "byte_count": counter.bytes,
             "row_count": counter.rows,

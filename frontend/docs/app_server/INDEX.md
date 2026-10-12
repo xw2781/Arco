@@ -27,7 +27,7 @@ App-server domain map for FastAPI routers, schemas, and services.
 | `reserving_class` | [`app_server/api/reserving_class_router.py`](../../app_server/api/reserving_class_router.py) | 10 | [`reserving_class.md`](domains/reserving_class.md) |
 | `result_selection` | [`app_server/api/result_selection_router.py`](../../app_server/api/result_selection_router.py) | 3 | [`result_selection.md`](domains/result_selection.md) |
 | `snowflake` | [`app_server/api/snowflake_router.py`](../../app_server/api/snowflake_router.py) | 6 | [`snowflake.md`](domains/snowflake.md) |
-| `source_table` | [`app_server/api/source_table_router.py`](../../app_server/api/source_table_router.py) | 13 | [`source_table.md`](domains/source_table.md) |
+| `source_table` | [`app_server/api/source_table_router.py`](../../app_server/api/source_table_router.py) | 17 | [`source_table.md`](domains/source_table.md) |
 | `sql_formatting` | [`app_server/api/sql_formatting_router.py`](../../app_server/api/sql_formatting_router.py) | 1 | [`sql_formatting.md`](domains/sql_formatting.md) |
 | `sql_server` | [`app_server/api/sql_server_router.py`](../../app_server/api/sql_server_router.py) | 6 | [`sql_server.md`](domains/sql_server.md) |
 | `stochastic_consolidation` | [`app_server/api/stochastic_consolidation_router.py`](../../app_server/api/stochastic_consolidation_router.py) | 5 | [`stochastic_consolidation.md`](domains/stochastic_consolidation.md) |

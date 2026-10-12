@@ -124,6 +124,12 @@ def get_client_read_latency_log_path() -> str:
     )
 
 
+def get_client_temp_dir() -> str:
+    """This PC's own scratch folder for files that must never reach the share."""
+
+    return os.path.join(_get_user_local_appdata_dir(), "temp")
+
+
 def get_gateway_config_path() -> str:
     """Return the current user's machine-local Gateway credential for the active server."""
 

@@ -397,6 +397,56 @@ class SourceTableUploadTests(unittest.TestCase):
         self.assertEqual(refused.exception.status_code, 400)
         self.assertEqual(self.master.read_text(encoding="utf-8"), OLD_TABLE)
 
+    def _commit_kwargs(self) -> dict:
+        commits = [request for request in self.requests if request.get("MutationKind") == "source_table_upload_commit"]
+        self.assertEqual(len(commits), 1)
+        return commits[0]["Kwargs"]
+
+    def test_csv_and_sql_server_uploads_commit_exactly_the_single_table_arguments(self) -> None:
+        self._refresh()
+        csv_kwargs = self._commit_kwargs()
+        stat = os.stat(self.csv)
+        self.assertTrue(csv_kwargs.pop("upload_id").startswith("srcup_"))
+        self.assertEqual(
+            csv_kwargs,
+            {
+                "project_name": PROJECT,
+                "source_type": "csv",
+                "chunk_count": len(self._chunks_sent()),
+                "byte_count": len(self.table),
+                "row_count": 200,
+                "csv_path": str(self.csv),
+                "csv_mtime_ns": stat.st_mtime_ns,
+                "csv_size": stat.st_size,
+            },
+        )
+
+        self.requests.clear()
+        (self.project / "source" / "source_import.json").write_text(
+            json.dumps({
+                "source_type": "mssql",
+                "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Claims", "authentication": "windows"},
+            }),
+            encoding="utf-8",
+        )
+        driver = _FakeOdbcDriver(["A", "B"], [(index, "x") for index in range(30)])
+        with patch.object(mssql_odbc, "pyodbc", driver), patch.object(
+            mssql_odbc, "installed_odbc_driver", return_value="ODBC Driver 18 for SQL Server"
+        ):
+            source_table_router.import_source_table(SourceTableImportRequest(project_name=PROJECT))
+        sql_kwargs = self._commit_kwargs()
+        self.assertTrue(sql_kwargs.pop("upload_id").startswith("srcup_"))
+        self.assertEqual(
+            sql_kwargs,
+            {
+                "project_name": PROJECT,
+                "source_type": "mssql",
+                "chunk_count": len(self._chunks_sent()),
+                "byte_count": len("A,B\r\n") + 30 * len("0,x\r\n") + 20 * 1,
+                "row_count": 30,
+            },
+        )
+
     def test_progress_is_reported_while_the_upload_runs(self) -> None:
         seen = []
         real = upload._set_progress

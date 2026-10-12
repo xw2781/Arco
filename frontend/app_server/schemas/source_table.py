@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -70,3 +70,26 @@ class SourceRefreshJobSubmitRequest(BaseModel):
     # reserving class; the source-refresh contract owns the matching rule.
     dataset_types: List[str] = []
     reserving_class_types: List[SourceRefreshReservingClassType] = []
+
+
+class CombinedTableDescribeRequest(BaseModel):
+    # One table of a combined source, in the shape of decision 3 of
+    # docs/plans/combined_source_import.md (id optional here).
+    table: Dict[str, Any]
+    # Re-read a SQL Server table instead of answering from this session's copy.
+    refresh: bool = False
+
+
+class CombinedSourcePreviewRequest(BaseModel):
+    project_name: str
+    combined: Dict[str, Any]
+    refresh: bool = False
+
+
+class CombinedSourceSaveRequest(BaseModel):
+    project_name: str
+    combined: Dict[str, Any]
+
+
+class CombinedSourceImportRequest(BaseModel):
+    project_name: str
