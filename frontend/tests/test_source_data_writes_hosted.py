@@ -41,8 +41,10 @@ from app_server.schemas.source_table import (  # noqa: E402
 )
 from app_server.schemas.table_summary import TableSummaryRefreshRequest  # noqa: E402
 from app_server.services import (  # noqa: E402
+    source_refresh_service,
     source_table_service,
     user_identity_service,
+    workspace_mutation_client,
     workspace_read_client,
 )
 
@@ -60,13 +62,14 @@ SHARED_CSV = "\\\\server\\share\\data\\claims.csv"
 KINDS = (
     "field_mapping_save",
     "source_profile_save",
+    "source_combined_save",
     "source_csv_path_rewrite",
     "reserving_class_types_save",
     "table_summary_rebuild",
     "mssql_connection_remember",
     "mssql_connection_forget",
 )
-RECEIPT_KINDS = ("field_mapping_save", "source_profile_save", "reserving_class_types_save")
+RECEIPT_KINDS = ("field_mapping_save", "source_profile_save", "source_combined_save", "reserving_class_types_save")
 READ_KINDS = ("source_table_settings", "source_refresh_status")
 
 
@@ -240,6 +243,126 @@ class SourceDataWritesTests(unittest.TestCase):
         self.assertFalse(changed["rewritten"])
         self.assertEqual(self._stored_csv_path(), "\\\\other\\claims.csv")
         self.assertEqual(audit.call_count, 1)
+
+    # --- Combined sources, and single-table records kept exactly as they were ---
+
+    COMBINED = {
+        "tables": [
+            {"id": "t1", "nickname": "Loss", "source_type": "mssql",
+             "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Loss", "authentication": "windows"}},
+            {"id": "t2", "nickname": "EP", "source_type": "csv", "csv_path": SHARED_CSV},
+        ],
+        "keys": [{"name": "LOB", "map": {"t1": {"column": "LOB"}, "t2": {"column": "Lob"}}}],
+        "rows": {"t2": "match"},
+        "exclude": {"t2": ["FACID"]},
+        "rename": {},
+    }
+    SINGLE_SETTINGS_KEYS = sorted(
+        [
+            "project_name", "master_table_path", "master_table_exists", "master_table_size",
+            "master_table_mtime", "refreshed", "source_type", "mssql", "last_import", "refresh_scope",
+            "csv_path", "supported_authentication",
+        ]
+    )
+
+    def _save_combined(self, combined) -> dict:
+        kwargs = {"project_name": PROJECT, "combined": combined}
+        return workspace_mutation_client.run_workspace_mutation(
+            "source_combined_save", kwargs, local=lambda: source_table_service.save_combined_source(**kwargs)
+        )
+
+    def _source_import_text(self) -> str:
+        return (self.project / "source" / "source_import.json").read_text(encoding="utf-8")
+
+    def _save_csv_profile(self) -> dict:
+        return source_table_router.save_source_table_profile(
+            SourceProfileSaveRequest(project_name=PROJECT, source_type="csv", csv_path=MAPPED_CSV)
+        )
+
+    def test_a_combined_source_is_saved_on_the_gateway_and_read_back(self) -> None:
+        settings = self._save_combined(self.COMBINED)
+        self.assertEqual(self._kinds(), ["source_combined_save"])
+        self.assertEqual(self.requests[0]["Kwargs"]["combined"], self.COMBINED)
+        self.assertEqual(settings["source_type"], "combined")
+        self.assertEqual(settings["combined"], self.COMBINED)
+        stored = json.loads(self._source_import_text())
+        self.assertEqual(stored["source_type"], "combined")
+        self.assertEqual(stored["combined"], self.COMBINED)
+        with self._server_process():
+            again = source_table_service.read_source_table_settings(PROJECT)
+        self.assertEqual(again["combined"], self.COMBINED)
+        self.assertEqual(sorted(again), sorted(self.SINGLE_SETTINGS_KEYS + ["combined"]))
+
+    def test_a_combined_save_refuses_an_incomplete_source(self) -> None:
+        one_table = {**self.COMBINED, "tables": self.COMBINED["tables"][:1]}
+        no_key = {**self.COMBINED, "keys": []}
+        sql_login = json.loads(json.dumps(self.COMBINED))
+        sql_login["tables"][0]["mssql"]["authentication"] = "sql_login"
+        no_table_name = json.loads(json.dumps(self.COMBINED))
+        no_table_name["tables"][0]["mssql"]["table"] = ""
+        with self._server_process():
+            for combined in (one_table, no_key, sql_login, no_table_name):
+                with self.subTest(combined=combined), self.assertRaises(HTTPException) as refused:
+                    source_table_service.save_combined_source(PROJECT, combined)
+                self.assertEqual(refused.exception.status_code, 400)
+        self.assertFalse((self.project / "source" / "source_import.json").exists())
+
+    def test_a_single_table_save_after_a_combined_one_writes_exactly_the_single_record(self) -> None:
+        self._save_csv_profile()
+        single = self._source_import_text()
+        self.assertEqual(
+            json.loads(single),
+            {
+                "json_format": "arcrho-source-import-v4",
+                "project_name": PROJECT,
+                "source_type": "csv",
+                "mssql": {"server": "", "database": "", "table": "", "authentication": "windows"},
+                "last_import": {
+                    "source_type": "", "source_label": "", "imported_at": "", "imported_by": "",
+                    "row_count": None, "column_count": None, "csv_path": "", "csv_mtime_ns": None, "csv_size": None,
+                },
+                "refresh_scope": {"dataset_types": [], "reserving_class_types": [], "chosen_by": "", "chosen_at": ""},
+            },
+        )
+
+        self._save_combined(self.COMBINED)
+        answer = self._save_csv_profile()
+        # Byte for byte the record a project that was never combined holds.
+        self.assertEqual(self._source_import_text(), single)
+        self.assertNotIn("combined", answer)
+        self.assertEqual(sorted(set(answer) - {"ok", "driver_available"}), self.SINGLE_SETTINGS_KEYS)
+
+    def test_a_combined_project_is_never_re_read_behind_the_users_back(self) -> None:
+        self._save_combined(self.COMBINED)
+        master = self.project / "source" / "master_table.csv"
+        before = master.read_bytes()
+        with self._server_process():
+            status = source_table_service.ensure_master_table(PROJECT, force=True)
+            file_status = source_table_service.get_source_file_status(PROJECT)
+        self.assertFalse(status["refreshed"])
+        self.assertEqual(master.read_bytes(), before)
+        # The CSV still named in the field mapping is not this source's file.
+        self.assertEqual(file_status["csv_path"], "")
+
+        master.unlink()
+        with self._server_process():
+            with self.assertRaises(source_table_service.SourceTableMissingError) as missing:
+                source_table_service.ensure_master_table(PROJECT)
+            self.assertEqual(source_table_service.resolve_source_table_for_read(PROJECT), "")
+        self.assertIn("Project Settings > Source Data", str(missing.exception))
+        self.assertFalse(master.exists())
+
+    def test_the_refresh_plan_says_a_combined_source_imports_on_the_client(self) -> None:
+        self._save_combined(self.COMBINED)
+        self._write_mapping(SHARED_CSV)
+        plan = source_table_router.get_source_refresh_plan(PROJECT)
+        self.assertEqual(plan["source_type"], "combined")
+        self.assertFalse(plan["server_can_import"])
+        # The same shared CSV makes a single-table project server-importable.
+        direct = source_refresh_service.describe_source_refresh_plan(
+            PROJECT, {"source_type": "csv"}, {}, csv_path=SHARED_CSV, csv_path_rewritten=False
+        )
+        self.assertTrue(direct["server_can_import"])
 
     def test_a_client_refuses_without_the_gateway(self) -> None:
         before = self._files()

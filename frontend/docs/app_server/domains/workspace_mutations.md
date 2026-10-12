@@ -40,6 +40,7 @@ No new browser-facing route. This existing route selects the transport per reque
 | `POST /project_settings/{source}/duplicate_project_folder/cancel/{request_id}` | `project_duplication_cancel` | `project_settings_service.cancel_duplicate_project_folder` |
 | `POST /field_mapping` | `field_mapping_save` (receipt) | `field_mapping_service.save_field_mapping` |
 | `POST /source_table/profile` | `source_profile_save` (receipt) | `source_table_service.save_source_profile` |
+| (no route yet; the combined source save) | `source_combined_save` (receipt) | `source_table_service.save_combined_source` |
 | `GET /source_table/refresh_job/plan` (only when the stored CSV path is a drive letter this PC can translate) | `source_csv_path_rewrite` | `source_table_service.rewrite_source_csv_path` |
 | `POST /reserving_class_types` | `reserving_class_types_save` (receipt) | `reserving_class_service.save_reserving_class_types` |
 | `POST /table_summary/refresh` | `table_summary_rebuild` | `table_summary_service.rebuild_table_summary` |

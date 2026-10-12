@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 2 of 9 session-sized steps done (the record can hold a combined source, and the combine engine joins tables); next is the server half: save, commit and guards.
+Status: In progress: 3 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, and the server saves a combined source and never re-reads it); next is the client routes: describe, preview, import.
 Last updated: 2026-10-12
 
 ## Progress
@@ -11,7 +11,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A project can record a source made of several tables, and single-table projects record exactly what they do today | [x] | 2026-10-12 | 45 min | 3 min | Nothing visible yet; a project's source record can now describe several joined tables, and single-table projects are recorded exactly as before. |
 | 2 | Arco can combine several tables into one the way the merge notebook does | [x] | 2026-10-12 | 70 min | 5 min | Nothing visible yet; Arco can now join several tables into one the way the merge notebook does and report how well each table matched. |
-| 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [ ] | | 60 min | | |
+| 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [x] | 2026-10-12 | 60 min | 7 min | Nothing visible yet; the server can now keep a combined source and accept its imported table, and it never re-reads one on its own, while single-table projects save and import exactly as before. |
 | 4 | The app can read every table of a combined source, preview the result and import it | [ ] | | 60 min | | |
 | 5 | The import window lists several tables, each with a nickname and a details window | [ ] | | 75 min | | |
 | 6 | The import window shows how the tables join and what the result will look like | [ ] | | 80 min | | |
@@ -19,7 +19,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 2 of 9 steps done. Estimated 510 min, actual so far 8 min.
+Overall: 3 of 9 steps done. Estimated 510 min, actual so far 15 min.
 
 ## How agents work this plan
 
@@ -150,7 +150,7 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 
 **Read first.**
 - Decisions 2 and 8 above; "How it fits".
-- [source_table_service.py](../../frontend/app_server/services/source_table_service.py) `save_source_profile`, `ensure_master_table`, `read_source_table_settings`, `_master_status`.
+- [source_table_service.py](../../frontend/app_server/services/source_table_service.py) `save_source_profile`, `ensure_master_table`, `read_source_table_settings`, `_master_status`, `get_source_file_status` (a combined source has no single file to stat).
 - [source_table_upload_service.py](../../frontend/app_server/services/source_table_upload_service.py) `commit_source_table_upload`.
 - [source_refresh_service.py](../../frontend/app_server/services/source_refresh_service.py) `describe_source_refresh_plan`.
 - [arcrho_workspace_mutation_contract.py](../../python-api/src/arcrho_workspace_mutation_contract.py) entries `source_profile_save` and `source_table_upload_commit`.
@@ -158,20 +158,20 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 - Tests [test_source_table_upload.py](../../frontend/tests/test_source_table_upload.py), [test_source_data_writes_hosted.py](../../frontend/tests/test_source_data_writes_hosted.py), [test_source_refresh_jobs.py](../../frontend/tests/test_source_refresh_jobs.py).
 
 **Do.**
-- [ ] `save_combined_source(project_name, combined)` in `source_table_service`: normalize (step 1), require at least two tables and at least one key, reject `sql_login`, store `source_type: combined` plus the block under the project lock, audit `Saved combined source (<label>)`, answer `read_source_table_settings`.
-- [ ] New mutation kind `source_combined_save` (`project_name`, `combined`; receipt, locked project), registered wherever `source_profile_save` is registered (mutation contract, Gateway dispatch tables, any HTTP kind list the tests enumerate).
-- [ ] `save_source_profile` drops the `combined` block (decision 2).
-- [ ] `read_source_table_settings` includes `combined` only for a combined source.
-- [ ] `commit_source_table_upload` accepts `combined`: `last_import.source_label` from `combined_source_label`, no CSV identity, no SQL pair remembered; audit `Imported combined source (<label>, N rows)`. Add nothing to the mutation's argument list unless needed.
-- [ ] `ensure_master_table` treats `combined` like `mssql` (never re-read; missing master answers the "import in Project Settings > Source Data" error).
-- [ ] `describe_source_refresh_plan` answers `server_can_import: false` for `combined`.
-- [ ] Confirm the Engine's import branch in [source_table_refresh.py](../../server-components/src/arcrho_engine/source_table_refresh.py) reaches `ensure_master_table` for `combined` and so never re-reads it; add a test there rather than code.
+- [x] `save_combined_source(project_name, combined)` in `source_table_service`: normalize (step 1), require at least two tables and at least one key, reject `sql_login`, store `source_type: combined` plus the block under the project lock, audit `Saved combined source (<label>)`, answer `read_source_table_settings`.
+- [x] New mutation kind `source_combined_save` (`project_name`, `combined`; receipt, locked project), registered wherever `source_profile_save` is registered (mutation contract, Gateway dispatch tables, any HTTP kind list the tests enumerate).
+- [x] `save_source_profile` drops the `combined` block (decision 2).
+- [x] `read_source_table_settings` includes `combined` only for a combined source.
+- [x] `commit_source_table_upload` accepts `combined`: `last_import.source_label` from `combined_source_label`, no CSV identity, no SQL pair remembered; audit `Imported combined source (<label>, N rows)`. Add nothing to the mutation's argument list unless needed.
+- [x] `ensure_master_table` treats `combined` like `mssql` (never re-read; missing master answers the "import in Project Settings > Source Data" error).
+- [x] `describe_source_refresh_plan` answers `server_can_import: false` for `combined`.
+- [x] Confirm the Engine's import branch in [source_table_refresh.py](../../server-components/src/arcrho_engine/source_table_refresh.py) reaches `ensure_master_table` for `combined` and so never re-reads it; add a test there rather than code.
 
 **Tests.** Extend the three test files above: combined save round-trip; single save after a combined save writes exactly the single-table record (golden); combined commit records the label and leaves the CSV identity empty; `ensure_master_table` on a combined project does not touch the master; the refresh plan says client import; existing single-table tests pass unchanged. Add the Engine case to [test_source_table_refresh.py](../../server-components/tests/test_source_table_refresh.py).
 
 **Done when.** The touched test modules pass, and the mutation contract tests (`grep -l source_profile_save frontend/tests python-api/tests`) pass with the new kind.
 
-**Estimate.** Estimate: code edit 40 min, test/validation 20 min, total 60 min.
+**Estimate.** Estimate: code edit 40 min, test/validation 20 min, total 60 min. Actual: code edit 5 min, test/validation 2 min, total 7 min (the mutation dispatch is generic, so the new kind needed only its contract entry, and the existing csv-only checks already kept a combined source on the client).
 
 ### Step 4 — Client routes: describe, preview, import
 

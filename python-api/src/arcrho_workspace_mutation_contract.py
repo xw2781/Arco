@@ -455,6 +455,15 @@ WORKSPACE_MUTATION_KINDS: dict[str, WorkspaceMutationKind] = {
         receipt=True,
         locked_project_arg="project_name",
     ),
+    # A combined source (several tables joined into one) is saved whole; its
+    # CSV paths arrive translated to the share, like ``csv_path`` above.
+    "source_combined_save": WorkspaceMutationKind(
+        "source_table_service",
+        "save_combined_source",
+        ("project_name", "combined"),
+        receipt=True,
+        locked_project_arg="project_name",
+    ),
     "source_csv_path_rewrite": WorkspaceMutationKind(
         "source_table_service",
         "rewrite_source_csv_path",

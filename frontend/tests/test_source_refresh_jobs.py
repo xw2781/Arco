@@ -197,6 +197,37 @@ class SourceRefreshContractTests(unittest.TestCase):
         self.assertTrue(hasattr(source_refresh_service, mutation.function))
 
 
+class SourceRefreshPlanTests(unittest.TestCase):
+    """Only a CSV on a share is imported by the server; every other source on the client."""
+
+    def _plan(self, source_type: str, csv_path: str) -> dict:
+        return source_refresh_service.describe_source_refresh_plan(
+            "Demo Project", {"source_type": source_type}, {"busy": False}, csv_path=csv_path, csv_path_rewritten=False
+        )
+
+    def test_a_shared_csv_is_the_only_server_import(self) -> None:
+        shared = r"\\fileserver\data\claims.csv"
+        self.assertEqual(
+            self._plan("csv", shared),
+            {
+                "ok": True,
+                "project_name": "Demo Project",
+                "source_type": "csv",
+                "server_can_import": True,
+                "csv_path_rewritten": False,
+                "busy": False,
+                "busy_reason": "",
+            },
+        )
+        self.assertFalse(self._plan("csv", r"C:\Users\me\claims.csv")["server_can_import"])
+        self.assertFalse(self._plan("mssql", shared)["server_can_import"])
+
+    def test_a_combined_source_imports_on_the_client(self) -> None:
+        plan = self._plan("combined", r"\\fileserver\data\claims.csv")
+        self.assertEqual(plan["source_type"], "combined")
+        self.assertFalse(plan["server_can_import"])
+
+
 class ImportSourcePathTests(unittest.TestCase):
     def test_unc_paths_are_shared_and_left_alone(self) -> None:
         unc = r"\\fileserver\data\claims.csv"

@@ -278,6 +278,125 @@ class SourceTableUploadTests(unittest.TestCase):
         self.assertEqual(self.master.read_text(encoding="utf-8"), OLD_TABLE)
         self.assertEqual(self._uploads(), [])
 
+    # --- Combined sources, and single-table commits kept exactly as they were ---
+
+    def _source_import(self) -> dict:
+        return json.loads((self.project / "source" / "source_import.json").read_text(encoding="utf-8"))
+
+    def _commit_stamped(self, record: dict) -> dict:
+        """The record with this run's import time blanked, for an exact comparison."""
+        record = json.loads(json.dumps(record))
+        record["last_import"]["imported_at"] = "<now>"
+        return record
+
+    def test_a_csv_commit_writes_exactly_the_single_table_record(self) -> None:
+        self._server_upload([b"LOB,Paid\n", b"A,1\n"])
+        with self._server_process(), user_identity_service.acting_identity("alice"):
+            answer = upload.commit_source_table_upload(
+                PROJECT, "srcup_test", "csv", 2, 13, 1, "\\\\srv\\share\\claims.csv", 123, 13
+            )
+        self.assertEqual(
+            self._commit_stamped(self._source_import()),
+            {
+                "json_format": "arcrho-source-import-v4",
+                "project_name": PROJECT,
+                "source_type": "csv",
+                "mssql": {"server": "", "database": "", "table": "", "authentication": "windows"},
+                "last_import": {
+                    "source_type": "csv",
+                    "source_label": "\\\\srv\\share\\claims.csv",
+                    "imported_at": "<now>",
+                    "imported_by": "alice",
+                    "row_count": 1,
+                    "column_count": 2,
+                    "csv_path": "\\\\srv\\share\\claims.csv",
+                    "csv_mtime_ns": 123,
+                    "csv_size": 13,
+                },
+                "refresh_scope": {"dataset_types": [], "reserving_class_types": [], "chosen_by": "", "chosen_at": ""},
+            },
+        )
+        self.assertEqual(
+            sorted(answer),
+            sorted(
+                [
+                    "ok", "upload_id", "project_name", "master_table_path", "master_table_exists",
+                    "master_table_size", "master_table_mtime", "refreshed", "source_type", "mssql",
+                    "last_import", "refresh_scope",
+                ]
+            ),
+        )
+        self.audit.assert_called_once_with(
+            project_name=PROJECT, action="Imported source table from CSV (\\\\srv\\share\\claims.csv, 1 rows)"
+        )
+
+    def test_a_sql_server_commit_writes_exactly_the_single_table_record(self) -> None:
+        profile = {"server": "SQLPRD01", "database": "DW", "table": "dbo.Claims", "authentication": "windows"}
+        (self.project / "source" / "source_import.json").write_text(
+            json.dumps({"source_type": "mssql", "mssql": profile}), encoding="utf-8"
+        )
+        self._server_upload([b"LOB,Paid\nA,1\n"])
+        with self._server_process(), user_identity_service.acting_identity("alice"):
+            answer = upload.commit_source_table_upload(PROJECT, "srcup_test", "mssql", 1, 13, 1)
+        record = self._commit_stamped(self._source_import())
+        self.assertEqual(record["source_type"], "mssql")
+        self.assertEqual(record["mssql"], profile)
+        self.assertEqual(
+            record["last_import"],
+            {
+                "source_type": "mssql",
+                "source_label": "SQLPRD01.DW.dbo.Claims",
+                "imported_at": "<now>",
+                "imported_by": "alice",
+                "row_count": 1,
+                "column_count": 2,
+                "csv_path": "",
+                "csv_mtime_ns": None,
+                "csv_size": None,
+            },
+        )
+        self.assertNotIn("combined", record)
+        self.assertNotIn("combined", answer)
+
+    def test_a_combined_commit_records_its_label_and_no_file_identity(self) -> None:
+        combined = {
+            "tables": [
+                {"id": "t1", "nickname": "Loss", "source_type": "mssql",
+                 "mssql": {"server": "SQLPRD01", "database": "DW", "table": "dbo.Loss"}},
+                {"id": "t2", "nickname": "", "source_type": "csv", "csv_path": "\\\\srv\\share\\EP.csv"},
+            ],
+            "keys": [{"name": "LOB", "map": {"t1": {"column": "LOB"}, "t2": {"column": "Lob"}}}],
+        }
+        (self.project / "source" / "source_import.json").write_text(
+            json.dumps({"source_type": "combined", "combined": combined}), encoding="utf-8"
+        )
+        self._server_upload([b"LOB,Paid,EP\n", b"A,1,2\n"])
+        with self._server_process(), user_identity_service.acting_identity("alice"):
+            answer = upload.commit_source_table_upload(PROJECT, "srcup_test", "combined", 2, 18, 1)
+        record = self._source_import()
+        self.assertEqual(record["source_type"], "combined")
+        self.assertEqual([table["id"] for table in record["combined"]["tables"]], ["t1", "t2"])
+        last = record["last_import"]
+        self.assertEqual(last["source_type"], "combined")
+        self.assertEqual(last["source_label"], "Combined: Loss, EP")
+        self.assertEqual((last["row_count"], last["column_count"]), (1, 3))
+        self.assertEqual((last["csv_path"], last["csv_mtime_ns"], last["csv_size"]), ("", None, None))
+        self.assertEqual(answer["combined"], record["combined"])
+        self.assertEqual(self.master.read_bytes(), b"LOB,Paid,EP\nA,1,2\n")
+        # No SQL Server pair is remembered for a combined import.
+        self.assertFalse((self.root / "config" / "mssql_connections.json").exists())
+        self.audit.assert_called_once_with(
+            project_name=PROJECT, action="Imported combined source (Combined: Loss, EP, 1 rows)"
+        )
+
+    def test_a_combined_commit_needs_the_combined_source_saved_first(self) -> None:
+        self._server_upload([b"LOB,Paid\nA,1\n"])
+        with self.assertRaises(HTTPException) as refused:
+            with self._server_process(), user_identity_service.acting_identity("alice"):
+                upload.commit_source_table_upload(PROJECT, "srcup_test", "combined", 1, 13, 1)
+        self.assertEqual(refused.exception.status_code, 400)
+        self.assertEqual(self.master.read_text(encoding="utf-8"), OLD_TABLE)
+
     def test_progress_is_reported_while_the_upload_runs(self) -> None:
         seen = []
         real = upload._set_progress

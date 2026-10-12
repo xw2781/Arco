@@ -46,8 +46,10 @@ from typing import Any, Dict, Iterator, Optional, Tuple
 from fastapi import HTTPException
 
 from arcrho_api.source_table_contract import (
+    SOURCE_TYPE_COMBINED,
     SOURCE_TYPE_CSV,
     SOURCE_TYPE_MSSQL,
+    combined_source_label,
     csv_identity,
     mssql_source_label,
 )
@@ -248,11 +250,12 @@ def commit_source_table_upload(
 
     The previous master table stays untouched until every part is present and
     the assembled bytes and rows match what the client read; the swap itself
-    is one rename, so no reader ever sees a half-written table.
+    is one rename, so no reader ever sees a half-written table. A combined
+    source must already be saved; its label comes from that saved record.
     """
     name = source_table_service._require_project_name(project_name)
     kind = str(source_type or "").strip().lower()
-    if kind not in (SOURCE_TYPE_CSV, SOURCE_TYPE_MSSQL):
+    if kind not in (SOURCE_TYPE_CSV, SOURCE_TYPE_MSSQL, SOURCE_TYPE_COMBINED):
         raise HTTPException(400, f"Unknown source type: {source_type}")
     try:
         expected_chunks, expected_bytes, expected_rows = int(chunk_count), int(byte_count), int(row_count)
@@ -272,6 +275,8 @@ def commit_source_table_upload(
         profile = None
         if kind == SOURCE_TYPE_MSSQL:
             profile = source_table_service._require_complete_mssql_profile(record.get("mssql"))
+        elif kind == SOURCE_TYPE_COMBINED and record.get("source_type") != SOURCE_TYPE_COMBINED:
+            raise HTTPException(400, "Save the combined source before importing it.")
         held = _held_parts(folder)
         if set(held) != set(range(expected_chunks)):
             arrived = len(set(held) & set(range(expected_chunks)))
@@ -313,6 +318,9 @@ def commit_source_table_upload(
         if profile is not None:
             last_import["source_label"] = mssql_source_label(profile)
             updates: Dict[str, Any] = {"source_type": kind, "mssql": profile}
+        elif kind == SOURCE_TYPE_COMBINED:
+            last_import["source_label"] = combined_source_label(record.get("combined"))
+            updates = {"source_type": kind}
         else:
             last_import.update(
                 source_label=csv_path, csv_path=csv_path, csv_mtime_ns=csv_mtime_ns, csv_size=csv_size
@@ -338,6 +346,8 @@ def commit_source_table_upload(
         except HTTPException:
             pass
         action = f"Imported source table from SQL Server ({last_import['source_label']}, {counter.rows:,} rows)"
+    elif kind == SOURCE_TYPE_COMBINED:
+        action = f"Imported combined source ({last_import['source_label']}, {counter.rows:,} rows)"
     else:
         action = f"Imported source table from CSV ({csv_path}, {counter.rows:,} rows)"
     safe_append_project_audit_log(project_name=name, action=action)

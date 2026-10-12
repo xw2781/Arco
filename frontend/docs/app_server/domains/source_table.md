@@ -11,10 +11,11 @@ Every project folder owns exactly one imported raw table at a fixed location and
 <project dir>/source/source_import.json   which source produced it, plus the SQL Server profile
 ```
 
-Two import routes write that same copy:
+Three import routes write that same copy:
 
 - **`csv`** - copied from the external path in `field_mapping.json::table_path`. The copy is refreshed automatically whenever that file's identity (path, mtime, size) differs from the recorded import, so existing projects keep working with no user action.
 - **`mssql`** - read from SQL Server on the client with the caller's Windows identity and uploaded to the server. Never re-read implicitly; only an explicit import writes the copy.
+- **`combined`** - several CSV and SQL Server tables read and joined on the client, then uploaded as one table with `source_type: combined`. Never re-read implicitly: `ensure_master_table` treats it like `mssql`, the refresh plan answers `server_can_import: false`, and the Engine's refresh job reaches that same guarded read. The join spec is the `combined` block of `source_import.json` ([plan](../../../../docs/plans/combined_source_import.md), decision 3); it is saved whole by the `source_combined_save` mutation (`source_table_service.save_combined_source`, receipt, needs two tables and one key) and appears in `source_import.json`, the settings answer and the upload commit answer only for a combined source, so single-table records and answers keep exactly their shape. Saving a single-table profile drops the block. The upload commit labels a combined import from the saved block (`Combined: Loss, EP`) and records no CSV identity.
 
 The external CSV path and the SQL Server table are *import sources*. Nothing downstream reads them: table summary, reserving class values, data processing rules/values, and the data engine all resolve `source/master_table.csv`.
 

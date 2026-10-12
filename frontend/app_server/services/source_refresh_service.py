@@ -158,7 +158,9 @@ def describe_source_refresh_plan(
     and *csv_path* the saved path as the client translated it from its own
     drive letters. A SQL Server project is never server-importable: the import
     authenticates as the caller's Windows login, and moving it to a server
-    service account would silently change who reads the table.
+    service account would silently change who reads the table. A combined
+    source is never server-importable either: its tables are read and joined
+    on the client, so only ``csv`` can answer yes.
     """
 
     name = _validated_project(project_name)

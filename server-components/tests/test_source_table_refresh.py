@@ -364,12 +364,12 @@ class ScopedRefreshTests(unittest.TestCase):
 
     REQUEST_ID = "0123456789abcdef0123456789abcdef"
 
-    def _run(self, **scope):
+    def _run(self, import_source=False, source_type="csv", source_table_extra=None, **scope):
         request = build_source_refresh_request(
             request_id=self.REQUEST_ID,
             project_name="Demo Project",
             user_name="Test User",
-            import_source=False,
+            import_source=import_source,
             **scope,
         )
         refreshed = []
@@ -380,10 +380,11 @@ class ScopedRefreshTests(unittest.TestCase):
             refreshed.append((reserving_class, list(dataset_types or [])))
 
         source_table = SimpleNamespace(
-            get_source_table_state=lambda project: {"source_type": "csv"},
+            get_source_table_state=lambda project: {"source_type": source_type},
             record_refresh_scope=lambda project, types, class_types: self.recorded.append(
                 (project, list(types), list(class_types))
             ),
+            **(source_table_extra or {}),
         )
         summary = SimpleNamespace(
             refresh_table_summary=lambda project, **kwargs: {"row_count": 7},
@@ -431,6 +432,29 @@ class ScopedRefreshTests(unittest.TestCase):
         self.assertEqual(result["dataset_types_expanded"], [])
         # "Everything" is recorded too, so a later narrowing never lingers.
         self.assertEqual(self.recorded, [("Demo Project", [], [])])
+
+    def test_an_import_of_a_combined_source_goes_through_the_guarded_master_read(self) -> None:
+        # A combined source is joined on the client; the job must reach the
+        # path that never re-reads it, not the SQL Server import.
+        calls = []
+
+        def ensure_master_table(project, *, force=False):
+            calls.append((project, force))
+            return {"last_import": {"source_type": "combined", "row_count": 4, "column_count": 3}}
+
+        def import_from_mssql(project):
+            raise AssertionError("a combined source must never be read from SQL Server by the Engine")
+
+        result, _refreshed = self._run(
+            import_source=True,
+            source_type="combined",
+            source_table_extra={
+                "ensure_master_table": ensure_master_table,
+                "import_from_mssql": import_from_mssql,
+            },
+        )
+        self.assertEqual(calls, [("Demo Project", True)])
+        self.assertEqual((result["source_type"], result["row_count"]), ("combined", 4))
 
     def test_the_job_rebuilds_the_data_processing_value_list(self) -> None:
         # The Data Processing Rules page only reads this cache; the refresh

@@ -6,12 +6,14 @@ can read (`source_table_upload_service`) reuses, and it is the only resolver
 every reader goes through, so no consumer ever reads an external CSV path or a
 SQL Server table directly.
 
-Two import sources produce the same master copy:
-  * `csv`   - copied from the external path in `field_mapping.json::table_path`,
-              refreshed automatically whenever that file's identity changes; a
-              path only the client can open is uploaded by the client instead.
-  * `mssql` - read from SQL Server using the caller's Windows identity on the
-              client and uploaded. Never re-read automatically.
+Three import sources produce the same master copy:
+  * `csv`      - copied from the external path in `field_mapping.json::table_path`,
+                 refreshed automatically whenever that file's identity changes; a
+                 path only the client can open is uploaded by the client instead.
+  * `mssql`    - read from SQL Server using the caller's Windows identity on the
+                 client and uploaded. Never re-read automatically.
+  * `combined` - several CSV and SQL Server tables joined on the client and
+                 uploaded as one table. Never re-read automatically.
 
 The SQL Server profile lives with the project and is shared by every user of
 that project. No credentials are stored: Windows authentication only.
@@ -34,12 +36,15 @@ from arcrho_api.source_table_contract import (
     normalize_mssql_connections,
     remove_mssql_connections,
     upsert_mssql_connection,
+    SOURCE_TYPE_COMBINED,
     SOURCE_TYPE_CSV,
     SOURCE_TYPE_MSSQL,
     SUPPORTED_MSSQL_AUTH_MODES,
+    combined_source_label,
     csv_identity,
     mssql_source_label,
     normalize_import_source_path,
+    normalize_combined_source,
     normalize_mssql_profile,
     normalize_source_import,
     normalize_source_type,
@@ -211,7 +216,8 @@ def save_source_profile(
 
     Runs on the server host (the ``source_profile_save`` mutation) and answers
     with the settings as they now stand. *csv_path* arrives already translated
-    from the client's drive letters into the share it stands for.
+    from the client's drive letters into the share it stands for. A previous
+    combined source is dropped: the record normalizes to the single-table shape.
     """
     name = _require_project_name(project_name)
     requested_type = str(source_type or "").strip().lower()
@@ -242,6 +248,39 @@ def save_source_profile(
             + (f", {mssql_source_label(profile)}" if requested_type == SOURCE_TYPE_MSSQL else "")
             + ")"
         ),
+    )
+    return read_source_table_settings(name)
+
+
+def save_combined_source(project_name: str, combined: Any) -> Dict[str, Any]:
+    """Persist a combined source: several tables joined into one imported table.
+
+    Runs on the server host (the ``source_combined_save`` mutation) and answers
+    with the settings as they now stand. CSV paths arrive already translated
+    to the share they stand for. Nothing is read here; the client combines the
+    tables and uploads the result.
+    """
+    name = _require_project_name(project_name)
+    block = normalize_combined_source(combined)
+    if len(block["tables"]) < 2:
+        raise HTTPException(400, "A combined source needs at least two tables.")
+    if not block["keys"]:
+        raise HTTPException(400, "A combined source needs at least one key.")
+    for table in block["tables"]:
+        if table["source_type"] == SOURCE_TYPE_MSSQL:
+            _require_complete_mssql_profile(table["mssql"])
+        elif not table["csv_path"]:
+            raise HTTPException(400, f"Table {table['id']} has no CSV path.")
+
+    with _project_lock(name):
+        current = read_source_import(name)
+        _write_source_import(
+            name,
+            {**current, "project_name": name, "source_type": SOURCE_TYPE_COMBINED, "combined": block},
+        )
+    safe_append_project_audit_log(
+        project_name=name,
+        action=f"Saved combined source ({combined_source_label(block)})",
     )
     return read_source_table_settings(name)
 
@@ -599,8 +638,8 @@ def ensure_master_table(project_name: str, *, force: bool = False) -> Dict[str, 
 
     A `csv` project re-copies whenever the external file's identity changed (or
     `force` is set), so existing projects keep working without an explicit
-    import. An `mssql` project is never re-read implicitly; its master copy is
-    only written by an explicit import.
+    import. An `mssql` or `combined` project is never re-read implicitly; its
+    master copy is only written by an explicit import from the client.
     """
     name = _require_project_name(project_name)
     master_path = resolve_master_table_path(name)
@@ -614,6 +653,13 @@ def ensure_master_table(project_name: str, *, force: bool = False) -> Dict[str, 
             if not master_exists:
                 raise SourceTableMissingError(
                     f"No table has been imported from SQL Server for project '{name}'. "
+                    "Import the table in Project Settings > Source Data."
+                )
+            return _master_status(name, master_path, record, refreshed=False)
+        if source_type == SOURCE_TYPE_COMBINED:
+            if not master_exists:
+                raise SourceTableMissingError(
+                    f"No combined table has been imported for project '{name}'. "
                     "Import the table in Project Settings > Source Data."
                 )
             return _master_status(name, master_path, record, refreshed=False)
@@ -739,18 +785,23 @@ def _master_status(
         exists = False
         size = 0
         mtime = 0.0
-    return {
+    source_type = normalize_source_type(record.get("source_type"))
+    status = {
         "project_name": project_name,
         "master_table_path": master_path,
         "master_table_exists": exists,
         "master_table_size": size,
         "master_table_mtime": mtime,
         "refreshed": bool(refreshed),
-        "source_type": normalize_source_type(record.get("source_type")),
+        "source_type": source_type,
         "mssql": normalize_mssql_profile(record.get("mssql")),
         "last_import": record.get("last_import"),
         "refresh_scope": record.get("refresh_scope"),
     }
+    # Single-table answers keep exactly their historical keys.
+    if source_type == SOURCE_TYPE_COMBINED:
+        status["combined"] = normalize_combined_source(record.get("combined"))
+    return status
 
 
 def read_source_table_settings(project_name: str) -> Dict[str, Any]:
@@ -798,13 +849,15 @@ def get_source_file_status(
     ``read_source_table_settings`` answer already in hand, which a Client PC
     gets through the Gateway.
 
-    A SQL Server project has no file, and an unreachable one answers
+    A SQL Server or combined project has no single file, and an unreachable one answers
     `exists: false` so the panel keeps showing the recorded time.
     """
     name = _require_project_name(project_name)
     record = settings if settings is not None else read_source_table_settings(name)
     source_type = normalize_source_type(record.get("source_type"))
-    csv_path = "" if source_type == SOURCE_TYPE_MSSQL else str(record.get("csv_path") or "")
+    csv_path = (
+        "" if source_type in (SOURCE_TYPE_MSSQL, SOURCE_TYPE_COMBINED) else str(record.get("csv_path") or "")
+    )
     status: Dict[str, Any] = {
         "project_name": name,
         "source_type": source_type,
