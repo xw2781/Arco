@@ -1,0 +1,1113 @@
+<title>Combined Source</title>
+<style>
+/* Layout: one Import Data window as the working surface (Source list, then a Join Map whose
+   key rows line up across table cards), with the proposal set below it. ArcRho Atlas styling. */
+:root {
+  --bg: #eef2f6;
+  --panel: #ffffff;
+  --panel-2: #f8fafc;
+  --panel-3: #f1f5f9;
+  --line: #d8dde3;
+  --line-2: #cbd5e1;
+  --text: #1f2937;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --accent: #2b6df6;
+  --accent-soft: #eaf1ff;
+  --accent-line: #bcd0fb;
+  --warn: #b45309;
+  --warn-soft: #fff7ed;
+  --warn-line: #f3c89b;
+  --ok: #15803d;
+  --t1: #2b6df6; --t2: #0f766e; --t3: #b45309; --t4: #7a55d6; --t5: #be185d; --t6: #4d7c0f;
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-2: 0 8px 20px rgba(15, 23, 42, 0.10);
+  --font: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
+  --mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  --r: 4px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #12161c; --panel: #1a1f27; --panel-2: #1f252e; --panel-3: #252c36;
+    --line: #2f3742; --line-2: #3a4350; --text: #e2e8f0; --muted: #9aa7b8; --faint: #6b7686;
+    --accent: #6d9bff; --accent-soft: #1d2a44; --accent-line: #33508a;
+    --warn: #f0a85a; --warn-soft: #2e2318; --warn-line: #6b4a26; --ok: #4ade80;
+    --t1: #6d9bff; --t2: #2dd4bf; --t3: #f0a85a; --t4: #a78bfa; --t5: #f472b6; --t6: #a3e635;
+    --shadow-1: 0 1px 2px rgba(0,0,0,.3); --shadow-2: 0 8px 20px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12161c; --panel: #1a1f27; --panel-2: #1f252e; --panel-3: #252c36;
+  --line: #2f3742; --line-2: #3a4350; --text: #e2e8f0; --muted: #9aa7b8; --faint: #6b7686;
+  --accent: #6d9bff; --accent-soft: #1d2a44; --accent-line: #33508a;
+  --warn: #f0a85a; --warn-soft: #2e2318; --warn-line: #6b4a26; --ok: #4ade80;
+  --t1: #6d9bff; --t2: #2dd4bf; --t3: #f0a85a; --t4: #a78bfa; --t5: #f472b6; --t6: #a3e635;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.3); --shadow-2: 0 8px 20px rgba(0,0,0,.45);
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font: 13px/1.45 var(--font); margin: 0; }
+.page { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Page heading */
+.intro h1 { font-size: 20px; line-height: 1.2; margin: 0 0 4px; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); max-width: 78ch; }
+.intro .example-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid var(--line-2); border-radius: 999px; font-size: 11px; color: var(--muted); background: var(--panel); vertical-align: 2px; }
+
+/* Source Data tab header mock */
+.sd-strip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; }
+.sd-strip .tab-label { font-size: 11px; font-weight: bold; color: var(--muted); }
+.sd-ident { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sd-ident strong { font-size: 14px; }
+.stack-dots { display: inline-flex; }
+.stack-dots i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--panel); margin-left: -3px; }
+.stack-dots i:first-child { margin-left: 0; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line-2); color: var(--muted); background: var(--panel-2); white-space: nowrap; }
+.sd-strip .spacer { flex: 1; }
+.sd-meta { color: var(--muted); font-size: 12px; }
+
+/* Window */
+.win { background: var(--panel); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow-2); display: flex; flex-direction: column; min-width: 0; }
+.win-head { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.win-title { font-weight: bold; font-size: 13px; }
+.steps { display: flex; gap: 2px; flex-wrap: wrap; margin-left: auto; }
+.step { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; background: none; border-radius: var(--r); color: var(--muted); cursor: pointer; }
+.step b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 11px; font-weight: bold; }
+.step:hover { background: var(--panel-3); }
+.step.on { color: var(--accent); background: var(--accent-soft); }
+.step.on b { border-color: var(--accent); background: var(--accent); color: #fff; }
+.step.done b { border-color: var(--accent-line); color: var(--accent); }
+.step.new::after { content: "New"; font-size: 10px; padding: 0 5px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); }
+.step.on.new::after { background: var(--panel); }
+.win-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; min-height: 420px; min-width: 0; }
+.win-foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel-2); border-radius: 0 0 6px 6px; flex-wrap: wrap; }
+.win-foot .hint { color: var(--muted); font-size: 12px; margin-right: auto; }
+.btn { height: 30px; padding: 0 12px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--panel); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background .14s, border-color .14s; }
+.btn:hover { background: var(--panel-3); }
+.btn.primary { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); font-weight: bold; }
+.btn.primary:hover { border-color: var(--accent); }
+.btn.ghost { border-color: transparent; background: none; color: var(--accent); }
+.btn.ghost:hover { background: var(--accent-soft); }
+.btn svg { width: 14px; height: 14px; }
+.icon-btn { width: 24px; height: 24px; border: 0; background: none; border-radius: var(--r); display: inline-grid; place-items: center; color: var(--faint); cursor: pointer; flex: none; }
+.icon-btn:hover { background: var(--panel-3); color: var(--text); }
+.icon-btn svg { width: 14px; height: 14px; }
+.sec-label { font-size: 11px; font-weight: bold; color: var(--muted); }
+.note { color: var(--muted); font-size: 12px; margin: 0; }
+
+/* Source step */
+.src-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.src-top .note { margin-right: auto; max-width: 70ch; }
+.src-group { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.src-group-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-size: 12px; flex-wrap: wrap; }
+.src-group-head svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+.src-group-head .where { color: var(--muted); }
+.src-row { display: grid; grid-template-columns: 18px 12px minmax(0, 1fr) auto auto 24px; align-items: center; gap: 8px; padding: 7px 10px; border-top: 1px solid var(--line); background: var(--panel); }
+.src-row:first-of-type { border-top: 0; }
+.src-group-head + .src-row { border-top: 0; }
+.src-row { cursor: pointer; }
+.src-row:hover { background: var(--panel-2); }
+.src-row.dragging { opacity: .45; }
+.src-row.drop-above { box-shadow: inset 0 2px 0 var(--accent); }
+.grip { cursor: grab; color: var(--faint); display: grid; place-items: center; }
+.grip svg { width: 12px; height: 14px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.src-name { min-width: 0; display: flex; flex-direction: column; }
+.src-name b { font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-name span { color: var(--faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-size { color: var(--muted); font-size: 12px; }
+.base-tag { font-size: 11px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--accent-line); color: var(--accent); background: var(--accent-soft); }
+.order-note { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: var(--r); background: var(--panel-2); border: 1px dashed var(--line-2); color: var(--muted); font-size: 12px; }
+
+/* Single-table look (today's form, unchanged) */
+.single { display: grid; gap: 10px; max-width: 620px; }
+.field { display: grid; gap: 4px; }
+.input { height: 30px; border: 1px solid var(--line-2); border-radius: var(--r); padding: 0 8px; background: var(--panel); display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Join Map */
+.map-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel-2); padding: 12px 12px 10px; }
+.map { display: grid; align-items: stretch; width: max-content; }
+.lc { display: flex; align-items: center; gap: 4px; padding: 0 8px 0 2px; min-height: 34px; }
+.lc .kname { font-family: var(--mono); font-size: 12px; font-weight: bold; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc .icon-btn { opacity: 0; }
+.lc:hover .icon-btn, .lc.hl .icon-btn { opacity: 1; }
+.lc.sec { min-height: 26px; align-items: flex-end; padding-bottom: 4px; }
+.cc { background: var(--panel); border-left: 1px solid var(--line-2); border-right: 1px solid var(--line-2); padding: 3px 8px; display: flex; align-items: center; min-width: 0; min-height: 34px; position: relative; }
+.cc.top { border-top: 1px solid var(--line-2); border-radius: 5px 5px 0 0; padding-top: 8px; align-items: flex-start; }
+.cc.bot { border-bottom: 1px solid var(--line-2); border-radius: 0 0 5px 5px; padding-bottom: 8px; align-items: flex-start; }
+.cc.sec { min-height: 26px; }
+.cc.master { background: color-mix(in srgb, var(--accent) 5%, var(--panel)); border-color: var(--accent-line); }
+.gut { position: relative; min-height: 34px; }
+.rail { position: absolute; left: -1px; right: -1px; top: 50%; border-top: 2px solid var(--line-2); transition: border-color .14s; }
+.rail.soft { border-top-style: dashed; border-top-color: var(--line-2); }
+.hl .rail, .rail.hl { border-top-color: var(--accent); }
+.lc.hl { color: var(--accent); }
+.cc.hl { background: color-mix(in srgb, var(--accent) 7%, var(--panel)); }
+.card-head { display: flex; flex-direction: column; gap: 3px; min-width: 0; width: 100%; }
+.card-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.card-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 12px; }
+.card-title svg.kind { width: 14px; height: 14px; color: var(--muted); flex: none; }
+.card-sub { color: var(--faint); font-size: 11px; padding-left: 16px; }
+.pill { height: 24px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--panel); display: inline-flex; align-items: center; gap: 6px; padding: 0 6px 0 5px; cursor: pointer; font-size: 12px; max-width: 100%; }
+.pill:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+.pill svg.venn { width: 20px; height: 14px; flex: none; }
+.caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--faint); flex: none; }
+.base-label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; height: 24px; }
+.kcell { width: 100%; height: 26px; border: 1px solid transparent; border-radius: var(--r); background: none; display: flex; align-items: center; gap: 6px; padding: 0 6px; cursor: pointer; text-align: left; min-width: 0; }
+.kcell:hover { border-color: var(--line-2); background: var(--panel-2); }
+.kcell .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kcell .alt { color: var(--faint); font-size: 11px; white-space: nowrap; margin-left: auto; }
+.kcell.virtual { border: 1px dashed var(--line-2); color: var(--muted); font-size: 12px; }
+.kcell.virtual:hover { border-color: var(--accent-line); }
+.kcell.warn { border-color: var(--warn-line); background: var(--warn-soft); }
+.kcell.warn .alt { color: var(--warn); }
+.kcell .wicon { width: 13px; height: 13px; color: var(--warn); flex: none; }
+.master-key { font-family: var(--mono); font-size: 12px; font-weight: bold; padding-left: 6px; }
+.add-key { height: 24px; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; border-radius: var(--r); }
+.add-key:hover { background: var(--accent-soft); }
+.cc.open { cursor: pointer; }
+.cc.open:hover { background: var(--panel-2); }
+.cc.open:hover .card-title b { color: var(--accent); }
+.clist { display: flex; flex-direction: column; gap: 1px; width: 100%; }
+.crow { width: 100%; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border: 1px solid transparent; border-radius: var(--r); background: none; cursor: pointer; text-align: left; font-size: 12px; min-width: 0; }
+.crow:hover { border-color: var(--line-2); background: var(--panel-2); }
+.crow .cn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crow .to { margin-left: auto; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; max-width: 55%; }
+.crow.off .cn { color: var(--faint); text-decoration: line-through; }
+.crow.off .to { color: var(--faint); }
+.crow.conflict .to { color: var(--warn); }
+.mcols { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.mcol { display: flex; align-items: center; gap: 6px; font-size: 11.5px; min-width: 0; }
+.mcol span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Result panel */
+.result { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); min-width: 0; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); padding: 0 8px; align-items: center; flex-wrap: wrap; }
+.tab { height: 32px; border: 0; background: none; padding: 0 10px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
+.tabs .sum { margin-left: auto; font-size: 12px; color: var(--muted); padding: 6px 4px; }
+.tabs .sum b { color: var(--text); }
+.pane { padding: 12px; display: grid; gap: 12px; }
+.alerts { display: grid; gap: 6px; }
+.alert { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--r); border: 1px solid var(--warn-line); background: var(--warn-soft); font-size: 12px; flex-wrap: wrap; }
+.alert svg { width: 14px; height: 14px; color: var(--warn); flex: none; }
+.alert.info { border-color: var(--line); background: var(--panel-2); }
+.alert.info svg { color: var(--muted); }
+.alert .msg { flex: 1; min-width: 220px; }
+.alert .btn { height: 26px; }
+.match-grid { display: grid; grid-template-columns: minmax(120px, 180px) minmax(160px, 1fr) minmax(180px, auto); gap: 6px 14px; align-items: center; }
+.match-grid .who { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; }
+.match-grid .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 12px; border-radius: 3px; background: var(--panel-3); overflow: hidden; display: flex; border: 1px solid var(--line); }
+.bar i { display: block; height: 100%; transition: width .18s; }
+.bar i.rest { background: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--faint) 35%, transparent) 3px 5px); }
+.match-grid .txt { font-size: 12px; color: var(--muted); }
+.cover { display: grid; gap: 6px; }
+.cover-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.cover-bar div { display: grid; place-items: center; font-size: 11px; color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; transition: flex-grow .18s; }
+.cover-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.cover-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cover-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.prev-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); max-height: 340px; }
+table.prev { border-collapse: separate; border-spacing: 0; font-size: 12px; min-width: 100%; }
+table.prev th, table.prev td { padding: 4px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: left; }
+table.prev th { position: sticky; top: 0; background: var(--panel-2); font-weight: bold; font-size: 11px; color: var(--muted); border-top: 3px solid var(--tc, var(--line-2)); z-index: 1; }
+table.prev td.n { text-align: right; font-variant-numeric: tabular-nums; }
+table.prev th.n { text-align: right; }
+table.prev td.k { font-family: var(--mono); font-size: 11.5px; }
+table.prev td.empty { color: var(--faint); }
+table.prev tr:hover td { background: var(--panel-2); }
+.prev-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.prev-legend span { display: inline-flex; gap: 5px; align-items: center; }
+.placeholder { display: grid; place-items: center; min-height: 360px; color: var(--muted); text-align: center; gap: 6px; border: 1px dashed var(--line-2); border-radius: var(--r); background: var(--panel-2); padding: 24px; }
+
+/* Popover */
+.pop { position: absolute; z-index: 50; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow-2); padding: 4px; min-width: 220px; max-width: 320px; max-height: 360px; overflow-y: auto; overflow-x: hidden; animation: pop .14s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(-3px); } }
+.pop-h { font-size: 11px; font-weight: bold; color: var(--muted); padding: 6px 8px 3px; }
+.pop-i { width: 100%; border: 0; background: none; text-align: left; padding: 5px 8px; border-radius: 3px; cursor: pointer; display: flex; gap: 8px; align-items: center; min-height: 28px; }
+.pop-i:hover, .pop-i:focus-visible { background: var(--accent-soft); outline: none; }
+.pop-i.sel { color: var(--accent); font-weight: bold; }
+.pop-i .d { display: block; font-size: 11px; color: var(--muted); font-weight: normal; }
+.pop-i svg { width: 20px; height: 14px; flex: none; }
+.pop-i .tick { width: 12px; flex: none; color: var(--accent); }
+.pop-sep { height: 1px; background: var(--line); margin: 4px 2px; }
+.pop-row { display: flex; gap: 6px; padding: 4px 8px 6px; }
+.pop-row input { flex: 1; height: 28px; border: 1px solid var(--line-2); border-radius: var(--r); padding: 0 8px; font: inherit; background: var(--panel); color: var(--text); min-width: 0; }
+.pop-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96, 165, 250, .16); }
+.pop-row .btn { height: 28px; }
+
+/* Table details window (second level) */
+.modal-back { position: fixed; inset: 0; z-index: 40; background: rgba(15, 23, 42, .4); display: grid; place-items: center; padding: 16px; animation: fade .14s ease-out; }
+@keyframes fade { from { opacity: 0; } }
+.modal { width: min(580px, 100%); max-height: calc(100vh - 32px); background: var(--panel); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow-2); display: flex; flex-direction: column; min-width: 0; }
+.modal-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.modal-head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal-body { padding: 14px; display: grid; gap: 14px; overflow-y: auto; min-height: 0; }
+.modal-foot { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel-2); border-radius: 0 0 6px 6px; flex-wrap: wrap; }
+.modal-foot .left { margin-right: auto; }
+.btn.danger { color: var(--warn); }
+.dsec { display: grid; gap: 8px; }
+.dl { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 6px 12px; align-items: center; }
+.dl > span { color: var(--muted); font-size: 12px; }
+.dl .input.wrap { height: auto; min-height: 30px; padding: 5px 8px; white-space: normal; word-break: break-all; }
+.with-btn { display: flex; gap: 6px; min-width: 0; }
+.with-btn .input { flex: 1; }
+.text-in { height: 30px; border: 1px solid var(--line-2); border-radius: var(--r); padding: 0 8px; font: inherit; background: var(--panel); color: var(--text); width: 100%; min-width: 0; }
+.text-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96, 165, 250, .16); }
+.dcols { border: 1px solid var(--line); border-radius: var(--r); max-height: 210px; overflow-y: auto; }
+table.dct { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+table.dct th, table.dct td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+table.dct th { position: sticky; top: 0; background: var(--panel-2); font-size: 11px; color: var(--muted); }
+table.dct tr:last-child td { border-bottom: 0; }
+table.dct td.use { color: var(--muted); width: 50%; }
+table.dct td.faint { color: var(--faint); }
+@media (max-width: 480px) { .dl { grid-template-columns: 1fr; } }
+
+.toast { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 420px; background: var(--panel); border: 1px solid var(--line-2); border-left: 3px solid var(--ok); border-radius: var(--r); box-shadow: var(--shadow-2); padding: 10px 12px; font-size: 12px; transform: translateY(12px); opacity: 0; transition: .18s; pointer-events: none; z-index: 60; }
+.toast.show { transform: none; opacity: 1; }
+
+/* Proposal */
+.prop { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.prop section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.prop h2 { font-size: 13px; margin: 0 0 8px; }
+.prop ul, .prop ol { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.prop li { max-width: 68ch; }
+.prop li b { font-weight: bold; }
+.prop pre { margin: 0; font: 11.5px/1.5 var(--mono); background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; overflow-x: auto; color: var(--text); }
+.prop .wide { grid-column: 1 / -1; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.flow span.box { border: 1px solid var(--line-2); border-radius: var(--r); padding: 4px 8px; background: var(--panel-2); }
+.flow span.box.hot { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+.flow span.box.same { color: var(--muted); }
+.flow .arr { color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (max-width: 640px) {
+  .steps { margin-left: 0; }
+  .match-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-db" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5.5" rx="7" ry="2.7"/><path d="M5 5.5v13c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7v-13"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></g></symbol>
+  <symbol id="i-csv" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 2.8h8l4.5 4.5v13.9H6z"/><path d="M14 2.8v4.5h4.5"/><path d="M9 12.5h6M9 15.5h6M9 18.5h4"/></g></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2 14.3 13.3H1.7z"/><path d="M8 6.6v3.2M8 11.6h.01"/></g></symbol>
+  <symbol id="i-info" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.4"/><path d="M8 7.2v4M8 4.8h.01"/></g></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-more" viewBox="0 0 16 16"><g fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></g></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 12 14"><g fill="currentColor"><circle cx="4" cy="3" r="1.1"/><circle cx="8" cy="3" r="1.1"/><circle cx="4" cy="7" r="1.1"/><circle cx="8" cy="7" r="1.1"/><circle cx="4" cy="11" r="1.1"/><circle cx="8" cy="11" r="1.1"/></g></symbol>
+  <symbol id="i-dl" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v7.5"/><path d="m4.8 7 3.2 3.2L11.2 7"/><path d="M2.8 11.5v1.7h10.4v-1.7"/></g></symbol>
+</svg>
+
+<div class="page">
+  <div class="intro">
+    <h1>Combined Source <span class="example-tag">Example data</span></h1>
+    <p>Prototype of the Import Data window when a project's source is built from several tables. The example rebuilds the ResQ Channel table from <span class="mono">Arco - Merge Tables.ipynb</span>: three SQL Server tables and one CSV, matched on seven keys. Click a table card to see where it comes from and set its nickname. Try the key cells, the join pills, and the column lists too.</p>
+  </div>
+
+  <div class="sd-strip" aria-label="Source Data tab header after import">
+    <span class="tab-label">Source Data</span>
+    <span class="sd-ident"><span class="stack-dots" id="stripDots"></span><strong id="stripName">ResQ_Channel_Loss_202609</strong><span class="chip" id="stripChip"></span></span>
+    <span class="sd-meta num" id="stripMeta"></span>
+    <span class="spacer"></span>
+    <button class="btn primary" type="button" id="stripImport"><svg><use href="#i-dl"/></svg>Import Data</button>
+  </div>
+
+  <div class="win" id="win">
+    <div class="win-head">
+      <span class="win-title">Import Settings</span>
+      <nav class="steps" id="steps" aria-label="Import steps"></nav>
+    </div>
+    <div class="win-body" id="body"></div>
+    <div class="win-foot">
+      <span class="hint" id="footHint"></span>
+      <button class="btn" type="button" id="backBtn">Back</button>
+      <button class="btn primary" type="button" id="nextBtn">Next</button>
+    </div>
+  </div>
+
+  <div class="prop">
+    <section class="wide">
+      <h2>How it fits</h2>
+      <div class="flow">
+        <span class="box hot">Table 1 · SQL</span><span class="box hot">Table 2 · CSV</span><span class="box hot">Table n</span>
+        <span class="arr">→</span><span class="box hot">Combine (keys, row rules, columns)</span>
+        <span class="arr">→</span><span class="box">source/master_table.csv</span>
+        <span class="arr">→</span><span class="box same">Field mapping · dataset types · reserving classes · Engine refresh (unchanged)</span>
+      </div>
+      <p class="note" style="margin-top:8px">Everything after the import already reads one file, the project's master table. A combined source writes that same file, so no downstream code changes.</p>
+    </section>
+
+    <section>
+      <h2>The join model</h2>
+      <ul>
+        <li><b>One base table.</b> The first table in the list. Every other table joins onto the result in list order. Drag to change it.</li>
+        <li><b>One shared key set.</b> Keys come from the base table's columns. Arco matches them in other tables ignoring case, spaces and underscores, so <span class="mono">Co_Cd</span> lines up with <span class="mono">CO_CD</span> on its own.</li>
+        <li><b>A missing key</b> is filled with a fixed value (the notebook's <span class="mono">sys_yrmo = 0</span>) or matches any value. Matching any value repeats that table's rows, and the window warns about it.</li>
+        <li><b>Row rule per table:</b> All Rows (outer), Base Rows (left), or Matches Only (inner). All Rows is the default, as in the notebook.</li>
+        <li><b>Nicknames:</b> each table can have a short nickname, asked for when it is added. The map and messages show it in place of the table name.</li>
+        <li><b>Columns:</b> click a column in a table's list to leave it out or rename it. A name clash gets the table's nickname as a suffix until you rename it.</li>
+        <li><b>Clean-up is automatic:</b> empty <span class="mono">Unnamed: n</span> columns and blank rows are dropped, as <span class="mono">read_csv_clean</span> does.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Import window</h2>
+      <ol>
+        <li><b>Source.</b> With one table it is today's form, field for field. Add Table turns it into a list. SQL tables are grouped under their connection, so the server and database are entered once.</li>
+        <li><b>Table details.</b> Paths, server, database and the column list sit in a small window opened from any table row or card, so the main view stays short.</li>
+        <li><b>Combine.</b> Appears only with two or more tables. The Join Map and the Row Match check live here. Problems show before anything is written.</li>
+        <li><b>Datasets</b> and <b>Reserving Classes</b>: unchanged.</li>
+      </ol>
+      <p class="note" style="margin-top:8px">Import Again re-reads every table and repeats the same combine. Change Source reopens step 1 with the list.</p>
+    </section>
+
+    <section>
+      <h2>Saved settings</h2>
+      <pre>// source_import.json
+"source_type": "combined",
+"tables": [
+  { "id": "t1", "nickname": "Loss", "source_type": "mssql",
+    "mssql": { "connection": "c1", "table": "dbo.ResQ_Channel_Loss_202609" } },
+  { "id": "t4", "nickname": "EP", "source_type": "csv",
+    "csv_path": "E:\\ResQ\\...\\EP_EEX_NJ_2026Sep_channel.csv" }
+],
+"connections": { "c1": { "server": "…", "database": "…" } },
+"combine": {
+  "keys": [
+    { "name": "CO_CD",    "t4": { "column": "Co_Cd" } },
+    { "name": "sys_yrmo", "t4": { "fill": "0" } }
+  ],
+  "rows":    { "t2": "all", "t3": "all", "t4": "all" },
+  "exclude": { "t4": ["FACID"] },
+  "rename":  {}
+}</pre>
+    </section>
+
+    <section>
+      <h2>Server side</h2>
+      <ul>
+        <li><b>Read each table</b> into <span class="mono">source/parts/&lt;id&gt;.csv</span>: copy a CSV, stream a SQL table, exactly as single imports do now.</li>
+        <li><b>Combine as text.</b> Read every part with all columns as strings, so keys compare exactly and no number is reformatted on the way through.</li>
+        <li><b>Write once.</b> The combined result goes to a staging file and replaces <span class="mono">master_table.csv</span> in one step, like today.</li>
+        <li><b>Preview endpoint.</b> Step 2 asks the server for row counts, match counts, warnings and the first rows, read from the key columns only.</li>
+        <li><b>Contract.</b> The JSON change follows the dataset contract process; single-table projects keep their current record.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Open questions</h2>
+      <ul>
+        <li><b>Monthly paths.</b> Each month's files carry the month in the name. Should a path accept a token such as <span class="mono">{YYYYMM}</span> filled from Development End?</li>
+        <li><b>Stacking.</b> Should a second mode append tables with the same columns (union) as well as join them?</li>
+        <li><b>Different keys per pair.</b> Left out: the notebook never needs it, and one key set keeps the map readable.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<div id="modal"></div>
+<div class="pop" id="pop" hidden role="menu"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Example data ----------
+  const ACC = [202604, 202605, 202606, 202607, 202608, 202609];
+  const DIMS = [];
+  ["PPA", "CMP"].forEach(p => ["Agency", "Direct", "Partner"].forEach(c => ["BI", "PD"].forEach(k => DIMS.push([p, c, k]))));
+  const UP = ["CO_CD", "PROD_CD", "STATE_CD", "CHANNEL", "IBNRCAT", "acc_yrmo", "sys_yrmo"];
+  const MIXED = ["Co_Cd", "PROD_CD", "State_Cd", "Channel", "IBNRCAT", "acc_yrmo"];
+  const CONN = { server: "IBNRSQL01", database: "ResQ_Monthly" };
+  const NJ_DIR = "E:\\ResQ\\IBNR SAS output files\\New Jersey\\2026Sep\\Earned Premium and Exposure";
+  const CATALOG = {
+    loss:     { name: "ResQ_Channel_Loss_202609", alias: "Loss", kind: "sql", gen: "claims", cols: UP.concat(["Paid_Loss", "Incurred_Loss", "Case_Reserve"]) },
+    closed:   { name: "ResQ_Channel_Closed_Counts_202609", alias: "Closed", kind: "sql", gen: "closed", cols: UP.concat(["Closed_Counts"]) },
+    reported: { name: "ResQ_Channel_Reported_Counts_202609", alias: "Reported", kind: "sql", gen: "reported", cols: UP.concat(["Reported_Counts"]) },
+    subro:    { name: "ResQ_Channel_Subro_202609", alias: "Subro", kind: "sql", gen: "subro", cols: UP.concat(["Subro_Recovery"]) },
+    ep:       { name: "EP_EEX_NJ_2026Sep_channel.csv", alias: "EP", kind: "csv", dir: NJ_DIR, gen: "premium", cols: MIXED.concat(["FACID", "Earned Premium", "Earned Exposure", "Unnamed: 9"]), empty: ["Unnamed: 9"] },
+    budget:   { name: "Budget EEX and EP 2026_Sep.csv", alias: "Budget", kind: "csv", dir: NJ_DIR, gen: "budget", cols: MIXED.concat(["Earned Premium", "Earned Exposure"]), fmt: { acc_yrmo: "yyyy-mm" } }
+  };
+  const DIM_NORMS = new Set(["cocd", "prodcd", "statecd", "channel", "ibnrcat", "accyrmo", "sysyrmo", "facid"]);
+  const COLORS = ["--t1", "--t2", "--t3", "--t4", "--t5", "--t6"];
+  const norm = s => String(s).toLowerCase().replace(/[\s_]+/g, "");
+  const isDim = c => DIM_NORMS.has(norm(c));
+
+  function rng(seed) { let a = seed; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function hash(s) { let h = 7; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 2654435761); return h; }
+
+  function genRows(id) {
+    const t = CATALOG[id], r = rng(hash(id)), rows = [];
+    const keyCols = t.cols.filter(isDim);
+    const mk = (p, c, k, acc, sys) => {
+      const vals = ["07", p, "NJ", c, k, acc, sys];
+      const row = {};
+      keyCols.forEach((col, i) => {
+        if (norm(col) === "facid") { row[col] = "F" + (100 + Math.floor(r() * 4)); return; }
+        let v = vals[i];
+        if (norm(col) === "accyrmo" && t.fmt && t.fmt.acc_yrmo === "yyyy-mm") v = String(acc).slice(0, 4) + "-" + String(acc).slice(4);
+        row[col] = String(v);
+      });
+      t.cols.filter(cl => !isDim(cl)).forEach(cl => {
+        if (t.empty && t.empty.includes(cl)) { row[cl] = ""; return; }
+        const big = /Loss|Reserve|Premium|Recovery/.test(cl);
+        row[cl] = big ? Math.round(5000 + r() * 240000) : Math.round(r() * (/Exposure/.test(cl) ? 4000 : 60));
+      });
+      return row;
+    };
+    DIMS.forEach(([p, c, k]) => ACC.forEach(acc => {
+      if (t.gen === "premium" || t.gen === "budget") {
+        if (t.gen === "budget" && acc < 202607) return;
+        rows.push(mk(p, c, k, acc));
+        return;
+      }
+      ACC.forEach(sys => {
+        if (sys < acc) return;
+        const lag = ACC.indexOf(sys) - ACC.indexOf(acc);
+        if (t.gen === "closed" && lag === 0 && r() < 0.6) return;
+        if (t.gen === "reported" && r() < 0.05) return;
+        if (t.gen === "subro" && (k !== "PD" || lag < 2)) return;
+        rows.push(mk(p, c, k, acc, sys));
+      });
+    }));
+    return rows;
+  }
+  const ROWS = {};
+  Object.keys(CATALOG).forEach(id => { ROWS[id] = genRows(id); });
+
+  // ---------- State ----------
+  const state = {
+    step: "combine",
+    tables: [],            // { id, color, join }
+    keys: [],              // { name, map: { [id]: { col } | { fill } | { any: true } , convert? } }
+    exclude: { ep: new Set(["FACID"]) },
+    rename: {},            // "id|col" -> master name
+    resultTab: "match",
+    detail: null           // { mode: "view" | "add", id }
+  };
+
+  const tbl = id => state.tables.find(t => t.id === id);
+  const base = () => state.tables[0];
+  const meta = id => CATALOG[id];
+  const colorOf = id => "var(" + tbl(id).color + ")";
+  const label = id => (tbl(id) && tbl(id).nick) || meta(id).name;
+  const suffixOf = id => (tbl(id).nick || "T" + (state.tables.indexOf(tbl(id)) + 1)).replace(/\s+/g, "_");
+  const kindText = id => meta(id).kind === "sql" ? "SQL table" : "CSV file";
+
+  function freeColor() { const used = state.tables.map(t => t.color); return COLORS.find(c => !used.includes(c)) || COLORS[0]; }
+
+  function autoMap(id, keyName) {
+    const t = meta(id);
+    const col = t.cols.find(c => norm(c) === norm(keyName));
+    if (col) return { col };
+    return /yrmo/i.test(keyName) ? { fill: "0" } : { any: true };
+  }
+  function detectKeys() {
+    const b = base();
+    if (!b) { state.keys = []; return; }
+    const others = state.tables.slice(1).map(t => meta(t.id).cols.map(norm));
+    state.keys = meta(b.id).cols
+      .filter(c => isDim(c) && norm(c) !== "facid")
+      .filter(c => !others.length || others.some(list => list.includes(norm(c))))
+      .map(name => {
+        const map = {};
+        state.tables.forEach(t => { map[t.id] = t === b ? { col: name } : autoMap(t.id, name); });
+        return { name, map };
+      });
+  }
+  function addTable(id, nick) {
+    state.tables.push({ id, color: freeColor(), join: "all", nick: nick === undefined ? meta(id).alias : nick });
+    if (state.tables.length === 2 || !state.keys.length) detectKeys();
+    else state.keys.forEach(k => { k.map[id] = autoMap(id, k.name); });
+  }
+  ["loss", "closed", "reported", "ep"].forEach(id => addTable(id));
+  detectKeys();
+
+  // ---------- Combine ----------
+  function mismatch(id, key) {
+    const m = key.map[id];
+    if (!m || !m.col || m.convert) return null;
+    const f = (meta(id).fmt || {})[m.col];
+    const bf = (meta(base().id).fmt || {})[key.map[base().id].col];
+    if (f && f !== bf) return { sample: ROWS[id][0][m.col], baseSample: ROWS[base().id][0][key.map[base().id].col], fmt: f };
+    return null;
+  }
+  function keyVal(id, key, row) {
+    const m = key.map[id];
+    if (!m || m.any) return null;
+    if (m.fill !== undefined) return m.fill;
+    let v = String(row[m.col]);
+    if (m.convert) v = v.replace("-", "");
+    return v;
+  }
+  function columnPlan() {
+    const used = new Set(state.keys.map(k => norm(k.name)));
+    const plan = [];
+    state.tables.forEach(t => {
+      const m = meta(t.id);
+      const keyCols = new Set(state.keys.map(k => (k.map[t.id] || {}).col).filter(Boolean));
+      m.cols.forEach(col => {
+        if (keyCols.has(col)) return;
+        if (m.empty && m.empty.includes(col)) return;
+        const off = state.exclude[t.id] && state.exclude[t.id].has(col);
+        const renamed = state.rename[t.id + "|" + col];
+        let master = renamed || col, conflict = false;
+        if (!off) {
+          if (used.has(norm(master))) { conflict = true; if (!renamed) master = col + "_" + suffixOf(t.id); }
+          used.add(norm(master));
+        }
+        plan.push({ id: t.id, col, master, off, conflict: conflict && !renamed, renamed: !!renamed });
+      });
+    });
+    return plan;
+  }
+  function combine() {
+    const plan = columnPlan().filter(p => !p.off);
+    const stats = {};
+    if (!state.tables.length) return { rows: [], plan, stats };
+    const take = (id, row) => { const v = {}; plan.filter(p => p.id === id).forEach(p => { v[p.master] = row[p.col]; }); return v; };
+    const b = base();
+    let rows = ROWS[b.id].map(r => {
+      const k = {}; state.keys.forEach(key => { k[key.name] = keyVal(b.id, key, r); });
+      return { k, v: take(b.id, r), src: new Set([b.id]) };
+    });
+    stats[b.id] = { read: rows.length, matched: rows.length, base: true };
+    state.tables.slice(1).forEach(t => {
+      const use = state.keys.filter(k => !(k.map[t.id] || {}).any);
+      const idx = new Map();
+      ROWS[t.id].forEach((r, i) => {
+        const ks = use.map(k => keyVal(t.id, k, r)).join("|");
+        if (!idx.has(ks)) idx.set(ks, []);
+        idx.get(ks).push(i);
+      });
+      const hits = new Array(ROWS[t.id].length).fill(0);
+      const out = [];
+      let lostBase = 0;
+      rows.forEach(L => {
+        const ks = use.map(k => L.k[k.name]).join("|");
+        const m = idx.get(ks);
+        if (m) m.forEach(i => { hits[i]++; out.push({ k: L.k, v: Object.assign({}, L.v, take(t.id, ROWS[t.id][i])), src: new Set([...L.src, t.id]) }); });
+        else if (t.join !== "match") out.push(L);
+        else lostBase++;
+      });
+      let added = 0;
+      if (t.join === "all") ROWS[t.id].forEach((r, i) => {
+        if (hits[i]) return;
+        const k = {}; state.keys.forEach(key => { const v = keyVal(t.id, key, r); k[key.name] = v === null ? "" : v; });
+        out.push({ k, v: take(t.id, r), src: new Set([t.id]) }); added++;
+      });
+      const matched = hits.filter(h => h > 0).length;
+      stats[t.id] = { read: ROWS[t.id].length, matched, added, dropped: ROWS[t.id].length - matched - added, lostBase, maxRepeat: Math.max(0, ...hits) };
+      rows = out;
+    });
+    return { rows, plan, stats };
+  }
+
+  // ---------- Rendering helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fmtN = n => Number(n).toLocaleString("en-US");
+  const icon = (id, cls) => '<svg class="' + (cls || "") + '" aria-hidden="true"><use href="#' + id + '"/></svg>';
+  const JOINS = {
+    all:   { label: "All Rows", desc: "Keep every row from both sides. Rows without a match get blanks.", venn: "all" },
+    base:  { label: "Base Rows", desc: "Keep the rows already combined. Rows only in this table are left out.", venn: "base" },
+    match: { label: "Matches Only", desc: "Keep only rows found on both sides.", venn: "match" }
+  };
+  function venn(type) {
+    const c = "currentColor";
+    const lens = '<path d="M10 2.67A5 5 0 0 1 10 11.33A5 5 0 0 1 10 2.67Z" fill="' + c + '" fill-opacity=".55"/>';
+    const left = '<circle cx="7.5" cy="7" r="5" fill="' + c + '" fill-opacity="' + (type === "match" ? 0 : .28) + '" stroke="' + c + '" stroke-width="1.1"/>';
+    const right = '<circle cx="12.5" cy="7" r="5" fill="' + c + '" fill-opacity="' + (type === "all" ? .28 : 0) + '" stroke="' + c + '" stroke-width="1.1"/>';
+    return '<svg class="venn" viewBox="0 0 20 14" aria-hidden="true" style="color:var(--accent)">' + left + right + lens + "</svg>";
+  }
+
+  // ---------- Steps ----------
+  function stepList() {
+    const s = [{ id: "source", label: "Source" }];
+    if (state.tables.length > 1) s.push({ id: "combine", label: "Combine", isNew: true });
+    s.push({ id: "datasets", label: "Datasets" }, { id: "classes", label: "Reserving Classes" });
+    return s;
+  }
+  function renderSteps() {
+    const list = stepList();
+    if (!list.some(s => s.id === state.step)) state.step = "source";
+    const cur = list.findIndex(s => s.id === state.step);
+    $("steps").innerHTML = list.map((s, i) =>
+      '<button class="step' + (i === cur ? " on" : "") + (i < cur ? " done" : "") + (s.isNew ? " new" : "") + '" type="button" data-step="' + s.id + '"><b>' + (i + 1) + "</b>" + s.label + "</button>").join("");
+    $("backBtn").disabled = cur === 0;
+    $("backBtn").style.visibility = cur === 0 ? "hidden" : "visible";
+    const last = cur === list.length - 1;
+    $("nextBtn").innerHTML = last ? icon("i-dl") + "Import Data" : "Next";
+    const hints = {
+      source: state.tables.length > 1 ? "Drag to reorder. The first table is the base the others join onto." : "One table imports exactly as today.",
+      combine: "Arco checks matches on the server before anything is written.",
+      datasets: "", classes: ""
+    };
+    $("footHint").textContent = hints[state.step] || "";
+  }
+
+  // ---------- Source step ----------
+  function renderSource() {
+    if (state.tables.length === 1) {
+      const t = state.tables[0], m = meta(t.id);
+      return '<div class="src-top"><p class="note">Today\'s single-table form. Adding a second table turns this into a list and adds the Combine step.</p>' +
+        '<button class="btn" type="button" data-act="add-table">' + icon("i-plus") + "Add Table</button></div>" +
+        '<div class="single">' +
+        '<div class="field"><span class="sec-label">Import Method</span><div class="input">' + (m.kind === "sql" ? "SQL Server" : "CSV File") + "</div></div>" +
+        (m.kind === "sql"
+          ? '<div class="field"><span class="sec-label">Server Name</span><div class="input">' + CONN.server + '</div></div><div class="field"><span class="sec-label">Database Name</span><div class="input">' + CONN.database + '</div></div><div class="field"><span class="sec-label">Table Or View</span><div class="input mono">dbo.' + esc(m.name) + "</div></div>"
+          : '<div class="field"><span class="sec-label">Source File</span><div class="input mono">' + esc(m.dir + "\\" + m.name) + "</div></div>") +
+        "</div>";
+    }
+    const groups = [];
+    const sql = state.tables.filter(t => meta(t.id).kind === "sql");
+    const csv = state.tables.filter(t => meta(t.id).kind === "csv");
+    const row = t => {
+      const m = meta(t.id), i = state.tables.indexOf(t);
+      return '<div class="src-row" draggable="true" data-id="' + t.id + '" data-act="details" tabindex="0" role="button" title="Open source details">' +
+        '<span class="grip" title="Drag to reorder">' + icon("i-grip") + "</span>" +
+        '<span class="dot" style="background:' + colorOf(t.id) + '"></span>' +
+        '<span class="src-name"><b>' + esc(label(t.id)) + "</b><span>" + kindText(t.id) + "</span></span>" +
+        (i === 0 ? '<span class="base-tag">Base · 1st</span>' : '<span class="src-size">' + ordinal(i + 1) + "</span>") +
+        '<span class="src-size num">' + fmtN(ROWS[t.id].length) + " rows · " + m.cols.length + " cols</span>" +
+        '<button class="icon-btn" type="button" data-act="remove-table" data-id="' + t.id + '" aria-label="Remove ' + esc(label(t.id)) + '">' + icon("i-x") + "</button></div>";
+    };
+    const count = (n, one, many) => n + " " + (n === 1 ? one : many);
+    if (sql.length) groups.push('<div class="src-group"><div class="src-group-head">' + icon("i-db") + '<b>SQL Server</b><span class="where">' + count(sql.length, "table", "tables") + " · one shared connection</span></div>" + sql.map(row).join("") + "</div>");
+    if (csv.length) groups.push('<div class="src-group"><div class="src-group-head">' + icon("i-csv") + '<b>CSV Files</b><span class="where">' + count(csv.length, "file", "files") + "</span></div>" + csv.map(row).join("") + "</div>");
+    return '<div class="src-top"><p class="note">Tables are combined into one master table. Click a table to see its file or connection. The first is the base and the rest join onto it in turn.</p>' +
+      '<button class="btn" type="button" data-act="add-table">' + icon("i-plus") + "Add Table</button></div>" +
+      groups.join("") +
+      '<div class="order-note">' + icon("i-info", "") + '<span>Join order: ' + state.tables.map(t => '<b style="color:' + colorOf(t.id) + '">' + esc(label(t.id)) + "</b>").join(" → ") + ". Groups only save typing; the order above is what counts.</span></div>";
+  }
+  function ordinal(n) { return n + (["th", "st", "nd", "rd"][(n % 100 - 20) % 10] || ["th", "st", "nd", "rd"][n % 100] || "th"); }
+
+  // ---------- Combine step ----------
+  function renderCombine(res) {
+    const N = state.tables.length, K = state.keys.length;
+    const cols = ["150px"]; for (let i = 0; i <= N; i++) cols.push("26px", "188px");
+    const lastRow = 5 + K;
+    const cells = [];
+    const at = (c, r, html, cls, attrs) => cells.push('<div class="' + cls + '" style="grid-column:' + c + ";grid-row:" + r + '"' + (attrs || "") + ">" + html + "</div>");
+    const cardCls = (r, extra) => "cc" + (r === 1 ? " top" : "") + (r === lastRow ? " bot" : "") + (extra ? " " + extra : "");
+
+    // label column
+    at(1, 1, '<span class="sec-label">Tables</span>', "lc");
+    at(1, 2, '<span class="sec-label">Rows To Keep</span>', "lc");
+    at(1, 3, '<span class="sec-label">Match Rows On</span>', "lc sec");
+    state.keys.forEach((k, i) => at(1, 4 + i, '<span class="kname" title="' + esc(k.name) + '">' + esc(k.name) + '</span><button class="icon-btn" type="button" data-act="remove-key" data-k="' + i + '" aria-label="Stop matching on ' + esc(k.name) + '">' + icon("i-x") + "</button>", "lc", ' data-key="' + i + '"'));
+    at(1, 4 + K, '<button class="add-key" type="button" data-act="add-key">' + icon("i-plus") + "Add Key</button>", "lc");
+    at(1, lastRow, '<span class="sec-label">Other Columns</span>', "lc", ' style="align-items:flex-start;padding-top:8px"');
+
+    state.tables.forEach((t, ti) => {
+      const m = meta(t.id), gc = 2 + ti * 2, cc = 3 + ti * 2;
+      // header
+      at(cc, 1, '<div class="card-head"><div class="card-title"><span class="dot" style="background:' + colorOf(t.id) + '"></span><b>' + esc(label(t.id)) + '</b><button class="icon-btn" type="button" data-act="card-menu" data-id="' + t.id + '" aria-label="Table options">' + icon("i-more") + '</button></div><span class="card-sub num">' + icon(m.kind === "sql" ? "i-db" : "i-csv", "kind").replace('class="kind"', 'class="kind" style="width:11px;height:11px;vertical-align:-1px;margin-right:3px"') + kindText(t.id) + " · " + fmtN(ROWS[t.id].length) + " rows</span></div>", cardCls(1, "open"), ' data-act="details" data-id="' + t.id + '" tabindex="0" role="button" title="' + esc(m.name) + ' · click for source details"');
+      // join
+      at(cc, 2, ti === 0
+        ? '<span class="base-label">Base table</span>'
+        : '<button class="pill" type="button" data-act="join" data-id="' + t.id + '">' + venn(t.join) + JOINS[t.join].label + '<span class="caret"></span></button>', cardCls(2));
+      at(cc, 3, "", cardCls(3, "sec"));
+      // keys
+      state.keys.forEach((k, ki) => {
+        const mp = k.map[t.id] || {};
+        const mm = mismatch(t.id, k);
+        let inner;
+        if (mp.any) inner = '<button class="kcell virtual" type="button" data-act="key" data-id="' + t.id + '" data-k="' + ki + '">Any value</button>';
+        else if (mp.fill !== undefined) inner = '<button class="kcell virtual" type="button" data-act="key" data-id="' + t.id + '" data-k="' + ki + '">Fill <span class="mono">' + esc(mp.fill) + '</span><span class="alt">not in table</span></button>';
+        else {
+          const differs = mp.col !== k.name;
+          inner = '<button class="kcell' + (mm ? " warn" : "") + '" type="button" data-act="key" data-id="' + t.id + '" data-k="' + ki + '" title="' + (differs ? esc(mp.col) + " becomes " + esc(k.name) : esc(mp.col)) + '">' +
+            (mm ? icon("i-warn", "wicon") : "") + '<span class="mono">' + esc(mp.col) + "</span>" +
+            (mm ? '<span class="alt">' + esc(mm.sample) + "</span>" : mp.convert ? '<span class="alt">as YYYYMM</span>' : differs ? '<span class="alt">≈ name</span>' : "") + "</button>";
+        }
+        at(cc, 4 + ki, inner, cardCls(4 + ki), ' data-key="' + ki + '"');
+        const soft = !mp.col;
+        at(gc, 4 + ki, '<span class="rail' + (soft ? " soft" : "") + '"></span>', "gut", ' data-key="' + ki + '"');
+      });
+      at(cc, 4 + K, "", cardCls(4 + K, "sec"));
+      // other columns
+      const plan = res.plan.filter(p => p.id === t.id);
+      const list = plan.map(p => '<button class="crow' + (p.off ? " off" : "") + (p.conflict ? " conflict" : "") + '" type="button" data-act="chip" data-id="' + t.id + '" data-col="' + esc(p.col) + '" title="' + (p.off ? "Left out. Click to include." : p.master !== p.col ? esc(p.col) + " becomes " + esc(p.master) : "Click to leave out or rename") + '"><span class="cn">' + esc(p.col) + "</span>" +
+        (p.off ? '<span class="to">left out</span>' : p.master !== p.col ? '<span class="to">→ ' + esc(p.master) + "</span>" : "") + "</button>").join("");
+      at(cc, lastRow, '<div class="clist">' + (list || '<span class="note">None</span>') + "</div>", cardCls(lastRow));
+    });
+
+    // master column
+    const gc = 2 + N * 2, cc = 3 + N * 2;
+    const included = res.plan.filter(p => !p.off);
+    at(cc, 1, '<div class="card-head"><div class="card-title"><span class="dot" style="background:var(--text)"></span><b>Combined Table</b></div><span class="card-sub num">' + fmtN(res.rows.length) + " rows · " + (K + included.length) + " cols</span></div>", cardCls(1, "master"));
+    at(cc, 2, '<span class="base-label">Becomes the project source</span>', cardCls(2, "master"));
+    at(cc, 3, "", cardCls(3, "master sec"));
+    state.keys.forEach((k, ki) => {
+      at(cc, 4 + ki, '<span class="master-key">' + esc(k.name) + "</span>", cardCls(4 + ki, "master"), ' data-key="' + ki + '"');
+      at(gc, 4 + ki, '<span class="rail"></span>', "gut", ' data-key="' + ki + '"');
+    });
+    at(cc, 4 + K, "", cardCls(4 + K, "master sec"));
+    at(cc, lastRow, '<div class="mcols">' + included.map(p => '<span class="mcol"><span class="dot" style="background:' + colorOf(p.id) + ';width:7px;height:7px"></span><span class="' + (p.conflict ? "" : "") + '">' + esc(p.master) + "</span></span>").join("") + "</div>", cardCls(lastRow, "master"));
+
+    const map = '<div class="map-wrap"><div class="map" id="map" style="grid-template-columns:' + cols.join(" ") + '">' + cells.join("") + "</div></div>";
+    return map + renderResult(res);
+  }
+
+  function alertsFor(res) {
+    const out = [];
+    state.tables.slice(1).forEach(t => {
+      const s = res.stats[t.id], m = meta(t.id);
+      state.keys.forEach((k, ki) => {
+        const mm = mismatch(t.id, k);
+        if (mm) out.push({ tone: "warn", msg: "<b>" + esc(label(t.id)) + "</b> stores " + esc(k.name) + " as <span class=\"mono\">" + esc(mm.sample) + "</span>; the base uses <span class=\"mono\">" + esc(mm.baseSample) + "</span>. " + fmtN(s.matched) + " of its rows match.", fix: { label: "Read as YYYYMM", act: "convert", id: t.id, k: ki } });
+      });
+      if (s.maxRepeat > 1) {
+        const anyKeys = state.keys.filter(k => (k.map[t.id] || {}).any).map(k => k.name).join(", ");
+        out.push({ tone: "warn", msg: "Each <b>" + esc(label(t.id)) + "</b> row lands on up to " + s.maxRepeat + " combined rows because " + esc(anyKeys || "a key") + " matches any value. Its amounts will repeat on every one." });
+      }
+      const fills = state.keys.filter(k => (k.map[t.id] || {}).fill !== undefined);
+      if (fills.length && s.added) out.push({ tone: "info", msg: "<b>" + esc(label(t.id)) + "</b> has no " + fills.map(k => esc(k.name)).join(", ") + ", so its rows sit at " + fills.map(k => esc(k.name) + " = " + esc(k.map[t.id].fill)).join(", ") + " and form " + fmtN(s.added) + " rows of their own." });
+    });
+    res.plan.filter(p => p.conflict).forEach(p => out.push({ tone: "info", msg: "Two tables have <b>" + esc(p.col) + "</b>. The " + esc(label(p.id)) + " copy is named <span class=\"mono\">" + esc(p.master) + "</span>. Click it in the column list to rename it." }));
+    return out;
+  }
+
+  function renderResult(res) {
+    const K = state.keys.length, nCols = K + res.plan.filter(p => !p.off).length;
+    const head = '<div class="tabs"><button class="tab' + (state.resultTab === "match" ? " on" : "") + '" type="button" data-act="rtab" data-tab="match">Row Match</button>' +
+      '<button class="tab' + (state.resultTab === "preview" ? " on" : "") + '" type="button" data-act="rtab" data-tab="preview">Preview</button>' +
+      '<span class="sum num">Combined: <b>' + fmtN(res.rows.length) + "</b> rows × <b>" + nCols + "</b> columns</span></div>";
+    if (state.resultTab === "preview") return '<div class="result">' + head + '<div class="pane">' + renderPreview(res) + "</div></div>";
+
+    const al = alertsFor(res);
+    const alerts = al.length ? '<div class="alerts">' + al.map(a => '<div class="alert' + (a.tone === "info" ? " info" : "") + '">' + icon(a.tone === "info" ? "i-info" : "i-warn") + '<span class="msg">' + a.msg + "</span>" + (a.fix ? '<button class="btn primary" type="button" data-act="' + a.fix.act + '" data-id="' + a.fix.id + '" data-k="' + a.fix.k + '">' + a.fix.label + "</button>" : "") + "</div>").join("") + "</div>" : "";
+
+    const rowsHtml = state.tables.map((t, i) => {
+      const s = res.stats[t.id], m = meta(t.id);
+      if (i === 0) return '<span class="who"><span class="dot" style="background:' + colorOf(t.id) + '"></span><span>' + esc(label(t.id)) + '</span></span><div class="bar"><i style="width:100%;background:' + colorOf(t.id) + '"></i></div><span class="txt num">' + fmtN(s.read) + " rows · base</span>";
+      const pct = s.read ? s.matched / s.read * 100 : 0;
+      const rest = s.read - s.matched;
+      const restTxt = !rest ? "all matched" : t.join === "all" ? fmtN(rest) + " added as new rows" : fmtN(rest) + " left out";
+      return '<span class="who"><span class="dot" style="background:' + colorOf(t.id) + '"></span><span>' + esc(label(t.id)) + '</span></span><div class="bar" title="' + fmtN(s.matched) + " matched"  + '"><i style="width:' + pct + "%;background:" + colorOf(t.id) + '"></i><i class="rest" style="width:' + (100 - pct) + '%"></i></div><span class="txt num">' + fmtN(s.matched) + " of " + fmtN(s.read) + " matched · " + restTxt + (s.lostBase ? " · " + fmtN(s.lostBase) + " combined rows dropped" : "") + "</span>";
+    }).join("");
+
+    // coverage: how many tables contributed to each combined row
+    const N = state.tables.length, dist = new Array(N + 1).fill(0);
+    res.rows.forEach(r => dist[r.src.size]++);
+    const shades = n => "color-mix(in srgb, var(--accent) " + Math.round(25 + 75 * (n / N)) + "%, var(--faint))";
+    const segs = [];
+    for (let n = N; n >= 1; n--) if (dist[n]) segs.push({ n, c: dist[n] });
+    const cover = '<div class="cover"><span class="sec-label">Combined Rows By Number Of Tables With Data</span><div class="cover-bar">' +
+      segs.map(s => '<div style="flex-grow:' + s.c + ";background:" + shades(s.n) + '" title="' + fmtN(s.c) + " rows with data from " + s.n + ' tables">' + (s.c / Math.max(1, res.rows.length) > .07 ? fmtN(s.c) : "") + "</div>").join("") + '</div><div class="cover-legend">' +
+      segs.map(s => '<span><i style="background:' + shades(s.n) + '"></i>' + (s.n === N ? "All " + N + " tables" : s.n + (s.n === 1 ? " table" : " tables")) + " · " + fmtN(s.c) + "</span>").join("") + "</div></div>";
+
+    return '<div class="result">' + head + '<div class="pane">' + alerts + '<div class="match-grid">' + rowsHtml + "</div>" + cover + "</div></div>";
+  }
+
+  function renderPreview(res) {
+    const plan = res.plan.filter(p => !p.off);
+    const keyOrder = state.keys.map(k => k.name);
+    const sorted = res.rows.slice().sort((a, b) => {
+      for (const k of keyOrder) { const x = a.k[k] || "", y = b.k[k] || ""; if (x !== y) return x < y ? -1 : 1; }
+      return 0;
+    }).slice(0, 14);
+    const th = keyOrder.map(k => '<th style="--tc:var(--line-2)">' + esc(k) + "</th>").join("") + plan.map(p => '<th class="n" style="--tc:' + colorOf(p.id) + '">' + esc(p.master) + "</th>").join("");
+    const body = sorted.map(r => "<tr>" + keyOrder.map(k => '<td class="k' + (r.k[k] ? "" : " empty") + '">' + (r.k[k] ? esc(r.k[k]) : "·") + "</td>").join("") +
+      plan.map(p => { const v = r.v[p.master]; return v === undefined || v === "" ? '<td class="n empty">·</td>' : '<td class="n">' + (typeof v === "number" ? fmtN(v) : esc(v)) + "</td>"; }).join("") + "</tr>").join("");
+    const legend = '<div class="prev-legend"><span><span class="dot" style="background:var(--line-2)"></span>Key</span>' + state.tables.map(t => '<span><span class="dot" style="background:' + colorOf(t.id) + '"></span>' + esc(label(t.id)) + "</span>").join("") + '<span style="margin-left:auto">First 14 of ' + fmtN(res.rows.length) + " rows · a dot means no value</span></div>";
+    return legend + '<div class="prev-wrap"><table class="prev"><thead><tr>' + th + "</tr></thead><tbody>" + body + "</tbody></table></div>";
+  }
+
+  function renderPlaceholder(which) {
+    return '<div class="placeholder"><b>' + (which === "datasets" ? "Datasets" : "Reserving Classes") + "</b><span>Unchanged from today's import. Arco reads the combined table exactly as it reads a single one.</span></div>";
+  }
+
+  function renderStrip(res) {
+    const n = state.tables.length;
+    $("stripDots").innerHTML = n > 1 ? state.tables.map(t => '<i style="background:' + colorOf(t.id) + '"></i>').join("") : "";
+    $("stripName").textContent = n > 1 ? "Combined source" : meta(state.tables[0].id).name;
+    $("stripChip").textContent = n > 1 ? n + " tables · " + state.keys.length + " keys" : (meta(state.tables[0].id).kind === "sql" ? "SQL Server" : "CSV File");
+    $("stripMeta").textContent = fmtN(res.rows.length) + " rows · " + (state.keys.length + res.plan.filter(p => !p.off).length) + " columns";
+  }
+
+  function render() {
+    renderSteps();
+    const res = combine();
+    renderStrip(res);
+    const body = $("body");
+    if (state.step === "source") body.innerHTML = renderSource();
+    else if (state.step === "combine") body.innerHTML = renderCombine(res);
+    else body.innerHTML = renderPlaceholder(state.step);
+    bindDrag();
+  }
+
+  // ---------- Table details window ----------
+  function columnUse(id, col, keys) {
+    if ((meta(id).empty || []).includes(col)) return { txt: "Empty, dropped on import", faint: true };
+    const k = keys.find(kk => (kk.map[id] || {}).col === col);
+    if (k) return { txt: "Key" + (k.name !== col ? " → " + k.name : "") };
+    if (state.exclude[id] && state.exclude[id].has(col)) return { txt: "Left out", faint: true };
+    return { txt: "Value column" };
+  }
+  function renderModal() {
+    const d = state.detail, host = $("modal");
+    if (!d) { host.innerHTML = ""; return; }
+    const id = d.id, m = meta(id), adding = d.mode === "add";
+    const color = adding ? "var(" + freeColor() + ")" : colorOf(id);
+    const nick = adding ? m.alias : (tbl(id).nick || "");
+    let keys = state.keys;
+    if (adding) {
+      const names = keys.length ? keys.map(k => k.name) : meta(base().id).cols.filter(c => isDim(c) && norm(c) !== "facid");
+      keys = names.map(name => ({ name, map: { [id]: autoMap(id, name) } }));
+    }
+    const field = (lbl, html) => "<span>" + lbl + "</span>" + html;
+    const src = m.kind === "sql"
+      ? field("Import Method", '<div class="input">SQL Server</div>') +
+        field("Server", '<div class="with-btn"><div class="input">' + CONN.server + '</div><button class="btn" type="button" data-dact="conn">Change</button></div>') +
+        field("Database", '<div class="input">' + CONN.database + "</div>") +
+        field("Table Or View", '<div class="input wrap mono">dbo.' + esc(m.name) + "</div>") +
+        field("Sign In", '<div class="input">Windows account</div>')
+      : field("Import Method", '<div class="input">CSV File</div>') +
+        field("File", '<div class="with-btn"><div class="input wrap mono">' + esc(m.dir + "\\" + m.name) + '</div><button class="btn" type="button" data-dact="browse">Browse</button></div>');
+    const shared = m.kind === "sql" ? state.tables.filter(x => x.id !== id && meta(x.id).kind === "sql").length : 0;
+    const srcNote = m.kind === "sql"
+      ? (shared ? "This connection is shared with " + shared + (shared === 1 ? " other table" : " other tables") + ". Changing it changes them too." : "")
+      : "Arco copies the file into the project when you import.";
+    const rows = m.cols.map(c => { const u = columnUse(id, c, keys), f = u.faint ? " faint" : ""; return '<tr><td class="mono' + f + '">' + esc(c) + '</td><td class="use' + f + '">' + esc(u.txt) + "</td></tr>"; }).join("");
+    host.innerHTML = '<div class="modal-back" data-dact="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="detTitle">' +
+      '<div class="modal-head"><span class="dot" style="background:' + color + '"></span><b id="detTitle">' + (adding ? "Add Table" : esc(label(id))) + '</b><button class="icon-btn" type="button" data-dact="close" aria-label="Close">' + icon("i-x") + "</button></div>" +
+      '<div class="modal-body">' +
+        '<div class="dsec"><label class="sec-label" for="detNick">Nickname</label><input id="detNick" class="text-in" type="text" maxlength="24" value="' + esc(nick) + '" placeholder="' + esc(m.name) + '"><p class="note">Shown on the Join Map and in messages. Leave it blank to show the table name.</p></div>' +
+        '<div class="dsec"><span class="sec-label">Source</span><div class="dl">' + src + "</div>" + (srcNote ? '<p class="note">' + srcNote + "</p>" : "") + "</div>" +
+        '<div class="dsec"><span class="sec-label num">Columns · ' + m.cols.length + " columns, " + fmtN(ROWS[id].length) + ' rows</span><div class="dcols"><table class="dct"><thead><tr><th>Column</th><th>Used As</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>" +
+      "</div>" +
+      '<div class="modal-foot">' + (adding ? '<span class="left"></span>' : '<button class="btn ghost danger left" type="button" data-dact="remove">Remove Table</button>') +
+        '<button class="btn" type="button" data-dact="close">Cancel</button><button class="btn primary" type="button" data-dact="save">' + (adding ? icon("i-plus") + "Add Table" : "Save") + "</button></div>" +
+      "</div></div>";
+    const inp = $("detNick"); inp.focus(); inp.select();
+  }
+  function openDetail(mode, id) { closePop(); state.detail = { mode, id }; renderModal(); }
+  function closeDetail() { state.detail = null; renderModal(); }
+  function saveDetail() {
+    const d = state.detail, v = $("detNick").value.trim();
+    if (d.mode === "add") {
+      addTable(d.id, v);
+      toast("Added <b>" + esc(label(d.id)) + "</b>. Its keys were matched by name.");
+    } else tbl(d.id).nick = v;
+    closeDetail(); render();
+  }
+  $("modal").addEventListener("click", e => {
+    const b = e.target.closest("[data-dact]");
+    if (!b) return;
+    const a = b.dataset.dact;
+    if (a === "backdrop") { if (e.target === b) closeDetail(); return; }
+    if (a === "close") closeDetail();
+    else if (a === "save") saveDetail();
+    else if (a === "remove") {
+      if (state.tables.length === 1) { toast("A project needs at least one source table."); return; }
+      const id = state.detail.id; closeDetail(); removeTable(id); render();
+    }
+    else if (a === "conn") toast("Opens today's connection form. Every table in the group follows it.");
+    else if (a === "browse") toast("Opens the file picker. The new file keeps this table's place and settings.");
+  });
+  $("modal").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "detNick") saveDetail(); });
+
+  // ---------- Popover ----------
+  const pop = $("pop");
+  let popAnchor = null;
+  function openPop(anchor, html, onClick) {
+    pop.innerHTML = html;
+    pop.hidden = false;
+    popAnchor = anchor;
+    const r = anchor.getBoundingClientRect();
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    let left = r.left + window.scrollX;
+    if (left + w > window.scrollX + document.documentElement.clientWidth - 8) left = window.scrollX + document.documentElement.clientWidth - w - 8;
+    let top = r.bottom + window.scrollY + 4;
+    if (r.bottom + h + 8 > window.innerHeight && r.top - h - 4 > 0) top = r.top + window.scrollY - h - 4;
+    pop.style.left = Math.max(8, left) + "px";
+    pop.style.top = top + "px";
+    pop.onclick = e => { const b = e.target.closest("[data-v]"); if (b) { onClick(b.dataset.v, b); } };
+    pop.onkeydown = e => { if (e.key === "Enter" && e.target.tagName === "INPUT") { const b = pop.querySelector("[data-v='apply']"); if (b) onClick("apply", b); } };
+    const f = pop.querySelector("input") || pop.querySelector(".pop-i");
+    if (f && f.tagName === "INPUT") f.focus();
+  }
+  function closePop() { pop.hidden = true; popAnchor = null; }
+  document.addEventListener("mousedown", e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== popAnchor && !(popAnchor && popAnchor.contains(e.target))) closePop(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { if (!pop.hidden) closePop(); else if (state.detail) closeDetail(); return; }
+    if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.act === "details") { e.preventDefault(); openDetail("view", e.target.dataset.id); }
+  });
+  const item = (v, label, opts) => '<button class="pop-i' + (opts && opts.sel ? " sel" : "") + '" type="button" role="menuitem" data-v="' + esc(v) + '">' + (opts && opts.lead !== undefined ? opts.lead : '<span class="tick">' + (opts && opts.sel ? "✓" : "") + "</span>") + "<span>" + label + (opts && opts.desc ? '<span class="d">' + opts.desc + "</span>" : "") + "</span></button>";
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function toast(msg) { const t = $("toast"); t.innerHTML = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3600); }
+
+  // ---------- Actions ----------
+  function makeBase(id) {
+    const t = tbl(id);
+    state.tables = [t].concat(state.tables.filter(x => x !== t));
+    t.join = "all";
+    detectKeys();
+  }
+  function removeTable(id) {
+    const wasBase = base().id === id;
+    state.tables = state.tables.filter(t => t.id !== id);
+    if (wasBase || state.tables.length < 2) detectKeys();
+    else state.keys.forEach(k => { delete k.map[id]; });
+    if (state.tables.length && state.tables[0].join !== "all") state.tables[0].join = "all";
+  }
+
+  document.addEventListener("click", e => {
+    const el = e.target.closest("[data-act],[data-step]");
+    if (!el || pop.contains(el)) return;
+    if (el.dataset.step) { state.step = el.dataset.step; closePop(); render(); return; }
+    const act = el.dataset.act, id = el.dataset.id, k = el.dataset.k !== undefined ? +el.dataset.k : null;
+
+    if (act === "rtab") { state.resultTab = el.dataset.tab; render(); return; }
+    if (act === "details") { openDetail("view", id); return; }
+    if (act === "remove-table") {
+      if (state.tables.length === 1) { toast("A project needs at least one source table."); return; }
+      removeTable(id); render(); return;
+    }
+    if (act === "convert") { state.keys[k].map[id].convert = true; render(); toast("Arco will read " + esc(state.keys[k].map[id].col) + " in " + esc(label(id)) + " as YYYYMM."); return; }
+    if (act === "remove-key") {
+      if (state.keys.length === 1) { toast("Keep at least one key so rows can be matched."); return; }
+      state.keys.splice(k, 1); render(); return;
+    }
+    if (act === "add-table") {
+      const left = Object.keys(CATALOG).filter(cid => !tbl(cid));
+      const sqlLeft = left.filter(cid => CATALOG[cid].kind === "sql"), csvLeft = left.filter(cid => CATALOG[cid].kind === "csv");
+      const html = '<div class="pop-h">SQL Server · ' + CONN.server + " / " + CONN.database + "</div>" +
+        (sqlLeft.length ? sqlLeft.map(cid => item(cid, '<span class="mono">' + esc(CATALOG[cid].name) + "</span>", { lead: icon("i-db") })).join("") : '<div class="pop-h" style="font-weight:normal">Every table is already added</div>') +
+        '<div class="pop-sep"></div><div class="pop-h">CSV Files · recent folder</div>' +
+        (csvLeft.length ? csvLeft.map(cid => item(cid, '<span class="mono">' + esc(CATALOG[cid].name) + "</span>", { lead: icon("i-csv") })).join("") : "") +
+        item("browse", "Browse for a CSV file…", { lead: icon("i-csv") }) + item("other-db", "Another SQL Server database…", { lead: icon("i-db") });
+      openPop(el, html, v => {
+        closePop();
+        if (v === "browse" || v === "other-db") { toast(v === "browse" ? "Opens the file picker, then asks for a nickname." : "Opens today's connection form and starts a new group."); return; }
+        openDetail("add", v);
+      });
+      return;
+    }
+    if (act === "join") {
+      const t = tbl(id);
+      const html = '<div class="pop-h">Rows to keep when joining ' + esc(label(id)) + "</div>" +
+        Object.keys(JOINS).map(j => item(j, JOINS[j].label, { sel: t.join === j, desc: JOINS[j].desc, lead: venn(j) })).join("");
+      openPop(el, html, v => { t.join = v; closePop(); render(); });
+      return;
+    }
+    if (act === "card-menu") {
+      const isBase = base().id === id;
+      const html = item("details", "Source details", { desc: "File or connection, nickname, columns" }) + (isBase ? "" : item("base", "Make base table", { desc: "Move it to the front; keys are detected again" })) + item("remove", "Remove table");
+      openPop(el, html, v => {
+        closePop();
+        if (v === "details") { openDetail("view", id); return; }
+        if (v === "base") makeBase(id);
+        else { if (state.tables.length === 1) return; removeTable(id); }
+        render();
+      });
+      return;
+    }
+    if (act === "add-key") {
+      const b = base(), have = new Set(state.keys.map(kk => norm(kk.name)));
+      const cand = meta(b.id).cols.filter(c => !have.has(norm(c)) && !(meta(b.id).empty || []).includes(c));
+      const html = '<div class="pop-h">Columns in the base table</div>' + (cand.length ? cand.map(c => item(c, '<span class="mono">' + esc(c) + "</span>")).join("") : '<div class="pop-h" style="font-weight:normal">Every column is already a key</div>');
+      openPop(el, html, v => {
+        const map = {}; state.tables.forEach(t => { map[t.id] = t === b ? { col: v } : autoMap(t.id, v); });
+        state.keys.push({ name: v, map }); closePop(); render();
+      });
+      return;
+    }
+    if (act === "key") {
+      const key = state.keys[k], mp = key.map[id] || {}, m = meta(id);
+      const isBase = base().id === id;
+      const mm = mismatch(id, key);
+      const colItems = m.cols.filter(c => !(m.empty || []).includes(c)).map(c => item("col:" + c, '<span class="mono">' + esc(c) + "</span>", { sel: mp.col === c }));
+      let html = '<div class="pop-h">' + esc(key.name) + " comes from</div>" + colItems.join("");
+      if (!isBase) {
+        html += '<div class="pop-sep"></div>' +
+          item("fill", "Fill with a value", { sel: mp.fill !== undefined, desc: "Every row of this table gets the same value" }) +
+          '<div class="pop-row"><input id="popFill" type="text" value="' + esc(mp.fill !== undefined ? mp.fill : "0") + '" aria-label="Fill value"><button class="btn" type="button" data-v="apply">Apply</button></div>' +
+          item("any", "Match any value", { sel: !!mp.any, desc: "Ignore this key for this table. Its rows repeat on every match." });
+      }
+      if (mm || mp.convert) html += '<div class="pop-sep"></div>' + item("convert", "Read as YYYYMM", { sel: !!mp.convert, desc: "Turns 2026-07 into 202607 before matching" });
+      openPop(el, html, (v) => {
+        if (v.startsWith("col:")) { key.map[id] = { col: v.slice(4) }; if (isBase) key.name = v.slice(4); }
+        else if (v === "fill" || v === "apply") key.map[id] = { fill: ($("popFill").value || "").trim() || "0" };
+        else if (v === "any") key.map[id] = { any: true };
+        else if (v === "convert") key.map[id] = Object.assign({}, mp, { convert: !mp.convert });
+        closePop(); render();
+      });
+      return;
+    }
+    if (act === "chip") {
+      const col = el.dataset.col;
+      const p = columnPlan().find(x => x.id === id && x.col === col);
+      const ex = state.exclude[id] || (state.exclude[id] = new Set());
+      const html = item("toggle", p.off ? "Include column" : "Leave out column") +
+        (p.off ? "" : '<div class="pop-sep"></div><div class="pop-h">Name in the combined table</div><div class="pop-row"><input id="popName" type="text" value="' + esc(p.master) + '" aria-label="Column name"><button class="btn" type="button" data-v="apply">Rename</button></div>');
+      openPop(el, html, v => {
+        if (v === "toggle") { if (ex.has(col)) ex.delete(col); else ex.add(col); }
+        else if (v === "apply") {
+          const nv = ($("popName").value || "").trim();
+          if (nv && nv !== col) state.rename[id + "|" + col] = nv; else delete state.rename[id + "|" + col];
+        }
+        closePop(); render();
+      });
+      return;
+    }
+  });
+
+  // Row highlight across the map
+  document.addEventListener("mouseover", e => {
+    const c = e.target.closest("[data-key]");
+    const map = $("map");
+    if (!map) return;
+    const k = c && map.contains(c) ? c.dataset.key : null;
+    if (map.dataset.hk === k) return;
+    map.dataset.hk = k || "";
+    map.querySelectorAll(".hl").forEach(x => x.classList.remove("hl"));
+    if (k !== null) map.querySelectorAll('[data-key="' + k + '"]').forEach(x => x.classList.add("hl"));
+  });
+
+  // Drag to reorder (Source step)
+  let dragId = null;
+  function bindDrag() {
+    document.querySelectorAll(".src-row").forEach(row => {
+      row.addEventListener("dragstart", e => { dragId = row.dataset.id; row.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", dragId); });
+      row.addEventListener("dragend", () => { dragId = null; render(); });
+      row.addEventListener("dragover", e => { if (!dragId || dragId === row.dataset.id) return; e.preventDefault(); document.querySelectorAll(".drop-above").forEach(x => x.classList.remove("drop-above")); row.classList.add("drop-above"); });
+      row.addEventListener("drop", e => {
+        e.preventDefault();
+        if (!dragId || dragId === row.dataset.id) return;
+        const moving = tbl(dragId), target = tbl(row.dataset.id);
+        const oldBase = base().id;
+        state.tables = state.tables.filter(t => t !== moving);
+        state.tables.splice(state.tables.indexOf(target), 0, moving);
+        if (base().id !== oldBase) { base().join = "all"; detectKeys(); toast("<b>" + esc(label(base().id)) + "</b> is now the base table. Keys were detected again from its columns."); }
+        dragId = null; render();
+      });
+    });
+  }
+
+  $("backBtn").addEventListener("click", () => { const l = stepList(), i = l.findIndex(s => s.id === state.step); if (i > 0) { state.step = l[i - 1].id; render(); } });
+  $("nextBtn").addEventListener("click", () => {
+    const l = stepList(), i = l.findIndex(s => s.id === state.step);
+    if (i < l.length - 1) { state.step = l[i + 1].id; render(); return; }
+    const res = combine();
+    toast("Imported <b>" + state.tables.length + (state.tables.length > 1 ? " tables" : " table") + "</b> into the project source: " + fmtN(res.rows.length) + " rows, " + (state.keys.length + res.plan.filter(p => !p.off).length) + " columns. Field mapping reads it as before.");
+  });
+  $("stripImport").addEventListener("click", () => { state.step = "source"; render(); $("win").scrollIntoView({ behavior: "smooth", block: "start" }); });
+
+  render();
+})();
+</script>
