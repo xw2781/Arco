@@ -14,7 +14,8 @@
  *
  * Several tables combined into one source are owned by
  * project_settings_combined_source.js; this module only mounts it on the
- * settings page and defers to it once the window lists two or more tables.
+ * settings page, adds its Combine page to the window's steps, and defers to it
+ * once the window lists two or more tables.
  *
  * Path/date persistence stays in the coordinator-composed General Settings
  * feature, and every app-server call for the imported table is injected by the
@@ -26,7 +27,7 @@ import {
   SKELETON_BAR_CLASS,
   SKELETON_ROW_COUNT,
 } from "./project_settings_skeleton.js?v=20260821pstree1";
-import { createCombinedSourceFeature } from "./project_settings_combined_source.js?v=20261012combined1";
+import { createCombinedSourceFeature } from "./project_settings_combined_source.js?v=20261012combined2";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -291,6 +292,7 @@ export function createSourceDataFeature(deps = {}) {
     onSourceFileStatus = async () => null,
     // Reaches the combined-source routes; see project_settings_combined_source.js.
     fetchImpl = null,
+    getSelectedProject = () => null,
   } = deps;
 
   const el = (id) => document.getElementById(id);
@@ -1503,6 +1505,8 @@ export function createSourceDataFeature(deps = {}) {
     onListTables: (profile) => onListTables(profile),
     onCsvPathPick: (current) => onCsvPathPick(current),
     fetchImpl,
+    getProjectName: () => String(getSelectedProject()?.name || ""),
+    onLeaveCombine: () => showPanelStep("settings"),
   });
 
   /** Databases recorded for the server currently typed in. */
@@ -1579,6 +1583,8 @@ export function createSourceDataFeature(deps = {}) {
   }
 
   function setSourceStatus(text, tone = "") {
+    // The Combine page has its own status line.
+    if (panelStep === "combine") return combinedSource.setCombineStatus(text, tone);
     if (!dom.mssqlStatus) return;
     const value = String(text || "").trim();
     dom.mssqlStatus.textContent = value;
@@ -1720,22 +1726,24 @@ export function createSourceDataFeature(deps = {}) {
   }
 
   /**
-   * The window's three pages, in order. The two scope pages share one body:
-   * it shows the pane named by its `data-page`, so each list gets the whole
-   * window to itself.
+   * The window's pages, in order: settings, Combine (only with two or more
+   * tables; the combined module owns that page), then the two scope pages.
+   * The two scope pages share one body: it shows the pane named by its
+   * `data-page`, so each list gets the whole window to itself.
    */
-  const PANEL_STEPS = ["settings", "datasets", "classes"];
   const PANEL_STEP_TITLES = {
     settings: "Import Settings",
+    combine: "Combine Tables",
     datasets: "Import Scope: Datasets",
     classes: "Import Scope: Reserving Class Types",
   };
 
   /** Show one page of the window; the title and footer follow the page. */
   function showPanelStep(step) {
-    panelStep = PANEL_STEPS.includes(step) ? step : "settings";
-    const onScope = panelStep !== "settings";
-    if (dom.settingsStep) dom.settingsStep.hidden = onScope;
+    panelStep = combinedSource.steps().includes(step) ? step : "settings";
+    const onScope = panelStep === "datasets" || panelStep === "classes";
+    if (dom.settingsStep) dom.settingsStep.hidden = panelStep !== "settings";
+    combinedSource.showCombine(panelStep === "combine");
     if (dom.scopeStep) {
       dom.scopeStep.hidden = !onScope;
       if (onScope) dom.scopeStep.dataset.page = panelStep;
@@ -1747,7 +1755,7 @@ export function createSourceDataFeature(deps = {}) {
       note.hidden = note.dataset.page !== panelStep;
     });
     if (dom.importNextBtn) dom.importNextBtn.hidden = panelStep === "classes";
-    if (dom.importBackBtn) dom.importBackBtn.hidden = !onScope;
+    if (dom.importBackBtn) dom.importBackBtn.hidden = panelStep === "settings";
     if (dom.importDataBtn) dom.importDataBtn.hidden = panelStep !== "classes";
     if (dom.sourcePanelTitle) dom.sourcePanelTitle.textContent = PANEL_STEP_TITLES[panelStep];
     syncScopeControls();
@@ -1755,7 +1763,13 @@ export function createSourceDataFeature(deps = {}) {
 
   /** Next and Back walk the pages in order; Next from the settings checks them first. */
   function goToNextPanelStep() {
-    if (panelStep === "settings") {
+    if (panelStep === "settings" && combinedSource.isActive()) {
+      const tables = combinedSource.validateTables();
+      if (tables.ok) showPanelStep("combine");
+      else setSourceStatus(tables.error, "error");
+      return;
+    }
+    if (panelStep === "settings" || panelStep === "combine") {
       goToScopeStep();
       return;
     }
@@ -1766,7 +1780,8 @@ export function createSourceDataFeature(deps = {}) {
   }
 
   function goToPreviousPanelStep() {
-    showPanelStep(panelStep === "classes" ? "datasets" : "settings");
+    const steps = combinedSource.steps();
+    showPanelStep(steps[Math.max(0, steps.indexOf(panelStep) - 1)]);
     if (panelStep === "datasets") {
       setTimeout(() => dom.scopeDatasetsFilter?.focus({ preventScroll: true }), 0);
     }

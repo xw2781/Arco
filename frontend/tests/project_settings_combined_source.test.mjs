@@ -3,16 +3,30 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const {
+  addKey,
   addTable,
   autoMapKey,
   columnUses,
+  combineProblem,
+  coverageSegments,
   createCombinedState,
   describeTableRequest,
   detectKeys,
   fromCombinedBlock,
+  importSteps,
+  keyCandidates,
+  matchText,
   moveTable,
   nameToken,
+  openMismatches,
+  previewCombinedRequest,
+  previewRequestBody,
+  removeKey,
   removeTable,
+  rowRule,
+  setKeyEntry,
+  setRename,
+  setRowRule,
   setTableColumns,
   singleSettingsFromTable,
   suggestNickname,
@@ -20,13 +34,19 @@ const {
   tableGroups,
   tableLabel,
   toCombinedBlock,
+  toggleExclude,
+  toggleKeyConvert,
   validateCombinedState,
+  valueColumns,
+  warningAlerts,
+  warningId,
 } = await import(new URL("../ui/project_settings/project_settings_combined_source.js", import.meta.url));
 
 const read = async (path) => (await readFile(new URL(path, import.meta.url), "utf8")).replaceAll("\r\n", "\n");
 const sourceDataJs = await read("../ui/project_settings/project_settings_source_data.js");
 const coordinatorJs = await read("../ui/project_settings/project_settings.js");
 const html = await read("../ui/project_settings/project_settings.html");
+const combinedJs = await read("../ui/project_settings/project_settings_combined_source.js");
 
 const KEYS = ["CO_CD", "PROD_CD", "acc_yrmo", "sys_yrmo"];
 const sql = (table) => ({
@@ -248,14 +268,14 @@ test("combined settings need two read tables and a shared key", () => {
 });
 
 test("the source data tab only mounts the combined module and keeps the single path", () => {
-  assert.match(sourceDataJs, /import \{ createCombinedSourceFeature \} from "\.\/project_settings_combined_source\.js\?v=20261012combined1";/);
+  assert.match(sourceDataJs, /import \{ createCombinedSourceFeature \} from "\.\/project_settings_combined_source\.js\?v=20261012combined2";/);
   assert.match(sourceDataJs, /function validateImportSettings\(\) \{\n\s+if \(combinedSource\.isActive\(\)\) return combinedSource\.validate\(\);/);
   // With one table the single-table checks run exactly as before.
   assert.match(sourceDataJs, /if \(method === SOURCE_TYPE_MSSQL\) \{\n\s+if \(!profile\.server \|\| !profile\.database\) error = "Enter the server and database name first\.";/);
-  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined1/);
+  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined2/);
   assert.match(coordinatorJs, /createSourceDataFeature\(\{[\s\S]*fetchImpl: fetch\.bind\(window\),/);
   assert.match(html, /project_settings_combined_source\.css\?v=/);
-  assert.match(html, /project_settings\.js\?v=20261012combined1/);
+  assert.match(html, /project_settings\.js\?v=20261012combined2/);
 });
 
 test("a table is described through the client route with the table spec", async () => {
@@ -270,4 +290,164 @@ test("a table is described through the client route with the table spec", async 
   const failing = async () => ({ ok: false, status: 404, json: async () => ({ detail: "Source table file was not found: E:\a.csv" }) });
   assert.deepEqual(await describeTableRequest(failing, table), { ok: false, error: "Source table file was not found: E:\a.csv" });
   assert.deepEqual(await describeTableRequest(null, table), { ok: false, error: "Not available." });
+});
+
+/* ---------------- Combine step ---------------- */
+
+test("the Combine step sits between Source and Datasets only with two or more tables", () => {
+  const state = createCombinedState();
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"]);
+  addTable(state, LOSS, { columns: LOSS.columns });
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"], "one table is today's window");
+  addTable(state, EP, EP);
+  assert.deepEqual(importSteps(state), ["settings", "combine", "datasets", "classes"]);
+  removeTable(state, "t2");
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"]);
+});
+
+test("a key cell points at a column, a fill or any value; the base column names the key", () => {
+  const state = threeTables();
+  const sys = state.keys.findIndex((key) => key.name === "sys_yrmo");
+  setKeyEntry(state, sys, "t3", { fill: "202609" });
+  assert.deepEqual(state.keys[sys].map.t3, { fill: "202609" });
+  setKeyEntry(state, sys, "t3", { any: true });
+  assert.deepEqual(state.keys[sys].map.t3, { any: true });
+  setKeyEntry(state, 0, "t3", { column: "Co_Cd" });
+  assert.deepEqual(state.keys[0].map.t3, { column: "Co_Cd" });
+  setKeyEntry(state, 0, "t1", { fill: "07" });
+  assert.deepEqual(state.keys[0].map.t1, { column: "CO_CD" }, "the base always names a column");
+  setKeyEntry(state, 0, "t1", { column: "PROD_CD" });
+  assert.equal(state.keys[0].name, "CO_CD", "a base column that is already a key is refused");
+  setKeyEntry(state, 0, "t1", { column: "Paid_Loss" });
+  assert.equal(state.keys[0].name, "Paid_Loss");
+});
+
+test("Read as YYYYMM toggles on a key column only", () => {
+  const state = threeTables();
+  const acc = state.keys.findIndex((key) => key.name === "acc_yrmo");
+  toggleKeyConvert(state, acc, "t3");
+  assert.deepEqual(state.keys[acc].map.t3, { column: "acc_yrmo", convert: "yyyymm" });
+  toggleKeyConvert(state, acc, "t3");
+  assert.deepEqual(state.keys[acc].map.t3, { column: "acc_yrmo" });
+  const sys = state.keys.findIndex((key) => key.name === "sys_yrmo");
+  toggleKeyConvert(state, sys, "t3");
+  assert.deepEqual(state.keys[sys].map.t3, { fill: "0" });
+});
+
+test("keys are added from base columns and the last key stays", () => {
+  const state = createCombinedState();
+  addTable(state, LOSS, { columns: LOSS.columns });
+  addTable(state, EP, EP);
+  assert.deepEqual(keyCandidates(state), ["sys_yrmo", "Paid_Loss"]);
+  const key = addKey(state, "sys_yrmo");
+  assert.deepEqual(key, { name: "sys_yrmo", map: { t1: { column: "sys_yrmo" }, t2: { fill: "0" } } });
+  assert.equal(addKey(state, "sys_yrmo"), null, "a key is added once");
+  assert.equal(removeKey(state, 3), true);
+  assert.equal(removeKey(state, 0), true);
+  assert.equal(removeKey(state, 0), true);
+  assert.equal(removeKey(state, 0), false);
+  assert.deepEqual(state.keys.map((item) => item.name), ["acc_yrmo"]);
+});
+
+test("row rules apply to non-base tables only and default to All Rows", () => {
+  const state = threeTables();
+  assert.equal(rowRule(state, "t2"), "all");
+  setRowRule(state, "t2", "match");
+  setRowRule(state, "t3", "base");
+  setRowRule(state, "t1", "match");
+  setRowRule(state, "t2", "outer");
+  assert.deepEqual(state.rows, { t2: "match", t3: "base" });
+  assert.deepEqual(toCombinedBlock(state).rows, { t2: "match", t3: "base" });
+});
+
+test("value columns follow leave-out and rename at once and take the preview's clash names", () => {
+  const state = threeTables();
+  toggleExclude(state, "t3", "FACID");
+  setRename(state, "t2", "Closed_Counts", "Closed");
+  const plan = [
+    { table_id: "t3", column: "Earned Premium", master: "Earned Premium_EP", off: false, conflict: true, renamed: false },
+  ];
+  assert.deepEqual(valueColumns(state, "t3", plan), [
+    { column: "FACID", master: "FACID", off: true, conflict: false, renamed: false },
+    { column: "Earned Premium", master: "Earned Premium_EP", off: false, conflict: true, renamed: false },
+  ]);
+  assert.deepEqual(valueColumns(state, "t2"), [
+    { column: "Closed_Counts", master: "Closed", off: false, conflict: false, renamed: true },
+  ]);
+  setRename(state, "t2", "Closed_Counts", " Closed_Counts ");
+  toggleExclude(state, "t3", "FACID");
+  assert.deepEqual(toCombinedBlock(state).rename, {}, "renaming back to its own name clears it");
+  assert.deepEqual(toCombinedBlock(state).exclude, {});
+  setRename(state, "t3", "Earned Premium", "EP Premium");
+  assert.deepEqual(valueColumns(state, "t3", plan)[1], {
+    column: "Earned Premium", master: "EP Premium", off: false, conflict: false, renamed: true,
+  });
+});
+
+test("the preview request carries the serialized block", async () => {
+  const state = threeTables();
+  state.exclude.t3 = ["FACID"];
+  const body = previewRequestBody("Aug Fake", state, true);
+  assert.deepEqual(body, { project_name: "Aug Fake", combined: toCombinedBlock(state), refresh: true });
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push([url, JSON.parse(init.body)]);
+    return { ok: false, status: 400, json: async () => ({ detail: "A combined source needs at least one key." }) };
+  };
+  assert.deepEqual(await previewCombinedRequest(fetchImpl, body), { ok: false, error: "A combined source needs at least one key." });
+  assert.deepEqual(calls, [["/source_table/combined/preview", JSON.parse(JSON.stringify(body))]]);
+});
+
+const MISMATCH = {
+  kind: "format_mismatch", table_id: "t3", table: "EP", key: "acc_yrmo",
+  sample: "2026-04", base_sample: "202604", matched: 0, fix: { convert: "yyyymm" },
+};
+
+test("Next from Combine waits for the current preview and an answered format mismatch", () => {
+  const state = threeTables();
+  const block = JSON.stringify(toCombinedBlock(state));
+  assert.equal(combineProblem(state, null), "Wait for the preview to finish.");
+  const data = { ok: true, warnings: [MISMATCH] };
+  assert.equal(
+    combineProblem(state, { data, block }),
+    "EP stores acc_yrmo as 2026-04. Read it as YYYYMM or dismiss the warning.",
+  );
+  assert.equal(combineProblem(state, { data, block }, new Set([warningId(MISMATCH)])), "");
+  assert.equal(combineProblem(state, { data: null, error: "Key columns were not found: X in EP.", block }), "Key columns were not found: X in EP.");
+  const acc = state.keys.findIndex((key) => key.name === "acc_yrmo");
+  toggleKeyConvert(state, acc, "t3");
+  assert.equal(combineProblem(state, { data, block }), "Wait for the preview to finish.", "a stale preview is not enough");
+  assert.equal(openMismatches(state, data.warnings).length, 0, "converted keys raise no mismatch");
+  assert.equal(combineProblem(state, { data, block: JSON.stringify(toCombinedBlock(state)) }), "");
+  state.keys = [];
+  assert.equal(combineProblem(state, { data, block }), "The tables share no column to match rows on.");
+});
+
+test("Row Match words the warnings, the bars and the coverage", () => {
+  const state = threeTables();
+  const alerts = warningAlerts(state, [
+    MISMATCH,
+    { kind: "repeat", table_id: "t2", table: "Closed", max_repeat: 3, any_keys: ["sys_yrmo"] },
+    { kind: "filled_rows", table_id: "t3", table: "EP", fills: { sys_yrmo: "0" }, added: 72 },
+    { kind: "name_clash", table_id: "t3", table: "EP", column: "Earned Premium", master: "Earned Premium_EP" },
+  ]);
+  assert.deepEqual(alerts.map((alert) => alert.tone), ["warn", "warn", "info", "info"]);
+  assert.deepEqual(alerts[0].fix, { table_id: "t3", key: "acc_yrmo" });
+  assert.match(alerts[0].html, /<b>EP<\/b> stores acc_yrmo as <span class="cs-mono">2026-04<\/span>; the base uses <span class="cs-mono">202604<\/span>\. 0 of its rows match\./);
+  assert.match(alerts[1].html, /Each <b>Closed<\/b> row lands on up to 3 combined rows because sys_yrmo matches any value\./);
+  assert.match(alerts[2].html, /<b>EP<\/b> has no sys_yrmo, so its rows sit at sys_yrmo = 0 and form 72 rows of their own\./);
+  assert.match(alerts[3].html, /Two tables have <b>Earned Premium<\/b>\. The EP copy is named <span class="cs-mono">Earned Premium_EP<\/span>\./);
+  assert.equal(matchText({ read: 72, matched: 0, added: 72, left_out: 0 }, "all"), "0 of 72 matched · 72 added as new rows");
+  assert.equal(matchText({ read: 2, matched: 1, added: 0, left_out: 1, base_rows_dropped: 9 }, "match"), "1 of 2 matched · 1 left out · 9 combined rows dropped");
+  assert.equal(matchText({ read: 5, matched: 5 }, "base"), "5 of 5 matched · all matched");
+  assert.deepEqual(coverageSegments({ 1: 84, 3: 1200, 2: 0 }), [{ tables: 3, rows: 1200 }, { tables: 1, rows: 84 }]);
+});
+
+test("the import window's steps come from the combined module and its group headers name no connection", () => {
+  assert.match(sourceDataJs, /panelStep = combinedSource\.steps\(\)\.includes\(step\) \? step : "settings";/);
+  assert.match(sourceDataJs, /combinedSource\.showCombine\(panelStep === "combine"\);/);
+  assert.match(sourceDataJs, /getProjectName: \(\) => String\(getSelectedProject\(\)\?\.name \|\| ""\)/);
+  assert.match(coordinatorJs, /getSelectedProject: \(\) => selectedProject,\n\s+\/\/ Admin-editable defaults/);
+  assert.doesNotMatch(combinedJs, /group\.server|group\.database/);
+  assert.match(combinedJs, /one shared connection/);
 });

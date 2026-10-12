@@ -46,6 +46,8 @@ _YYYY_MM = re.compile(r"(\d{4})[-/](\d{1,2})")
 _MERGE_HOW = {COMBINED_ROWS_ALL: "outer", COMBINED_ROWS_BASE: "left", COMBINED_ROWS_MATCH: "inner"}
 _LEFT_ROW = "__combined_left_row"
 _RIGHT_ROW = "__combined_right_row"
+# How many tables gave each combined row its data, for the coverage bar.
+_SOURCES = "__combined_sources"
 
 
 def name_token(name: Any) -> str:
@@ -172,7 +174,8 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
     result in list order with its row rule (``all`` outer, ``base`` left,
     ``match`` inner). Returns ``frame`` (keys first, then value columns in
     table order, every value text), ``plan`` (see ``column_plan``), ``stats``
-    per table id and ``warnings``.
+    per table id, ``warnings`` and ``coverage`` (combined row count by the
+    number of tables that gave the row data, keyed by that number as text).
     """
     spec = normalize_combined_source(combined)
     tables, keys = spec["tables"], spec["keys"]
@@ -184,6 +187,7 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
     for name in key_names:
         if name not in result.columns:
             result[name] = ""
+    result[_SOURCES] = 1
     stats: Dict[str, Dict[str, Any]] = {base["id"]: {"read": len(result)}}
 
     for table in tables[1:]:
@@ -213,6 +217,7 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
             "base_rows_dropped": dropped_base,
             "max_repeat": int(hits.max()) if matched else 0,
         }
+        merged[_SOURCES] = merged[_SOURCES].fillna(0) + merged[_RIGHT_ROW].notna().astype(int)
         result = merged.drop(columns=[_LEFT_ROW, _RIGHT_ROW]).fillna("").reset_index(drop=True)
 
     masters = [item["master"] for item in plan if not item["off"]]
@@ -222,6 +227,7 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
         "plan": plan,
         "stats": stats,
         "warnings": _warnings(frames_by_id, spec, plan, stats),
+        "coverage": {str(int(n)): int(c) for n, c in sorted(result[_SOURCES].value_counts().items())},
     }
 
 
@@ -445,6 +451,7 @@ def preview_combined(project_name: str, combined: Any, refresh: bool = False) ->
         "tables": tables,
         "stats": result["stats"],
         "warnings": result["warnings"],
+        "coverage": result["coverage"],
         "plan": result["plan"],
         "columns": [str(column) for column in frame.columns],
         "rows": preview_rows(frame, key_names, PREVIEW_ROW_LIMIT),

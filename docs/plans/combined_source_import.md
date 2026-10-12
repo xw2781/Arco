@@ -1,6 +1,6 @@
 # Combined Source Import
 
-Status: In progress: 5 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, and the import window lists several tables with nicknames and a details window); next is the Combine step.
+Status: In progress: 6 of 9 session-sized steps done (the record can hold a combined source, the combine engine joins tables, the server saves a combined source and never re-reads it, the client app server can describe, preview and import one, the import window lists several tables with nicknames and a details window, and its Combine step shows the Join Map, Row Match and Preview); next is the end-to-end import and the Source Data header.
 Last updated: 2026-10-12
 
 ## Progress
@@ -14,12 +14,12 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 3 | The server accepts and keeps a combined source and never re-reads it behind the user's back | [x] | 2026-10-12 | 60 min | 7 min | Nothing visible yet; the server can now keep a combined source and accept its imported table, and it never re-reads one on its own, while single-table projects save and import exactly as before. |
 | 4 | The app can read every table of a combined source, preview the result and import it | [x] | 2026-10-12 | 60 min | 9 min | Nothing visible yet; Arco can now read each table of a combined source, preview the joined result and import it the same way a single table is uploaded, while single-table imports work exactly as before. |
 | 5 | The import window lists several tables, each with a nickname and a details window | [x] | 2026-10-12 | 75 min | 15 min | The import window has an Add Table button: several tables can be listed with nicknames, grouped by connection, dragged into join order and opened in a details window that shows their columns, while a single-table import looks and works exactly as before; importing several tables comes in a later step. |
-| 6 | The import window shows how the tables join and what the result will look like | [ ] | | 80 min | | |
+| 6 | The import window shows how the tables join and what the result will look like | [x] | 2026-10-12 | 80 min | 25 min | With two or more tables the import window gains a Combine step: a map lines up the matching columns across the tables, each key, row rule and column can be changed in place, and a Row Match tab and a Preview tab show how well the tables match and the first rows of the result before anything is imported; the table list no longer shows connection details. |
 | 7 | Importing a combined source runs end to end and the Source Data tab describes it | [ ] | | 50 min | | |
 | 8 | The server parts are live | [ ] | | 25 min | | |
 | 9 | A combined source is built and checked in the Aug fake project | [ ] | | 45 min | | |
 
-Overall: 5 of 9 steps done. Estimated 510 min, actual so far 39 min.
+Overall: 6 of 9 steps done. Estimated 510 min, actual so far 64 min.
 
 ## How agents work this plan
 
@@ -233,20 +233,23 @@ Steps run in order. Step 2 depends only on step 1 and could run beside step 3, b
 **Read first.**
 - The prototype's `renderCombine`, `renderResult`, `renderPreview`, the `key`, `join`, `chip`, `add-key`, `remove-key`, `convert` actions, and the popover.
 - Step 5's module; step 4's preview route.
+- [project_settings_source_data.js](../../frontend/ui/project_settings/project_settings_source_data.js) `showPanelStep`, `goToNextPanelStep`, `goToPreviousPanelStep`, `setSourceStatus`, and the step-list pins in [project_settings_source_data.test.mjs](../../frontend/tests/project_settings_source_data.test.mjs) ("Import Data is preceded by an Import Scope step").
+- [combined_source_service.py](../../frontend/app_server/services/combined_source_service.py) `combine_tables`: the coverage bar needs the combined row count by number of tables, which the preview did not return.
+- The dark theme paints every `button` like an input (`dark.css`, `:is(..., button)` at 0-3-0); flat buttons need a stronger dark rule.
 - Skill `arcrho-ui-design`.
 
 **Do.**
-- [ ] Insert the Combine step between Source and Datasets only when there are two or more tables (`PANEL_STEPS` and titles become dynamic).
-- [ ] Join Map as in the prototype: label column, one card per table (nickname, "SQL table"/"CSV file", row count; click opens the details window), rails, key cells with Fill/Any/convert menu, row-rule pill with Venn icons, plain value-column list (leave out, rename, clash suffix), Combined Table card.
-- [ ] Row Match tab: per-table bars, coverage bar, warnings with one-click fixes; Preview tab: first rows with column headers coloured by table.
-- [ ] Preview requests are debounced and show a loading state; an error from the route shows in place with its message.
-- [ ] Next from Combine requires at least one key and no unresolved `format_mismatch` the person has not dismissed.
+- [x] Insert the Combine step between Source and Datasets only when there are two or more tables (`PANEL_STEPS` and titles become dynamic).
+- [x] Join Map as in the prototype: label column, one card per table (nickname, "SQL table"/"CSV file", row count; click opens the details window), rails, key cells with Fill/Any/convert menu, row-rule pill with Venn icons, plain value-column list (leave out, rename, clash suffix), Combined Table card.
+- [x] Row Match tab: per-table bars, coverage bar, warnings with one-click fixes; Preview tab: first rows with column headers coloured by table.
+- [x] Preview requests are debounced and show a loading state; an error from the route shows in place with its message.
+- [x] Next from Combine requires at least one key and no unresolved `format_mismatch` the person has not dismissed.
 
 **Tests.** Extend `project_settings_combined_source.test.mjs`: key cell edits, row rules, exclude/rename, clash suffix, step list with one and two tables, preview request payload equals the serialized block.
 
 **Done when.** Node tests pass and a screenshot check shows the Join Map and both tabs with the fixture data.
 
-**Estimate.** Estimate: code edit 55 min, test/validation 25 min, total 80 min.
+**Estimate.** Estimate: code edit 55 min, test/validation 25 min, total 80 min. Actual: code edit 13 min, test/validation 12 min, total 25 min (the prototype spelled out the map and both tabs; the preview gained a coverage count, and the screenshot check caught a class clash, missing border-box sizing and the dark theme's button paint).
 
 ### Step 7 — End-to-end import and the Source Data header
 

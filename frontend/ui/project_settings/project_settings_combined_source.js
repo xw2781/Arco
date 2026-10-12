@@ -12,6 +12,11 @@
  * that table's settings. Each table opens a details window (nickname, source,
  * columns) over the import window.
  *
+ * With two or more tables the window gains a Combine page after the settings:
+ * the Join Map (one card per table, key rows lined up across the cards, row
+ * rules, value-column lists, the Combined Table card) and the Row Match and
+ * Preview tabs, fed by `POST /source_table/combined/preview` on this PC.
+ *
  * The pure functions above `createCombinedSourceFeature` hold every rule so
  * they can be tested without a DOM. The feature is mounted by
  * project_settings_source_data.js, which injects every app-server call.
@@ -372,6 +377,217 @@ export function validateCombinedState(state) {
   return { ok: !error, error };
 }
 
+/* ---------------- Combine step: keys, row rules, columns ---------------- */
+
+export const KEY_CONVERT_YYYYMM = "yyyymm";
+export const ROW_RULES = {
+  all: { label: "All Rows", note: "Keep every row from both sides. Rows without a match get blanks." },
+  base: { label: "Base Rows", note: "Keep the rows already combined. Rows only in this table are left out." },
+  match: { label: "Matches Only", note: "Keep only rows found on both sides." },
+};
+
+/** The import window's pages: Combine sits between Source and Datasets only with two or more tables. */
+export function importSteps(state) {
+  return state.tables.length >= 2
+    ? ["settings", "combine", "datasets", "classes"]
+    : ["settings", "datasets", "classes"];
+}
+
+export function rowRule(state, id) {
+  return ROW_RULES[state.rows[id]] ? state.rows[id] : ROW_RULE_ALL;
+}
+
+/** A non-base table's row rule; the base has none. */
+export function setRowRule(state, id, rule) {
+  if (!ROW_RULES[rule] || state.tables[0]?.id === id || !state.tables.some((table) => table.id === id)) return;
+  state.rows[id] = rule;
+}
+
+/**
+ * Where a key comes from in one table: `{column}`, `{fill}` or `{any: true}`.
+ * The base always names a column, and that column names the key.
+ */
+export function setKeyEntry(state, index, id, entry) {
+  const key = state.keys[index];
+  if (!key) return;
+  const isBase = state.tables[0]?.id === id;
+  if (isBase && entry?.column === undefined) return;
+  if (isBase && state.keys.some((other) => other !== key && nameToken(other.name) === nameToken(entry.column))) return;
+  key.map[id] = clone(entry);
+  if (isBase) key.name = entry.column;
+}
+
+/** Turn "Read as YYYYMM" on or off for a key's column in one table. */
+export function toggleKeyConvert(state, index, id) {
+  const entry = state.keys[index]?.map[id];
+  if (!entry || entry.column === undefined) return;
+  if (entry.convert) delete entry.convert;
+  else entry.convert = KEY_CONVERT_YYYYMM;
+}
+
+/** Base columns that are not yet a key, for Add Key. */
+export function keyCandidates(state) {
+  const base = state.tables[0];
+  const used = new Set(state.keys.map((key) => nameToken(key.name)));
+  return (base?.columns || []).filter((column) => !used.has(nameToken(column)));
+}
+
+/** Match rows on one more base column; the other tables match it by name. */
+export function addKey(state, column) {
+  const base = state.tables[0];
+  if (!base || !keyCandidates(state).includes(column)) return null;
+  const map = {};
+  state.tables.forEach((table) => {
+    map[table.id] = table === base ? { column } : autoMapKey(table, column);
+  });
+  const key = { name: column, map };
+  state.keys.push(key);
+  return key;
+}
+
+/** Stop matching on a key; the last key stays so rows can still be matched. */
+export function removeKey(state, index) {
+  if (state.keys.length <= 1 || !state.keys[index]) return false;
+  state.keys.splice(index, 1);
+  return true;
+}
+
+export function toggleExclude(state, id, column) {
+  const list = state.exclude[id] || [];
+  const next = list.includes(column) ? list.filter((item) => item !== column) : [...list, column];
+  if (next.length) state.exclude[id] = next;
+  else delete state.exclude[id];
+}
+
+/** A column's name in the combined table; blank or its own name clears the rename. */
+export function setRename(state, id, column, name) {
+  const value = String(name ?? "").trim();
+  const names = { ...(state.rename[id] || {}) };
+  if (value && value !== column) names[column] = value;
+  else delete names[column];
+  if (Object.keys(names).length) state.rename[id] = names;
+  else delete state.rename[id];
+}
+
+/**
+ * A table's value columns as the settings say now: left out, renamed, or
+ * named with the clash suffix the last preview gave it (decision 6).
+ */
+export function valueColumns(state, id, plan = []) {
+  const table = state.tables.find((item) => item.id === id);
+  if (!table || !Array.isArray(table.columns)) return [];
+  const keyColumns = new Set(state.keys.map((key) => key.map[id]?.column).filter((column) => column !== undefined));
+  const excluded = new Set(state.exclude[id] || []);
+  const renames = state.rename[id] || {};
+  const planned = new Map((plan || []).filter((item) => item.table_id === id).map((item) => [item.column, item]));
+  return table.columns.filter((column) => !keyColumns.has(column)).map((column) => {
+    const off = excluded.has(column);
+    const renamed = renames[column] || "";
+    const item = planned.get(column);
+    const conflict = !off && !renamed && !!item?.conflict && !item.off && !item.renamed;
+    return { column, master: renamed || (conflict ? item.master : column), off, conflict, renamed: !!renamed };
+  });
+}
+
+export function previewRequestBody(projectName, state, refresh = false) {
+  return { project_name: String(projectName || ""), combined: toCombinedBlock(state), refresh: !!refresh };
+}
+
+export const warningId = (warning) => `${warning.kind}|${warning.table_id}|${warning.key || warning.column || ""}`;
+
+/** Format mismatches the settings still have (no "Read as YYYYMM") and nobody dismissed. */
+export function openMismatches(state, warnings, dismissed = new Set()) {
+  return (warnings || []).filter((warning) => {
+    if (warning.kind !== "format_mismatch" || dismissed.has(warningId(warning))) return false;
+    const entry = state.keys.find((key) => key.name === warning.key)?.map[warning.table_id];
+    return !!entry && entry.column !== undefined && !entry.convert;
+  });
+}
+
+/**
+ * Why Next cannot leave the Combine step yet, or "". The preview must answer
+ * for the current settings, and every format mismatch must be fixed or dismissed.
+ */
+export function combineProblem(state, preview, dismissed = new Set()) {
+  const tables = validateCombinedState(state);
+  if (!tables.ok) return tables.error;
+  const block = JSON.stringify(toCombinedBlock(state));
+  if (preview?.error && preview.block === block) return preview.error;
+  if (!preview?.data || preview.block !== block) return "Wait for the preview to finish.";
+  const open = openMismatches(state, preview.data.warnings, dismissed)[0];
+  if (open) {
+    const table = state.tables.find((item) => item.id === open.table_id);
+    return `${tableLabel(table)} stores ${open.key} as ${open.sample}. Read it as YYYYMM or dismiss the warning.`;
+  }
+  return "";
+}
+
+/** The Row Match messages for the preview's warnings, as HTML with an optional fix. */
+export function warningAlerts(state, warnings, esc = defaultEscape) {
+  const label = (warning) => esc(tableLabel(state.tables.find((item) => item.id === warning.table_id)) || warning.table || "");
+  const mono = (text) => `<span class="cs-mono">${esc(text)}</span>`;
+  return (warnings || []).map((warning) => {
+    const id = warningId(warning);
+    if (warning.kind === "format_mismatch") {
+      return {
+        id,
+        tone: "warn",
+        html: `<b>${label(warning)}</b> stores ${esc(warning.key)} as ${mono(warning.sample)}; the base uses ${mono(warning.base_sample)}. `
+          + `${formatCount(warning.matched || 0)} of its rows match.`,
+        fix: { table_id: warning.table_id, key: warning.key },
+      };
+    }
+    if (warning.kind === "repeat") {
+      const keys = (warning.any_keys || []).join(", ") || "a key";
+      return {
+        id,
+        tone: "warn",
+        html: `Each <b>${label(warning)}</b> row lands on up to ${formatCount(warning.max_repeat)} combined rows because `
+          + `${esc(keys)} matches any value. Its amounts will repeat on every one.`,
+      };
+    }
+    if (warning.kind === "filled_rows") {
+      const fills = Object.entries(warning.fills || {});
+      return {
+        id,
+        tone: "info",
+        html: `<b>${label(warning)}</b> has no ${esc(fills.map(([name]) => name).join(", "))}, so its rows sit at `
+          + `${esc(fills.map(([name, value]) => `${name} = ${value}`).join(", "))} and form ${formatCount(warning.added || 0)} rows of their own.`,
+      };
+    }
+    if (warning.kind === "name_clash") {
+      return {
+        id,
+        tone: "info",
+        html: `Two tables have <b>${esc(warning.column)}</b>. The ${label(warning)} copy is named ${mono(warning.master)}. `
+          + "Click it in the column list to rename it.",
+      };
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+/** Coverage bar segments, most tables first: `[{ tables, rows }]`. */
+export function coverageSegments(coverage) {
+  return Object.entries(coverage || {})
+    .map(([tables, rows]) => ({ tables: Number(tables), rows: Number(rows) }))
+    .filter((item) => item.tables > 0 && item.rows > 0)
+    .sort((a, b) => b.tables - a.tables);
+}
+
+/** "12 of 72 matched · 60 added as new rows", as the Row Match tab words it. */
+export function matchText(stats, rule) {
+  const read = Number(stats?.read || 0);
+  const matched = Number(stats?.matched || 0);
+  let rest;
+  if (matched >= read) rest = "all matched";
+  else if (rule === ROW_RULE_ALL) rest = `${formatCount(stats?.added || 0)} added as new rows`;
+  else rest = `${formatCount(stats?.left_out || 0)} left out`;
+  const dropped = Number(stats?.base_rows_dropped || 0);
+  return `${formatCount(matched)} of ${formatCount(read)} matched · ${rest}`
+    + (dropped ? ` · ${formatCount(dropped)} combined rows dropped` : "");
+}
+
 /* ------------------------------------------------------------------------ */
 /* DOM feature                                                              */
 /* ------------------------------------------------------------------------ */
@@ -384,7 +600,21 @@ const ICONS = {
   db: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5.5" rx="7" ry="2.7"/><path d="M5 5.5v13c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7v-13"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></g></svg>',
   csv: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 2.8h8l4.5 4.5v13.9H6z"/><path d="M14 2.8v4.5h4.5"/><path d="M9 12.5h6M9 15.5h6M9 18.5h4"/></g></svg>',
   info: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.4"/><path d="M8 7.2v4M8 4.8h.01"/></g></svg>',
+  warn: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2 14.3 13.3H1.7z"/><path d="M8 6.6v3.2M8 11.6h.01"/></g></svg>',
+  more: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></g></svg>',
 };
+
+/** Two circles for a row rule: the shaded parts are the rows kept. */
+function vennIcon(rule) {
+  const left = rule === "match" ? 0 : 0.28;
+  const right = rule === ROW_RULE_ALL ? 0.28 : 0;
+  return '<svg class="cs-venn" viewBox="0 0 20 14" aria-hidden="true">'
+    + `<circle cx="7.5" cy="7" r="5" fill="currentColor" fill-opacity="${left}" stroke="currentColor" stroke-width="1.1"/>`
+    + `<circle cx="12.5" cy="7" r="5" fill="currentColor" fill-opacity="${right}" stroke="currentColor" stroke-width="1.1"/>`
+    + '<path d="M10 2.67A5 5 0 0 1 10 11.33A5 5 0 0 1 10 2.67Z" fill="currentColor" fill-opacity=".55"/></svg>';
+}
+
+const NUMERIC_TEXT = /^-?[\d,]*\.?\d+(?:[eE][-+]?\d+)?$/;
 
 const ordinal = (n) => {
   const tens = n % 100;
@@ -394,14 +624,13 @@ const ordinal = (n) => {
 const formatCount = (value) => Number(value).toLocaleString("en-US");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-/** Columns and row count of one table, read on this PC by the client app server. */
-export async function describeTableRequest(fetchImpl, table) {
+async function postJson(fetchImpl, url, body) {
   if (typeof fetchImpl !== "function") return { ok: false, error: "Not available." };
   try {
-    const res = await fetchImpl("/source_table/combined/describe", {
+    const res = await fetchImpl(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ table, refresh: false }),
+      body: JSON.stringify(body),
     });
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: String(payload?.detail || `Request failed (${res.status}).`) };
@@ -409,6 +638,16 @@ export async function describeTableRequest(fetchImpl, table) {
   } catch (err) {
     return { ok: false, error: err?.message || "Could not reach the app server." };
   }
+}
+
+/** Columns and row count of one table, read on this PC by the client app server. */
+export function describeTableRequest(fetchImpl, table) {
+  return postJson(fetchImpl, "/source_table/combined/describe", { table, refresh: false });
+}
+
+/** Statistics, warnings and first rows of the combined table, joined on this PC. */
+export function previewCombinedRequest(fetchImpl, body) {
+  return postJson(fetchImpl, "/source_table/combined/preview", body);
 }
 
 export function createCombinedSourceFeature(deps = {}) {
@@ -425,6 +664,11 @@ export function createCombinedSourceFeature(deps = {}) {
     // The coordinator's fetch; this module owns the combined-source routes.
     fetchImpl = null,
     onDescribeTable = (table) => describeTableRequest(fetchImpl, table),
+    onPreview = (body) => previewCombinedRequest(fetchImpl, body),
+    getProjectName = () => "",
+    // Called when the Combine step can no longer show (tables back to one).
+    onLeaveCombine = () => {},
+    previewDelayMs = 350,
   } = deps;
   const esc = escapeHtml;
   const doc = settingsBody?.ownerDocument || (typeof document === "undefined" ? null : document);
@@ -438,13 +682,25 @@ export function createCombinedSourceFeature(deps = {}) {
   let pop = null;
   let drag = null;
   let backdropPress = false;
+  // Combine step: shown flag, the last preview ({ data, error, loading, block }
+  // where block is the JSON of the settings it answered), Row Match or Preview.
+  let combineVisible = false;
+  let preview = null;
+  let previewTimer = null;
+  let previewToken = 0;
+  let resultTab = "match";
+  const dismissed = new Set();
 
   const bar = doc?.createElement("div");
   const list = doc?.createElement("div");
   const modalHost = doc?.createElement("div");
   const popEl = doc?.createElement("div");
+  const combineEl = doc?.createElement("div");
   let addBtn = null;
   let barNote = null;
+  let mapHost = null;
+  let resultHost = null;
+  let combineStatus = null;
 
   function mount() {
     if (!settingsBody || !doc) return;
@@ -464,6 +720,18 @@ export function createCombinedSourceFeature(deps = {}) {
     popEl.hidden = true;
     popEl.setAttribute("role", "menu");
     doc.body.append(modalHost, popEl);
+    // The Combine step is its own page of the import window, after the settings.
+    combineEl.className = "sd-import-body cs-combine";
+    combineEl.hidden = true;
+    combineEl.innerHTML = '<div class="cs-map-host"></div><div class="cs-result-host"></div>'
+      + '<div class="sd-source-status cs-combine-status" hidden></div>';
+    mapHost = combineEl.querySelector(".cs-map-host");
+    resultHost = combineEl.querySelector(".cs-result-host");
+    combineStatus = combineEl.querySelector(".cs-combine-status");
+    settingsBody.after(combineEl);
+    combineEl.addEventListener("click", onCombineClick);
+    combineEl.addEventListener("keydown", onCombineKeydown);
+    combineEl.addEventListener("mouseover", onMapHover);
     addBtn.addEventListener("click", () => onAddClick());
     list.addEventListener("click", onListClick);
     list.addEventListener("keydown", onListKeydown);
@@ -496,6 +764,14 @@ export function createCombinedSourceFeature(deps = {}) {
       : "";
     if (active) renderList();
     else list.innerHTML = "";
+    if (!combineVisible) return;
+    if (active) {
+      renderCombine();
+      schedulePreview();
+    } else {
+      showCombine(false);
+      onLeaveCombine();
+    }
   }
 
   function rowHtml(table) {
@@ -518,9 +794,17 @@ export function createCombinedSourceFeature(deps = {}) {
   }
 
   function renderList() {
-    const groups = tableGroups(state).map((group) => {
+    // Connection details live only in the details window; a second connection
+    // is told apart by its number.
+    const all = tableGroups(state);
+    const several = all.filter((group) => group.kind === SOURCE_TYPE_MSSQL).length > 1;
+    let connections = 0;
+    const groups = all.map((group) => {
+      if (group.kind === SOURCE_TYPE_MSSQL) connections += 1;
+      const name = several ? `SQL Server · connection ${connections}` : "SQL Server";
+      const shared = group.tables.length > 1 ? " · one shared connection" : "";
       const head = group.kind === SOURCE_TYPE_MSSQL
-        ? `${ICONS.db}<b>SQL Server</b><span class="cs-where">${esc(group.server)} / ${esc(group.database)} · ${plural(group.tables.length, "table", "tables")}</span>`
+        ? `${ICONS.db}<b>${name}</b><span class="cs-where">${plural(group.tables.length, "table", "tables")}${shared}</span>`
         : `${ICONS.csv}<b>CSV Files</b><span class="cs-where">${plural(group.tables.length, "file", "files")}</span>`;
       return `<div class="cs-group"><div class="cs-group-head">${head}</div>${group.tables.map(rowHtml).join("")}</div>`;
     });
@@ -645,6 +929,10 @@ export function createCombinedSourceFeature(deps = {}) {
     if (result?.ok) setTableColumns(state, id, result);
     else current.readError = String(result?.error || "Could not read the table.");
     if (isActive()) renderList();
+    if (combineVisible) {
+      renderCombine();
+      schedulePreview();
+    }
     if (detail?.mode === "view" && detail.id === id && !detail.readSpec) {
       detail.error = current.readError;
       if (result?.ok) {
@@ -757,6 +1045,11 @@ export function createCombinedSourceFeature(deps = {}) {
   }
 
   async function onPopClick(event) {
+    if (pop?.onPick) {
+      const choice = event.target.closest("[data-value]");
+      if (choice) pop.onPick(choice.dataset.value);
+      return;
+    }
     const item = event.target.closest(".cs-pop-item");
     if (!item || !pop) return;
     const value = item.dataset.value;
@@ -1032,17 +1325,443 @@ export function createCombinedSourceFeature(deps = {}) {
     syncMode();
   }
 
+  /* ---------------- Combine step ---------------- */
+
+  function showCombine(visible) {
+    combineVisible = !!visible && isActive();
+    if (!combineEl) return;
+    combineEl.hidden = !combineVisible;
+    closePop();
+    if (!combineVisible) {
+      clearTimeout(previewTimer);
+      return;
+    }
+    setCombineStatus("");
+    renderCombine();
+    schedulePreview(0);
+  }
+
+  function setCombineStatus(text, tone = "") {
+    if (!combineStatus) return;
+    const value = String(text || "").trim();
+    combineStatus.textContent = value;
+    combineStatus.classList.toggle("error", tone === "error");
+    combineStatus.classList.toggle("ok", tone === "ok");
+    combineStatus.hidden = !value;
+  }
+
+  /** Something on the Combine step changed: redraw it and ask for a new preview. */
+  function combineChanged() {
+    setCombineStatus("");
+    if (isActive()) renderList();
+    renderCombine();
+    schedulePreview();
+  }
+
+  const currentBlock = () => JSON.stringify(toCombinedBlock(state));
+
+  function schedulePreview(delay = previewDelayMs, refresh = false) {
+    clearTimeout(previewTimer);
+    if (!combineVisible || !validateCombinedState(state).ok) return;
+    if (!refresh && preview && !preview.loading && preview.block === currentBlock()) return;
+    preview = { ...(preview || {}), loading: true };
+    renderResult();
+    previewTimer = setTimeout(() => runPreview(refresh), delay);
+  }
+
+  async function runPreview(refresh) {
+    const token = ++previewToken;
+    const body = previewRequestBody(getProjectName(), state, refresh);
+    const block = JSON.stringify(body.combined);
+    const result = await onPreview(body);
+    if (token !== previewToken) return;
+    if (result?.ok) {
+      preview = { data: result, error: "", loading: false, block };
+      (result.tables || []).forEach((item) => {
+        const table = tableById(item.id);
+        if (table && Number.isFinite(Number(item.row_count))) table.row_count = Number(item.row_count);
+      });
+    } else {
+      preview = { data: preview?.data || null, error: String(result?.error || "Could not preview the combined table."), loading: false, block };
+    }
+    if (combineVisible) renderCombine();
+  }
+
+  const planOf = () => preview?.data?.plan || [];
+  const colorClass = (table) => `cs-color-${table.color + 1}`;
+  const keyIndexOf = (name) => state.keys.findIndex((key) => key.name === name);
+
+  function keyCellHtml(table, key, index, warned) {
+    const entry = key.map[table.id] || { any: true };
+    const attrs = `data-act="key" data-id="${esc(table.id)}" data-k="${index}"`;
+    if (entry.any) return `<button class="cs-kcell cs-virtual" type="button" ${attrs}>Any value</button>`;
+    if (entry.fill !== undefined) {
+      return `<button class="cs-kcell cs-virtual" type="button" ${attrs}>Fill <span class="cs-mono">${esc(entry.fill)}</span>`
+        + '<span class="cs-alt">not in table</span></button>';
+    }
+    const differs = entry.column !== key.name;
+    let alt = "";
+    if (warned) alt = `<span class="cs-alt">${esc(warned.sample)}</span>`;
+    else if (entry.convert) alt = '<span class="cs-alt">as YYYYMM</span>';
+    else if (differs) alt = '<span class="cs-alt">≈ name</span>';
+    const title = differs ? `${entry.column} becomes ${key.name}` : entry.column;
+    return `<button class="cs-kcell${warned ? " cs-warn" : ""}" type="button" ${attrs} title="${esc(title)}">`
+      + `${warned ? ICONS.warn : ""}<span class="cs-mono">${esc(entry.column)}</span>${alt}</button>`;
+  }
+
+  function mapHtml() {
+    const tables = state.tables;
+    const keyCount = state.keys.length;
+    const lastRow = 5 + keyCount;
+    const cells = [];
+    const at = (column, row, html, cls, attrs = "") => cells.push(
+      `<div class="${cls}" style="grid-column:${column};grid-row:${row}"${attrs}>${html}</div>`,
+    );
+    const card = (row, extra = "") => `cs-cc${row === 1 ? " cs-top" : ""}${row === lastRow ? " cs-bot" : ""}${extra ? ` ${extra}` : ""}`;
+    const warned = openMismatches(state, preview?.data?.warnings);
+    const plan = planOf();
+
+    at(1, 1, '<span class="sd-field-label">Tables</span>', "cs-lc");
+    at(1, 2, '<span class="sd-field-label">Rows To Keep</span>', "cs-lc");
+    at(1, 3, '<span class="sd-field-label">Match Rows On</span>', "cs-lc cs-sec");
+    state.keys.forEach((key, index) => at(1, 4 + index,
+      `<span class="cs-kname" title="${esc(key.name)}">${esc(key.name)}</span>`
+      + `<button class="cs-icon-btn" type="button" data-act="remove-key" data-k="${index}" aria-label="Stop matching on ${esc(key.name)}">${ICONS.x}</button>`,
+      "cs-lc", ` data-key="${index}"`));
+    at(1, 4 + keyCount, `<button class="cs-add-key" type="button" data-act="add-key">${ICONS.plus}Add Key</button>`, "cs-lc");
+    at(1, lastRow, '<span class="sd-field-label">Other Columns</span>', "cs-lc cs-lc-top");
+
+    tables.forEach((table, ti) => {
+      const gutter = 2 + ti * 2;
+      const column = 3 + ti * 2;
+      const label = tableLabel(table);
+      const rows = Number.isFinite(table.row_count) && table.row_count !== null ? `${formatCount(table.row_count)} rows` : "Not read";
+      at(column, 1, '<div class="cs-card-head"><div class="cs-card-title">'
+        + `<span class="cs-dot ${colorClass(table)}"></span><b>${esc(label)}</b>`
+        + `<button class="cs-icon-btn" type="button" data-act="card-menu" data-id="${esc(table.id)}" aria-label="${esc(label)} options">${ICONS.more}</button></div>`
+        + `<span class="cs-card-sub cs-num">${table.source_type === SOURCE_TYPE_MSSQL ? ICONS.db : ICONS.csv}${tableKindText(table)} · ${rows}</span></div>`,
+      card(1, "cs-open"), ` data-act="details" data-id="${esc(table.id)}" tabindex="0" role="button" title="${esc(tableSourceName(table))} · click for source details"`);
+      const rule = rowRule(state, table.id);
+      at(column, 2, ti === 0
+        ? '<span class="cs-base-label">Base table</span>'
+        : `<button class="cs-pill" type="button" data-act="join" data-id="${esc(table.id)}">${vennIcon(rule)}${ROW_RULES[rule].label}<span class="cs-caret"></span></button>`,
+      card(2));
+      at(column, 3, "", card(3, "cs-sec"));
+      state.keys.forEach((key, ki) => {
+        const entry = key.map[table.id] || {};
+        const warning = warned.find((item) => item.table_id === table.id && item.key === key.name);
+        at(column, 4 + ki, keyCellHtml(table, key, ki, warning), card(4 + ki), ` data-key="${ki}"`);
+        at(gutter, 4 + ki, `<span class="cs-rail${entry.column === undefined ? " cs-soft" : ""}"></span>`, "cs-gut", ` data-key="${ki}"`);
+      });
+      at(column, 4 + keyCount, "", card(4 + keyCount, "cs-sec"));
+      const values = valueColumns(state, table.id, plan).map((item) => {
+        let to = "";
+        if (item.off) to = '<span class="cs-to">left out</span>';
+        else if (item.master !== item.column) to = `<span class="cs-to">→ ${esc(item.master)}</span>`;
+        let title = "Click to leave out or rename";
+        if (item.off) title = "Left out. Click to include.";
+        else if (item.master !== item.column) title = `${item.column} becomes ${item.master}`;
+        return `<button class="cs-crow${item.off ? " cs-off" : ""}${item.conflict ? " cs-conflict" : ""}" type="button" data-act="column" `
+          + `data-id="${esc(table.id)}" data-col="${esc(item.column)}" title="${esc(title)}"><span class="cs-cn">${esc(item.column)}</span>${to}</button>`;
+      }).join("");
+      at(column, lastRow, `<div class="cs-clist">${values || '<span class="cs-quiet">None</span>'}</div>`, card(lastRow));
+    });
+
+    const gutter = 2 + tables.length * 2;
+    const column = 3 + tables.length * 2;
+    const data = preview?.data;
+    const sub = data ? `${formatCount(data.row_count)} rows · ${formatCount(data.column_count)} cols` : "Not previewed yet";
+    at(column, 1, '<div class="cs-card-head"><div class="cs-card-title"><span class="cs-dot cs-dot-master"></span><b>Combined Table</b></div>'
+      + `<span class="cs-card-sub cs-num">${sub}</span></div>`, card(1, "cs-master"));
+    at(column, 2, '<span class="cs-base-label">Becomes the project source</span>', card(2, "cs-master"));
+    at(column, 3, "", card(3, "cs-master cs-sec"));
+    state.keys.forEach((key, ki) => {
+      at(column, 4 + ki, `<span class="cs-master-key">${esc(key.name)}</span>`, card(4 + ki, "cs-master"), ` data-key="${ki}"`);
+      at(gutter, 4 + ki, '<span class="cs-rail"></span>', "cs-gut", ` data-key="${ki}"`);
+    });
+    at(column, 4 + keyCount, "", card(4 + keyCount, "cs-master cs-sec"));
+    const masters = tables.flatMap((table) => valueColumns(state, table.id, plan)
+      .filter((item) => !item.off)
+      .map((item) => `<span class="cs-mcol"><span class="cs-dot cs-dot-small ${colorClass(table)}"></span><span>${esc(item.master)}</span></span>`));
+    at(column, lastRow, `<div class="cs-mcols">${masters.join("")}</div>`, card(lastRow, "cs-master"));
+
+    const template = ["150px"];
+    for (let i = 0; i <= tables.length; i += 1) template.push("24px", "184px");
+    return `<div class="cs-map-wrap"><div class="cs-map" style="grid-template-columns:${template.join(" ")}">${cells.join("")}</div></div>`;
+  }
+
+  function matchPaneHtml(data) {
+    const alerts = warningAlerts(state, data.warnings, esc).map((alert) => {
+      let actions = "";
+      if (alert.fix) {
+        const fixed = !openMismatches(state, [data.warnings.find((item) => warningId(item) === alert.id)]).length;
+        if (!fixed) {
+          actions = `<button class="sd-btn cs-fix-btn" type="button" data-act="convert" data-id="${esc(alert.fix.table_id)}" data-k="${keyIndexOf(alert.fix.key)}">Read as YYYYMM</button>`
+            + (dismissed.has(alert.id) ? "" : `<button class="sd-btn cs-dismiss-btn" type="button" data-act="dismiss" data-wid="${esc(alert.id)}">Dismiss</button>`);
+        }
+      }
+      return `<div class="cs-alert${alert.tone === "info" ? " cs-info" : ""}">${alert.tone === "info" ? ICONS.info : ICONS.warn}`
+        + `<span class="cs-msg">${alert.html}</span>${actions}</div>`;
+    }).join("");
+    const bars = state.tables.map((table, index) => {
+      const stats = data.stats?.[table.id] || {};
+      const who = `<span class="cs-who"><span class="cs-dot ${colorClass(table)}"></span><span>${esc(tableLabel(table))}</span></span>`;
+      if (index === 0) {
+        return `${who}<div class="cs-mbar"><i class="${colorClass(table)}" style="width:100%"></i></div>`
+          + `<span class="cs-match-text cs-num">${formatCount(stats.read || 0)} rows · base</span>`;
+      }
+      const pct = stats.read ? (stats.matched / stats.read) * 100 : 0;
+      return `${who}<div class="cs-mbar" title="${formatCount(stats.matched || 0)} matched"><i class="${colorClass(table)}" style="width:${pct}%"></i>`
+        + `<i class="cs-rest" style="width:${100 - pct}%"></i></div>`
+        + `<span class="cs-match-text cs-num">${esc(matchText(stats, rowRule(state, table.id)))}</span>`;
+    }).join("");
+    const total = state.tables.length;
+    const segments = coverageSegments(data.coverage);
+    const shade = (n) => `color-mix(in srgb, var(--ar-color-accent, #2b6df6) ${Math.round(25 + 75 * (n / total))}%, var(--ar-color-text-subtle, #94a3b8))`;
+    const name = (n) => (n === total ? `All ${total} tables` : plural(n, "table", "tables"));
+    const cover = segments.length
+      ? '<div class="cs-cover"><span class="sd-field-label">Combined Rows By Number Of Tables With Data</span><div class="cs-cover-bar">'
+        + segments.map((seg) => `<div style="flex-grow:${seg.rows};background:${shade(seg.tables)}" title="${formatCount(seg.rows)} rows with data from ${name(seg.tables).toLowerCase()}">`
+          + `${seg.rows / Math.max(1, data.row_count) > 0.07 ? formatCount(seg.rows) : ""}</div>`).join("")
+        + '</div><div class="cs-cover-legend">'
+        + segments.map((seg) => `<span><i style="background:${shade(seg.tables)}"></i>${name(seg.tables)} · ${formatCount(seg.rows)}</span>`).join("")
+        + "</div></div>"
+      : "";
+    return (alerts ? `<div class="cs-alerts">${alerts}</div>` : "") + `<div class="cs-match-grid">${bars}</div>${cover}`;
+  }
+
+  function previewPaneHtml(data) {
+    const keyNames = new Set(state.keys.map((key) => key.name));
+    const owner = new Map();
+    state.tables.forEach((table) => valueColumns(state, table.id, data.plan).forEach((item) => {
+      if (!item.off) owner.set(item.master, table);
+    }));
+    const columns = data.columns || [];
+    const rows = data.rows || [];
+    const numeric = new Set(columns.filter((name) => !keyNames.has(name)
+      && rows.every((row) => !row[name] || NUMERIC_TEXT.test(String(row[name]).trim()))));
+    const head = columns.map((name) => {
+      const table = owner.get(name);
+      const cls = [keyNames.has(name) ? "" : "cs-th-value", table ? `cs-top-${table.color + 1}` : "", numeric.has(name) ? "cs-n" : ""].filter(Boolean).join(" ");
+      return `<th class="${cls}">${esc(name)}</th>`;
+    }).join("");
+    const body = rows.map((row) => `<tr>${columns.map((name) => {
+      const value = row[name];
+      const cls = [keyNames.has(name) ? "cs-k" : "", numeric.has(name) ? "cs-n" : "", value ? "" : "cs-empty"].filter(Boolean).join(" ");
+      return `<td class="${cls}">${value ? esc(value) : "·"}</td>`;
+    }).join("")}</tr>`).join("");
+    const legend = '<div class="cs-prev-legend"><span><span class="cs-dot cs-dot-key"></span>Key</span>'
+      + state.tables.map((table) => `<span><span class="cs-dot ${colorClass(table)}"></span>${esc(tableLabel(table))}</span>`).join("")
+      + `<span class="cs-prev-count cs-num">First ${formatCount(rows.length)} of ${formatCount(data.row_count)} rows · a dot means no value</span></div>`;
+    return `${legend}<div class="cs-prev-wrap"><table class="cs-prev"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function resultHtml() {
+    const data = preview?.data;
+    const tables = validateCombinedState(state);
+    const loading = !!preview?.loading;
+    let sum = "";
+    if (loading) sum = '<span class="cs-sum cs-quiet">Updating...</span>';
+    else if (data) sum = `<span class="cs-sum cs-num">Combined: <b>${formatCount(data.row_count)}</b> rows × <b>${formatCount(data.column_count)}</b> columns</span>`;
+    const tab = (id, label) => `<button class="cs-tab${resultTab === id ? " is-active" : ""}" type="button" role="tab" aria-selected="${resultTab === id}" data-act="tab" data-tab="${id}">${label}</button>`;
+    const head = `<div class="cs-tabs" role="tablist">${tab("match", "Row Match")}${tab("preview", "Preview")}${sum}`
+      + `<button class="sd-btn cs-refresh" type="button" data-act="refresh" title="Read every table again, including SQL Server tables"${loading || !tables.ok ? " disabled" : ""}>Read Again</button></div>`;
+    let pane;
+    if (!tables.ok) pane = `<p class="cs-quiet">${esc(tables.error)}</p>`;
+    else if (preview?.error && preview.block === currentBlock() && !loading) pane = `<p class="cs-result-error">${esc(preview.error)}</p>`;
+    else if (!data) pane = '<p class="cs-quiet">Reading the tables and matching rows...</p>';
+    else pane = resultTab === "preview" ? previewPaneHtml(data) : matchPaneHtml(data);
+    return `<div class="cs-result">${head}<div class="cs-pane${loading && data ? " is-stale" : ""}">${pane}</div></div>`;
+  }
+
+  function renderResult() {
+    if (combineVisible && resultHost) resultHost.innerHTML = resultHtml();
+  }
+
+  function renderCombine() {
+    if (!combineVisible || !mapHost) return;
+    const scroll = mapHost.querySelector(".cs-map-wrap")?.scrollLeft || 0;
+    mapHost.innerHTML = mapHtml();
+    const wrap = mapHost.querySelector(".cs-map-wrap");
+    if (wrap) wrap.scrollLeft = scroll;
+    renderResult();
+  }
+
+  /** A small menu under a Join Map control; `onPick` gets the chosen item's value. */
+  function openMenu(anchor, html, onPick) {
+    closePop();
+    pop = { anchor, onPick };
+    popEl.innerHTML = html;
+    popEl.hidden = false;
+    placePop();
+    const input = popEl.querySelector("input");
+    input?.focus({ preventScroll: true });
+    input?.select();
+  }
+
+  function menuItem(value, labelHtml, { selected = false, note = "", lead = null } = {}) {
+    const leadHtml = lead ?? `<span class="cs-tick">${selected ? "✓" : ""}</span>`;
+    return `<button class="cs-pop-item${selected ? " is-selected" : ""}" type="button" role="menuitem" data-value="${esc(value)}">${leadHtml}`
+      + `<span class="cs-pop-label">${labelHtml}${note ? `<span class="cs-pop-note">${esc(note)}</span>` : ""}</span></button>`;
+  }
+
+  const inputRow = (id, value, label, button) => `<div class="cs-pop-row"><input class="cs-d-input" id="${id}" type="text" autocomplete="off" spellcheck="false" value="${esc(value)}" aria-label="${label}">`
+    + `<button class="sd-btn" type="button" data-value="apply">${button}</button></div>`;
+
+  function openKeyMenu(anchor, id, index) {
+    const key = state.keys[index];
+    const table = tableById(id);
+    if (!key || !table) return;
+    const entry = key.map[id] || {};
+    const isBase = state.tables[0] === table;
+    let html = `<div class="cs-pop-head">${esc(key.name)} comes from</div>`
+      + (table.columns || []).map((column) => menuItem(`col:${column}`, `<span class="cs-mono">${esc(column)}</span>`, { selected: entry.column === column })).join("");
+    if (!isBase) {
+      html += '<div class="cs-pop-sep"></div>'
+        + menuItem("fill", "Fill with a value", { selected: entry.fill !== undefined, note: "Every row of this table gets the same value" })
+        + inputRow("csPopFill", entry.fill !== undefined ? entry.fill : "0", "Fill value", "Apply")
+        + menuItem("any", "Match any value", { selected: !!entry.any, note: "Ignore this key for this table. Its rows repeat on every match." });
+    }
+    const mismatch = openMismatches(state, preview?.data?.warnings).some((item) => item.table_id === id && item.key === key.name);
+    if (mismatch || entry.convert) {
+      html += '<div class="cs-pop-sep"></div>'
+        + menuItem("convert", "Read as YYYYMM", { selected: !!entry.convert, note: "Turns 2026-07 into 202607 before matching" });
+    }
+    openMenu(anchor, html, (value) => {
+      if (value.startsWith("col:")) setKeyEntry(state, index, id, { column: value.slice(4) });
+      else if (value === "fill" || value === "apply") {
+        const fill = String(popEl.querySelector("#csPopFill")?.value || "").trim() || "0";
+        setKeyEntry(state, index, id, { fill });
+      } else if (value === "any") setKeyEntry(state, index, id, { any: true });
+      else if (value === "convert") toggleKeyConvert(state, index, id);
+      closePop();
+      combineChanged();
+    });
+  }
+
+  function openJoinMenu(anchor, id) {
+    const current = rowRule(state, id);
+    const html = `<div class="cs-pop-head">Rows to keep when joining ${esc(tableLabel(tableById(id)))}</div>`
+      + Object.entries(ROW_RULES).map(([rule, info]) => menuItem(rule, info.label, { selected: current === rule, note: info.note, lead: vennIcon(rule) })).join("");
+    openMenu(anchor, html, (value) => {
+      setRowRule(state, id, value);
+      closePop();
+      combineChanged();
+    });
+  }
+
+  function openColumnMenu(anchor, id, column) {
+    const item = valueColumns(state, id, planOf()).find((entry) => entry.column === column);
+    if (!item) return;
+    const html = menuItem("toggle", item.off ? "Include column" : "Leave out column")
+      + (item.off ? "" : '<div class="cs-pop-sep"></div><div class="cs-pop-head">Name in the combined table</div>'
+        + inputRow("csPopName", item.master, "Column name", "Rename"));
+    openMenu(anchor, html, (value) => {
+      if (value === "toggle") toggleExclude(state, id, column);
+      else if (value === "apply") setRename(state, id, column, popEl.querySelector("#csPopName")?.value);
+      closePop();
+      combineChanged();
+    });
+  }
+
+  function openCardMenu(anchor, id) {
+    const isBase = state.tables[0]?.id === id;
+    const html = menuItem("details", "Source details", { note: "File or connection, nickname, columns" })
+      + (isBase ? "" : menuItem("base", "Make base table", { note: "Move it to the front; keys are proposed again" }))
+      + menuItem("remove", "Remove table");
+    openMenu(anchor, html, (value) => {
+      closePop();
+      if (value === "details") openDetail("view", id);
+      else if (value === "base") {
+        moveTable(state, id, state.tables[0].id, false);
+        combineChanged();
+      } else if (value === "remove") removeTableAndSync(id);
+    });
+  }
+
+  function openAddKeyMenu(anchor) {
+    const columns = keyCandidates(state);
+    const html = '<div class="cs-pop-head">Columns in the base table</div>'
+      + (columns.length
+        ? columns.map((column) => menuItem(column, `<span class="cs-mono">${esc(column)}</span>`)).join("")
+        : '<div class="cs-pop-head cs-pop-quiet">Every column is already a key</div>');
+    openMenu(anchor, html, (value) => {
+      addKey(state, value);
+      closePop();
+      combineChanged();
+    });
+  }
+
+  function onCombineClick(event) {
+    const el = event.target.closest("[data-act]");
+    if (!el || busy || !combineEl.contains(el)) return;
+    const { act, id } = el.dataset;
+    const index = el.dataset.k !== undefined ? Number(el.dataset.k) : -1;
+    if (pop?.anchor === el) {
+      closePop();
+      return;
+    }
+    if (act === "details") openDetail("view", id);
+    else if (act === "card-menu") {
+      event.stopPropagation();
+      openCardMenu(el, id);
+    } else if (act === "join") openJoinMenu(el, id);
+    else if (act === "key") openKeyMenu(el, id, index);
+    else if (act === "column") openColumnMenu(el, id, el.dataset.col);
+    else if (act === "add-key") openAddKeyMenu(el);
+    else if (act === "remove-key") {
+      if (removeKey(state, index)) combineChanged();
+      else setCombineStatus("Keep at least one key so rows can be matched.", "error");
+    } else if (act === "convert") {
+      toggleKeyConvert(state, index, id);
+      combineChanged();
+    } else if (act === "dismiss") {
+      dismissed.add(el.dataset.wid);
+      setCombineStatus("");
+      renderResult();
+    } else if (act === "tab") {
+      resultTab = el.dataset.tab === "preview" ? "preview" : "match";
+      renderResult();
+    } else if (act === "refresh") schedulePreview(0, true);
+  }
+
+  function onCombineKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const cardEl = event.target.closest?.('[data-act="details"]');
+    if (!cardEl || event.target !== cardEl) return;
+    event.preventDefault();
+    openDetail("view", cardEl.dataset.id);
+  }
+
+  /** Light up one key's row across every card. */
+  function onMapHover(event) {
+    const map = mapHost?.querySelector(".cs-map");
+    if (!map) return;
+    const cell = event.target.closest?.("[data-key]");
+    const key = cell && map.contains(cell) ? cell.dataset.key : "";
+    if (map.dataset.hk === key) return;
+    map.dataset.hk = key;
+    map.querySelectorAll(".cs-hl").forEach((node) => node.classList.remove("cs-hl"));
+    if (key) map.querySelectorAll(`[data-key="${key}"]`).forEach((node) => node.classList.add("cs-hl"));
+  }
+
   /* ---------------- keyboard and outside clicks ---------------- */
 
   function onKeydownCapture(event) {
     if (event.key === "Escape") {
       if (pop) {
+        const anchor = pop.anchor;
         closePop();
-        addBtn?.focus({ preventScroll: true });
+        anchor?.focus({ preventScroll: true });
       } else if (detail) closeDetail();
       else return;
       event.stopPropagation();
       event.preventDefault();
+      return;
+    }
+    if (event.key === "Enter" && pop?.onPick && event.target.tagName === "INPUT" && popEl.contains(event.target)) {
+      event.preventDefault();
+      pop.onPick("apply");
       return;
     }
     if (event.key === "Enter" && detail && event.target.classList?.contains("cs-d-nickname")) {
@@ -1067,7 +1786,12 @@ export function createCombinedSourceFeature(deps = {}) {
       closeDetail();
       closePop();
       if (drag) endDrag(false);
+      showCombine(false);
       state = createCombinedState();
+      preview = null;
+      previewToken += 1;
+      dismissed.clear();
+      resultTab = "match";
       syncMode();
     },
     /** Close this module's popover and details window. */
@@ -1081,8 +1805,22 @@ export function createCombinedSourceFeature(deps = {}) {
       if (addBtn) addBtn.disabled = busy;
       if (busy) closePop();
     },
-    validate() {
+    /** The import window's pages for the current table count. */
+    steps() {
+      return importSteps(state);
+    },
+    /** Show or hide the Combine step's page. */
+    showCombine,
+    /** The Combine step's own status line, for messages while it shows. */
+    setCombineStatus,
+    /** Whether the table list can go on to the Combine step. */
+    validateTables() {
       return validateCombinedState(state);
+    },
+    /** Whether the combined settings can go on past the Combine step. */
+    validate() {
+      const error = combineProblem(state, preview, dismissed);
+      return { ok: !error, error };
     },
     getCombinedBlock() {
       return toCombinedBlock(state);

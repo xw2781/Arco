@@ -144,6 +144,7 @@ class CombineTablesTests(unittest.TestCase):
             "read": 72, "matched": 0, "added": 72, "left_out": 0, "base_rows_dropped": 0, "max_repeat": 0,
         })
         self.assertEqual(len(out), 84)
+        self.assertEqual(result["coverage"], {"1": 84})
         premium_rows = out[out["sys_yrmo"] == "0"]
         self.assertEqual(len(premium_rows), 72)
         self.assertEqual(set(premium_rows["Paid_Loss"]), {""})
@@ -174,6 +175,8 @@ class CombineTablesTests(unittest.TestCase):
         # PPA_BI 202604 has three system months in the base.
         self.assertEqual(stats, {"read": 2, "matched": 1, "added": 0, "left_out": 1, "base_rows_dropped": 0, "max_repeat": 3})
         self.assertEqual(len(result["frame"]), 12)
+        # Three base rows got premium data; the other nine have the base alone.
+        self.assertEqual(result["coverage"], {"1": 9, "2": 3})
         repeat = [w for w in result["warnings"] if w["kind"] == "repeat"]
         self.assertEqual(repeat[0]["any_keys"], ["sys_yrmo"])
         self.assertEqual(repeat[0]["max_repeat"], 3)
@@ -190,6 +193,7 @@ class CombineTablesTests(unittest.TestCase):
         self.assertEqual(len(out), 13)
         self.assertEqual(out.iloc[-1].tolist(), ["07", "XX", "202604", "", "", "8"])
         self.assertEqual(result["stats"]["t2"]["added"], 1)
+        self.assertEqual(result["coverage"], {"1": 10, "2": 3})
         self.assertEqual(result["stats"]["t2"]["left_out"], 0)
         # The base keeps its own order ahead of the added row.
         self.assertEqual(out.iloc[:12]["sys_yrmo"].tolist(), loss_frame()["sys_yrmo"].tolist())
@@ -401,6 +405,7 @@ class CombinedSourceClientTests(unittest.TestCase):
         self.assertEqual(answer["stats"]["t4"]["added"], 72)
         self.assertEqual([warning["kind"] for warning in answer["warnings"]], ["filled_rows"])
         self.assertEqual((answer["row_count"], answer["column_count"]), (84, 6))
+        self.assertEqual(answer["coverage"], {"1": 84})
         self.assertEqual(len(answer["rows"]), 14)
         self.assertEqual(answer["columns"], ["CO_CD", "PROD_CD", "acc_yrmo", "sys_yrmo", "Paid_Loss", "Earned Premium"])
         json.dumps(answer)  # the route answer is plain JSON

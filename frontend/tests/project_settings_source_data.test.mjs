@@ -1143,10 +1143,11 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
   assert.match(moduleSource, /importNextBtn\?\.addEventListener\("click", \(\) => goToNextPanelStep\(\)\)/);
   assert.match(moduleSource, /importBackBtn\?\.addEventListener\("click", \(\) => goToPreviousPanelStep\(\)\)/);
   // Datasets and reserving class types are separate pages, in that order.
-  assert.match(moduleSource, /const PANEL_STEPS = \["settings", "datasets", "classes"\]/);
+  // With one table the pages are settings, datasets, classes (importSteps in the combined module).
+  assert.match(moduleSource, /panelStep = combinedSource\.steps\(\)\.includes\(step\) \? step : "settings";/);
   assert.match(moduleSource, /datasets: "Import Scope: Datasets"/);
   assert.match(moduleSource, /classes: "Import Scope: Reserving Class Types"/);
-  assert.match(moduleSource, /if \(panelStep === "settings"\) \{\s*goToScopeStep\(\);/);
+  assert.match(moduleSource, /if \(panelStep === "settings" \|\| panelStep === "combine"\) \{\s*goToScopeStep\(\);/);
   assert.match(moduleSource, /if \(panelStep === "datasets" && !datasetScopeProblem\(\)\) \{\s*showPanelStep\("classes"\)/);
   assert.match(moduleSource, /importDataBtn\.hidden = panelStep !== "classes"/);
   assert.match(projectSettingsHtml, /<section class="sd-scope-pane" data-page="datasets"/);
