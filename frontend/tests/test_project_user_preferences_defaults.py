@@ -39,13 +39,26 @@ class ProjectUserPreferencesDefaultsTests(unittest.TestCase):
                 240,
             )
 
-    def test_saved_project_settings_preferences_take_precedence_over_defaults(self) -> None:
-        data = {"projectSettings": {"tables": {"savedTable": {"widths": {"Name": 310}}}}}
-        with patch.object(project_user_preferences_service, "_read_project_settings_defaults") as read_defaults:
+    def test_saved_project_settings_preferences_are_laid_over_defaults(self) -> None:
+        data = {"projectSettings": {"tables": {"savedTable": {"widths": {"Name": 310}, "collapsedGroups": ["a"]}}}}
+        defaults = {
+            "tables": {
+                "savedTable": {"widths": {"Name": 200, "Level": 90}},
+                "otherTable": {"widths": {"Name": 240}},
+            }
+        }
+        with patch.object(project_user_preferences_service, "_read_project_settings_defaults", return_value=defaults):
             result = project_user_preferences_service._with_project_settings_defaults(data)
 
-        self.assertIs(result, data)
-        read_defaults.assert_not_called()
+        self.assertEqual(
+            result["projectSettings"],
+            {
+                "tables": {
+                    "savedTable": {"widths": {"Name": 310, "Level": 90}, "collapsedGroups": ["a"]},
+                    "otherTable": {"widths": {"Name": 240}},
+                }
+            },
+        )
 
 
 if __name__ == "__main__":

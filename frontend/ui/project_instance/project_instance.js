@@ -1,3 +1,3 @@
-import { bootProjectInstance } from "./project_instance_boot.js?v=20260929smb";
+import { bootProjectInstance } from "./project_instance_boot.js?v=20261013group1";
 
 void bootProjectInstance();

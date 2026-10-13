@@ -16,6 +16,7 @@ import {
 import { createDatasetTypeCategoryCombo } from "/ui/project_settings/project_settings_dataset_type_category_combo.js?v=20260811dtcategory1";
 import { createDatasetTypeFormatSelect } from "/ui/project_settings/project_settings_dataset_type_format_select.js?v=20260812dtformat2";
 import { formatDetailsFormulaText } from "/ui/shared/tabs/details/details_dependencies.js?v=20260820b";
+import { createTableGroupRow } from "/ui/shared/components/table_group_row/table_group_row.js?v=20261013a";
 import {
   clearTableSkeletonRows,
   renderTableSkeletonRows,
@@ -30,6 +31,9 @@ export function createDatasetTypesFeature(deps = {}) {
     datasetTypesErrorBody = null,
     datasetTypesErrorClose = null,
     initTableColumnResizing = () => {},
+    getCollapsedGroups = () => new Set(),
+    saveCollapsedGroups = () => {},
+    showTableGroupContextMenu = () => {},
     resizeCellTextarea = () => {},
     normalizeProjectKey = (name) => String(name || "").trim().toLowerCase(),
     fetchImpl = fetch,
@@ -117,7 +121,6 @@ export function createDatasetTypesFeature(deps = {}) {
   const datasetTypesCalculatedOptionsByProject = new Map();
   const datasetTypesNameFilterStateByProject = new Map();
   const datasetTypesNameOptionsByProject = new Map();
-  const datasetTypesCollapsedGroupsByProject = new Map();
   let datasetTypesContextProject = "";
   let datasetTypesContextRowIndex = -1;
   let datasetTypesContextCellText = "";
@@ -691,19 +694,6 @@ export function createDatasetTypesFeature(deps = {}) {
     return getDatasetTypeColumnFilterValueKeyFromRow(colLabel, row, {
       blankKey: DATASET_TYPES_BLANK_CATEGORY_KEY,
     });
-  }
-
-  function getDatasetTypesCollapsedGroupSet(projectName, categoryOptions = []) {
-    const key = normalizeProjectKey(projectName);
-    if (!datasetTypesCollapsedGroupsByProject.has(key)) {
-      datasetTypesCollapsedGroupsByProject.set(key, new Set());
-    }
-    const collapsed = datasetTypesCollapsedGroupsByProject.get(key);
-    const optionKeys = new Set((categoryOptions || []).map((opt) => opt.key));
-    for (const collapsedKey of Array.from(collapsed)) {
-      if (!optionKeys.has(collapsedKey)) collapsed.delete(collapsedKey);
-    }
-    return collapsed;
   }
 
   function findDatasetTypesFilterButton(colLabel) {
@@ -1396,7 +1386,7 @@ export function createDatasetTypesFeature(deps = {}) {
     const nameSelected = nameFilter.selected;
     const categorySelected = categoryFilter.selected;
     const calculatedSelected = calculatedFilter.selected;
-    const collapsedGroups = getDatasetTypesCollapsedGroupSet(projectName, categoryOptions);
+    const collapsedGroups = getCollapsedGroups("datasetTypesTable");
     const sortState = getDatasetTypesSortState(projectName);
     const sortColIdx = DATASET_TYPES_COLUMNS.indexOf(String(sortState.colLabel || "").trim());
     const sortDir = String(sortState.dir || "").trim().toLowerCase();
@@ -1437,39 +1427,26 @@ export function createDatasetTypesFeature(deps = {}) {
     } else {
       for (const group of visibleGroups) {
         const isCollapsed = collapsedGroups.has(group.key);
-        const groupRow = document.createElement("tr");
-        groupRow.className = "dt-group-row";
-        if (isCollapsed) groupRow.classList.add("collapsed");
-        const groupTd = document.createElement("td");
-        groupTd.colSpan = DATASET_TYPES_COLUMNS.length;
-
-        const groupHeader = document.createElement("div");
-        groupHeader.className = "dt-group-header";
-
-        const groupToggle = document.createElement("button");
-        groupToggle.type = "button";
-        groupToggle.className = "dt-group-toggle";
-        groupToggle.textContent = isCollapsed ? "+" : "-";
-        groupToggle.title = isCollapsed ? "Expand group" : "Collapse group";
-        groupToggle.setAttribute("aria-label", `${isCollapsed ? "Expand" : "Collapse"} category ${group.label}`);
-        groupToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-        groupToggle.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (collapsedGroups.has(group.key)) collapsedGroups.delete(group.key);
-          else collapsedGroups.add(group.key);
+        const setCollapsed = (keys, collapsed) => {
+          for (const key of keys) {
+            if (collapsed) collapsedGroups.add(key);
+            else collapsedGroups.delete(key);
+          }
+          saveCollapsedGroups("datasetTypesTable");
           renderDatasetTypesTable(projectName);
-        });
-
-        const groupLabel = document.createElement("span");
-        groupLabel.className = "dt-group-label";
-        groupLabel.textContent = `Category: ${group.label}`;
-
-        groupHeader.appendChild(groupToggle);
-        groupHeader.appendChild(groupLabel);
-        groupTd.appendChild(groupHeader);
-        groupRow.appendChild(groupTd);
-        datasetTypesBody.appendChild(groupRow);
+        };
+        const allKeys = visibleGroups.map((item) => item.key);
+        datasetTypesBody.appendChild(createTableGroupRow({
+          text: `Category: ${group.label}`,
+          colSpan: DATASET_TYPES_COLUMNS.length,
+          collapsed: isCollapsed,
+          count: group.rows.length,
+          onToggle: () => setCollapsed([group.key], !isCollapsed),
+          onContextMenu: (event) => showTableGroupContextMenu(event.clientX, event.clientY, {
+            collapseAll: () => setCollapsed(allKeys, true),
+            expandAll: () => setCollapsed(allKeys, false),
+          }),
+        }));
 
         if (isCollapsed) continue;
 

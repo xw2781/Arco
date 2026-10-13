@@ -17,6 +17,7 @@ const reviewStatusUrl = new URL("../ui/shared/dataset/review_status.js", import.
 const testableSource = tableSource
   .replace("/ui/shared/components/value_filter_menu/value_filter_menu.js?v=20260920a", new URL("../ui/shared/components/value_filter_menu/value_filter_menu.js?v=20260920a", import.meta.url).href)
   .replace("/ui/shared/dataset/dataset_category.js?v=20260920a", new URL("../ui/shared/dataset/dataset_category.js?v=20260920a", import.meta.url).href)
+  .replace("/ui/shared/components/table_group_row/table_group_row.js?v=20261013a", new URL("../ui/shared/components/table_group_row/table_group_row.js?v=20261013a", import.meta.url).href)
   .replace(
     /^import \{ openDatasetNamePicker \} from .*;\s*/mu,
     "const openDatasetNamePicker = async () => null;\n",

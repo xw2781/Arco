@@ -2,6 +2,7 @@ import {
   clearTableSkeletonRows,
   renderTableSkeletonRows,
 } from "./project_settings_skeleton.js?v=20260821pstree1";
+import { createTableGroupRow } from "/ui/shared/components/table_group_row/table_group_row.js?v=20261013a";
 
 export function createReservingClassTypesFeature(deps = {}) {
   const {
@@ -16,6 +17,9 @@ export function createReservingClassTypesFeature(deps = {}) {
     rctEditFormula = null,
     rctFormulaReview = null,
     initTableColumnResizing = () => {},
+    getCollapsedGroups = () => new Set(),
+    saveCollapsedGroups = () => {},
+    showTableGroupContextMenu = () => {},
     normalizeProjectKey = (name) => String(name || "").trim().toLowerCase(),
     fetchImpl = fetch,
     setStatus = () => {},
@@ -37,7 +41,6 @@ export function createReservingClassTypesFeature(deps = {}) {
   const reservingClassTypesByProject = new Map();
   const loadedReservingClassTypesByProject = new Set();
   const reservingClassTypesSourceNamesByProject = new Map();
-  const reservingClassTypesCollapsedLevelsByProject = new Map();
 
   let reservingClassTypesContextProject = "";
   let reservingClassTypesContextRowIndex = -1;
@@ -138,14 +141,6 @@ export function createReservingClassTypesFeature(deps = {}) {
       if (!v) continue;
       set.add(canonReservingClassTypeName(v));
     }
-  }
-
-  function getReservingClassTypesCollapsedSet(projectName) {
-    const key = normalizeProjectKey(projectName);
-    if (!reservingClassTypesCollapsedLevelsByProject.has(key)) {
-      reservingClassTypesCollapsedLevelsByProject.set(key, new Set());
-    }
-    return reservingClassTypesCollapsedLevelsByProject.get(key);
   }
 
   function sanitizeReservingClassTypesSortState(raw) {
@@ -1936,7 +1931,7 @@ export function createReservingClassTypesFeature(deps = {}) {
     const table = document.getElementById("reservingClassTypesTable");
     const state = getProjectReservingClassTypesState(projectName);
     const sourceSet = getReservingClassTypesSourceSet(projectName);
-    const collapsedSet = getReservingClassTypesCollapsedSet(projectName);
+    const collapsedSet = getCollapsedGroups("reservingClassTypesTable");
     const sortState = getReservingClassTypesSortState();
     const columns = Array.isArray(state.columns) && state.columns.length ? state.columns : [...RESERVING_CLASS_TYPES_COLUMNS];
     state.columns = [...columns];
@@ -2043,33 +2038,27 @@ export function createReservingClassTypesFeature(deps = {}) {
     clearTableSkeletonRows(reservingClassTypesBody);
     reservingClassTypesBody.innerHTML = "";
     for (const group of sortedGroups) {
-      const groupTr = document.createElement("tr");
-      groupTr.className = "rct-group-row";
-      const groupTd = document.createElement("td");
-      groupTd.colSpan = visibleCols.length;
-
-      const toggleBtn = document.createElement("button");
-      toggleBtn.type = "button";
       const collapsed = collapsedSet.has(group.key);
-      toggleBtn.className = "rct-group-toggle" + (collapsed ? "" : " expanded");
-      toggleBtn.textContent = collapsed ? "+" : "-";
-      toggleBtn.title = collapsed ? "Expand level" : "Collapse level";
-      toggleBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (collapsedSet.has(group.key)) collapsedSet.delete(group.key);
-        else collapsedSet.add(group.key);
+      const setCollapsed = (keys, nextCollapsed) => {
+        for (const key of keys) {
+          if (nextCollapsed) collapsedSet.add(key);
+          else collapsedSet.delete(key);
+        }
+        saveCollapsedGroups("reservingClassTypesTable");
         renderReservingClassTypesTable(projectName);
-      });
-
-      const label = document.createElement("span");
-      label.className = "rct-group-label";
-      label.textContent = group.label;
-
-      groupTd.appendChild(toggleBtn);
-      groupTd.appendChild(label);
-      groupTr.appendChild(groupTd);
-      reservingClassTypesBody.appendChild(groupTr);
+      };
+      const allKeys = sortedGroups.map((item) => item.key);
+      reservingClassTypesBody.appendChild(createTableGroupRow({
+        text: group.label,
+        colSpan: visibleCols.length,
+        collapsed,
+        count: group.rows.length,
+        onToggle: () => setCollapsed([group.key], !collapsed),
+        onContextMenu: (event) => showTableGroupContextMenu(event.clientX, event.clientY, {
+          collapseAll: () => setCollapsed(allKeys, true),
+          expandAll: () => setCollapsed(allKeys, false),
+        }),
+      }));
 
       if (collapsed) continue;
 

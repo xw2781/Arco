@@ -257,14 +257,14 @@ test("combined settings need two read tables and a shared key", () => {
 });
 
 test("the source data tab only mounts the combined module and keeps the single path", () => {
-  assert.match(sourceDataJs, /createCombinedSourceFeature,\n\} from "\.\/project_settings_combined_source\.js\?v=20261012combined3";/);
+  assert.match(sourceDataJs, /createCombinedSourceFeature,\n\} from "\.\/project_settings_combined_source\.js\?v=20261013group1";/);
   assert.match(sourceDataJs, /function validateImportSettings\(\) \{\n\s+if \(combinedSource\.isActive\(\)\) \{\n\s+return \{ \.\.\.combinedSource\.validate\(\), method: SOURCE_TYPE_COMBINED/);
   // With one table the single-table checks run exactly as before.
   assert.match(sourceDataJs, /else if \(method === SOURCE_TYPE_MSSQL\) \{\n\s+if \(!profile\.server \|\| !profile\.database\) error = "Enter the server and database name first\.";/);
-  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined3/);
+  assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261013group1/);
   assert.match(coordinatorJs, /createSourceDataFeature\(\{[\s\S]*fetchImpl: fetch\.bind\(window\),/);
   assert.match(html, /project_settings_combined_source\.css\?v=/);
-  assert.match(html, /project_settings\.js\?v=20261012combined3/);
+  assert.match(html, /project_settings\.js\?v=20261013group1/);
 });
 
 test("a table is described through the client route with the table spec", async () => {
@@ -585,5 +585,5 @@ test("Import Data saves a combined source through its own route, then imports it
   // The header's dots and chip exist only for a combined source.
   assert.match(html, /<span class="sd-file-dots" id="summaryPathDots" aria-hidden="true" hidden><\/span>/);
   assert.match(html, /<span class="sd-file-chip" id="summaryPathChip" hidden><\/span>/);
-  assert.match(coordinatorJs, /project_settings_source_import\.js\?v=20261012combined3/);
+  assert.match(coordinatorJs, /project_settings_source_import\.js\?v=20261013group1/);
 });

@@ -1,6 +1,7 @@
 import { openDatasetNamePicker } from "/ui/shared/components/pickers/dataset_name_picker.js";
 import { datasetInstanceCategory } from "/ui/shared/dataset/dataset_category.js?v=20260920a";
 import { reviewStatusIconSvg } from "/ui/shared/components/status_icon/status_icon.js?v=20260911a";
+import { createTableGroupRow } from "/ui/shared/components/table_group_row/table_group_row.js?v=20261013a";
 import {
   STATUS_CURRENT,
   STATUS_REVIEW_NEEDED,
@@ -2180,48 +2181,22 @@ function getDatasetGroupId(parts) {
 
 function createDatasetGroupRow(part, depth, columns) {
   const groupId = getDatasetGroupId(part.path);
-  const collapsed = datasetTableView.collapsedGroups.has(groupId);
-  const tr = document.createElement("tr");
-  tr.className = `pi-table-group-row depth-${depth}`;
-  tr.classList.toggle("collapsed", collapsed);
+  const tr = createTableGroupRow({
+    text: `${part.label}: ${part.valueLabel}`,
+    colSpan: columns.length,
+    collapsed: datasetTableView.collapsedGroups.has(groupId),
+    depth,
+    count: depth === 0 ? part.records.length : null,
+    onToggle: () => {
+      if (datasetTableView.collapsedGroups.has(groupId)) datasetTableView.collapsedGroups.delete(groupId);
+      else datasetTableView.collapsedGroups.add(groupId);
+      saveDatasetTablePreferences();
+      renderDatasetTable();
+    },
+    onContextMenu: (event) => showDatasetGroupContextMenu(groupId, event.clientX, event.clientY),
+  });
   tr.dataset.groupId = groupId;
   tr.dataset.groupDepth = String(depth);
-  const td = document.createElement("td");
-  td.colSpan = Math.max(1, columns.length);
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "pi-table-group-button";
-  btn.style.paddingLeft = `${9 + Math.max(0, depth) * 13}px`;
-  btn.innerHTML = `
-    <svg class="pi-table-group-caret" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
-      <path d="M3.2 4.2h5.6L6 7.7z"></path>
-    </svg>
-    <span class="pi-table-group-text"></span>
-  `;
-  const text = btn.querySelector(".pi-table-group-text");
-  if (text) {
-    text.textContent = `${part.label}: ${part.valueLabel}`;
-  }
-  if (depth === 0) {
-    const count = document.createElement("span");
-    count.className = "pi-table-group-count";
-    count.textContent = String(part.records.length);
-    count.title = `${part.records.length} records`;
-    btn.appendChild(count);
-  }
-  btn.addEventListener("click", () => {
-    if (datasetTableView.collapsedGroups.has(groupId)) datasetTableView.collapsedGroups.delete(groupId);
-    else datasetTableView.collapsedGroups.add(groupId);
-    saveDatasetTablePreferences();
-    renderDatasetTable();
-  });
-  btn.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    showDatasetGroupContextMenu(groupId, event.clientX, event.clientY);
-  });
-  td.appendChild(btn);
-  tr.appendChild(td);
   return tr;
 }
 

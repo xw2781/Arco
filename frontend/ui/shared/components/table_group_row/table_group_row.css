@@ -1,0 +1,72 @@
+/* Table group header row - see table_group_row.js. Shared by the Project
+   Instance dataset table and the Project Settings type tables, so a group
+   header looks and behaves the same wherever a table groups its rows. */
+tbody tr.pi-table-group-row {
+  height: 20px;
+}
+tr.pi-table-group-row > td {
+  height: 20px;
+  padding: 0;
+  background: #eef3fb;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+  user-select: none;
+}
+tr.pi-table-group-row.depth-1 > td {
+  background: #f6f8fc;
+  color: #475467;
+}
+.pi-table-group-button {
+  width: 100%;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pi-table-group-button:focus-visible {
+  outline: 2px solid #6d9dff;
+  outline-offset: -2px;
+}
+.pi-table-group-caret {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  color: #667085;
+  transition: transform 120ms ease;
+  fill: currentColor;
+}
+.pi-table-group-button:hover .pi-table-group-caret {
+  color: #344054;
+}
+.pi-table-group-row.collapsed .pi-table-group-caret {
+  transform: rotate(-90deg);
+}
+.pi-table-group-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pi-table-group-count {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #d8e1ef;
+  color: #475467;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}

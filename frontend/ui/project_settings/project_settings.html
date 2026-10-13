@@ -6,19 +6,20 @@
   <script src="/ui/shared/services/color_theme.js?v=20260923c"></script>
   <title>Project Explorer</title>
   <link rel="stylesheet" href="/ui/shared/styles/scrollbars.css?v=20260516a"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_skeleton.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_summary.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_combined_source.css?v=20261012combined3"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_skeleton.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_summary.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_combined_source.css?v=20261013group1"/>
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/numeric_stepper.css?v=20260808fieldmap1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_field_mapping.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_dataset_types.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_reserving_class_types.css?v=20261012combined3"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_data_processing_rules.css?v=20261012combined3"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_field_mapping.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_dataset_types.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_reserving_class_types.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_data_processing_rules.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/shared/components/table_group_row/table_group_row.css?v=20261013a"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/light.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/dark.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/revolutionary.css?v=20260923c"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_scrollbars.css?v=20261012combined3"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_scrollbars.css?v=20261013group1"/>
 </head>
 <body class="project-settings-page">
   <div class="main" style="height: 100%;">
@@ -764,6 +765,12 @@
     <div class="sd-import-resizer" data-edge="se" id="summaryImportWindowResizer" aria-hidden="true"></div>
   </div>
 
+  <!-- Grouped table header Context Menu -->
+  <div class="context-menu" id="tableGroupContextMenu">
+    <div class="context-menu-item" data-action="collapse-all">Collapse all</div>
+    <div class="context-menu-item" data-action="expand-all">Expand all</div>
+  </div>
+
   <!-- Reserving Class Types Row Context Menu -->
   <div class="context-menu" id="reservingClassTypesRowContextMenu">
     <div class="context-menu-item" data-action="copy-cell">Copy</div>
@@ -950,6 +957,6 @@
     </div>
   </div>
 
-<script type="module" src="/ui/project_settings/project_settings.js?v=20261012combined3"></script>
+<script type="module" src="/ui/project_settings/project_settings.js?v=20261013group1"></script>
 </body>
 </html>

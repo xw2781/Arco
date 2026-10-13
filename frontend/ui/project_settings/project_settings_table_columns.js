@@ -3,8 +3,12 @@
  *
  * Owns the explicit-width column model used by every Project Settings table:
  * admin-configured default widths, measurement, auto-fit, drag resizing, and
- * the scrollbar-activity affordance on scroll hosts.
+ * the scrollbar-activity affordance on scroll hosts. A user's dragged widths
+ * and collapsed groups are saved to the project's user preference file under
+ * projectSettings.tables.<tableId>, the same place the admin defaults are read.
  */
+
+import { scheduleProjectUserPreferencesSave } from "/ui/shared/services/project_user_preferences.js?v=20260816a";
 
 // Live widths per table id, so re-rendering a table keeps the user's sizing.
 const tableColumnWidthsById = new Map();
@@ -12,6 +16,10 @@ const tableColumnWidthsById = new Map();
 const tableDefaultColumnWidthsById = new Map();
 // Widths supplied by the server-side preference JSON, keyed by normalized label.
 const configuredTableColumnWidthsById = new Map();
+// Collapsed group keys per table id, from the preference JSON.
+const collapsedGroupsById = new Map();
+// The project whose preference file the tables read from and save to.
+let preferencesProjectName = "";
 
 export function wireProjectSettingsTableScrollbarActivity(scrollHost) {
   if (!scrollHost || scrollHost.dataset.scrollbarActivityWired === "1") return;
@@ -46,14 +54,18 @@ export function normalizeTableColumnPreferenceKey(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-export function applyProjectSettingsTablePreferences(preferences) {
+export function applyProjectSettingsTablePreferences(preferences, projectName = "") {
+  preferencesProjectName = String(projectName || "").trim();
   configuredTableColumnWidthsById.clear();
   tableColumnWidthsById.clear();
   tableDefaultColumnWidthsById.clear();
+  collapsedGroupsById.clear();
 
   const tables = preferences?.projectSettings?.tables;
   if (!tables || typeof tables !== "object" || Array.isArray(tables)) return;
   Object.entries(tables).forEach(([tableId, tablePreferences]) => {
+    const collapsed = tablePreferences?.collapsedGroups;
+    if (Array.isArray(collapsed)) collapsedGroupsById.set(tableId, new Set(collapsed.map(String)));
     const widths = tablePreferences?.widths;
     if (!widths || typeof widths !== "object" || Array.isArray(widths)) return;
     const normalizedWidths = new Map();
@@ -64,6 +76,44 @@ export function applyProjectSettingsTablePreferences(preferences) {
     });
     if (normalizedWidths.size) configuredTableColumnWidthsById.set(tableId, normalizedWidths);
   });
+}
+
+function saveTablePreferences(tableId, patch) {
+  if (!preferencesProjectName) return;
+  scheduleProjectUserPreferencesSave(preferencesProjectName, {
+    projectSettings: { tables: { [tableId]: patch } },
+  }, 500);
+}
+
+/** Saves a table's column widths, given as { "Column label": width }. */
+export function saveProjectSettingsTableColumnWidths(tableId, widthsByLabel) {
+  saveTablePreferences(tableId, { widths: widthsByLabel });
+}
+
+/** The live set of collapsed group keys for a table; edit it, then save it. */
+export function getProjectSettingsCollapsedGroups(tableId) {
+  if (!collapsedGroupsById.has(tableId)) collapsedGroupsById.set(tableId, new Set());
+  return collapsedGroupsById.get(tableId);
+}
+
+export function saveProjectSettingsCollapsedGroups(tableId) {
+  saveTablePreferences(tableId, { collapsedGroups: Array.from(getProjectSettingsCollapsedGroups(tableId)) });
+}
+
+function getHeaderLabelText(th) {
+  const label = th?.querySelector?.(".dt-col-label-text") || th?.querySelector?.(".table-col-label");
+  return String(label?.textContent || th?.textContent || "").trim();
+}
+
+function saveTableColumnWidths(tableId, cols, ths, minWidths) {
+  const widths = captureTableColumnWidths(cols, minWidths);
+  tableColumnWidthsById.set(tableId, widths);
+  const byLabel = {};
+  Array.from(ths).forEach((th, index) => {
+    const label = getHeaderLabelText(th);
+    if (label && index < widths.length) byLabel[label] = widths[index];
+  });
+  saveProjectSettingsTableColumnWidths(tableId, byLabel);
 }
 
 /** Configured widths for a table, keyed by normalized column label, or null. */
@@ -78,9 +128,7 @@ function getConfiguredTableColumnWidths(tableId, cols, ths, minWidths) {
   if (!configured) return null;
   let matched = false;
   const widths = Array.from(cols).map((col, index) => {
-    const th = ths[index];
-    const label = th?.querySelector?.(".dt-col-label-text, .table-col-label");
-    const key = normalizeTableColumnPreferenceKey(label?.textContent || th?.textContent || "");
+    const key = normalizeTableColumnPreferenceKey(getHeaderLabelText(ths[index]));
     const configuredWidth = Number(configured.get(key));
     const minimumWidth = Number(minWidths?.[index]) || 40;
     if (Number.isFinite(configuredWidth) && configuredWidth > 0) {
@@ -259,7 +307,7 @@ export function initTableColumnResizing(tableId, minWidths) {
         document.removeEventListener("mousemove", onMove, true);
         document.removeEventListener("mouseup", onUp, true);
         document.body.classList.remove("ps-resizing-table-column");
-        tableColumnWidthsById.set(tableId, captureTableColumnWidths(cols, minWidths));
+        saveTableColumnWidths(tableId, cols, ths, minWidths);
         table.querySelectorAll("tbody textarea").forEach(resizeCellTextarea);
       }
       document.addEventListener("mousemove", onMove, true);
@@ -280,7 +328,7 @@ export function initTableColumnResizing(tableId, minWidths) {
       const width = Math.max(minW, Math.round(Number(defaults[idx]) || minW));
       cols[idx].style.width = `${width}px`;
       syncTableTotalWidth(table, cols, minWidths);
-      tableColumnWidthsById.set(tableId, captureTableColumnWidths(cols, minWidths));
+      saveTableColumnWidths(tableId, cols, ths, minWidths);
       table.querySelectorAll("tbody textarea").forEach(resizeCellTextarea);
     });
   });

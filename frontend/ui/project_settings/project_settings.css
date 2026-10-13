@@ -896,7 +896,7 @@ input, textarea, select, option, [contenteditable="true"] { user-select: text; }
 :is(.field-mapping-table, .dataset-types-table) tbody tr {
   height: 31px;
 }
-:is(.field-mapping-table, .dataset-types-table) tbody tr:not(.dt-group-row):not(.rct-group-row):hover td {
+:is(.field-mapping-table, .dataset-types-table) tbody tr:not(.pi-table-group-row):hover td {
   background: #f8fafc;
 }
 

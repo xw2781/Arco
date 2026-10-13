@@ -1966,7 +1966,7 @@
 }
 
 :root[data-arcrho-theme="dark"] .pi-table th,
-:root[data-arcrho-theme="dark"] .pi-table .pi-table-group-row td {
+:root[data-arcrho-theme="dark"] tr.pi-table-group-row > td {
   border-color: var(--ar-color-border-strong);
   background-color: var(--ar-color-table-header);
   color: var(--ar-color-text);
@@ -2807,14 +2807,13 @@
   color: var(--ar-color-text);
 }
 
-:root[data-arcrho-theme="dark"] :is(.field-mapping-table, .dataset-types-table, .dpr-rules-table) th,
-:root[data-arcrho-theme="dark"] :is(.dt-group-row, .rct-group-row) td {
+:root[data-arcrho-theme="dark"] :is(.field-mapping-table, .dataset-types-table, .dpr-rules-table) th {
   border-color: var(--ar-color-border-strong);
   background-color: var(--ar-color-table-header);
   color: var(--ar-color-text);
 }
 
-:root[data-arcrho-theme="dark"] :is(.field-mapping-table, .dataset-types-table, .dpr-rules-table) tbody tr:hover td {
+:root[data-arcrho-theme="dark"] :is(.field-mapping-table, .dataset-types-table, .dpr-rules-table) tbody tr:not(.pi-table-group-row):hover td {
   background-color: var(--ar-color-table-row-hover);
 }
 
@@ -3014,7 +3013,7 @@
   color: var(--ar-color-text);
 }
 
-:root[data-arcrho-theme="dark"] :is(.dataset-types-error-close, .dt-group-toggle, #datasetTypesTable .dt-name-search-btn, #datasetTypesTable .dt-category-filter-btn) {
+:root[data-arcrho-theme="dark"] :is(.dataset-types-error-close, #datasetTypesTable .dt-name-search-btn, #datasetTypesTable .dt-category-filter-btn) {
   border-color: var(--ar-color-border);
   background: var(--ar-color-input);
   color: var(--ar-color-text-muted);
@@ -3022,21 +3021,10 @@
 
 :root[data-arcrho-theme="dark"] :is(
   .dataset-types-error-close:hover,
-  .dt-group-toggle:hover,
   #datasetTypesTable .dt-name-search-btn:hover,
   #datasetTypesTable .dt-category-filter-btn:hover
 ) {
   border-color: var(--ar-color-border-focus);
-  background: var(--ar-color-surface-hover);
-  color: var(--ar-color-text-strong);
-}
-
-:root[data-arcrho-theme="dark"] .rct-group-toggle {
-  background: transparent;
-  color: var(--ar-color-text-muted);
-}
-
-:root[data-arcrho-theme="dark"] .rct-group-toggle:hover {
   background: var(--ar-color-surface-hover);
   color: var(--ar-color-text-strong);
 }
@@ -3053,7 +3041,7 @@
   color: var(--ar-color-text);
 }
 
-:root[data-arcrho-theme="dark"] :is(#datasetTypesTable th.dt-col-sorted, .dt-group-row.collapsed td) {
+:root[data-arcrho-theme="dark"] #datasetTypesTable th.dt-col-sorted {
   background: var(--ar-color-surface-soft);
   color: var(--ar-color-text);
 }

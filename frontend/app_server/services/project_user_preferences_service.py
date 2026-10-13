@@ -224,16 +224,18 @@ def _with_project_instance_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _with_project_settings_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
-    project_settings = data.get("projectSettings")
-    if isinstance(project_settings, dict) and project_settings:
-        return data
+    """Lay the user's saved Project Settings values over the admin defaults.
 
+    A user who sized one table's columns still gets the defaults for every
+    other table and column they have not touched.
+    """
     defaults = _read_project_settings_defaults()
     if not defaults:
         return data
 
+    project_settings = data.get("projectSettings")
     out = dict(data)
-    out["projectSettings"] = defaults
+    out["projectSettings"] = _deep_merge(defaults, project_settings if isinstance(project_settings, dict) else {})
     return out
 
 

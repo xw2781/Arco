@@ -30,7 +30,7 @@ import {
 import {
   combinedSourceSummary,
   createCombinedSourceFeature,
-} from "./project_settings_combined_source.js?v=20261012combined3";
+} from "./project_settings_combined_source.js?v=20261013group1";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -295,6 +295,7 @@ export function createSourceDataFeature(deps = {}) {
       ? null
       : window.ADAHost || window.parent?.ADAHost || window.top?.ADAHost),
     getConfiguredColumnWidths = () => null,
+    onColumnWidthsChanged = () => {},
     // Injected by the coordinator; the tab never calls the app server itself.
     onProfileSave = async () => false,
     onScopeSave = async () => false,
@@ -821,6 +822,7 @@ export function createSourceDataFeature(deps = {}) {
       drag.handle.classList.remove("dragging");
       drag = null;
       document.body.style.cursor = "";
+      onColumnWidthsChanged({ name: currentColumnWidth("name"), type: currentColumnWidth("type") });
     });
   }
 

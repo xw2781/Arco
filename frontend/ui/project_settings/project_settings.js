@@ -12,27 +12,30 @@
  */
 import { AuditLogStore } from "/ui/project_settings/project_settings_audit.js?v=20260901dup1";
 import { createFieldMappingFeature } from "/ui/project_settings/project_settings_field_mapping.js?v=20260927smb18";
-import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20260927smb18";
-import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20260901dup1";
+import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20261013group1";
+import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20261013group1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261012combined3";
-import { createSourceImport } from "/ui/project_settings/project_settings_source_import.js?v=20261012combined3";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261013group1";
+import { createSourceImport } from "/ui/project_settings/project_settings_source_import.js?v=20261013group1";
 import {
   applyProjectSettingsTablePreferences,
   getConfiguredTableColumnWidthMap,
+  getProjectSettingsCollapsedGroups,
   initTableColumnResizing,
   normalizeTableColumnPreferenceKey,
   resizeCellTextarea,
+  saveProjectSettingsCollapsedGroups,
+  saveProjectSettingsTableColumnWidths,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261012combined3";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261013group1";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261012combined3";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261012combined3";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261012combined3";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261012combined3";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261013group1";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261013group1";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261013group1";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261013group1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
 import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261004lock1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
@@ -88,6 +91,7 @@ const datasetTypesErrorClose = document.getElementById("datasetTypesErrorClose")
 const reservingClassTypesBody = document.getElementById("reservingClassTypesBody");
 const reservingClassTypesStatus = document.getElementById("reservingClassTypesStatus");
 const reservingClassTypesRowContextMenu = document.getElementById("reservingClassTypesRowContextMenu");
+const tableGroupContextMenu = document.getElementById("tableGroupContextMenu");
 const dataProcessingRulesBody = document.getElementById("dataProcessingRulesBody");
 const dataProcessingRulesStatus = document.getElementById("dataProcessingRulesStatus");
 const dataProcessingRulesRowContextMenu = document.getElementById("dataProcessingRulesRowContextMenu");
@@ -402,6 +406,10 @@ const sourceDataFeature = createSourceDataFeature({
       type: configured.get(normalizeTableColumnPreferenceKey("Data Type")),
     };
   },
+  onColumnWidthsChanged: ({ name, type }) => saveProjectSettingsTableColumnWidths("summaryColumnsTable", {
+    "Column Name": name,
+    "Data Type": type,
+  }),
 });
 
 const generalSettingsFeature = createGeneralSettingsFeature({
@@ -501,6 +509,9 @@ datasetTypesFeature = createDatasetTypesFeature({
   datasetTypesErrorBody,
   datasetTypesErrorClose,
   initTableColumnResizing,
+  getCollapsedGroups: getProjectSettingsCollapsedGroups,
+  saveCollapsedGroups: saveProjectSettingsCollapsedGroups,
+  showTableGroupContextMenu,
   resizeCellTextarea,
   normalizeProjectKey,
   fetchImpl: fetch.bind(window),
@@ -563,6 +574,9 @@ reservingClassTypesFeature = createReservingClassTypesFeature({
   rctEditFormula,
   rctFormulaReview,
   initTableColumnResizing,
+  getCollapsedGroups: getProjectSettingsCollapsedGroups,
+  saveCollapsedGroups: saveProjectSettingsCollapsedGroups,
+  showTableGroupContextMenu,
   normalizeProjectKey,
   fetchImpl: fetch.bind(window),
   setStatus,
@@ -712,7 +726,7 @@ async function selectProject(project) {
     console.warn("Failed to load Project Settings table defaults:", err);
   }
   if (!selectedProject || normalizeProjectKey(selectedProject.name) !== selectionKey) return;
-  applyProjectSettingsTablePreferences(preferences);
+  applyProjectSettingsTablePreferences(preferences, project?.name);
   sourceDataFeature.applyConfiguredColumnWidths();
   const loads = showProjectDetails(project);
   void switchCover.hide(coverHandle, loads);
@@ -1435,6 +1449,27 @@ function hideTreeContextMenu() {
 function hideFeatureRowContextMenus() {
   datasetTypesFeature?.hideDatasetTypesRowContextMenu();
   reservingClassTypesFeature?.hideReservingClassTypesRowContextMenu();
+  hideTableGroupContextMenu();
+}
+
+// One Collapse all / Expand all menu for every grouped Project Settings table;
+// the table that opened it supplies the two actions.
+let tableGroupContextActions = null;
+
+function showTableGroupContextMenu(x, y, actions) {
+  if (!tableGroupContextMenu) return;
+  hideContextMenu();
+  hideFolderContextMenu();
+  hideTreeContextMenu();
+  datasetTypesFeature?.hideDatasetTypesRowContextMenu();
+  reservingClassTypesFeature?.hideReservingClassTypesRowContextMenu();
+  tableGroupContextActions = actions;
+  positionContextMenu(tableGroupContextMenu, x, y);
+}
+
+function hideTableGroupContextMenu() {
+  tableGroupContextMenu?.classList.remove("show");
+  tableGroupContextActions = null;
 }
 
 function showProjectContextMenu(project, x, y) {
@@ -1462,6 +1497,16 @@ document.addEventListener("click", (e) => {
   if (!treeContextMenu.contains(e.target)) hideTreeContextMenu();
   if (!datasetTypesRowContextMenu?.contains(e.target)) datasetTypesFeature?.hideDatasetTypesRowContextMenu();
   if (!reservingClassTypesRowContextMenu?.contains(e.target)) reservingClassTypesFeature?.hideReservingClassTypesRowContextMenu();
+  if (!tableGroupContextMenu?.contains(e.target)) hideTableGroupContextMenu();
+});
+
+tableGroupContextMenu?.addEventListener("click", (e) => {
+  const action = e.target?.dataset?.action;
+  if (!action) return;
+  const actions = tableGroupContextActions;
+  hideTableGroupContextMenu();
+  if (action === "collapse-all") actions?.collapseAll?.();
+  else if (action === "expand-all") actions?.expandAll?.();
 });
 
 // Right-click on tree blank area: Create root folder

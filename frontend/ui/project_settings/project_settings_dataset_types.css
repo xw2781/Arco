@@ -126,51 +126,6 @@
 .dataset-types-table td.invalid-formula-cell textarea {
   background: #fff5f5;
 }
-.dt-group-row td {
-  background: #f0f3f7;
-  font-weight: 600;
-  color: #2f3a4a;
-  padding: 4px 8px;
-  user-select: none;
-}
-.dt-group-row.collapsed td {
-  background: #e9edf4;
-}
-.dt-group-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.dt-group-toggle {
-  width: 18px;
-  height: 18px;
-  border: 1px solid #b8c2cf;
-  border-radius: 4px;
-  background: #fff;
-  color: #33455f;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.dt-group-toggle:hover {
-  border-color: #8ea5c8;
-  background: #f6f9ff;
-  color: #1f3658;
-}
-.dt-group-toggle:focus-visible {
-  outline: 2px solid #6d9dff;
-  outline-offset: 1px;
-}
-.dt-group-label {
-  line-height: 1.2;
-}
 #datasetTypesTable th.dt-sortable-col {
   cursor: pointer;
 }
