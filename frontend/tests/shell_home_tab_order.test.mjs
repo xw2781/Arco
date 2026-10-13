@@ -18,11 +18,6 @@ test("Home stays fixed while other docked tabs are reordered", async () => {
     /if \(!id \|\| id === "home" \|\| id === draggedTabId \|\| el\.classList\.contains\("placeholder"\)\) return;/u,
     "Home must not participate in reorder-preview animation",
   );
-  assert.match(
-    strip,
-    /const plus = host\.querySelector\("#plusTabBtn"\);[\s\S]*host\.insertBefore\(placeholderEl, plus\);/u,
-    "The end-of-strip preview must remain before the add-tab control",
-  );
   assert.match(state, /export function ensureHomeTabFirst\(tabs = state\.tabs\)/u);
   assert.match(state, /const \[home\] = tabs\.splice\(homeIndex, 1\);\s*tabs\.unshift\(home\);/u);
   assert.match(state, /export function ensureActiveTabInvariant\(\) \{\s*ensureHomeTabFirst\(\);/u);

@@ -13,7 +13,7 @@ const REVEALED_CLASS = "chrome-revealed";
 const TOP_EDGE_PX = 5;
 const HIDE_DELAY_MS = 400;
 const BUSY_RECHECK_MS = 250;
-const OPEN_MENU_SELECTOR = ".menuDropdown.open, .menuItem.menuSubmenuOpen, .tabMenu.open, #tabCtxMenu.open";
+const OPEN_MENU_SELECTOR = ".menuDropdown.open, .menuItem.menuSubmenuOpen, #tabCtxMenu.open";
 const TAB_DRAG_CLASS = "tab-dragging";
 
 let wired = false;

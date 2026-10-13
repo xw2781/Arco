@@ -302,11 +302,7 @@ export function createFloatingTabsController(deps) {
       }
     }
     if (beforeNode) host.insertBefore(placeholder, beforeNode);
-    else {
-      const plus = host.querySelector("#plusTabBtn");
-      if (plus) host.insertBefore(placeholder, plus);
-      else host.appendChild(placeholder);
-    }
+    else host.appendChild(placeholder);
     dockPreviewBeforeId = beforeNode?.getAttribute("data-tab-id") || null;
     return dockPreviewBeforeId;
   }

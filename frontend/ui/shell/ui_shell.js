@@ -7,7 +7,7 @@ import { clearCacheAndReload, customHardRefresh, initAppLifecycle, refreshActive
 import { clearTestData, getLastWorkflowDir, getLastWorkflowPath, getWorkflowTabState, importWorkflow, postToWorkflowTab, setLastWorkflowPath } from "./workflow_host_actions.js?v=20260510a";
 import { buildShellActivityEntry, closeTab, closeTabsExcept, dockTab, floatTab, openAgentGuideTab, openBornhuetterFergusonTab, openBrowsingHistoryTab, openDatasetTab, openDFMTab, openFileExplorerTab, openProjectInstanceTab, openProjectSettingsTab, openResultSelectionTab, openScriptingTab, openServerTab, openShellActivityHistoryEntry, openTaskDesigner, openWorkflowTab, recordActiveTabHistory, setActive, setDockedActive } from "./tab_actions.js?v=20260926a";
 import { applyDockedIframeLayout, clampFloatingTabsToContent, clampFloatRect, defaultFloatRectFromPointer, ensureContentContainers, ensureIframe, notifyBrowsingHistoryTabs, notifyCalculatedDatasetTabs, notifyServerConnectionUpdated, notifyTabActivated, printActiveTab, removeFloatPreview, renderContent, renderFloatingWindows, updateFloatPreview } from "./shell_content.js?v=20260926a";
-import { closeTabCtxMenu, initTabStrip, isTabStripDragging, openTabCtxMenu, renderTabs, togglePlusMenu } from "./tab_strip.js?v=20260821a";
+import { closeTabCtxMenu, initTabStrip, isTabStripDragging, openTabCtxMenu, renderTabs } from "./tab_strip.js?v=20260821a";
 import { closeAllShellMenus, initShellMenus, isActiveDatasetTab, isActiveDFMDetailsTab, isActiveDFMTab, isActiveProjectInstanceTab, isActiveProjectSettingsDatasetTypesTab, isActiveProjectSettingsReservingClassTypesTab, isActiveScriptingTab, isActiveWorkflowTab, openDevPanel, sendDatasetCommand, sendDFMCommand, sendProjectInstanceCommand, sendProjectSettingsCommand, sendScriptingCommand, sendWorkflowCommand, setDfmEditEnabled, setDfmHistoryEnabled, toggleNavigationPanel, updateEditMenuState, updateFileMenuState, updateHelpMenuState, updateViewMenuState } from "./shell_menus.js?v=20260927smb24";
 import { initHotkeys, resolveHotkeyAction, runHotkeyAction } from "./shell_hotkeys.js?v=20260831a";
 import { initShellMessages } from "./shell_messages.js?v=20260929smb";
@@ -173,7 +173,6 @@ registerShellApi({
   state,
   toggleFlightDeck,
   toggleNavigationPanel,
-  togglePlusMenu,
   uiVersionParam: UI_VERSION_PARAM,
   updateEditMenuState,
   updateColorThemeMenuState,

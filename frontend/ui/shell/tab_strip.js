@@ -17,8 +17,6 @@ let ptrMoved = false;
 let tabDragMode = null;
 let isDragging = false;
 let lastPlaceholderIndex = -1;
-let plusBtnEl = null;
-let plusMenuEl = null;
 let tabCtxId = null;
 let tabStripWired = false;
 const DRAG_THRESHOLD_PX = 6;
@@ -367,11 +365,7 @@ function updateReorderDrag(clientX, pointerId) {
     beforeRects.set(id, el.getBoundingClientRect());
   });
   if (targetNode) { if (placeholderEl.nextSibling !== targetNode) host.insertBefore(placeholderEl, targetNode); }
-  else {
-    const plus = host.querySelector("#plusTabBtn");
-    if (plus && placeholderEl.nextSibling !== plus) host.insertBefore(placeholderEl, plus);
-    else if (!plus && (placeholderEl.parentNode !== host || placeholderEl !== host.lastChild)) host.appendChild(placeholderEl);
-  }
+  else if (placeholderEl.parentNode !== host || placeholderEl !== host.lastChild) host.appendChild(placeholderEl);
   const newIndex = Array.from(host.children).indexOf(placeholderEl);
   if (newIndex !== lastPlaceholderIndex) { lastPlaceholderIndex = newIndex; flipAnimateTabs(host, beforeRects); }
 }
@@ -433,71 +427,6 @@ function flipAnimateTabs(host, beforeRects) {
     if (el.__flipAnim) { try { el.__flipAnim.cancel(); } catch {} el.__flipAnim = null; }
     el.__flipAnim = el.animate([{ transform: `translateX(${dx}px)` }, { transform: "translateX(0px)" }], { duration: 140, easing: "ease-out" });
   });
-}
-
-function positionPlusMenu() {
-  if (!plusMenuEl || !plusBtnEl) return;
-  const wasOpen = plusMenuEl.classList.contains("open");
-  if (!wasOpen) { plusMenuEl.style.visibility = "hidden"; plusMenuEl.classList.add("open"); }
-  const btnRect = plusBtnEl.getBoundingClientRect();
-  const menuRect = plusMenuEl.getBoundingClientRect();
-  let left = Math.max(8, Math.min(btnRect.left, Math.max(8, window.innerWidth - menuRect.width - 8)));
-  plusMenuEl.style.left = `${Math.round(left)}px`;
-  plusMenuEl.style.top = `${Math.round(btnRect.bottom + 6)}px`;
-  plusMenuEl.style.right = "auto";
-  if (!wasOpen) { plusMenuEl.classList.remove("open"); plusMenuEl.style.visibility = ""; }
-}
-
-function ensurePlusMenu(host) {
-  if (!host) return;
-  if (!plusBtnEl) {
-    plusBtnEl = document.createElement("button");
-    plusBtnEl.className = "plusTab";
-    plusBtnEl.id = "plusTabBtn";
-    plusBtnEl.type = "button";
-    plusBtnEl.setAttribute("aria-label", "Add tab");
-    plusBtnEl.innerHTML = `
-      <svg class="plusTabIcon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-        <path d="M8 3.5v9M3.5 8h9"></path>
-      </svg>
-    `;
-    plusBtnEl.title = "Add...";
-    plusBtnEl.addEventListener("click", (e) => { e.stopPropagation(); togglePlusMenu(true); });
-  }
-  if (!plusMenuEl) {
-    plusMenuEl = document.createElement("div");
-    plusMenuEl.className = "tabMenu";
-    plusMenuEl.id = "plusTabMenu";
-    plusMenuEl.style.position = "fixed";
-    plusMenuEl.innerHTML = `<div class="tabMenuItem" data-action="add-dataset">Dataset</div><div class="tabMenuItem" data-action="add-dfm">DFM</div><div class="tabMenuItem" data-action="add-workflow">Workflow</div><div class="tabMenuItem" data-action="add-scripting">Arcode</div><div class="tabMenuSep"></div><div class="tabMenuItem" data-action="close-menu">Cancel</div>`;
-    plusMenuEl.addEventListener("click", (e) => {
-      const action = e.target?.closest?.(".tabMenuItem")?.getAttribute("data-action");
-      if (!action) return;
-      togglePlusMenu(false);
-      if (action === "add-dataset") shell.openDatasetTab?.();
-      else if (action === "add-dfm") shell.openDFMTab?.();
-      else if (action === "add-workflow") shell.openWorkflowTab?.();
-      else if (action === "add-scripting") shell.openScriptingTab?.();
-      else if (action === "import-workflow") shell.importWorkflow?.();
-    });
-    window.addEventListener("click", () => togglePlusMenu(false));
-    window.addEventListener("keydown", (ev) => { if (ev.key === "Escape") togglePlusMenu(false); });
-  }
-  if (plusMenuEl.parentNode !== document.body) document.body.appendChild(plusMenuEl);
-  if (plusBtnEl.parentNode !== host) host.appendChild(plusBtnEl);
-  host.appendChild(plusBtnEl);
-  if (document.body.dataset.plusMenuScrollWired !== "1") {
-    document.body.dataset.plusMenuScrollWired = "1";
-    window.addEventListener("scroll", () => { if (plusMenuEl?.classList.contains("open")) positionPlusMenu(); }, { passive: true });
-    window.addEventListener("resize", () => { if (plusMenuEl?.classList.contains("open")) positionPlusMenu(); });
-  }
-}
-
-export function togglePlusMenu(forceOpen) {
-  if (!plusMenuEl) return;
-  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : !plusMenuEl.classList.contains("open");
-  plusMenuEl.classList.toggle("open", shouldOpen);
-  if (shouldOpen) positionPlusMenu();
 }
 
 export function renderTabs() {
@@ -574,7 +503,6 @@ export function renderTabs() {
     }
     host.appendChild(el);
   }
-  ensurePlusMenu(host);
 }
 
 const tabCtxMenu = document.getElementById("tabCtxMenu");

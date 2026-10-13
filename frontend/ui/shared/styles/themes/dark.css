@@ -346,7 +346,7 @@
   color: var(--ar-color-text);
 }
 
-:root[data-arcrho-theme="dark"] :is(.menu, .titlebarBtn, .zoomBtn, .plusTab, .tab .x) {
+:root[data-arcrho-theme="dark"] :is(.menu, .titlebarBtn, .zoomBtn, .tab .x) {
   color: var(--ar-color-text-muted);
 }
 
@@ -359,7 +359,7 @@
   stroke: currentColor;
 }
 
-:root[data-arcrho-theme="dark"] :is(.menu:hover, .titlebarBtn:hover, .zoomBtn:hover, .plusTab:hover, .tab .x:hover) {
+:root[data-arcrho-theme="dark"] :is(.menu:hover, .titlebarBtn:hover, .zoomBtn:hover, .tab .x:hover) {
   background-color: var(--ar-color-surface-hover);
   color: var(--ar-color-text-strong);
 }
@@ -369,7 +369,7 @@
   border-color: var(--ar-color-border-focus);
 }
 
-:root[data-arcrho-theme="dark"] :is(.titlebarBtn:active, .zoomBtn:active, .plusTab:active) {
+:root[data-arcrho-theme="dark"] :is(.titlebarBtn:active, .zoomBtn:active) {
   background-color: var(--ar-color-surface-selected);
 }
 
@@ -384,7 +384,7 @@
   background-color: var(--ar-color-canvas);
 }
 
-:root[data-arcrho-theme="dark"] :is(.tab, .plusTab) {
+:root[data-arcrho-theme="dark"] .tab {
   border-color: var(--ar-color-border);
   background-color: var(--ar-color-surface-muted);
   color: var(--ar-color-text-muted);
@@ -402,18 +402,18 @@
   box-shadow: var(--ar-shadow-subtle);
 }
 
-:root[data-arcrho-theme="dark"] :is(.tabMenu, .menuDropdown, .menuSubmenu, .tabCtxMenu) {
+:root[data-arcrho-theme="dark"] :is(.menuDropdown, .menuSubmenu, .tabCtxMenu) {
   border-color: var(--ar-color-border-strong);
   background-color: var(--ar-color-surface-raised);
   color: var(--ar-color-text);
   box-shadow: var(--ar-shadow-floating);
 }
 
-:root[data-arcrho-theme="dark"] :is(.tabMenuItem:hover, .menuItem:hover, .tabCtxItem:hover) {
+:root[data-arcrho-theme="dark"] :is(.menuItem:hover, .tabCtxItem:hover) {
   background-color: var(--ar-color-surface-hover);
 }
 
-:root[data-arcrho-theme="dark"] :is(.tabMenuSep, .menuSep, .tabCtxSep) {
+:root[data-arcrho-theme="dark"] :is(.menuSep, .tabCtxSep) {
   border-color: var(--ar-color-border);
   background-color: var(--ar-color-border);
 }
