@@ -111,3 +111,4 @@
 - [Update blocked by unkillable processes](update-blocked-by-unkillable-processes.md) — 2026-10-06: "still running" PIDs that Task Manager cannot end are stuck in Windows teardown; they clear in minutes
 - [Build listener down: local build_exe](build-listener-down-local-build.md) — on the Server PC run build_exe.py with ARCRHO_DEPLOY_ROOT; delete venvs/builds after
 - [Temp files on E:](temp-files-on-e-drive.md) — standing rule since 2026-10-12: all temp files go in repo tmp_data/ on E:, never C: or the session scratchpad
+- [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme only and short bullet points, not prose
