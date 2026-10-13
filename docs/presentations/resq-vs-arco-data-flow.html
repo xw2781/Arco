@@ -1,0 +1,771 @@
+<title>From ResQ to Arco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Single light theme (presentation rule). Layout: one stage, two lanes side by side (ResQ left, Arco right) that stack on narrow screens.
+   Same scene runs in both lanes at once so the audience compares like for like. Palette follows the Arco decks. */
+:root{
+  --paper:#f3f6f9;
+  --surface:#ffffff;
+  --soft:#e8edf3;
+  --ink:#0f1b2d;
+  --muted:#5a6678;
+  --line:#d3dbe5;
+  --arco:#1d4ed8;        /* Arco blue */
+  --arco-soft:#e3eafc;
+  --resq:#8a6a45;        /* ResQ: a muted bronze, the "older system" hue */
+  --resq-soft:#f2ebe1;
+  --wait:#b8720b;  --wait-soft:#fbefd9;
+  --good:#1d8a5a;  --good-soft:#e0f3e9;
+  --bad:#c43d3d;   --bad-soft:#fbe4e4;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",Consolas,"Courier New",monospace;
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--f-body);padding-inline:clamp(16px,4vw,48px);padding-block:28px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+
+/* intro */
+.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px 40px;align-items:end}
+.eyebrow{font:600 12px var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font:800 clamp(34px,5vw,56px)/1.02 var(--f-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 .r{color:var(--resq)} h1 .a{color:var(--arco)}
+.dek{max-width:62ch;margin:12px 0 0;color:var(--muted);font-size:16px}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;font:600 13px var(--f-body);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.chip i{width:10px;height:10px;border-radius:50%;display:block}
+.chip.resq i{background:var(--resq)} .chip.arco i{background:var(--arco)}
+@media (max-width:760px){.intro{grid-template-columns:1fr}}
+
+/* scene tabs */
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.tabs button{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);transition:border-color .2s,background .2s}
+.tabs button:hover{border-color:var(--arco)}
+.tabs button:focus-visible{outline:2px solid var(--arco);outline-offset:2px}
+.tabs .num{font:500 11px var(--f-mono);color:var(--muted)}
+.tabs .nm{font:600 14px/1.25 var(--f-body)}
+.tabs button[aria-selected="true"]{background:var(--arco-soft);border-color:var(--arco)}
+.tabs button[aria-selected="true"] .num{color:var(--arco)}
+@media (max-width:760px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* stage */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px clamp(14px,2.4vw,28px) 24px;display:flex;flex-direction:column;gap:18px}
+.stage-head{display:flex;justify-content:space-between;align-items:center;gap:12px 20px;flex-wrap:wrap}
+.stage-head h2{font:700 clamp(22px,2.6vw,30px)/1.1 var(--f-display);margin:0;text-wrap:balance}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{font:500 13px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;height:34px;padding:0 14px;cursor:pointer}
+.btn:hover{border-color:var(--arco);color:var(--arco)}
+.btn:focus-visible,.auto input:focus-visible{outline:2px solid var(--arco);outline-offset:2px}
+.btn.primary{background:var(--arco);border-color:var(--arco);color:#fff}
+.btn.primary:hover{color:#fff;filter:brightness(1.08)}
+.auto{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-right:6px;cursor:pointer}
+.lanes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:900px){.lanes{grid-template-columns:1fr}}
+.lane{border-radius:12px;padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px}
+.lane-resq{background:var(--resq-soft)} .lane-arco{background:var(--arco-soft)}
+.lane-head{display:flex;gap:12px;align-items:flex-start;min-height:3.4em}
+.tag{font:700 13px var(--f-display);letter-spacing:.02em;color:#fff;padding:3px 10px;border-radius:6px;flex:none;margin-top:2px}
+.lane-resq .tag{background:var(--resq)} .lane-arco .tag{background:var(--arco)}
+.lane-head ul{margin:0;padding-left:18px;font-size:15px;display:flex;flex-direction:column;gap:2px}
+.lane-head li::marker{color:var(--muted)}
+.lane svg{width:100%;height:auto;display:block;background:var(--surface);border-radius:10px}
+.takeaway{margin:0;font:700 19px var(--f-display);color:var(--arco);padding-left:14px;border-left:3px solid var(--arco)}
+.fine{font-size:12px;color:var(--muted);margin:0}
+
+/* summary table */
+.summary h2{font:700 26px var(--f-display);margin:0 0 12px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:14.5px}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+thead th{font:600 12px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--paper)}
+thead th.r{color:var(--resq)} thead th.a{color:var(--arco)}
+tbody th{font-weight:600;width:20%}
+td.a{font-weight:500}
+
+/* ---------- SVG vocabulary ---------- */
+svg text{font-family:var(--f-body)}
+.node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.3;transition:fill .35s,stroke .35s}
+.node.busy rect{fill:var(--wait-soft);stroke:var(--wait)}
+.node.done rect{fill:var(--good-soft);stroke:var(--good)}
+.node.bad rect{fill:var(--bad-soft);stroke:var(--bad)}
+.node.hot rect{fill:var(--arco-soft);stroke:var(--arco)}
+.node.ghost rect{stroke-dasharray:4 3}
+.n-label{font-weight:600;font-size:12px;fill:var(--ink)}
+.edge{fill:none;stroke:var(--line);stroke-width:1.6;transition:stroke .3s,stroke-width .3s}
+.edge.hot{stroke:var(--arco)} .edge.done{stroke:var(--good)} .edge.dash{stroke-dasharray:4 4}
+.edge.trace{stroke:var(--arco);stroke-width:3.2}
+.panel{fill:var(--paper);stroke:var(--line)}
+.th{font-weight:600;font-size:11.5px;fill:var(--muted);letter-spacing:.04em}
+.mono{font-family:var(--f-mono);font-size:11px;fill:var(--ink)}
+.cap{font-size:12px;fill:var(--muted)}
+.status{font-size:12.5px;font-weight:500;fill:var(--ink)}
+.big{font-family:var(--f-display);font-weight:800;font-size:30px;fill:var(--ink);font-variant-numeric:tabular-nums}
+.cell{fill:var(--soft);stroke:var(--surface);stroke-width:1.2;transition:fill .25s}
+.lane-resq .cell.on,.lane-resq .packet,.lane-resq .bar{fill:var(--resq)}
+.lane-arco .cell.on,.lane-arco .packet,.lane-arco .bar{fill:var(--arco)}
+.cell.bad{fill:var(--bad)!important}
+.cell.ghostc{fill:none;stroke:var(--arco);stroke-dasharray:3 2}
+.cell.ghostc.on{fill:var(--arco);stroke:var(--surface);stroke-dasharray:none}
+.track{fill:var(--soft)}
+.bar.wait{fill:var(--wait)} .bar.good{fill:var(--good)}
+.fade{opacity:0;transition:opacity .4s} .fade.on{opacity:1}
+.glyph{opacity:.12;transition:opacity .2s} .glyph.on{opacity:1}
+.glyph rect{fill:var(--resq)}
+.thead{fill:var(--arco)}
+.tcell{fill:var(--soft)}
+.knob{fill:var(--arco)}
+.reqrow .bg{fill:var(--surface);stroke:var(--line);stroke-width:1.3;transition:stroke .3s,fill .3s}
+.reqrow.done .bg{stroke:var(--good);fill:var(--good-soft)}
+.rowbar{fill:var(--soft);transition:fill .25s} .rowbar.match{fill:var(--arco)}
+.badge rect{stroke-width:1.2}
+.badge text{font-size:10.5px;font-weight:600}
+.badge.wait rect{fill:var(--wait-soft);stroke:var(--wait)} .badge.wait text{fill:var(--wait)}
+.badge.good rect{fill:var(--good-soft);stroke:var(--good)} .badge.good text{fill:var(--good)}
+.badge.bad rect{fill:var(--bad-soft);stroke:var(--bad)} .badge.bad text{fill:var(--bad)}
+.badge.hot rect{fill:var(--arco-soft);stroke:var(--arco)} .badge.hot text{fill:var(--arco)}
+.hand circle{fill:var(--wait);stroke:var(--surface);stroke-width:2}
+.hand text{fill:#fff;font-size:8.5px;font-weight:700}
+.gate{fill:var(--arco);transition:fill .2s} .gate.bad{fill:var(--bad)}
+.t-good{fill:var(--good);font-weight:600;font-size:12px}
+.t-wait{fill:var(--wait);font-weight:600;font-size:12px}
+.t-bad{fill:var(--bad);font-weight:600;font-size:12px}
+.t-hot{fill:var(--arco);font-weight:600;font-size:12px}
+.rec rect{fill:var(--surface);stroke:var(--line);transition:fill .3s,stroke .3s}
+.rec.passed rect{stroke:var(--good)}
+.rec.stopped rect{fill:var(--bad-soft);stroke:var(--bad)}
+.rec.dim{opacity:.55}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <div>
+      <p class="eyebrow">Reserving data, two ways</p>
+      <h1><span class="r">ResQ</span> to <span class="a">Arco</span>: how the data moves</h1>
+      <p class="dek">Same task, side by side, in five short scenes.</p>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="chip resq"><i></i>ResQ, the older system</span>
+      <span class="chip arco"><i></i>Arco</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Scenes" id="tabs"></nav>
+
+  <section class="stage" aria-live="polite">
+    <div class="stage-head">
+      <h2 id="scene-title"></h2>
+      <div class="controls">
+        <label class="auto" for="autoplay"><input type="checkbox" id="autoplay"> Play all scenes</label>
+        <button class="btn" id="replay" type="button">Replay</button>
+        <button class="btn primary" id="next" type="button">Next scene →</button>
+      </div>
+    </div>
+    <div class="lanes">
+      <div class="lane lane-resq">
+        <div class="lane-head"><span class="tag">ResQ</span><ul id="resq-text"></ul></div>
+        <svg id="svg-resq" viewBox="0 0 520 320" role="img" aria-label="ResQ animation"></svg>
+      </div>
+      <div class="lane lane-arco">
+        <div class="lane-head"><span class="tag">Arco</span><ul id="arco-text"></ul></div>
+        <svg id="svg-arco" viewBox="0 0 520 320" role="img" aria-label="Arco animation"></svg>
+      </div>
+    </div>
+    <p class="takeaway" id="takeaway"></p>
+    <p class="fine">Timings are illustrative.</p>
+  </section>
+
+  <section class="summary">
+    <h2>At a glance</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th></th><th class="r">ResQ</th><th class="a">Arco</th></tr></thead>
+        <tbody>
+          <tr><th>Where data lives</th><td>10,000+ stored datasets per project</td><td class="a">One table + one set of rules</td></tr>
+          <tr><th>Getting a triangle</th><td>Pre-compute everything first</td><td class="a">Build only what you ask for</td></tr>
+          <tr><th>Business changes</th><td>Rebuild and recompute</td><td class="a">Edit one line</td></tr>
+          <tr><th>A number changes</th><td>Refresh by hand, copy between tools</td><td class="a">Updates flow automatically</td></tr>
+          <tr><th>Catching mistakes</th><td>Found later, in review</td><td class="a">Stopped on the way in</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+const NS = 'http://www.w3.org/2000/svg';
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STOP = Symbol('stop');
+let tok = { dead: true, t: [] };
+
+/* ---------- drawing helpers ---------- */
+function S(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function T(p, x, y, str, cls = '', anchor = 'middle') {
+  const t = S('text', { x, y, class: cls, 'text-anchor': anchor }, p);
+  t.textContent = str;
+  return t;
+}
+function node(p, cx, cy, w, h, label, cls = '') {
+  const g = S('g', { class: 'node ' + cls }, p);
+  S('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 7 }, g);
+  const lines = label.split('\n');
+  lines.forEach((ln, i) => T(g, cx, cy + 4 + (i - (lines.length - 1) / 2) * 14, ln, 'n-label'));
+  g.cx = cx; g.cy = cy;
+  return g;
+}
+function badge(p, cx, cy, text, kind) {
+  const w = text.length * 6.1 + 16;
+  const g = S('g', { class: 'badge fade ' + kind }, p);
+  S('rect', { x: cx - w / 2, y: cy - 10, width: w, height: 20, rx: 10 }, g);
+  T(g, cx, cy + 4, text);
+  return g;
+}
+function tri(p, x, y, n, s, cls = 'cell') {
+  const cells = [];
+  for (let r = 0; r < n; r++) for (let c = 0; c < n - r; c++)
+    cells.push(S('rect', { x: x + c * s, y: y + r * s, width: s, height: s, class: cls }, p));
+  return cells;
+}
+const on = (el, c = 'on') => el.classList.add(c);
+const off = (el, c = 'on') => el.classList.remove(c);
+const swap = (el, c) => { el.classList.remove('busy', 'done', 'bad', 'hot'); if (c) el.classList.add(c); };
+
+/* ---------- timing helpers (cancelled when another scene starts) ---------- */
+function sleep(ms) {
+  const k = tok;
+  return new Promise((res, rej) => {
+    if (k.dead) return rej(STOP);
+    if (reduce || ms <= 0) return res();
+    k.t.push(setTimeout(() => (k.dead ? rej(STOP) : res()), ms));
+  });
+}
+function tween(ms, fn) {
+  const k = tok;
+  return new Promise((res, rej) => {
+    if (k.dead) return rej(STOP);
+    if (reduce || ms <= 0) { fn(1); return res(); }
+    const t0 = performance.now();
+    const f = now => {
+      if (k.dead) return rej(STOP);
+      const q = Math.min(1, (now - t0) / ms);
+      fn(q);
+      q < 1 ? requestAnimationFrame(f) : res();
+    };
+    requestAnimationFrame(f);
+  });
+}
+const ease = q => (q < .5 ? 2 * q * q : 1 - Math.pow(-2 * q + 2, 2) / 2);
+async function move(el, pts, ms, isCircle = true) {
+  const seg = []; let L = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); L += d; }
+  el.setAttribute('opacity', 1);
+  const put = (x, y) => isCircle ? (el.setAttribute('cx', x), el.setAttribute('cy', y)) : el.setAttribute('transform', `translate(${x} ${y})`);
+  await tween(ms, q => {
+    let d = ease(q) * L, i = 0;
+    while (i < seg.length - 1 && d > seg[i]) { d -= seg[i]; i++; }
+    const a = pts[i], b = pts[i + 1], r = seg[i] ? d / seg[i] : 1;
+    put(a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r);
+  });
+}
+async function fillBar(bar, w, ms) { await tween(ms, q => bar.setAttribute('width', (w * ease(q)).toFixed(1))); }
+function startMeter(bar, maxMs, width) {
+  const k = tok, t0 = performance.now();
+  let running = true;
+  const f = now => {
+    if (k.dead || !running) return;
+    bar.setAttribute('width', Math.min(width, (now - t0) / maxMs * width).toFixed(1));
+    requestAnimationFrame(f);
+  };
+  if (!reduce) requestAnimationFrame(f);
+  return () => { running = false; return performance.now() - t0; };
+}
+
+/* ---------- shared pieces ---------- */
+function tree(p, products) {
+  const gE = S('g', {}, p), gN = S('g', {}, p);
+  const out = { root: node(gN, 260, 26, 110, 30, 'Project'), prods: [], leaves: [] };
+  products.forEach(pr => {
+    S('path', { class: 'edge', d: `M260 41V53H${pr.cx}V66` }, gE);
+    const pn = node(gN, pr.cx, 80, 120, 28, pr.label);
+    out.prods.push(pn);
+    pr.leaves.forEach(([lbl, cx, ghost]) => {
+      const e = S('path', { class: 'edge' + (ghost ? ' fade' : ''), d: `M${pr.cx} 94V107H${cx}V121` }, gE);
+      const ln = node(gN, cx, 134, 64, 26, lbl, ghost ? 'ghost fade' : '');
+      ln.edge = e; ln.prod = pn;
+      out.leaves.push(ln);
+    });
+  });
+  return out;
+}
+function chain(p) {
+  const gE = S('g', {}, p), gN = S('g', {}, p);
+  const E = {
+    s_d: S('path', { class: 'edge', d: 'M120 70H142' }, gE),
+    d_b: S('path', { class: 'edge', d: 'M250 70H263V36H276' }, gE),
+    d_c: S('path', { class: 'edge', d: 'M250 70H263V104H276' }, gE),
+    b_r: S('path', { class: 'edge', d: 'M384 36H398V70H412' }, gE),
+    c_r: S('path', { class: 'edge', d: 'M384 104H398V70H412' }, gE),
+  };
+  const N = {
+    src: node(gN, 66, 70, 108, 44, 'Paid losses'),
+    dfm: node(gN, 196, 70, 108, 44, 'Development\nfactors'),
+    bf: node(gN, 330, 36, 108, 44, 'Bornhuetter-\nFerguson'),
+    cc: node(gN, 330, 104, 108, 44, 'Cape Cod'),
+    rs: node(gN, 462, 70, 100, 44, 'Selected\nresult'),
+  };
+  return { E, N };
+}
+
+/* ======================= SCENE 1: where data lives ======================= */
+async function s1resq(p) {
+  // Project > Product > State > Channel; channel names run vertically to fit 12 leaves.
+  const gE = S('g', {}, p), gN = S('g', {}, p);
+  const root = node(gN, 260, 22, 110, 26, 'Project');
+  const leaves = [];
+  [['Personal Auto', 130, [72, 188]], ['Homeowners', 390, [332, 448]]].forEach(([prod, px, states]) => {
+    S('path', { class: 'edge', d: `M260 35V44H${px}V53` }, gE);
+    node(gN, px, 66, 120, 26, prod);
+    states.forEach((sx, si) => {
+      S('path', { class: 'edge', d: `M${px} 79V89H${sx}V100` }, gE);
+      node(gN, sx, 112, 56, 24, si ? 'NY' : 'NJ');
+      ['Direct', 'Independent', 'Legacy'].forEach((ch, ci) => {
+        const cx = sx + (ci - 1) * 40;
+        S('path', { class: 'edge', d: `M${sx} 124V132H${cx}V140` }, gE);
+        const g = node(gN, cx, 178, 36, 76, '');
+        T(g, 0, 0, ch, 'n-label').setAttribute('transform', `translate(${cx + 4} 178) rotate(-90)`);
+        leaves.push(g);
+      });
+    });
+  });
+  const stacks = leaves.map(l => {
+    const arr = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) {
+      const g = S('g', { class: 'glyph' }, p);
+      tri(g, l.cx - 13 + c * 14, 224 + r * 14, 3, 3.6, '');
+      arr.push(g);
+    }
+    return arr;
+  });
+  const big = T(p, 260, 291, '0', 'big');
+  T(p, 260, 311, 'stored datasets per project', 'cap');
+  await sleep(600);
+  leaves.forEach(l => swap(l, 'busy'));
+  const t = { leaves };
+  const order = [];
+  for (let k = 0; k < 6; k++) stacks.forEach(a => order.push(a[k]));
+  const counting = tween(order.length * 55, q => (big.textContent = Math.round(ease(q) * 10000).toLocaleString('en-US')));
+  for (const g of order) { on(g); await sleep(55); }
+  await counting;
+  big.textContent = '10,000+';
+  t.leaves.forEach(l => swap(l, ''));
+}
+async function s1arco(p) {
+  // Source table -> one set of rules -> several independent requests, each answered from the same two pieces.
+  const reqs = [['Personal Auto', 'NJ · Direct'], ['Homeowners', 'NY · all channels'], ['All products', 'Legacy channel'], ['Personal Auto', 'All states']];
+  const ys = reqs.map((_, i) => 18 + i * 62);
+  const gE = S('g', {}, p);
+  const inEdge = S('path', { class: 'edge', d: 'M176 120H206' }, gE);
+  const outEdges = ys.map(y => S('path', { class: 'edge', d: `M306 120H321V${y + 25}H336` }, gE));
+  // the source table icon
+  S('rect', { x: 16, y: 40, width: 160, height: 160, rx: 10, class: 'panel' }, p);
+  S('rect', { x: 16, y: 40, width: 160, height: 24, rx: 10, class: 'thead' }, p);
+  S('rect', { x: 16, y: 52, width: 160, height: 12, class: 'thead' }, p);
+  const rows = [];
+  for (let i = 0; i < 7; i++) {
+    const g = S('g', { class: 'fade' }, p);
+    let x = 28;
+    [26, 26, 36, 28].forEach(w => { S('rect', { x, y: 74 + i * 18, width: w, height: 10, rx: 3, class: 'tcell' }, g); x += w + 6; });
+    rows.push(g);
+  }
+  T(p, 96, 220, 'Source table', 'n-label');
+  // the rules icon: three sliders
+  const rules = S('g', { class: 'fade' }, p);
+  S('rect', { x: 206, y: 76, width: 100, height: 88, rx: 10, class: 'panel' }, rules);
+  [[112, 240], [128, 272], [144, 252]].forEach(([y, kx]) => {
+    S('path', { class: 'edge', d: `M222 ${y}H290` }, rules);
+    S('circle', { cx: kx, cy: y, r: 5, class: 'knob' }, rules);
+  });
+  T(rules, 256, 96, 'RULES', 'th');
+  T(p, 256, 182, 'One set of rules', 'n-label');
+  // the requests
+  const rowsOut = reqs.map(([a, b], i) => {
+    const g = S('g', { class: 'reqrow fade' }, p), y = ys[i];
+    S('rect', { x: 336, y, width: 172, height: 50, rx: 8, class: 'bg' }, g);
+    const cells = tri(g, 346, y + 7, 4, 9);
+    T(g, 392, y + 22, a, 'n-label', 'start');
+    T(g, 392, y + 38, b, 'cap', 'start');
+    g.cells = cells;
+    return g;
+  });
+  const big = T(p, 260, 291, '1 table', 'big fade');
+  const cap = T(p, 260, 311, '+ one set of rules, for every request', 'cap fade');
+  await sleep(500);
+  for (const r of rows) { on(r); await sleep(90); }
+  on(rules);
+  await sleep(500);
+  on(inEdge, 'hot');
+  await Promise.all(rowsOut.map(async (g, i) => {
+    await sleep(i * 450);
+    on(g);
+    await sleep(250);
+    on(outEdges[i], 'hot');
+    const dot = S('circle', { r: 6, class: 'packet', opacity: 0 }, p);
+    await move(dot, [[176, 120], [306, 120], [321, 120], [321, ys[i] + 25], [336, ys[i] + 25]], 900);
+    dot.setAttribute('opacity', 0);
+    for (const c of g.cells) { on(c); await sleep(30); }
+    on(g, 'done');
+    off(outEdges[i], 'hot'); on(outEdges[i], 'done');
+  }));
+  off(inEdge, 'hot'); on(inEdge, 'done');
+  on(big); on(cap);
+}
+
+/* ======================= SCENE 2: getting a triangle ======================= */
+const MAX_MS = 10600, METER_W = 488;
+async function s2resq(p) {
+  const xs = [54, 157, 260, 363, 466];
+  S('path', { class: 'edge', d: 'M54 30H466' }, p);
+  const N = ['Source\ndata', 'Load into\nproject', 'Pre-compute\neverything', 'Open\nproject', 'Read in\nExcel']
+    .map((l, i) => { S('path', { class: 'edge', d: `M${xs[i]} 30V44` }, p); return node(p, xs[i], 70, 90, 52, l); });
+  T(p, 16, 128, 'Calculating every dataset', 'cap', 'start');
+  const cnt = T(p, 504, 128, '0', 'mono', 'end');
+  S('rect', { x: 16, y: 136, width: 488, height: 8, rx: 4, class: 'track' }, p);
+  const prog = S('rect', { x: 16, y: 136, width: 0, height: 8, rx: 4, class: 'bar wait' }, p);
+  const status = T(p, 16, 196, 'Waiting to start', 'status', 'start');
+  const cells = tri(p, 410, 172, 5, 14);
+  T(p, 445, 264, 'First triangle', 'cap');
+  T(p, 16, 288, 'Time to first triangle', 'cap', 'start');
+  S('rect', { x: 16, y: 296, width: METER_W, height: 10, rx: 5, class: 'track' }, p);
+  const meter = S('rect', { x: 16, y: 296, width: 0, height: 10, rx: 5, class: 'bar' }, p);
+  const dot = S('circle', { r: 7, cx: 54, cy: 30, class: 'packet', opacity: 0 }, p);
+  await sleep(500);
+  const stop = startMeter(meter, MAX_MS, METER_W);
+  swap(N[0], 'done');
+  status.textContent = 'Loading the whole project…';
+  await move(dot, [[54, 30], [157, 30]], 600);
+  swap(N[1], 'busy'); await sleep(1200); swap(N[1], 'done');
+  await move(dot, [[157, 30], [260, 30]], 500);
+  swap(N[2], 'busy');
+  status.textContent = 'Computing every triangle for every branch…';
+  await tween(5200, q => { prog.setAttribute('width', (488 * q).toFixed(1)); cnt.textContent = Math.round(q * 10000).toLocaleString('en-US'); });
+  cnt.textContent = '10,000+';
+  swap(N[2], 'done');
+  await move(dot, [[260, 30], [363, 30]], 500);
+  swap(N[3], 'busy'); status.textContent = 'Opening the project…';
+  await sleep(900); swap(N[3], 'done');
+  await move(dot, [[363, 30], [466, 30]], 500);
+  swap(N[4], 'done');
+  for (const c of cells) { on(c); await sleep(35); }
+  stop();
+  if (reduce) meter.setAttribute('width', METER_W);
+  status.textContent = 'Ready: the first triangle reaches Excel';
+}
+async function s2arco(p) {
+  const xs = [65, 195, 325, 455];
+  S('path', { class: 'edge', d: 'M65 30H455' }, p);
+  const N = ['Ask in\nExcel', 'Find the\nmatching rows', 'Build the\ntriangle', 'Back in\nExcel']
+    .map((l, i) => { S('path', { class: 'edge', d: `M${xs[i]} 30V44` }, p); return node(p, xs[i], 70, 104, 52, l); });
+  const bars = [];
+  for (let i = 0; i < 8; i++) bars.push(S('rect', { x: 150, y: 112 + i * 11, width: 90, height: 7, rx: 3, class: 'rowbar' }, p));
+  const cells = tri(p, 290, 112, 5, 14);
+  const mem = badge(p, 455, 124, 'Kept in memory', 'hot');
+  const status = T(p, 16, 230, 'Waiting to start', 'status', 'start');
+  const status2 = T(p, 16, 252, '', 't-good', 'start');
+  T(p, 16, 288, 'Time to first triangle', 'cap', 'start');
+  S('rect', { x: 16, y: 296, width: METER_W, height: 10, rx: 5, class: 'track' }, p);
+  const meter = S('rect', { x: 16, y: 296, width: 0, height: 10, rx: 5, class: 'bar' }, p);
+  const dot = S('circle', { r: 7, cx: 65, cy: 30, class: 'packet', opacity: 0 }, p);
+  await sleep(500);
+  const stop = startMeter(meter, MAX_MS, METER_W);
+  swap(N[0], 'hot'); status.textContent = 'Asking for one triangle';
+  await move(dot, [[65, 30], [195, 30]], 500);
+  swap(N[0], 'done'); swap(N[1], 'busy'); status.textContent = 'Picking only the rows that match';
+  for (const i of [0, 2, 5]) { on(bars[i], 'match'); await sleep(160); }
+  swap(N[1], 'done');
+  await move(dot, [[195, 30], [325, 30]], 400);
+  swap(N[2], 'busy'); status.textContent = 'Building just this one triangle';
+  for (const c of cells) { on(c); await sleep(35); }
+  swap(N[2], 'done');
+  await move(dot, [[325, 30], [455, 30]], 400);
+  swap(N[3], 'done');
+  stop();
+  if (reduce) meter.setAttribute('width', (2600 / MAX_MS * METER_W).toFixed(1));
+  const mw = +meter.getAttribute('width');
+  T(p, 16 + mw + 8, 288 + 17, 'Done', 't-good', 'start');
+  status.textContent = 'Done. The triangle is in Excel.';
+  on(mem);
+  await sleep(1400);
+  N.forEach(n => swap(n, ''));
+  dot.setAttribute('cx', 65);
+  swap(N[0], 'hot'); status.textContent = 'Asking for the same triangle again…';
+  await move(dot, [[65, 30], [455, 30]], 380);
+  swap(N[0], ''); swap(N[3], 'done');
+  status2.textContent = 'Answered from memory, almost instantly';
+}
+
+/* ======================= SCENE 3: business changes ======================= */
+function checklist(p, items, y0) {
+  return items.map((txt, i) => {
+    const y = y0 + i * 30;
+    const label = T(p, 24, y, txt, 'status', 'start');
+    S('rect', { x: 330, y: y - 8, width: 170, height: 8, rx: 4, class: 'track' }, p);
+    const bar = S('rect', { x: 330, y: y - 8, width: 0, height: 8, rx: 4, class: 'bar wait' }, p);
+    return { label, bar };
+  });
+}
+async function s3resq(p) {
+  const t = tree(p, [
+    { label: 'Personal Auto', cx: 130, leaves: [['NJ', 80], ['NY', 180]] },
+    { label: 'Homeowners', cx: 370, leaves: [['NJ', 295], ['NY', 370], ['CT', 445, true]] },
+  ]);
+  const ct = t.leaves[4];
+  const steps = checklist(p, ['Add the branch to the project tree', 'Rebuild the totals above it', 'Recompute the datasets they feed'], 196);
+  const foot = T(p, 260, 298, 'Usable only after the rebuild', 't-wait fade');
+  await sleep(700);
+  on(ct); on(ct.edge); swap(ct, 'busy');
+  await fillBar(steps[0].bar, 170, 1500);
+  swap(ct.prod, 'busy'); await sleep(250); swap(t.root, 'busy');
+  await fillBar(steps[1].bar, 170, 2400);
+  await fillBar(steps[2].bar, 170, 3400);
+  [ct, ct.prod, t.root].forEach(n => swap(n, 'done'));
+  on(foot);
+}
+async function s3arco(p) {
+  S('rect', { x: 16, y: 16, width: 220, height: 160, rx: 8, class: 'panel' }, p);
+  T(p, 30, 36, 'RULES', 'th', 'start');
+  ['Personal Auto › NJ', 'Personal Auto › NY', 'Homeowners › NJ', 'Homeowners › NY'].forEach((s, i) => T(p, 30, 62 + i * 22, s, 'status', 'start'));
+  const typed = T(p, 30, 150, '', 'status', 'start');
+  typed.style.fill = 'var(--good)';
+  S('rect', { x: 256, y: 16, width: 248, height: 160, rx: 8, class: 'panel' }, p);
+  T(p, 270, 36, 'CLASSES YOU CAN USE', 'th', 'start');
+  const list = ['Personal Auto › NJ', 'Personal Auto › NY', 'Homeowners › NJ', 'Homeowners › NY'];
+  list.forEach((s, i) => { S('rect', { x: 268, y: 46 + i * 24, width: 224, height: 20, rx: 5, class: 'panel' }, p).style.fill = 'var(--surface)'; T(p, 278, 60 + i * 24, s, 'cap', 'start').style.fill = 'var(--ink)'; });
+  const newChip = S('g', { class: 'fade' }, p);
+  S('rect', { x: 268, y: 142, width: 224, height: 20, rx: 5, class: 'panel' }, newChip).style.cssText = 'fill:var(--good-soft);stroke:var(--good)';
+  T(newChip, 278, 156, 'Homeowners › CT', 'cap', 'start').style.fill = 'var(--ink)';
+  T(newChip, 482, 156, 'Ready', 't-good', 'end');
+  const steps = checklist(p, ['Add one rule', 'New class is ready right away', 'Triangles are built when asked'], 206);
+  steps.forEach(s => s.bar.setAttribute('class', 'bar good'));
+  const foot = T(p, 260, 298, 'No rebuild needed', 't-good fade');
+  await sleep(700);
+  for (const ch of 'Homeowners › CT') { typed.textContent += ch; await sleep(90); }
+  await fillBar(steps[0].bar, 170, 350);
+  on(newChip);
+  await fillBar(steps[1].bar, 170, 350);
+  await fillBar(steps[2].bar, 170, 350);
+  on(foot);
+}
+
+/* ======================= SCENE 4: a number changes ======================= */
+async function s4resq(p) {
+  const { N } = chain(p);
+  S('path', { class: 'edge dash', d: 'M196 92V140' }, p);
+  const sheet = node(p, 196, 160, 120, 40, 'Spreadsheet\ncopy', 'ghost');
+  const changed = badge(p, 66, 112, 'Changed', 'wait');
+  const stale = badge(p, 330, 142, 'Out of date', 'wait');
+  const logs = ['1  Refresh development factors', '2  Copy results to a spreadsheet', '3  Refresh Bornhuetter-Ferguson', '4  Update the selected result']
+    .map((s, i) => T(p, 280, 182 + i * 20, s, 'status fade', 'start'));
+  const miss = T(p, 260, 298, 'Cape Cod missed: old number', 't-wait fade');
+  const hand = S('g', { class: 'hand', opacity: 0, transform: 'translate(66 140)' }, p);
+  S('circle', { r: 12 }, hand); T(hand, 0, 3, 'YOU');
+  await sleep(700);
+  swap(N.src, 'busy'); on(changed);
+  await sleep(600);
+  await move(hand, [[66, 140], [196, 110]], 800, false);
+  swap(N.dfm, 'busy'); await sleep(700); swap(N.dfm, 'done'); on(logs[0]);
+  await move(hand, [[196, 110], [196, 186]], 600, false);
+  swap(sheet, 'hot'); await sleep(800); on(logs[1]);
+  await move(hand, [[196, 186], [250, 186], [250, 6], [330, 6]], 1000, false);
+  swap(N.bf, 'busy'); await sleep(700); swap(N.bf, 'done'); on(logs[2]);
+  await move(hand, [[330, 6], [462, 6], [462, 40]], 800, false);
+  swap(N.rs, 'busy'); await sleep(700); swap(N.rs, 'done'); on(logs[3]);
+  await sleep(500);
+  swap(N.cc, 'busy'); on(stale); on(miss);
+}
+async function s4arco(p) {
+  const { E, N } = chain(p);
+  const changed = badge(p, 66, 112, 'Changed', 'hot');
+  const logs = ['Paid losses changed', 'Development factors updated', 'BF and Cape Cod updated', 'Selected result updated']
+    .map((s, i) => T(p, 24, 172 + i * 20, s, 'status fade', 'start'));
+  const trace = T(p, 24, 262, 'Trace any result to its source', 't-hot fade', 'start');
+  const foot = T(p, 260, 298, 'Automatic. No missed steps.', 't-good fade');
+  const mk = () => S('circle', { r: 5, class: 'packet', opacity: 0 }, p);
+  await sleep(700);
+  swap(N.src, 'hot'); on(changed); on(logs[0]);
+  await sleep(500);
+  on(E.s_d, 'hot'); await move(mk(), [[120, 70], [142, 70]], 300);
+  swap(N.dfm, 'busy'); await sleep(350); swap(N.dfm, 'done'); on(logs[1]);
+  on(E.d_b, 'hot'); on(E.d_c, 'hot');
+  await Promise.all([move(mk(), [[250, 70], [263, 70], [263, 36], [276, 36]], 450), move(mk(), [[250, 70], [263, 70], [263, 104], [276, 104]], 450)]);
+  swap(N.bf, 'busy'); swap(N.cc, 'busy'); await sleep(350); swap(N.bf, 'done'); swap(N.cc, 'done'); on(logs[2]);
+  on(E.b_r, 'hot'); on(E.c_r, 'hot');
+  await Promise.all([move(mk(), [[384, 36], [398, 36], [398, 70], [412, 70]], 450), move(mk(), [[384, 104], [398, 104], [398, 70], [412, 70]], 450)]);
+  swap(N.rs, 'busy'); await sleep(350); swap(N.rs, 'done'); on(logs[3]);
+  p.querySelectorAll('.packet').forEach(d => d.setAttribute('opacity', 0));
+  Object.values(E).forEach(e => { off(e, 'hot'); on(e, 'done'); });
+  await sleep(1100);
+  swap(N.rs, 'hot'); on(trace);
+  for (const k of ['c_r', 'b_r', 'd_c', 'd_b', 's_d']) { off(E[k], 'done'); on(E[k], 'trace'); await sleep(180); }
+  swap(N.src, 'hot');
+  on(foot);
+}
+
+/* ======================= SCENE 5: catching mistakes ======================= */
+const RECORDS = ['NJ · BI · 2023-04 · 12,480', 'NY · BI · 2024-01 · 18,900', 'NJ · BI · 2062-03 ·  8,115', 'PA · BI · 2024-08 ·  6,730', 'NJ · BI · 2025-02 · 15,060'];
+function records(p) {
+  T(p, 12, 22, 'INCOMING CLAIM RECORDS', 'th', 'start');
+  return RECORDS.map((s, i) => {
+    const g = S('g', { class: 'rec' }, p), y = 32 + i * 28;
+    S('rect', { x: 12, y, width: 200, height: 22, rx: 5 }, g);
+    T(g, 20, y + 15, s.replace(/ /g, ' '), 'mono', 'start');
+    g.y = y + 11;
+    return g;
+  });
+}
+function originTri(p) {
+  ['2021', '2022', '2023', '2024', '2025'].forEach((yr, i) => T(p, 336, 46 + i * 20, yr, 'mono', 'end'));
+  return tri(p, 342, 32, 5, 20);
+}
+async function s5resq(p) {
+  const recs = records(p), cells = originTri(p);
+  const badRow = S('g', { class: 'fade' }, p);
+  T(badRow, 336, 146, '2062', 't-bad', 'end');
+  S('rect', { x: 342, y: 132, width: 20, height: 20, class: 'cell bad' }, badRow);
+  const groups = [[0, 1, 2, 3], [4, 5, 6, 7], null, [8, 9, 10, 11], [12, 13, 14]];
+  S('rect', { x: 12, y: 196, width: 496, height: 74, rx: 8, class: 'panel fade' }, p).id = 'r5card';
+  const card = p.querySelector('#r5card');
+  const l1 = T(p, 26, 222, 'Spotted later, during review', 't-wait fade', 'start');
+  const l2 = T(p, 26, 244, '• The typo is already in the triangle', 'cap fade', 'start');
+  const l3 = T(p, 26, 260, '• Work built on it may need redoing', 'cap fade', 'start');
+  await sleep(700);
+  for (let i = 0; i < recs.length; i++) {
+    const d = S('circle', { r: 6, class: 'packet', opacity: 0 }, p);
+    const target = i === 2 ? [352, 142] : [400, 42 + Math.min(i, 3) * 20];
+    await move(d, [[212, recs[i].y], [300, recs[i].y], target], 650);
+    d.setAttribute('opacity', 0);
+    on(recs[i], 'dim');
+    if (groups[i]) groups[i].forEach(k => on(cells[k])); else on(badRow);
+  }
+  await sleep(1600);
+  on(recs[2], 'stopped'); on(card); on(l1); on(l2); on(l3);
+}
+async function s5arco(p) {
+  const recs = records(p), cells = originTri(p);
+  S('rect', { x: 262, y: 30, width: 12, height: 142, rx: 6, class: 'gate' }, p).id = 'gate';
+  const gate = p.querySelector('#gate');
+  T(p, 268, 188, 'Check', 't-hot');
+  const groups = [[0, 1, 2, 3], [4, 5, 6, 7], null, [8, 9, 10, 11], [12, 13, 14]];
+  const why1 = T(p, 12, 208, 'Stopped: date 2062 out of range', 't-bad fade', 'start');
+  const why2 = T(p, 12, 224, 'Fix before use', 'cap fade', 'start');
+  const card = S('g', { class: 'fade' }, p);
+  S('rect', { x: 12, y: 238, width: 496, height: 72, rx: 8, class: 'panel' }, card);
+  T(card, 26, 262, 'Before a change is saved', 't-hot', 'start');
+  T(card, 26, 282, '• Old and new side by side', 'cap', 'start');
+  T(card, 26, 298, '• You choose which to keep', 'cap', 'start');
+  const v1 = tri(card, 400, 250, 4, 9), v2 = tri(card, 456, 250, 4, 9);
+  v1.concat(v2).forEach(c => on(c));
+  v2[5].style.fill = 'var(--wait)';
+  T(card, 418, 302, 'Old', 'cap'); T(card, 474, 302, 'New', 'cap');
+  await sleep(700);
+  for (let i = 0; i < recs.length; i++) {
+    const d = S('circle', { r: 6, class: 'packet', opacity: 0 }, p);
+    await move(d, [[212, recs[i].y], [256, recs[i].y]], 380);
+    if (i === 2) {
+      gate.classList.add('bad');
+      d.setAttribute('opacity', 0);
+      on(recs[i], 'stopped'); on(why1); on(why2);
+      await sleep(900);
+      gate.classList.remove('bad');
+      continue;
+    }
+    await move(d, [[280, recs[i].y], [400, 42 + Math.min(i, 3) * 20]], 380);
+    d.setAttribute('opacity', 0);
+    on(recs[i], 'passed');
+    groups[i].forEach(k => on(cells[k]));
+  }
+  await sleep(700);
+  on(card);
+}
+
+/* ---------- scenes ---------- */
+const SCENES = [
+  { name: 'Where data lives', title: 'Where the data lives',
+    resq: ['Fixed project tree', 'Every triangle stored in advance'],
+    arco: ['One source table', 'One set of rules', 'Any request is built from both'],
+    take: 'Store the facts once, not thousands of answers',
+    run: [s1resq, s1arco] },
+  { name: 'Getting a triangle', title: 'Getting a loss triangle',
+    resq: ['Load the whole project', 'Pre-compute everything, then read'],
+    arco: ['Ask for one triangle', 'Build just that one, keep it in memory'],
+    take: 'Faster answers, instant repeats',
+    run: [s2resq, s2arco] },
+  { name: 'Business changes', title: 'When the business changes',
+    resq: ['Change the tree', 'Rebuild totals, recompute datasets'],
+    arco: ['Add one rule', 'Ready right away'],
+    take: 'A rule edit, not a rebuild',
+    run: [s3resq, s3arco] },
+  { name: 'A number changes', title: 'When a number changes',
+    resq: ['Refresh each method by hand', 'Copy results between tools', 'Easy to miss a step'],
+    arco: ['Knows what depends on what', 'Updates flow in the right order', 'Every result traces to its source'],
+    take: 'One trusted copy, always current',
+    run: [s4resq, s4arco] },
+  { name: 'Catching mistakes', title: 'Catching mistakes early',
+    resq: ['Typos flow into the triangle', 'Found later, in review'],
+    arco: ['Checked on the way in', 'Bad records stopped with a reason', 'Versions compared before saving'],
+    take: 'Mistakes caught at the door',
+    run: [s5resq, s5arco] },
+];
+
+const tabs = document.getElementById('tabs');
+const svgR = document.getElementById('svg-resq'), svgA = document.getElementById('svg-arco');
+const autoBox = document.getElementById('autoplay');
+let current = 0;
+SCENES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.setAttribute('role', 'tab'); b.id = 'tab-' + i;
+  b.innerHTML = `<span class="num">Scene ${i + 1}</span><span class="nm">${s.name}</span>`;
+  b.addEventListener('click', () => play(i));
+  tabs.appendChild(b);
+});
+
+async function play(i) {
+  tok.dead = true; tok.t.forEach(clearTimeout);
+  tok = { dead: false, t: [] };
+  const mine = tok;
+  current = i;
+  const s = SCENES[i];
+  [...tabs.children].forEach((b, k) => b.setAttribute('aria-selected', k === i ? 'true' : 'false'));
+  document.getElementById('scene-title').textContent = s.title;
+  const list = (id, items) => { const ul = document.getElementById(id); ul.innerHTML = ''; items.forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }); };
+  list('resq-text', s.resq);
+  list('arco-text', s.arco);
+  document.getElementById('takeaway').textContent = s.take;
+  svgR.innerHTML = ''; svgA.innerHTML = '';
+  const res = await Promise.allSettled([s.run[0](svgR), s.run[1](svgA)]);
+  res.forEach(r => { if (r.status === 'rejected' && r.reason !== STOP) console.error(r.reason); });
+  if (mine.dead || !autoBox.checked) return;
+  try { await sleep(2600); } catch (e) { return; }
+  play((i + 1) % SCENES.length);
+}
+
+document.getElementById('replay').addEventListener('click', () => play(current));
+document.getElementById('next').addEventListener('click', () => play((current + 1) % SCENES.length));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input')) return;
+  if (e.key === 'ArrowRight') play((current + 1) % SCENES.length);
+  if (e.key === 'ArrowLeft') play((current + SCENES.length - 1) % SCENES.length);
+});
+play(0);
+})();
+</script>
