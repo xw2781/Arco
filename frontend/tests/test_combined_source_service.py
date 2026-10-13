@@ -90,7 +90,6 @@ def notebook_spec(**overrides):
             key("acc_yrmo", t1={"column": "acc_yrmo"}, t4={"column": "acc_yrmo"}),
             key("sys_yrmo", t1={"column": "sys_yrmo"}, t4={"fill": "0"}),
         ],
-        "rows": {"t4": "all"},
         "exclude": {"t4": ["FACID"]},
         "rename": {},
     }
@@ -141,7 +140,7 @@ class CombineTablesTests(unittest.TestCase):
         self.assertEqual(list(out.columns), ["CO_CD", "PROD_CD", "acc_yrmo", "sys_yrmo", "Paid_Loss", "Earned Premium"])
         self.assertEqual(result["stats"]["t1"], {"read": 12})
         self.assertEqual(result["stats"]["t4"], {
-            "read": 72, "matched": 0, "added": 72, "left_out": 0, "base_rows_dropped": 0, "max_repeat": 0,
+            "read": 72, "matched": 0, "added": 72, "max_repeat": 0,
         })
         self.assertEqual(len(out), 84)
         self.assertEqual(result["coverage"], {"1": 84})
@@ -154,7 +153,7 @@ class CombineTablesTests(unittest.TestCase):
         self.assertEqual(result["warnings"][0]["fills"], {"sys_yrmo": "0"})
         self.assertEqual(result["warnings"][0]["added"], 72)
 
-    def _premium_on_base(self, rule):
+    def _premium_on_base(self):
         base = loss_frame()
         right = frame([["07", "PPA_BI", "202604", "9"], ["07", "XX", "202604", "8"]], ["CO_CD", "PROD_CD", "acc_yrmo", "Premium"])
         spec = {
@@ -165,37 +164,29 @@ class CombineTablesTests(unittest.TestCase):
                 key("acc_yrmo", t1={"column": "acc_yrmo"}, t2={"column": "acc_yrmo"}),
                 key("sys_yrmo", t1={"column": "sys_yrmo"}, t2={"any": True}),
             ],
-            "rows": {"t2": rule},
         }
         return service.combine_tables({"t1": base, "t2": right}, spec)
 
     def test_any_key_repeats_rows_and_warns(self):
-        result = self._premium_on_base("base")
+        result = self._premium_on_base()
         stats = result["stats"]["t2"]
-        # PPA_BI 202604 has three system months in the base.
-        self.assertEqual(stats, {"read": 2, "matched": 1, "added": 0, "left_out": 1, "base_rows_dropped": 0, "max_repeat": 3})
-        self.assertEqual(len(result["frame"]), 12)
-        # Three base rows got premium data; the other nine have the base alone.
-        self.assertEqual(result["coverage"], {"1": 9, "2": 3})
+        # PPA_BI 202604 has three system months in the first table.
+        self.assertEqual(stats, {"read": 2, "matched": 1, "added": 1, "max_repeat": 3})
+        self.assertEqual(len(result["frame"]), 13)
+        # Three loss rows got premium data; nine have loss alone, one premium alone.
+        self.assertEqual(result["coverage"], {"1": 10, "2": 3})
         repeat = [w for w in result["warnings"] if w["kind"] == "repeat"]
         self.assertEqual(repeat[0]["any_keys"], ["sys_yrmo"])
         self.assertEqual(repeat[0]["max_repeat"], 3)
 
-    def test_match_rule_keeps_only_matched_rows(self):
-        result = self._premium_on_base("match")
-        self.assertEqual(len(result["frame"]), 3)
-        self.assertEqual(result["stats"]["t2"]["base_rows_dropped"], 9)
-        self.assertEqual(set(result["frame"]["Premium"]), {"9"})
-
-    def test_all_rule_adds_unmatched_rows_after_the_base(self):
-        result = self._premium_on_base("all")
+    def test_unmatched_rows_are_added_after_the_first_table(self):
+        result = self._premium_on_base()
         out = result["frame"]
         self.assertEqual(len(out), 13)
         self.assertEqual(out.iloc[-1].tolist(), ["07", "XX", "202604", "", "", "8"])
         self.assertEqual(result["stats"]["t2"]["added"], 1)
         self.assertEqual(result["coverage"], {"1": 10, "2": 3})
-        self.assertEqual(result["stats"]["t2"]["left_out"], 0)
-        # The base keeps its own order ahead of the added row.
+        # The first table keeps its own order ahead of the added row.
         self.assertEqual(out.iloc[:12]["sys_yrmo"].tolist(), loss_frame()["sys_yrmo"].tolist())
 
     def test_yyyy_mm_mismatch_is_detected_and_fixed_by_convert(self):
@@ -208,7 +199,6 @@ class CombineTablesTests(unittest.TestCase):
                 key("acc_yrmo", t1={"column": "acc_yrmo"}, t5={"column": "acc_yrmo"}),
                 key("sys_yrmo", t1={"column": "sys_yrmo"}, t5={"any": True}),
             ],
-            "rows": {"t5": "base"},
         }
         frames = {"t1": loss_frame(), "t5": budget}
         result = service.combine_tables(frames, spec)
@@ -406,7 +396,7 @@ class CombinedSourceClientTests(unittest.TestCase):
         self.assertEqual([warning["kind"] for warning in answer["warnings"]], ["filled_rows"])
         self.assertEqual((answer["row_count"], answer["column_count"]), (84, 6))
         self.assertEqual(answer["coverage"], {"1": 84})
-        self.assertEqual(len(answer["rows"]), 14)
+        self.assertEqual(len(answer["rows"]), 84)  # all of them, under the 1,000-row cap
         self.assertEqual(answer["columns"], ["CO_CD", "PROD_CD", "acc_yrmo", "sys_yrmo", "Paid_Loss", "Earned Premium"])
         json.dumps(answer)  # the route answer is plain JSON
         self.assertEqual(self.requests, [])  # a preview reads nothing on the server

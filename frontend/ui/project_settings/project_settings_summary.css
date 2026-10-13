@@ -1154,6 +1154,31 @@
   cursor: pointer;
 }
 .sd-scope-status { min-height: 16px; }
+
+/* Final step: label / value rows summarising the import. */
+.sd-import-confirm { gap: 10px; }
+.sd-confirm-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 14px;
+  font-size: 12px;
+}
+.sd-confirm-list dt {
+  font-weight: 700;
+  color: var(--ar-color-text-muted, #64748b);
+}
+.sd-confirm-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.sd-confirm-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
 .sd-scope-empty[hidden] { display: none; }
 .sd-scope-empty {
   padding: 8px 9px;

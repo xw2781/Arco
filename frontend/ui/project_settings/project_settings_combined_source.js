@@ -1,21 +1,21 @@
 /**
  * Source Data - combined source (several tables joined into one source).
  *
- * Owns the combined state of the Import Settings window: the tables in join
- * order, their nicknames, the shared keys, the row rules, left-out columns and
- * renames, and their serialization to and from the `combined` block of
- * `source_import.json` (decision 3 of docs/plans/completed/combined_source_import.md).
+ * Owns the combined state of the Import Settings window: the tables, their
+ * nicknames, the shared keys, left-out columns and renames, and their
+ * serialization to and from the `combined` block of `source_import.json`
+ * (decision 3 of docs/plans/completed/combined_source_import.md). Every table
+ * is outer-joined on the keys; the first table only names the keys.
  *
- * With one table the window is today's single-table form and this module only
- * adds the Add Table button. Adding a second table turns the form into the
- * grouped table list; removing tables back to one returns to the form with
- * that table's settings. Each table opens a details window (nickname, source,
- * columns) over the import window.
+ * The settings page always shows the grouped table list, with Add Table under
+ * the last row. With one table the hidden single-table form mirrors that
+ * table, so a one-table import runs as before. Each table opens a details
+ * window (nickname, source, columns) over the import window.
  *
  * With two or more tables the window gains a Combine page after the settings:
- * the Join Map (one card per table, key rows lined up across the cards, row
- * rules, value-column lists, the Combined Table card) and the Row Match and
- * Preview tabs, fed by `POST /source_table/combined/preview` on this PC.
+ * the Join Map (one card per table, key rows lined up across the cards,
+ * value-column lists, the Combined Table card) and the Row Match and Preview
+ * tabs, fed by `POST /source_table/combined/preview` on this PC.
  *
  * The pure functions above `createCombinedSourceFeature` hold every rule so
  * they can be tested without a DOM. The feature is mounted by
@@ -27,7 +27,6 @@ export const SOURCE_TYPE_MSSQL = "mssql";
 export const MSSQL_AUTH_WINDOWS = "windows";
 export const NICKNAME_MAX_LENGTH = 24;
 export const TABLE_COLOR_COUNT = 6;
-export const ROW_RULE_ALL = "all";
 
 const defaultEscape = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -130,7 +129,7 @@ export function suggestNickname(table, others = []) {
 }
 
 export function createCombinedState() {
-  return { tables: [], keys: [], rows: {}, exclude: {}, rename: {} };
+  return { tables: [], keys: [], exclude: {}, rename: {} };
 }
 
 function nextTableId(state) {
@@ -179,7 +178,7 @@ export function detectKeys(state) {
   return state.keys;
 }
 
-/** Add a table at the end of the join order; the second table proposes the keys. */
+/** Add a table at the end of the list; the second table proposes the keys. */
 export function addTable(state, spec, extra = {}) {
   const table = {
     id: nextTableId(state),
@@ -197,7 +196,6 @@ export function addTable(state, spec, extra = {}) {
 }
 
 function dropTableSettings(state, id) {
-  delete state.rows[id];
   delete state.exclude[id];
   delete state.rename[id];
 }
@@ -209,28 +207,9 @@ export function removeTable(state, id) {
   dropTableSettings(state, id);
   if (index === 0 || state.tables.length < 2) detectKeys(state);
   else state.keys.forEach((key) => { delete key.map[id]; });
-  if (state.tables[0]) delete state.rows[state.tables[0].id];
 }
 
-/** Move a table before (or after) another; a new base proposes the keys again. */
-export function moveTable(state, id, targetId, after = false) {
-  const moving = state.tables.find((table) => table.id === id);
-  if (!moving || id === targetId) return false;
-  const oldBase = state.tables[0]?.id;
-  const rest = state.tables.filter((table) => table !== moving);
-  const targetIndex = rest.findIndex((table) => table.id === targetId);
-  if (targetIndex < 0) return false;
-  rest.splice(targetIndex + (after ? 1 : 0), 0, moving);
-  state.tables = rest;
-  const baseChanged = state.tables[0].id !== oldBase;
-  if (baseChanged) {
-    delete state.rows[state.tables[0].id];
-    detectKeys(state);
-  }
-  return baseChanged;
-}
-
-/** Store what a read found in a table; the base re-proposes keys, others re-match. */
+/** Store what a read found in a table; the first re-proposes keys, others re-match. */
 export function setTableColumns(state, id, description) {
   const table = state.tables.find((item) => item.id === id);
   if (!table) return;
@@ -253,7 +232,7 @@ export function setTableColumns(state, id, description) {
 
 /**
  * Store what a read found in a table restored from the saved block. The saved
- * keys, row rules and columns stand as they are; only a table the person
+ * keys and columns stand as they are; only a table the person
  * changes afterwards goes back to matching its keys by name.
  */
 export function restoreTableColumns(state, id, description) {
@@ -314,8 +293,6 @@ export function toCombinedBlock(state) {
     Object.entries(key.map).forEach(([id, entry]) => { if (ids.has(id)) map[id] = { ...entry }; });
     return { name: key.name, map };
   });
-  const rows = {};
-  state.tables.slice(1).forEach((table) => { rows[table.id] = state.rows[table.id] || ROW_RULE_ALL; });
   const exclude = {};
   Object.entries(state.exclude).forEach(([id, list]) => {
     if (ids.has(id) && Array.isArray(list) && list.length) exclude[id] = [...list];
@@ -324,7 +301,7 @@ export function toCombinedBlock(state) {
   Object.entries(state.rename).forEach(([id, names]) => {
     if (ids.has(id) && names && Object.keys(names).length) rename[id] = { ...names };
   });
-  return { tables, keys, rows, exclude, rename };
+  return { tables, keys, exclude, rename };
 }
 
 /** State from a stored `combined` block; columns stay unknown until each table is read. */
@@ -351,14 +328,12 @@ export function fromCombinedBlock(block) {
     Object.entries(key?.map || {}).forEach(([id, entry]) => { if (ids.has(id)) map[id] = clone(entry); });
     return { name: String(key?.name || ""), map };
   }).filter((key) => key.name);
-  Object.entries(data.rows || {}).forEach(([id, rule]) => { if (ids.has(id)) state.rows[id] = String(rule); });
   Object.entries(data.exclude || {}).forEach(([id, list]) => {
     if (ids.has(id) && Array.isArray(list)) state.exclude[id] = list.map(String);
   });
   Object.entries(data.rename || {}).forEach(([id, names]) => {
     if (ids.has(id) && names && typeof names === "object") state.rename[id] = { ...names };
   });
-  if (state.tables[0]) delete state.rows[state.tables[0].id];
   return state;
 }
 
@@ -393,7 +368,7 @@ export function tableFromSingleSettings(settings) {
   return error ? { error } : { spec };
 }
 
-/** What the single-table form shows for a table, when the list goes back to one. */
+/** What the hidden single-table form holds for the only table in the list. */
 export function singleSettingsFromTable(table) {
   const spec = normalizeTableSpec(table);
   return spec.source_type === SOURCE_TYPE_MSSQL
@@ -414,35 +389,20 @@ export function validateCombinedState(state) {
   return { ok: !error, error };
 }
 
-/* ---------------- Combine step: keys, row rules, columns ---------------- */
+/* ---------------- Combine step: keys and columns ---------------- */
 
 export const KEY_CONVERT_YYYYMM = "yyyymm";
-export const ROW_RULES = {
-  all: { label: "All Rows", note: "Keep every row from both sides. Rows without a match get blanks." },
-  base: { label: "Base Rows", note: "Keep the rows already combined. Rows only in this table are left out." },
-  match: { label: "Matches Only", note: "Keep only rows found on both sides." },
-};
 
 /** The import window's pages: Combine sits between Source and Datasets only with two or more tables. */
 export function importSteps(state) {
   return state.tables.length >= 2
-    ? ["settings", "combine", "datasets", "classes"]
-    : ["settings", "datasets", "classes"];
-}
-
-export function rowRule(state, id) {
-  return ROW_RULES[state.rows[id]] ? state.rows[id] : ROW_RULE_ALL;
-}
-
-/** A non-base table's row rule; the base has none. */
-export function setRowRule(state, id, rule) {
-  if (!ROW_RULES[rule] || state.tables[0]?.id === id || !state.tables.some((table) => table.id === id)) return;
-  state.rows[id] = rule;
+    ? ["settings", "combine", "datasets", "classes", "confirm"]
+    : ["settings", "datasets", "classes", "confirm"];
 }
 
 /**
  * Where a key comes from in one table: `{column}`, `{fill}` or `{any: true}`.
- * The base always names a column, and that column names the key.
+ * The first table always names a column, and that column names the key.
  */
 export function setKeyEntry(state, index, id, entry) {
   const key = state.keys[index];
@@ -462,14 +422,14 @@ export function toggleKeyConvert(state, index, id) {
   else entry.convert = KEY_CONVERT_YYYYMM;
 }
 
-/** Base columns that are not yet a key, for Add Key. */
+/** First-table columns that are not yet a key, for Add Key. */
 export function keyCandidates(state) {
   const base = state.tables[0];
   const used = new Set(state.keys.map((key) => nameToken(key.name)));
   return (base?.columns || []).filter((column) => !used.has(nameToken(column)));
 }
 
-/** Match rows on one more base column; the other tables match it by name. */
+/** Match rows on one more first-table column; the other tables match it by name. */
 export function addKey(state, column) {
   const base = state.tables[0];
   if (!base || !keyCandidates(state).includes(column)) return null;
@@ -480,6 +440,36 @@ export function addKey(state, column) {
   const key = { name: column, map };
   state.keys.push(key);
   return key;
+}
+
+/**
+ * Match rows on a column dragged from any table, placed at `index` among the
+ * keys. The other tables match it by name. A key column is never a value
+ * column, so its left-out or renamed setting goes.
+ */
+export function insertKey(state, id, column, index) {
+  const source = state.tables.find((table) => table.id === id);
+  if (!source?.columns?.includes(column)) return null;
+  if (state.keys.some((key) => nameToken(key.name) === nameToken(column))) return null;
+  const map = {};
+  state.tables.forEach((table) => {
+    map[table.id] = table === source ? { column } : autoMapKey(table, column);
+    const mapped = map[table.id].column;
+    if (mapped === undefined) return;
+    if (state.exclude[table.id]?.includes(mapped)) toggleExclude(state, table.id, mapped);
+    if (state.rename[table.id]?.[mapped] !== undefined) setRename(state, table.id, mapped, "");
+  });
+  const key = { name: column, map };
+  state.keys.splice(Math.max(0, Math.min(state.keys.length, index)), 0, key);
+  return key;
+}
+
+/** Move a key so it sits before the key now at `to` (`to` = length puts it last). */
+export function moveKey(state, from, to) {
+  if (!state.keys[from] || to < 0 || to > state.keys.length || to === from || to === from + 1) return false;
+  const [key] = state.keys.splice(from, 1);
+  state.keys.splice(to > from ? to - 1 : to, 0, key);
+  return true;
 }
 
 /** Stop matching on a key; the last key stays so rows can still be matched. */
@@ -562,6 +552,7 @@ export function combineProblem(state, preview, dismissed = new Set()) {
 /** The Row Match messages for the preview's warnings, as HTML with an optional fix. */
 export function warningAlerts(state, warnings, esc = defaultEscape) {
   const label = (warning) => esc(tableLabel(state.tables.find((item) => item.id === warning.table_id)) || warning.table || "");
+  const first = esc(tableLabel(state.tables[0]));
   const mono = (text) => `<span class="cs-mono">${esc(text)}</span>`;
   return (warnings || []).map((warning) => {
     const id = warningId(warning);
@@ -569,7 +560,7 @@ export function warningAlerts(state, warnings, esc = defaultEscape) {
       return {
         id,
         tone: "warn",
-        html: `<b>${label(warning)}</b> stores ${esc(warning.key)} as ${mono(warning.sample)}; the base uses ${mono(warning.base_sample)}. `
+        html: `<b>${label(warning)}</b> stores ${esc(warning.key)} as ${mono(warning.sample)}; ${first} uses ${mono(warning.base_sample)}. `
           + `${formatCount(warning.matched || 0)} of its rows match.`,
         fix: { table_id: warning.table_id, key: warning.key },
       };
@@ -604,25 +595,34 @@ export function warningAlerts(state, warnings, esc = defaultEscape) {
   }).filter(Boolean);
 }
 
-/** Coverage bar segments, most tables first: `[{ tables, rows }]`. */
-export function coverageSegments(coverage) {
-  return Object.entries(coverage || {})
-    .map(([tables, rows]) => ({ tables: Number(tables), rows: Number(rows) }))
-    .filter((item) => item.tables > 0 && item.rows > 0)
-    .sort((a, b) => b.tables - a.tables);
+/** A preview number with more than 4 decimals, rounded to 4; anything else as given. */
+export function previewNumber(text) {
+  const value = String(text ?? "");
+  if (!/^\s*[-+]?\d*\.\d{5,}\s*$/.test(value)) return value;
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(4) : value;
+}
+
+/**
+ * How many column names the Combined Table card shows per table, so its list
+ * fits in `budget` lines. A table cut short spends one more line on "+N more",
+ * so one with a single name over shows that name instead. Every table shows
+ * at least one name.
+ */
+export function masterPreviewCounts(counts, budget) {
+  const lines = (n) => counts.reduce((sum, count) => sum + Math.min(count, n + 1), 0);
+  const most = Math.max(0, ...counts);
+  let n = 1;
+  while (n < most && lines(n + 1) <= budget) n += 1;
+  return counts.map((count) => (count <= n + 1 ? count : n));
 }
 
 /** "12 of 72 matched · 60 added as new rows", as the Row Match tab words it. */
-export function matchText(stats, rule) {
+export function matchText(stats) {
   const read = Number(stats?.read || 0);
   const matched = Number(stats?.matched || 0);
-  let rest;
-  if (matched >= read) rest = "all matched";
-  else if (rule === ROW_RULE_ALL) rest = `${formatCount(stats?.added || 0)} added as new rows`;
-  else rest = `${formatCount(stats?.left_out || 0)} left out`;
-  const dropped = Number(stats?.base_rows_dropped || 0);
-  return `${formatCount(matched)} of ${formatCount(read)} matched · ${rest}`
-    + (dropped ? ` · ${formatCount(dropped)} combined rows dropped` : "");
+  const rest = matched >= read ? "all matched" : `${formatCount(stats?.added || 0)} added as new rows`;
+  return `${formatCount(matched)} of ${formatCount(read)} matched · ${rest}`;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -633,7 +633,6 @@ const ICONS = {
   plus: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   close: '<svg viewBox="0 0 10 10" aria-hidden="true"><line x1="2" y1="2" x2="8" y2="8"></line><line x1="8" y1="2" x2="2" y2="8"></line></svg>',
   x: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  grip: '<svg viewBox="0 0 12 14" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.1"/><circle cx="8" cy="3" r="1.1"/><circle cx="4" cy="7" r="1.1"/><circle cx="8" cy="7" r="1.1"/><circle cx="4" cy="11" r="1.1"/><circle cx="8" cy="11" r="1.1"/></g></svg>',
   db: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5.5" rx="7" ry="2.7"/><path d="M5 5.5v13c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7v-13"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></g></svg>',
   csv: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6 2.8h8l4.5 4.5v13.9H6z"/><path d="M14 2.8v4.5h4.5"/><path d="M9 12.5h6M9 15.5h6M9 18.5h4"/></g></svg>',
   info: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.4"/><path d="M8 7.2v4M8 4.8h.01"/></g></svg>',
@@ -641,23 +640,8 @@ const ICONS = {
   more: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></g></svg>',
 };
 
-/** Two circles for a row rule: the shaded parts are the rows kept. */
-function vennIcon(rule) {
-  const left = rule === "match" ? 0 : 0.28;
-  const right = rule === ROW_RULE_ALL ? 0.28 : 0;
-  return '<svg class="cs-venn" viewBox="0 0 20 14" aria-hidden="true">'
-    + `<circle cx="7.5" cy="7" r="5" fill="currentColor" fill-opacity="${left}" stroke="currentColor" stroke-width="1.1"/>`
-    + `<circle cx="12.5" cy="7" r="5" fill="currentColor" fill-opacity="${right}" stroke="currentColor" stroke-width="1.1"/>`
-    + '<path d="M10 2.67A5 5 0 0 1 10 11.33A5 5 0 0 1 10 2.67Z" fill="currentColor" fill-opacity=".55"/></svg>';
-}
-
 const NUMERIC_TEXT = /^-?[\d,]*\.?\d+(?:[eE][-+]?\d+)?$/;
 
-const ordinal = (n) => {
-  const tens = n % 100;
-  if (tens >= 11 && tens <= 13) return `${n}th`;
-  return `${n}${["th", "st", "nd", "rd"][n % 10] || "th"}`;
-};
 const formatCount = (value) => Number(value).toLocaleString("en-US");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -723,7 +707,6 @@ export function createCombinedSourceFeature(deps = {}) {
   let detail = null;
   let readToken = 0;
   let pop = null;
-  let drag = null;
   let backdropPress = false;
   // Combine step: shown flag, the last preview ({ data, error, loading, block }
   // where block is the JSON of the settings it answered), Row Match or Preview.
@@ -733,31 +716,33 @@ export function createCombinedSourceFeature(deps = {}) {
   let previewToken = 0;
   let resultTab = "match";
   const dismissed = new Set();
+  // A Join Map drag: a value column onto the keys, or a key to a new place.
+  let drag = null;
+  let dragJustEnded = false;
   // The block as last saved or reopened, so unchanged saved settings import
   // again without reading every table first.
   let savedBlock = "";
 
-  const bar = doc?.createElement("div");
   const list = doc?.createElement("div");
   const modalHost = doc?.createElement("div");
   const popEl = doc?.createElement("div");
   const combineEl = doc?.createElement("div");
   let addBtn = null;
-  let barNote = null;
   let mapHost = null;
   let resultHost = null;
   let combineStatus = null;
 
   function mount() {
     if (!settingsBody || !doc) return;
-    bar.className = "cs-bar";
-    bar.innerHTML = `<p class="sd-source-note cs-bar-note" hidden></p>`
-      + `<button class="sd-btn cs-add-btn" type="button" aria-haspopup="menu">${ICONS.plus}Add Table</button>`;
-    addBtn = bar.querySelector(".cs-add-btn");
-    barNote = bar.querySelector(".cs-bar-note");
+    // The list replaces the single-table form, which stays hidden and mirrors
+    // the only table. Add Table moves under the last table row on each render.
+    settingsBody.classList.add("cs-list-mode");
+    addBtn = doc.createElement("button");
+    addBtn.className = "cs-add-btn";
+    addBtn.type = "button";
+    addBtn.setAttribute("aria-haspopup", "menu");
+    addBtn.innerHTML = `${ICONS.plus}Add Table`;
     list.className = "cs-list";
-    list.hidden = true;
-    settingsBody.prepend(bar);
     const status = settingsBody.querySelector(".sd-source-status");
     if (status) settingsBody.insertBefore(list, status);
     else settingsBody.append(list);
@@ -778,10 +763,10 @@ export function createCombinedSourceFeature(deps = {}) {
     combineEl.addEventListener("click", onCombineClick);
     combineEl.addEventListener("keydown", onCombineKeydown);
     combineEl.addEventListener("mouseover", onMapHover);
+    combineEl.addEventListener("pointerdown", onMapPointerDown);
     addBtn.addEventListener("click", () => onAddClick());
     list.addEventListener("click", onListClick);
     list.addEventListener("keydown", onListKeydown);
-    list.addEventListener("pointerdown", onGripPointerDown);
     popEl.addEventListener("click", onPopClick);
     modalHost.addEventListener("mousedown", (event) => {
       backdropPress = event.target.classList?.contains("cs-modal-back");
@@ -803,13 +788,7 @@ export function createCombinedSourceFeature(deps = {}) {
     if (!settingsBody) return;
     const active = isActive();
     settingsBody.classList.toggle("cs-active", active);
-    list.hidden = !active;
-    barNote.hidden = !active;
-    barNote.textContent = active
-      ? "Tables are combined into one source. Click a table to see its file or connection; drag to change the join order."
-      : "";
-    if (active) renderList();
-    else list.innerHTML = "";
+    renderList();
     if (!combineVisible) return;
     if (active) {
       renderCombine();
@@ -820,8 +799,13 @@ export function createCombinedSourceFeature(deps = {}) {
     }
   }
 
+  /** Keep the hidden single-table form on the only table, or empty with none. */
+  function mirrorSingle() {
+    if (state.tables.length === 1) applySingleSettings(singleSettingsFromTable(state.tables[0]));
+    else if (!state.tables.length) applySingleSettings({ method: SOURCE_TYPE_CSV, csvPath: "", profile: null });
+  }
+
   function rowHtml(table) {
-    const index = state.tables.indexOf(table);
     const label = tableLabel(table);
     let size;
     if (table.reading) size = "Reading...";
@@ -830,16 +814,15 @@ export function createCombinedSourceFeature(deps = {}) {
       size = `${formatCount(table.row_count || 0)} rows · ${formatCount(table.columns.length)} cols`;
     } else size = "Not read";
     return `<div class="cs-row" data-id="${esc(table.id)}" tabindex="0" role="button" aria-label="${esc(label)} details">`
-      + `<span class="cs-grip" title="Drag to reorder">${ICONS.grip}</span>`
       + `<span class="cs-dot cs-color-${table.color + 1}"></span>`
       + `<span class="cs-name"><b>${esc(label)}</b><span>${tableKindText(table)}</span></span>`
-      + (index === 0 ? '<span class="cs-base-tag">Base</span>' : `<span class="cs-size">${ordinal(index + 1)}</span>`)
       + `<span class="cs-size cs-num">${size}</span>`
       + `<button class="cs-icon-btn cs-remove" type="button" aria-label="Remove ${esc(label)}">${ICONS.x}</button>`
       + "</div>";
   }
 
   function renderList() {
+    if (!settingsBody) return;
     // Connection details live only in the details window; a second connection
     // is told apart by its number.
     const all = tableGroups(state);
@@ -854,11 +837,15 @@ export function createCombinedSourceFeature(deps = {}) {
         : `${ICONS.csv}<b>CSV Files</b><span class="cs-where">${plural(group.tables.length, "file", "files")}</span>`;
       return `<div class="cs-group"><div class="cs-group-head">${head}</div>${group.tables.map(rowHtml).join("")}</div>`;
     });
-    const order = state.tables
-      .map((table) => `<b class="cs-text-color-${table.color + 1}">${esc(tableLabel(table))}</b>`)
-      .join(" → ");
-    list.innerHTML = groups.join("")
-      + `<div class="cs-order-note">${ICONS.info}<span>Join order: ${order}. The first table is the base; the others join onto it in this order.</span></div>`;
+    list.innerHTML = groups.length
+      ? groups.join("")
+      : '<div class="cs-group"><div class="cs-empty">No table yet. Add a CSV file or a SQL Server table.</div></div>';
+    // The same button node moves in, so an open Add menu keeps its anchor.
+    const addRow = doc.createElement("div");
+    addRow.className = "cs-add-row";
+    addRow.append(addBtn);
+    const groupEls = list.querySelectorAll(".cs-group");
+    groupEls[groupEls.length - 1].append(addRow);
   }
 
   function onListClick(event) {
@@ -868,7 +855,6 @@ export function createCombinedSourceFeature(deps = {}) {
       removeTableAndSync(row.dataset.id);
       return;
     }
-    if (event.target.closest(".cs-grip")) return;
     openDetail("view", row.dataset.id);
   }
 
@@ -882,81 +868,9 @@ export function createCombinedSourceFeature(deps = {}) {
 
   function removeTableAndSync(id) {
     removeTable(state, id);
-    if (state.tables.length === 1) applySingleSettings(singleSettingsFromTable(state.tables[0]));
+    mirrorSingle();
     setStatus("");
     syncMode();
-  }
-
-  /* ---- drag to reorder: pointer capture on the grip (UI rule L16) ---- */
-
-  function onGripPointerDown(event) {
-    const grip = event.target.closest(".cs-grip");
-    if (!grip || event.button !== 0 || busy || drag) return;
-    const row = grip.closest(".cs-row");
-    event.preventDefault();
-    grip.setPointerCapture?.(event.pointerId);
-    drag = { id: row.dataset.id, pointerId: event.pointerId, grip, row, targetId: null, after: false };
-    row.classList.add("is-dragging");
-    grip.addEventListener("pointermove", onDragMove);
-    grip.addEventListener("pointerup", onDragUp);
-    grip.addEventListener("pointercancel", onDragCancel);
-    grip.addEventListener("lostpointercapture", onDragCancel);
-  }
-
-  function clearDropMarks() {
-    list.querySelectorAll(".cs-drop-before, .cs-drop-after").forEach((node) => {
-      node.classList.remove("cs-drop-before", "cs-drop-after");
-    });
-  }
-
-  function onDragMove(event) {
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    const rows = Array.from(list.querySelectorAll(".cs-row")).filter((node) => node !== drag.row);
-    let target = null;
-    let best = Infinity;
-    rows.forEach((node) => {
-      const rect = node.getBoundingClientRect();
-      const distance = event.clientY < rect.top ? rect.top - event.clientY
-        : event.clientY > rect.bottom ? event.clientY - rect.bottom : 0;
-      if (distance < best) {
-        best = distance;
-        target = { node, after: event.clientY > rect.top + rect.height / 2 };
-      }
-    });
-    clearDropMarks();
-    if (!target) return;
-    drag.targetId = target.node.dataset.id;
-    drag.after = target.after;
-    target.node.classList.add(target.after ? "cs-drop-after" : "cs-drop-before");
-  }
-
-  function endDrag(commit) {
-    if (!drag) return;
-    const { grip, row, id, targetId, after, pointerId } = drag;
-    drag = null;
-    grip.removeEventListener("pointermove", onDragMove);
-    grip.removeEventListener("pointerup", onDragUp);
-    grip.removeEventListener("pointercancel", onDragCancel);
-    grip.removeEventListener("lostpointercapture", onDragCancel);
-    if (grip.hasPointerCapture?.(pointerId)) grip.releasePointerCapture(pointerId);
-    row.classList.remove("is-dragging");
-    clearDropMarks();
-    if (!commit || !targetId) return;
-    const baseChanged = moveTable(state, id, targetId, after);
-    if (baseChanged) {
-      setStatus(`${tableLabel(state.tables[0])} is now the base table. Keys were proposed again from its columns.`, "ok");
-    }
-    renderList();
-  }
-
-  function onDragUp(event) {
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    endDrag(true);
-  }
-
-  function onDragCancel(event) {
-    if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.pointerId)) return;
-    endDrag(false);
   }
 
   /* ---------------- reading tables ---------------- */
@@ -966,7 +880,7 @@ export function createCombinedSourceFeature(deps = {}) {
     if (!table) return;
     table.reading = true;
     table.readError = "";
-    if (isActive()) renderList();
+    renderList();
     const spec = normalizeTableSpec(table);
     const result = await onDescribeTable({ ...spec, id: table.id, nickname: table.nickname });
     const current = tableById(id);
@@ -974,7 +888,7 @@ export function createCombinedSourceFeature(deps = {}) {
     current.reading = false;
     if (result?.ok) (current.restored ? restoreTableColumns : setTableColumns)(state, id, result);
     else current.readError = String(result?.error || "Could not read the table.");
-    if (isActive()) renderList();
+    renderList();
     if (combineVisible) {
       renderCombine();
       schedulePreview();
@@ -1002,19 +916,6 @@ export function createCombinedSourceFeature(deps = {}) {
     else {
       closePop();
       return;
-    }
-    if (!isActive()) {
-      // The form's table becomes the base; rebuild it from what the form holds now.
-      const single = tableFromSingleSettings(readSingleSettings());
-      if (single.error) {
-        setStatus(`${single.error} It becomes the first table.`, "error");
-        return;
-      }
-      if (!state.tables[0] || !sameTableSpec(state.tables[0], single.spec)) {
-        state = createCombinedState();
-        addTable(state, single.spec);
-        describeInto(state.tables[0].id);
-      }
     }
     setStatus("");
     openAddMenu();
@@ -1342,7 +1243,8 @@ export function createCombinedSourceFeature(deps = {}) {
     if (mode === "add") {
       const table = addTable(state, spec, { ...description, nickname });
       closeDetail();
-      setStatus(`Added ${tableLabel(table)}. Its keys were matched by name.`, "ok");
+      mirrorSingle();
+      setStatus(state.tables.length > 1 ? `Added ${tableLabel(table)}. Its keys were matched by name.` : "", "ok");
       syncMode();
       return;
     }
@@ -1368,6 +1270,7 @@ export function createCombinedSourceFeature(deps = {}) {
       });
     }
     closeDetail();
+    mirrorSingle();
     syncMode();
   }
 
@@ -1378,6 +1281,7 @@ export function createCombinedSourceFeature(deps = {}) {
     if (!combineEl) return;
     combineEl.hidden = !combineVisible;
     closePop();
+    stopDrag();
     if (!combineVisible) {
       clearTimeout(previewTimer);
       return;
@@ -1458,7 +1362,8 @@ export function createCombinedSourceFeature(deps = {}) {
   function mapHtml() {
     const tables = state.tables;
     const keyCount = state.keys.length;
-    const lastRow = 5 + keyCount;
+    const firstKeyRow = 3;
+    const lastRow = firstKeyRow + keyCount + 1;
     const cells = [];
     const at = (column, row, html, cls, attrs = "") => cells.push(
       `<div class="${cls}" style="grid-column:${column};grid-row:${row}"${attrs}>${html}</div>`,
@@ -1466,15 +1371,17 @@ export function createCombinedSourceFeature(deps = {}) {
     const card = (row, extra = "") => `cs-cc${row === 1 ? " cs-top" : ""}${row === lastRow ? " cs-bot" : ""}${extra ? ` ${extra}` : ""}`;
     const warned = openMismatches(state, preview?.data?.warnings);
     const plan = planOf();
+    // A key a table fills or matches on any value is linked by dashed lines.
+    const soft = (table, key) => !!table && key.map[table.id]?.column === undefined;
+    const rail = (dashed, gutterIndex, keyIndex) => `<span class="cs-rail${dashed ? " cs-soft" : ""}" style="--cs-i:${gutterIndex};--cs-k:${keyIndex}"></span>`;
 
     at(1, 1, '<span class="sd-field-label">Tables</span>', "cs-lc");
-    at(1, 2, '<span class="sd-field-label">Rows To Keep</span>', "cs-lc");
-    at(1, 3, '<span class="sd-field-label">Match Rows On</span>', "cs-lc cs-sec");
-    state.keys.forEach((key, index) => at(1, 4 + index,
-      `<span class="cs-kname" title="${esc(key.name)}">${esc(key.name)}</span>`
+    at(1, 2, '<span class="sd-field-label">Match Rows On</span>', "cs-lc cs-sec cs-keys-top");
+    state.keys.forEach((key, index) => at(1, firstKeyRow + index,
+      `<span class="cs-kname" data-drag="key" data-k="${index}" title="${esc(key.name)} · drag to reorder">${esc(key.name)}</span>`
       + `<button class="cs-icon-btn" type="button" data-act="remove-key" data-k="${index}" aria-label="Stop matching on ${esc(key.name)}">${ICONS.x}</button>`,
       "cs-lc", ` data-key="${index}"`));
-    at(1, 4 + keyCount, `<button class="cs-add-key" type="button" data-act="add-key">${ICONS.plus}Add Key</button>`, "cs-lc");
+    at(1, firstKeyRow + keyCount, `<button class="cs-add-key" type="button" data-act="add-key">${ICONS.plus}Add Key</button>`, "cs-lc cs-keys-end");
     at(1, lastRow, '<span class="sd-field-label">Other Columns</span>', "cs-lc cs-lc-top");
 
     tables.forEach((table, ti) => {
@@ -1487,27 +1394,22 @@ export function createCombinedSourceFeature(deps = {}) {
         + `<button class="cs-icon-btn" type="button" data-act="card-menu" data-id="${esc(table.id)}" aria-label="${esc(label)} options">${ICONS.more}</button></div>`
         + `<span class="cs-card-sub cs-num">${table.source_type === SOURCE_TYPE_MSSQL ? ICONS.db : ICONS.csv}${tableKindText(table)} · ${rows}</span></div>`,
       card(1, "cs-open"), ` data-act="details" data-id="${esc(table.id)}" tabindex="0" role="button" title="${esc(tableSourceName(table))} · click for source details"`);
-      const rule = rowRule(state, table.id);
-      at(column, 2, ti === 0
-        ? '<span class="cs-base-label">Base table</span>'
-        : `<button class="cs-pill" type="button" data-act="join" data-id="${esc(table.id)}">${vennIcon(rule)}${ROW_RULES[rule].label}<span class="cs-caret"></span></button>`,
-      card(2));
-      at(column, 3, "", card(3, "cs-sec"));
+      at(column, 2, "", card(2, "cs-sec"));
       state.keys.forEach((key, ki) => {
-        const entry = key.map[table.id] || {};
         const warning = warned.find((item) => item.table_id === table.id && item.key === key.name);
-        at(column, 4 + ki, keyCellHtml(table, key, ki, warning), card(4 + ki), ` data-key="${ki}"`);
-        at(gutter, 4 + ki, `<span class="cs-rail${entry.column === undefined ? " cs-soft" : ""}"></span>`, "cs-gut", ` data-key="${ki}"`);
+        const dashed = soft(table, key);
+        at(column, firstKeyRow + ki, keyCellHtml(table, key, ki, warning), card(firstKeyRow + ki, `cs-key${dashed ? " cs-soft" : ""}`), ` data-key="${ki}"`);
+        at(gutter, firstKeyRow + ki, rail(dashed || soft(tables[ti - 1], key), ti, ki), "cs-gut", ` data-key="${ki}"`);
       });
-      at(column, 4 + keyCount, "", card(4 + keyCount, "cs-sec"));
+      at(column, firstKeyRow + keyCount, "", card(firstKeyRow + keyCount, "cs-sec"));
       const values = valueColumns(state, table.id, plan).map((item) => {
         let to = "";
         if (item.off) to = '<span class="cs-to">left out</span>';
         else if (item.master !== item.column) to = `<span class="cs-to">→ ${esc(item.master)}</span>`;
-        let title = "Click to leave out or rename";
+        let title = "Click to leave out or rename. Drag to the keys to match rows on it.";
         if (item.off) title = "Left out. Click to include.";
         else if (item.master !== item.column) title = `${item.column} becomes ${item.master}`;
-        return `<button class="cs-crow${item.off ? " cs-off" : ""}${item.conflict ? " cs-conflict" : ""}" type="button" data-act="column" `
+        return `<button class="cs-crow${item.off ? " cs-off" : ""}${item.conflict ? " cs-conflict" : ""}" type="button" data-act="column" data-drag="column" `
           + `data-id="${esc(table.id)}" data-col="${esc(item.column)}" title="${esc(title)}"><span class="cs-cn">${esc(item.column)}</span>${to}</button>`;
       }).join("");
       at(column, lastRow, `<div class="cs-clist">${values || '<span class="cs-quiet">None</span>'}</div>`, card(lastRow));
@@ -1515,24 +1417,36 @@ export function createCombinedSourceFeature(deps = {}) {
 
     const gutter = 2 + tables.length * 2;
     const column = 3 + tables.length * 2;
+    const last = tables[tables.length - 1];
     const data = preview?.data;
     const sub = data ? `${formatCount(data.row_count)} rows · ${formatCount(data.column_count)} cols` : "Not previewed yet";
     at(column, 1, '<div class="cs-card-head"><div class="cs-card-title"><span class="cs-dot cs-dot-master"></span><b>Combined Table</b></div>'
       + `<span class="cs-card-sub cs-num">${sub}</span></div>`, card(1, "cs-master"));
-    at(column, 2, '<span class="cs-base-label">Becomes the project source</span>', card(2, "cs-master"));
-    at(column, 3, "", card(3, "cs-master cs-sec"));
+    at(column, 2, "", card(2, "cs-master cs-sec"));
     state.keys.forEach((key, ki) => {
-      at(column, 4 + ki, `<span class="cs-master-key">${esc(key.name)}</span>`, card(4 + ki, "cs-master"), ` data-key="${ki}"`);
-      at(gutter, 4 + ki, '<span class="cs-rail"></span>', "cs-gut", ` data-key="${ki}"`);
+      at(column, firstKeyRow + ki, `<span class="cs-master-key" data-drag="key" data-k="${ki}" title="${esc(key.name)} · drag to reorder">${esc(key.name)}</span>`, card(firstKeyRow + ki, "cs-master cs-key cs-key-end"), ` data-key="${ki}"`);
+      at(gutter, firstKeyRow + ki, rail(soft(last, key), tables.length, ki), "cs-gut", ` data-key="${ki}"`);
     });
-    at(column, 4 + keyCount, "", card(4 + keyCount, "cs-master cs-sec"));
-    const masters = tables.flatMap((table) => valueColumns(state, table.id, plan)
-      .filter((item) => !item.off)
-      .map((item) => `<span class="cs-mcol"><span class="cs-dot cs-dot-small ${colorClass(table)}"></span><span>${esc(item.master)}</span></span>`));
+    at(column, firstKeyRow + keyCount, "", card(firstKeyRow + keyCount, "cs-master cs-sec"));
+    // The card previews the first names from each table, sized to the tallest
+    // table card: a .cs-crow line is 25px and a .cs-mcol line 17px.
+    const lists = tables.map((table) => valueColumns(state, table.id, plan));
+    const kept = lists.map((list) => list.filter((item) => !item.off).map((item) => item.master));
+    const budget = Math.max(1, Math.floor((Math.max(1, ...lists.map((list) => list.length)) * 25) / 17));
+    const shown = masterPreviewCounts(kept.map((names) => names.length), budget);
+    const masters = tables.flatMap((table, ti) => {
+      const names = kept[ti];
+      const lines = names.slice(0, shown[ti])
+        .map((name) => `<span class="cs-mcol"><span class="cs-dot cs-dot-small ${colorClass(table)}"></span><span>${esc(name)}</span></span>`);
+      if (names.length > shown[ti]) {
+        lines.push(`<span class="cs-mcol cs-mmore" title="${esc(names.slice(shown[ti]).join(", "))}">+${formatCount(names.length - shown[ti])} more</span>`);
+      }
+      return lines;
+    });
     at(column, lastRow, `<div class="cs-mcols">${masters.join("")}</div>`, card(lastRow, "cs-master"));
 
     const template = ["150px"];
-    for (let i = 0; i <= tables.length; i += 1) template.push("24px", "184px");
+    for (let i = 0; i <= tables.length; i += 1) template.push("28px", "184px");
     return `<div class="cs-map-wrap"><div class="cs-map" style="grid-template-columns:${template.join(" ")}">${cells.join("")}</div></div>`;
   }
 
@@ -1554,26 +1468,14 @@ export function createCombinedSourceFeature(deps = {}) {
       const who = `<span class="cs-who"><span class="cs-dot ${colorClass(table)}"></span><span>${esc(tableLabel(table))}</span></span>`;
       if (index === 0) {
         return `${who}<div class="cs-mbar"><i class="${colorClass(table)}" style="width:100%"></i></div>`
-          + `<span class="cs-match-text cs-num">${formatCount(stats.read || 0)} rows · base</span>`;
+          + `<span class="cs-match-text cs-num">${formatCount(stats.read || 0)} rows</span>`;
       }
       const pct = stats.read ? (stats.matched / stats.read) * 100 : 0;
       return `${who}<div class="cs-mbar" title="${formatCount(stats.matched || 0)} matched"><i class="${colorClass(table)}" style="width:${pct}%"></i>`
         + `<i class="cs-rest" style="width:${100 - pct}%"></i></div>`
-        + `<span class="cs-match-text cs-num">${esc(matchText(stats, rowRule(state, table.id)))}</span>`;
+        + `<span class="cs-match-text cs-num">${esc(matchText(stats))}</span>`;
     }).join("");
-    const total = state.tables.length;
-    const segments = coverageSegments(data.coverage);
-    const shade = (n) => `color-mix(in srgb, var(--ar-color-accent, #2b6df6) ${Math.round(25 + 75 * (n / total))}%, var(--ar-color-text-subtle, #94a3b8))`;
-    const name = (n) => (n === total ? `All ${total} tables` : plural(n, "table", "tables"));
-    const cover = segments.length
-      ? '<div class="cs-cover"><span class="sd-field-label">Combined Rows By Number Of Tables With Data</span><div class="cs-cover-bar">'
-        + segments.map((seg) => `<div style="flex-grow:${seg.rows};background:${shade(seg.tables)}" title="${formatCount(seg.rows)} rows with data from ${name(seg.tables).toLowerCase()}">`
-          + `${seg.rows / Math.max(1, data.row_count) > 0.07 ? formatCount(seg.rows) : ""}</div>`).join("")
-        + '</div><div class="cs-cover-legend">'
-        + segments.map((seg) => `<span><i style="background:${shade(seg.tables)}"></i>${name(seg.tables)} · ${formatCount(seg.rows)}</span>`).join("")
-        + "</div></div>"
-      : "";
-    return (alerts ? `<div class="cs-alerts">${alerts}</div>` : "") + `<div class="cs-match-grid">${bars}</div>${cover}`;
+    return (alerts ? `<div class="cs-alerts">${alerts}</div>` : "") + `<div class="cs-match-grid">${bars}</div>`;
   }
 
   function previewPaneHtml(data) {
@@ -1594,7 +1496,8 @@ export function createCombinedSourceFeature(deps = {}) {
     const body = rows.map((row) => `<tr>${columns.map((name) => {
       const value = row[name];
       const cls = [keyNames.has(name) ? "cs-k" : "", numeric.has(name) ? "cs-n" : "", value ? "" : "cs-empty"].filter(Boolean).join(" ");
-      return `<td class="${cls}">${value ? esc(value) : "·"}</td>`;
+      const shown = numeric.has(name) ? previewNumber(value) : value;
+      return `<td class="${cls}"${shown !== value ? ` title="${esc(value)}"` : ""}>${value ? esc(shown) : "·"}</td>`;
     }).join("")}</tr>`).join("");
     const legend = '<div class="cs-prev-legend"><span><span class="cs-dot cs-dot-key"></span>Key</span>'
       + state.tables.map((table) => `<span><span class="cs-dot ${colorClass(table)}"></span>${esc(tableLabel(table))}</span>`).join("")
@@ -1685,17 +1588,6 @@ export function createCombinedSourceFeature(deps = {}) {
     });
   }
 
-  function openJoinMenu(anchor, id) {
-    const current = rowRule(state, id);
-    const html = `<div class="cs-pop-head">Rows to keep when joining ${esc(tableLabel(tableById(id)))}</div>`
-      + Object.entries(ROW_RULES).map(([rule, info]) => menuItem(rule, info.label, { selected: current === rule, note: info.note, lead: vennIcon(rule) })).join("");
-    openMenu(anchor, html, (value) => {
-      setRowRule(state, id, value);
-      closePop();
-      combineChanged();
-    });
-  }
-
   function openColumnMenu(anchor, id, column) {
     const item = valueColumns(state, id, planOf()).find((entry) => entry.column === column);
     if (!item) return;
@@ -1711,23 +1603,18 @@ export function createCombinedSourceFeature(deps = {}) {
   }
 
   function openCardMenu(anchor, id) {
-    const isBase = state.tables[0]?.id === id;
     const html = menuItem("details", "Source details", { note: "File or connection, nickname, columns" })
-      + (isBase ? "" : menuItem("base", "Make base table", { note: "Move it to the front; keys are proposed again" }))
       + menuItem("remove", "Remove table");
     openMenu(anchor, html, (value) => {
       closePop();
       if (value === "details") openDetail("view", id);
-      else if (value === "base") {
-        moveTable(state, id, state.tables[0].id, false);
-        combineChanged();
-      } else if (value === "remove") removeTableAndSync(id);
+      else if (value === "remove") removeTableAndSync(id);
     });
   }
 
   function openAddKeyMenu(anchor) {
     const columns = keyCandidates(state);
-    const html = '<div class="cs-pop-head">Columns in the base table</div>'
+    const html = `<div class="cs-pop-head">Columns in ${esc(tableLabel(state.tables[0]))}</div>`
       + (columns.length
         ? columns.map((column) => menuItem(column, `<span class="cs-mono">${esc(column)}</span>`)).join("")
         : '<div class="cs-pop-head cs-pop-quiet">Every column is already a key</div>');
@@ -1739,6 +1626,7 @@ export function createCombinedSourceFeature(deps = {}) {
   }
 
   function onCombineClick(event) {
+    if (dragJustEnded) return;
     const el = event.target.closest("[data-act]");
     if (!el || busy || !combineEl.contains(el)) return;
     const { act, id } = el.dataset;
@@ -1751,8 +1639,7 @@ export function createCombinedSourceFeature(deps = {}) {
     else if (act === "card-menu") {
       event.stopPropagation();
       openCardMenu(el, id);
-    } else if (act === "join") openJoinMenu(el, id);
-    else if (act === "key") openKeyMenu(el, id, index);
+    } else if (act === "key") openKeyMenu(el, id, index);
     else if (act === "column") openColumnMenu(el, id, el.dataset.col);
     else if (act === "add-key") openAddKeyMenu(el);
     else if (act === "remove-key") {
@@ -1791,6 +1678,116 @@ export function createCombinedSourceFeature(deps = {}) {
     if (key) map.querySelectorAll(`[data-key="${key}"]`).forEach((node) => node.classList.add("cs-hl"));
   }
 
+  /* ---------------- Join Map drag ---------------- */
+
+  // Drag a value column onto the keys to match rows on it, or a key name to
+  // reorder the keys. Pointer capture on the handle keeps a fast drag tracked;
+  // a press that moves less than 4px stays a click.
+  function onMapPointerDown(event) {
+    const handle = event.target.closest?.("[data-drag]");
+    if (!handle || drag || busy || event.button !== 0 || !mapHost?.contains(handle)) return;
+    if (event.target.closest(".cs-icon-btn")) return;
+    const kind = handle.dataset.drag;
+    drag = {
+      kind,
+      handle,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      moving: false,
+      from: kind === "key" ? Number(handle.dataset.k) : -1,
+      id: handle.dataset.id,
+      column: handle.dataset.col,
+      index: -1,
+      ghost: null,
+      line: null,
+    };
+    handle.setPointerCapture?.(event.pointerId);
+    handle.addEventListener("pointermove", onDragMove);
+    handle.addEventListener("pointerup", onDragUp);
+    handle.addEventListener("pointercancel", stopDrag);
+    handle.addEventListener("lostpointercapture", stopDrag);
+  }
+
+  function onDragMove(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    if (!drag.moving) {
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < 4) return;
+      drag.moving = true;
+      closePop();
+      drag.handle.classList.add("cs-drag-src");
+      drag.ghost = doc.createElement("div");
+      drag.ghost.className = "cs-drag-ghost";
+      drag.line = doc.createElement("div");
+      drag.line.className = "cs-drop-line";
+      drag.line.hidden = true;
+      doc.body.append(drag.ghost);
+      mapHost.querySelector(".cs-map")?.append(drag.line);
+    }
+    drag.index = dropIndex(event.clientX, event.clientY);
+    const name = drag.kind === "key" ? state.keys[drag.from]?.name : drag.column;
+    const taken = drag.kind === "column" && state.keys.some((key) => nameToken(key.name) === nameToken(name));
+    let text = drag.kind === "key" ? `Move ${name}` : `Match rows on ${name}`;
+    if (drag.index >= 0 && taken) {
+      text = `${name} is already a key`;
+      drag.index = -1;
+    } else if (drag.kind === "key" && (drag.index === drag.from || drag.index === drag.from + 1)) drag.index = -1;
+    drag.ghost.textContent = text;
+    drag.ghost.style.left = `${event.clientX + 12}px`;
+    drag.ghost.style.top = `${event.clientY + 12}px`;
+    showDropLine(drag.index);
+  }
+
+  /** The key slot under the pointer (0 = before the first key), or -1 outside the keys. */
+  function dropIndex(x, y) {
+    const map = mapHost?.querySelector(".cs-map");
+    const top = map?.querySelector(".cs-keys-top")?.getBoundingClientRect();
+    const end = map?.querySelector(".cs-keys-end")?.getBoundingClientRect();
+    const box = mapHost?.querySelector(".cs-map-wrap")?.getBoundingClientRect();
+    if (!top || !end || !box || x < box.left || x > box.right || y < top.top || y > end.bottom) return -1;
+    const rows = [...map.querySelectorAll(".cs-lc[data-key]")].map((cell) => cell.getBoundingClientRect());
+    return rows.filter((rect) => rect.top + rect.height / 2 < y).length;
+  }
+
+  function showDropLine(index) {
+    const map = mapHost?.querySelector(".cs-map");
+    if (!drag?.line || !map) return;
+    drag.line.hidden = index < 0;
+    if (index < 0) return;
+    const rows = [...map.querySelectorAll(".cs-lc[data-key]")].map((cell) => cell.getBoundingClientRect());
+    const origin = map.getBoundingClientRect();
+    let y = map.querySelector(".cs-keys-end").getBoundingClientRect().top;
+    if (rows.length) y = index < rows.length ? rows[index].top : rows[rows.length - 1].bottom;
+    drag.line.style.top = `${y - origin.top - 1}px`;
+  }
+
+  function onDragUp(event) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const { kind, moving, index, from, id, column } = drag;
+    stopDrag();
+    if (!moving) return;
+    // The click that follows this release must not open the column or key menu.
+    dragJustEnded = true;
+    setTimeout(() => { dragJustEnded = false; }, 0);
+    if (index < 0) return;
+    const changed = kind === "key" ? moveKey(state, from, index) : !!insertKey(state, id, column, index);
+    if (changed) combineChanged();
+  }
+
+  function stopDrag() {
+    if (!drag) return;
+    const { handle, pointerId, ghost, line } = drag;
+    drag = null;
+    handle.removeEventListener("pointermove", onDragMove);
+    handle.removeEventListener("pointerup", onDragUp);
+    handle.removeEventListener("pointercancel", stopDrag);
+    handle.removeEventListener("lostpointercapture", stopDrag);
+    if (handle.hasPointerCapture?.(pointerId)) handle.releasePointerCapture(pointerId);
+    handle.classList.remove("cs-drag-src");
+    ghost?.remove();
+    line?.remove();
+  }
+
   /* ---------------- keyboard and outside clicks ---------------- */
 
   function onKeydownCapture(event) {
@@ -1827,11 +1824,10 @@ export function createCombinedSourceFeature(deps = {}) {
   return {
     /** True once the window lists two or more tables. */
     isActive,
-    /** Back to the single-table form with an empty combined state. */
+    /** Back to an empty table list. */
     reset() {
       closeDetail();
       closePop();
-      if (drag) endDrag(false);
       showCombine(false);
       state = createCombinedState();
       preview = null;
@@ -1842,7 +1838,7 @@ export function createCombinedSourceFeature(deps = {}) {
       syncMode();
     },
     /**
-     * Reopen on a saved combined source: its tables, nicknames, keys and rules.
+     * Reopen on a saved combined source: its tables, nicknames and keys.
      * The tables are read for their columns unless `read` is false (Import
      * Again goes straight to the scope and never shows them).
      */
@@ -1858,6 +1854,22 @@ export function createCombinedSourceFeature(deps = {}) {
       syncMode();
       if (read) state.tables.forEach((table) => describeInto(table.id));
     },
+    /**
+     * List the single-table form's table, when the form holds a complete one.
+     * It is read for its size unless `read` is false.
+     */
+    loadSingle({ read = true } = {}) {
+      this.reset();
+      const single = tableFromSingleSettings(readSingleSettings());
+      if (single.error) return;
+      addTable(state, single.spec);
+      syncMode();
+      if (read) describeInto(state.tables[0].id);
+    },
+    /** How many tables the list holds. */
+    tableCount() {
+      return state.tables.length;
+    },
     /** Save the combined settings as the project's source; answers the source settings. */
     async save() {
       const block = toCombinedBlock(state);
@@ -1869,7 +1881,6 @@ export function createCombinedSourceFeature(deps = {}) {
     close() {
       closeDetail();
       closePop();
-      if (drag) endDrag(false);
     },
     setBusy(value) {
       busy = !!value;

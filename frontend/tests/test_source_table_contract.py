@@ -267,7 +267,6 @@ class CombinedSourceContractTests(unittest.TestCase):
             {"name": "acc_yrmo", "map": {"t1": {"column": "acc_yrmo"},
                                           "t4": {"column": "acc_yrmo", "convert": "yyyymm"}}},
         ],
-        "rows": {"t2": "base", "t4": "match"},
         "exclude": {"t4": ["FACID"]},
         "rename": {"t2": {"Earned Premium": "Budget Premium"}},
     }
@@ -291,7 +290,7 @@ class CombinedSourceContractTests(unittest.TestCase):
         payload = source_table_contract.normalize_source_import({"source_type": "combined"})
         self.assertEqual(
             payload["combined"],
-            {"tables": [], "keys": [], "rows": {}, "exclude": {}, "rename": {}},
+            {"tables": [], "keys": [], "exclude": {}, "rename": {}},
         )
 
     def test_normalization_drops_bad_entries_and_keeps_order(self) -> None:
@@ -331,7 +330,6 @@ class CombinedSourceContractTests(unittest.TestCase):
                     {"name": "K", "map": {"t1": {"column": "K"}, "t3": {"column": "k"}}},
                     {"name": "F", "map": {"t3": {"fill": ""}}},
                 ],
-                "rows": {"t3": "all"},
                 "exclude": {"t3": ["A", "B"]},
                 "rename": {"t3": {"A": "B"}},
             },

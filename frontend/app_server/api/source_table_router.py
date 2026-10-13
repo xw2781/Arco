@@ -33,6 +33,7 @@ from app_server.schemas.source_table import (
     MssqlTableListRequest,
     SourceProfileSaveRequest,
     SourceRefreshJobSubmitRequest,
+    SourceScopeSaveRequest,
     SourceTableImportRequest,
     SourceTableRefreshRequest,
 )
@@ -111,6 +112,32 @@ def save_source_table_profile(req: SourceProfileSaveRequest) -> Dict[str, Any]:
         raise
     except Exception as error:
         raise HTTPException(500, f"Failed to save source table settings: {str(error)}")
+
+
+@router.post("/source_table/scope")
+def save_source_table_scope(req: SourceScopeSaveRequest) -> Dict[str, Any]:
+    """Remember the Import Scope choice without running an import."""
+    # An empty list is a malformed mutation argument, so "everything" sends none.
+    kwargs: Dict[str, Any] = {"project_name": req.project_name}
+    if req.dataset_types:
+        kwargs["dataset_types"] = [str(name) for name in req.dataset_types]
+    if req.reserving_class_types:
+        kwargs["reserving_class_types"] = [
+            {"Name": entry.Name, "Level": int(entry.Level)}
+            for entry in req.reserving_class_types
+        ]
+    try:
+        _mutate(
+            "source_scope_save",
+            kwargs,
+            lambda: source_table_service.record_refresh_scope(**kwargs),
+        )
+        settings = _source_table_settings(req.project_name)
+        return {"ok": True, **source_table_service.get_source_table_state(req.project_name, settings)}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(500, f"Failed to save the import scope: {str(error)}")
 
 
 @router.post("/source_table/test_connection")

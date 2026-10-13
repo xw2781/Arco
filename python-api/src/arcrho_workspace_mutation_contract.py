@@ -464,6 +464,16 @@ WORKSPACE_MUTATION_KINDS: dict[str, WorkspaceMutationKind] = {
         receipt=True,
         locked_project_arg="project_name",
     ),
+    # The Import Scope choice saved without an import. Setting the same scope
+    # again records the same lists, so it needs no receipt; an empty scope is
+    # sent as absent arguments and records "everything".
+    "source_scope_save": WorkspaceMutationKind(
+        "source_table_service",
+        "record_refresh_scope",
+        ("project_name",),
+        ("dataset_types", "reserving_class_types"),
+        locked_project_arg="project_name",
+    ),
     "source_csv_path_rewrite": WorkspaceMutationKind(
         "source_table_service",
         "rewrite_source_csv_path",

@@ -297,6 +297,7 @@ export function createSourceDataFeature(deps = {}) {
     getConfiguredColumnWidths = () => null,
     // Injected by the coordinator; the tab never calls the app server itself.
     onProfileSave = async () => false,
+    onScopeSave = async () => false,
     onListTables = async () => ({ ok: false, error: "Not available.", tables: [] }),
     onListConnections = async () => ({ connections: [] }),
     onForgetConnection = async () => ({ connections: [] }),
@@ -356,10 +357,13 @@ export function createSourceDataFeature(deps = {}) {
     mssqlAuthGroup: el("sdMssqlAuthGroup"),
     importDataBtn: el("sdImportDataBtn"),
     importNextBtn: el("sdImportNextBtn"),
+    importSaveBtn: el("sdImportSaveBtn"),
     importBackBtn: el("sdImportBackBtn"),
     sourcePanelTitle: el("summaryImportWindowTitle"),
     settingsStep: el("summaryImportWindow")?.querySelector(".sd-import-body:not(.sd-import-scope)"),
     scopeStep: el("sdImportScope"),
+    confirmStep: el("sdImportConfirm"),
+    confirmList: el("sdConfirmList"),
     scopeDatasetsList: el("sdScopeDatasetsList"),
     scopeDatasetsFilter: el("sdScopeDatasetsFilter"),
     scopeDatasetsCount: el("sdScopeDatasetsCount"),
@@ -1651,6 +1655,7 @@ export function createSourceDataFeature(deps = {}) {
     sourceBusy = !!busy;
     [
       dom.importNextBtn,
+      dom.importSaveBtn,
       dom.importBackBtn,
       dom.mssqlLoadTablesBtn,
       dom.csvBrowseBtn,
@@ -1714,10 +1719,12 @@ export function createSourceDataFeature(deps = {}) {
     tableSelect.setOptions([], { keepSelection: false });
     syncSourcePanelFields();
     syncPanelMethod();
-    combinedSource.reset();
-    // A saved combined source reopens on its tables, nicknames, keys and rules.
+    // A saved combined source reopens on its tables, nicknames and keys; a
+    // single-table source on the one table the form holds.
     if (!method && sourceState.sourceType === SOURCE_TYPE_COMBINED) {
       combinedSource.load(sourceState.combined, { read: readTables });
+    } else {
+      combinedSource.loadSingle({ read: readTables });
     }
     // The scope is re-read from the project on each visit to the step, so a
     // dataset type added since the last import is offered.
@@ -1730,8 +1737,6 @@ export function createSourceDataFeature(deps = {}) {
     dom.sourcePanel.style.transform = "translateX(-50%)";
     dom.sourcePanel.classList.add("show");
     dom.importSettingsBtn?.setAttribute("aria-expanded", "true");
-    const firstField = selectedMethod() === SOURCE_TYPE_MSSQL ? dom.mssqlServer : dom.csvPath;
-    setTimeout(() => firstField?.focus({ preventScroll: true }), 0);
     // Saved server/database pairs are shared by everyone on this ArcRho Server,
     // so they are re-read each time the window opens.
     loadConnectionHistory();
@@ -1794,6 +1799,7 @@ export function createSourceDataFeature(deps = {}) {
     combine: "Combine Tables",
     datasets: "Import Scope: Datasets",
     classes: "Import Scope: Reserving Class Types",
+    confirm: "Confirm Import",
   };
 
   /** Show one page of the window; the title and footer follow the page. */
@@ -1812,9 +1818,12 @@ export function createSourceDataFeature(deps = {}) {
     dom.scopeStep?.querySelectorAll(".sd-scope-intro[data-page]").forEach((note) => {
       note.hidden = note.dataset.page !== panelStep;
     });
-    if (dom.importNextBtn) dom.importNextBtn.hidden = panelStep === "classes";
+    if (dom.confirmStep) dom.confirmStep.hidden = panelStep !== "confirm";
+    if (panelStep === "confirm") renderConfirmStep();
+    if (dom.importNextBtn) dom.importNextBtn.hidden = panelStep === "confirm";
     if (dom.importBackBtn) dom.importBackBtn.hidden = panelStep === "settings";
-    if (dom.importDataBtn) dom.importDataBtn.hidden = panelStep !== "classes";
+    if (dom.importDataBtn) dom.importDataBtn.hidden = panelStep !== "confirm";
+    if (dom.importSaveBtn) dom.importSaveBtn.hidden = panelStep !== "confirm";
     if (dom.sourcePanelTitle) dom.sourcePanelTitle.textContent = PANEL_STEP_TITLES[panelStep];
     syncScopeControls();
   }
@@ -1834,7 +1843,9 @@ export function createSourceDataFeature(deps = {}) {
     if (panelStep === "datasets" && !datasetScopeProblem()) {
       showPanelStep("classes");
       setTimeout(() => dom.scopeClassTypesFilter?.focus({ preventScroll: true }), 0);
+      return;
     }
+    if (panelStep === "classes" && !classTypeScopeProblem()) showPanelStep("confirm");
   }
 
   function goToPreviousPanelStep() {
@@ -1843,6 +1854,67 @@ export function createSourceDataFeature(deps = {}) {
     if (panelStep === "datasets") {
       setTimeout(() => dom.scopeDatasetsFilter?.focus({ preventScroll: true }), 0);
     }
+  }
+
+  /** One label / value row of the confirmation page; `detail` is a quiet second line. */
+  function confirmRow(label, value, detail = "") {
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const desc = document.createElement("dd");
+    desc.textContent = value;
+    if (detail) {
+      const note = document.createElement("span");
+      note.className = "sd-confirm-detail";
+      note.textContent = detail;
+      desc.appendChild(note);
+    }
+    dom.confirmList.append(term, desc);
+  }
+
+  /** A ticked list in words: everything, or the count and the names left in. */
+  function describeChoice(total, names) {
+    return names.length === total
+      ? { value: `All ${total}`, detail: "" }
+      : { value: `${names.length} of ${total}`, detail: names.join(", ") };
+  }
+
+  /** Summarise the source and the scope Import Data is about to use. */
+  function renderConfirmStep() {
+    if (!dom.confirmList || !scopeState) return;
+    dom.confirmList.innerHTML = "";
+    const settings = validateImportSettings();
+    if (settings.method === SOURCE_TYPE_COMBINED) {
+      const tables = combinedSource.getState().tables;
+      confirmRow(
+        "Import Method",
+        "Combined tables",
+        tables.map((table, index) => table.nickname || `Table ${index + 1}`).join(", "),
+      );
+    } else if (settings.method === SOURCE_TYPE_MSSQL) {
+      confirmRow("Import Method", "SQL Server");
+      confirmRow("Server", settings.profile.server);
+      confirmRow("Database", settings.profile.database);
+      confirmRow("Table Or View", settings.profile.table);
+    } else {
+      confirmRow("Import Method", "CSV File");
+      confirmRow("Source File", settings.csvPath);
+    }
+    const datasets = describeChoice(
+      scopeState.datasetTypes.length,
+      scopeState.datasetTypes
+        .filter((item) => scopeState.selectedDatasets.has(scopeKeyOf(item.name)))
+        .map((item) => item.name),
+    );
+    confirmRow("Datasets", datasets.value, datasets.detail);
+    const levels = [...new Set(scopeState.classTypes.map((item) => item.level))].sort((a, b) => a - b);
+    levels.forEach((level) => {
+      const atLevel = scopeState.classTypes.filter((item) => item.level === level);
+      const choice = describeChoice(
+        atLevel.length,
+        atLevel.filter((item) => scopeState.selectedClassTypes.has(classTypeKeyOf(item))).map((item) => item.name),
+      );
+      confirmRow(`Level ${level} Class Types`, choice.value, choice.detail);
+    });
   }
 
   /** The settings the import needs, or the first thing missing from them. */
@@ -1854,7 +1926,8 @@ export function createSourceDataFeature(deps = {}) {
     const profile = readProfileFromPanel();
     const csvPath = readCsvPathFromPanel();
     let error = "";
-    if (method === SOURCE_TYPE_MSSQL) {
+    if (!combinedSource.tableCount()) error = "Add a table to import.";
+    else if (method === SOURCE_TYPE_MSSQL) {
       if (!profile.server || !profile.database) error = "Enter the server and database name first.";
       else if (!profile.table) error = "Select a table or view to import.";
     } else if (!csvPath) {
@@ -2125,7 +2198,8 @@ export function createSourceDataFeature(deps = {}) {
     const problem = scopeProblem();
     const datasetProblem = datasetScopeProblem();
     if (dom.importDataBtn) dom.importDataBtn.disabled = sourceBusy || !!problem;
-    if (dom.importNextBtn) dom.importNextBtn.disabled = sourceBusy || (panelStep === "datasets" && !!datasetProblem);
+    const pageBlocked = (panelStep === "datasets" && !!datasetProblem) || (panelStep === "classes" && !!problem);
+    if (dom.importNextBtn) dom.importNextBtn.disabled = sourceBusy || pageBlocked;
     if (scopeState) {
       if (dom.scopeDatasetsCount) {
         dom.scopeDatasetsCount.textContent = `${scopeState.selectedDatasets.size} of ${scopeState.datasetTypes.length}`;
@@ -2138,7 +2212,7 @@ export function createSourceDataFeature(deps = {}) {
     syncScopeBulkButtons(dom.scopeClassTypesList, dom.scopeClassTypesAllBtn, dom.scopeClassTypesNoneBtn);
     // Each scope page warns only about its own list.
     const pageProblem = panelStep === "datasets" ? datasetProblem : panelStep === "classes" ? problem : "";
-    if (panelStep !== "settings") setScopeStatus(pageProblem, pageProblem ? "error" : "");
+    if (panelStep === "datasets" || panelStep === "classes") setScopeStatus(pageProblem, pageProblem ? "error" : "");
   }
 
   /**
@@ -2413,6 +2487,30 @@ export function createSourceDataFeature(deps = {}) {
     }
   }
 
+  /** Keep the chosen source for the project without importing anything. */
+  async function saveSettingsOnly() {
+    const settings = validateImportSettings();
+    showPanelStep("settings");
+    if (!settings.ok) {
+      setSourceStatus(settings.error, "error");
+      return;
+    }
+    setSourceBusy(true);
+    setSourceStatus("Saving the import settings...");
+    try {
+      const saved = settings.method === SOURCE_TYPE_COMBINED
+        ? await saveCombinedSource()
+        : await onProfileSave(settings.method, settings.profile, settings.csvPath);
+      // The source is saved first; the scope then goes to the same project record.
+      const scopeSaved = saved && await onScopeSave(readScopeSelection());
+      if (scopeSaved) setSourceStatus("Saved the import settings and scope. Nothing was imported.", "ok");
+      else if (!saved) setSourceStatus("Could not save the import settings.", "error");
+      else setSourceStatus("Saved the import settings, but not the scope.", "error");
+    } finally {
+      setSourceBusy(false);
+    }
+  }
+
   /** Apply a `/source_table` payload; owns which import source the tab shows. */
   function applySourceState(state) {
     sourceState = normalizeSourceState(state);
@@ -2534,6 +2632,7 @@ export function createSourceDataFeature(deps = {}) {
     dom.importNextBtn?.addEventListener("click", () => goToNextPanelStep());
     dom.importBackBtn?.addEventListener("click", () => goToPreviousPanelStep());
     dom.importDataBtn?.addEventListener("click", () => importData());
+    dom.importSaveBtn?.addEventListener("click", () => saveSettingsOnly());
     dom.scopeDatasetsList?.addEventListener("change", (event) => {
       onScopeListChange(event, scopeState?.selectedDatasets);
     });

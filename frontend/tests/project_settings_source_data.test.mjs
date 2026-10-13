@@ -1157,12 +1157,24 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
   assert.match(moduleSource, /classes: "Import Scope: Reserving Class Types"/);
   assert.match(moduleSource, /if \(panelStep === "settings" \|\| panelStep === "combine"\) \{\s*goToScopeStep\(\);/);
   assert.match(moduleSource, /if \(panelStep === "datasets" && !datasetScopeProblem\(\)\) \{\s*showPanelStep\("classes"\)/);
-  assert.match(moduleSource, /importDataBtn\.hidden = panelStep !== "classes"/);
+  // A last Confirm page summarises the settings; Import Data runs from it.
+  assert.match(moduleSource, /importDataBtn\.hidden = panelStep !== "confirm"/);
+  assert.match(moduleSource, /importNextBtn\.hidden = panelStep === "confirm"/);
+  assert.match(moduleSource, /panelStep === "classes" && !classTypeScopeProblem\(\)\) showPanelStep\("confirm"\)/);
+  assert.match(moduleSource, /confirm: "Confirm Import"/);
+  assert.ok(projectSettingsHtml.includes('id="sdImportConfirm"'));
+  assert.ok(projectSettingsHtml.includes('id="sdConfirmList"'));
+  // Save Settings keeps the source without importing.
+  assert.ok(projectSettingsHtml.includes('id="sdImportSaveBtn"'));
+  assert.match(moduleSource, /onScopeSave\(readScopeSelection\(\)\)/);
+  assert.match(projectSettingsJs, /onScopeSave: \(\.\.\.args\) => sourceImport\.saveRefreshScope\(\.\.\.args\)/);
+  assert.match(moduleSource, /importSaveBtn\?\.addEventListener\("click", \(\) => saveSettingsOnly\(\)\)/);
   assert.match(projectSettingsHtml, /<section class="sd-scope-pane" data-page="datasets"/);
   assert.match(projectSettingsHtml, /<section class="sd-scope-pane" data-page="classes" [^>]*hidden>/);
   assert.match(summaryCss, /\.sd-scope-pane\[hidden\],\s*\.sd-scope-intro\[hidden\] \{ display: none; \}/);
   // The Datasets page cannot move on with nothing ticked.
-  assert.match(moduleSource, /importNextBtn\.disabled = sourceBusy \|\| \(panelStep === "datasets" && !!datasetProblem\)/);
+  assert.match(moduleSource, /importNextBtn\.disabled = sourceBusy \|\| pageBlocked/);
+  assert.match(moduleSource, /panelStep === "datasets" && !!datasetProblem\) \|\| \(panelStep === "classes" && !!problem\)/);
   // The body class sets display, so the hidden page needs its own rule.
   assert.match(summaryCss, /\.sd-import-body\[hidden\] \{ display: none; \}/);
   assert.match(summaryCss, /\.rct-row-editor-actions \.dialog-btn\[hidden\] \{ display: none; \}/);

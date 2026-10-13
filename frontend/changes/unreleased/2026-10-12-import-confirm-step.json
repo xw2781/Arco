@@ -1,0 +1,6 @@
+{
+  "type": "improvement",
+  "scope": "project settings",
+  "audience": "user",
+  "summary": "The Import Settings window now ends on a Confirm Import page that summarises the source and scope, and Save Settings keeps them without importing."
+}

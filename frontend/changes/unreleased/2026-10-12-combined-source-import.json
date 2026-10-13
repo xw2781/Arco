@@ -4,8 +4,9 @@
   "audience": "user",
   "summary": "Import a project's source from several SQL Server tables and CSV files joined into one table.",
   "details": [
-    "Add Table in the Import Settings window lists the tables, each with a nickname, and a Combine step shows how they join and previews the result.",
+    "The Import Settings window lists the source as tables, with Add Table under the last one; each table has a nickname, and with two or more a Combine step shows how their keys line up and previews the result.",
+    "Every table is joined so that no row of any table is lost; there is no base table or join order to choose.",
     "Import Data reads and joins the tables on this PC, imports the result, and refreshes the project as a single-table import does.",
-    "The Source Data tab names a combined source with its tables and keys, and the window reopens on its saved tables, keys and rules."
+    "The Source Data tab names a combined source with its tables and keys, and the window reopens on its saved tables and keys."
   ]
 }

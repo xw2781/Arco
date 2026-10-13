@@ -28,9 +28,6 @@ from fastapi import HTTPException
 
 from arcrho_api.source_table_contract import (
     COMBINED_KEY_CONVERT_YYYYMM,
-    COMBINED_ROWS_ALL,
-    COMBINED_ROWS_BASE,
-    COMBINED_ROWS_MATCH,
     SOURCE_TYPE_COMBINED,
     SOURCE_TYPE_MSSQL,
     combined_table_name,
@@ -43,7 +40,6 @@ from app_server.services import source_table_service, source_table_upload_servic
 _UNNAMED_COLUMN = re.compile(r"Unnamed: \d+")
 _YYYYMM = re.compile(r"\d{6}")
 _YYYY_MM = re.compile(r"(\d{4})[-/](\d{1,2})")
-_MERGE_HOW = {COMBINED_ROWS_ALL: "outer", COMBINED_ROWS_BASE: "left", COMBINED_ROWS_MATCH: "inner"}
 _LEFT_ROW = "__combined_left_row"
 _RIGHT_ROW = "__combined_right_row"
 # How many tables gave each combined row its data, for the coverage bar.
@@ -170,12 +166,12 @@ def _keyed_frame(
 def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> Dict[str, Any]:
     """Join the tables as the combined spec says.
 
-    The first table is the base; every other table joins onto the running
-    result in list order with its row rule (``all`` outer, ``base`` left,
-    ``match`` inner). Returns ``frame`` (keys first, then value columns in
-    table order, every value text), ``plan`` (see ``column_plan``), ``stats``
-    per table id, ``warnings`` and ``coverage`` (combined row count by the
-    number of tables that gave the row data, keyed by that number as text).
+    Every table is outer-joined onto the running result in list order, so no
+    row of any table is lost; the first table names the keys. Returns
+    ``frame`` (keys first, then value columns in table order, every value
+    text), ``plan`` (see ``column_plan``), ``stats`` per table id,
+    ``warnings`` and ``coverage`` (combined row count by the number of tables
+    that gave the row data, keyed by that number as text).
     """
     spec = normalize_combined_source(combined)
     tables, keys = spec["tables"], spec["keys"]
@@ -192,14 +188,13 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
 
     for table in tables[1:]:
         table_id = table["id"]
-        rule = spec["rows"].get(table_id, COMBINED_ROWS_ALL)
         right, join_keys = _keyed_frame(frames_by_id[table_id], table_id, keys, plan)
         left = result.reset_index(drop=True)
         left[_LEFT_ROW] = range(len(left))
         right = right.reset_index(drop=True)
         right[_RIGHT_ROW] = range(len(right))
         if join_keys:
-            merged = left.merge(right, how=_MERGE_HOW[rule], on=join_keys, sort=False)
+            merged = left.merge(right, how="outer", on=join_keys, sort=False)
         else:
             merged = left.merge(right, how="cross")
         merged = merged.sort_values([_LEFT_ROW, _RIGHT_ROW], na_position="last", kind="stable")
@@ -208,13 +203,10 @@ def combine_tables(frames_by_id: Mapping[str, pd.DataFrame], combined: Any) -> D
         hits = both[_RIGHT_ROW].value_counts()
         matched = int(len(hits))
         added = int((merged[_LEFT_ROW].isna()).sum())
-        dropped_base = len(left) - int(both[_LEFT_ROW].nunique()) if rule == COMBINED_ROWS_MATCH else 0
         stats[table_id] = {
             "read": len(right),
             "matched": matched,
             "added": added,
-            "left_out": len(right) - matched - added,
-            "base_rows_dropped": dropped_base,
             "max_repeat": int(hits.max()) if matched else 0,
         }
         merged[_SOURCES] = merged[_SOURCES].fillna(0) + merged[_RIGHT_ROW].notna().astype(int)
@@ -304,7 +296,7 @@ def preview_rows(frame: pd.DataFrame, key_names: List[str], limit: int = 14) -> 
 
 # --- Client half ------------------------------------------------------------
 
-PREVIEW_ROW_LIMIT = 14
+PREVIEW_ROW_LIMIT = 1000
 
 _CACHE_LOCK = threading.Lock()
 # Table identity -> (CSV identity or None, frame, dropped columns). A CSV entry

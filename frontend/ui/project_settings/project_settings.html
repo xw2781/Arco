@@ -743,8 +743,14 @@
       </div>
       <div class="sd-source-status sd-scope-status" id="sdScopeStatus"></div>
     </div>
+    <!-- Final step: a read-only summary of what Import Data will do. -->
+    <div class="sd-import-body sd-import-confirm" id="sdImportConfirm" data-step="confirm" hidden>
+      <p class="sd-source-note">Check these settings, then choose Import Data. Use Back to change anything.</p>
+      <dl class="sd-confirm-list" id="sdConfirmList"></dl>
+    </div>
     <div class="rct-row-editor-actions">
       <button class="dialog-btn sd-import-back" id="sdImportBackBtn" type="button" hidden>Back</button>
+      <button class="dialog-btn" id="sdImportSaveBtn" type="button" hidden>Save Settings</button>
       <button class="dialog-btn primary" id="sdImportNextBtn" type="button">Next</button>
       <button class="dialog-btn primary" id="sdImportDataBtn" type="button" hidden>Import Data</button>
     </div>

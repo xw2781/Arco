@@ -9,16 +9,18 @@ const {
   columnUses,
   combineProblem,
   combinedSourceSummary,
-  coverageSegments,
   createCombinedSourceFeature,
   createCombinedState,
   describeTableRequest,
   detectKeys,
   fromCombinedBlock,
   importSteps,
+  insertKey,
   keyCandidates,
+  masterPreviewCounts,
+  previewNumber,
   matchText,
-  moveTable,
+  moveKey,
   nameToken,
   openMismatches,
   previewCombinedRequest,
@@ -26,11 +28,9 @@ const {
   removeKey,
   removeTable,
   restoreTableColumns,
-  rowRule,
   saveCombinedRequest,
   setKeyEntry,
   setRename,
-  setRowRule,
   setTableColumns,
   singleSettingsFromTable,
   suggestNickname,
@@ -120,26 +120,10 @@ test("a table read after it was added gets its keys matched then", () => {
   assert.equal(state.tables[2].row_count, 72);
 });
 
-test("reordering moves a table and a new base proposes the keys again", () => {
-  const state = threeTables();
-  assert.equal(moveTable(state, "t3", "t2"), false);
-  assert.deepEqual(state.tables.map((table) => table.id), ["t1", "t3", "t2"]);
-  assert.equal(moveTable(state, "t2", "t3", true), false);
-  assert.deepEqual(state.tables.map((table) => table.id), ["t1", "t3", "t2"]);
-  state.rows.t3 = "match";
-  assert.equal(moveTable(state, "t3", "t1"), true);
-  assert.deepEqual(state.tables.map((table) => table.id), ["t3", "t1", "t2"]);
-  assert.equal(state.rows.t3, undefined, "the base has no row rule");
-  assert.deepEqual(state.keys.map((key) => key.name), ["Co_Cd", "PROD_CD", "acc_yrmo"]);
-  assert.deepEqual(state.keys[0].map.t1, { column: "CO_CD" });
-});
-
 test("removing a table drops its settings and the base proposes keys again", () => {
   const state = threeTables();
-  state.rows.t3 = "base";
   state.exclude.t3 = ["FACID"];
   removeTable(state, "t3");
-  assert.equal(state.rows.t3, undefined);
   assert.equal(state.exclude.t3, undefined);
   assert.ok(state.keys.every((key) => !("t3" in key.map)));
   removeTable(state, "t1");
@@ -227,7 +211,6 @@ test("the details window says what each column is used as", () => {
 
 test("serialization writes the decision-3 block and reads it back", () => {
   const state = threeTables();
-  state.rows.t3 = "match";
   state.exclude.t3 = ["FACID"];
   state.rename.t2 = { Closed_Counts: "Closed" };
   const block = toCombinedBlock(state);
@@ -236,7 +219,7 @@ test("serialization writes the decision-3 block and reads it back", () => {
     { id: "t2", nickname: "Closed", source_type: "mssql", mssql: CLOSED.mssql },
     { id: "t3", nickname: "EP", source_type: "csv", csv_path: EP.csv_path },
   ]);
-  assert.deepEqual(block.rows, { t2: "all", t3: "match" });
+  assert.equal("rows" in block, false, "every table is outer-joined, so no row rule is stored");
   assert.deepEqual(block.exclude, { t3: ["FACID"] });
   assert.deepEqual(block.rename, { t2: { Closed_Counts: "Closed" } });
   assert.deepEqual(block.keys[3], { name: "sys_yrmo", map: { t1: { column: "sys_yrmo" }, t2: { column: "sys_yrmo" }, t3: { fill: "0" } } });
@@ -254,7 +237,8 @@ test("reading a block drops duplicate ids and entries for unknown tables", () =>
   });
   assert.deepEqual(state.tables.map((table) => table.csv_path), ["a.csv", "c.csv"]);
   assert.deepEqual(state.keys[0].map, { t1: { column: "K" } });
-  assert.deepEqual(state.rows, { t2: "base" });
+  assert.equal(state.rows, undefined, "a legacy row rule is dropped");
+  assert.equal("rows" in toCombinedBlock(state), false);
   assert.deepEqual(state.exclude, {});
 });
 
@@ -276,7 +260,7 @@ test("the source data tab only mounts the combined module and keeps the single p
   assert.match(sourceDataJs, /createCombinedSourceFeature,\n\} from "\.\/project_settings_combined_source\.js\?v=20261012combined3";/);
   assert.match(sourceDataJs, /function validateImportSettings\(\) \{\n\s+if \(combinedSource\.isActive\(\)\) \{\n\s+return \{ \.\.\.combinedSource\.validate\(\), method: SOURCE_TYPE_COMBINED/);
   // With one table the single-table checks run exactly as before.
-  assert.match(sourceDataJs, /if \(method === SOURCE_TYPE_MSSQL\) \{\n\s+if \(!profile\.server \|\| !profile\.database\) error = "Enter the server and database name first\.";/);
+  assert.match(sourceDataJs, /else if \(method === SOURCE_TYPE_MSSQL\) \{\n\s+if \(!profile\.server \|\| !profile\.database\) error = "Enter the server and database name first\.";/);
   assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261012combined3/);
   assert.match(coordinatorJs, /createSourceDataFeature\(\{[\s\S]*fetchImpl: fetch\.bind\(window\),/);
   assert.match(html, /project_settings_combined_source\.css\?v=/);
@@ -301,13 +285,13 @@ test("a table is described through the client route with the table spec", async 
 
 test("the Combine step sits between Source and Datasets only with two or more tables", () => {
   const state = createCombinedState();
-  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"]);
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes", "confirm"]);
   addTable(state, LOSS, { columns: LOSS.columns });
-  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"], "one table is today's window");
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes", "confirm"], "one table is today's window");
   addTable(state, EP, EP);
-  assert.deepEqual(importSteps(state), ["settings", "combine", "datasets", "classes"]);
+  assert.deepEqual(importSteps(state), ["settings", "combine", "datasets", "classes", "confirm"]);
   removeTable(state, "t2");
-  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes"]);
+  assert.deepEqual(importSteps(state), ["settings", "datasets", "classes", "confirm"]);
 });
 
 test("a key cell points at a column, a fill or any value; the base column names the key", () => {
@@ -354,15 +338,21 @@ test("keys are added from base columns and the last key stays", () => {
   assert.deepEqual(state.keys.map((item) => item.name), ["acc_yrmo"]);
 });
 
-test("row rules apply to non-base tables only and default to All Rows", () => {
+test("a column dragged onto the keys becomes a key there, and keys reorder", () => {
   const state = threeTables();
-  assert.equal(rowRule(state, "t2"), "all");
-  setRowRule(state, "t2", "match");
-  setRowRule(state, "t3", "base");
-  setRowRule(state, "t1", "match");
-  setRowRule(state, "t2", "outer");
-  assert.deepEqual(state.rows, { t2: "match", t3: "base" });
-  assert.deepEqual(toCombinedBlock(state).rows, { t2: "match", t3: "base" });
+  const before = state.keys.map((key) => key.name);
+  toggleExclude(state, "t3", "FACID");
+  const key = insertKey(state, "t3", "FACID", 1);
+  assert.deepEqual(key, { name: "FACID", map: { t1: { any: true }, t2: { any: true }, t3: { column: "FACID" } } });
+  assert.deepEqual(state.keys.map((item) => item.name), [before[0], "FACID", ...before.slice(1)]);
+  assert.equal(state.exclude.t3, undefined, "a key column is no longer left out");
+  assert.equal(insertKey(state, "t1", "facid", 0), null, "a key is added once");
+  assert.equal(insertKey(state, "t1", "Nope", 0), null);
+  assert.equal(moveKey(state, 1, 0), true);
+  assert.equal(state.keys[0].name, "FACID");
+  assert.equal(moveKey(state, 0, 1), false, "dropping a key where it is changes nothing");
+  assert.equal(moveKey(state, 0, state.keys.length), true);
+  assert.equal(state.keys[state.keys.length - 1].name, "FACID");
 });
 
 test("value columns follow leave-out and rename at once and take the preview's clash names", () => {
@@ -438,14 +428,33 @@ test("Row Match words the warnings, the bars and the coverage", () => {
   ]);
   assert.deepEqual(alerts.map((alert) => alert.tone), ["warn", "warn", "info", "info"]);
   assert.deepEqual(alerts[0].fix, { table_id: "t3", key: "acc_yrmo" });
-  assert.match(alerts[0].html, /<b>EP<\/b> stores acc_yrmo as <span class="cs-mono">2026-04<\/span>; the base uses <span class="cs-mono">202604<\/span>\. 0 of its rows match\./);
+  assert.match(alerts[0].html, /<b>EP<\/b> stores acc_yrmo as <span class="cs-mono">2026-04<\/span>; dbo\.ResQ_Channel_Loss_202609 uses <span class="cs-mono">202604<\/span>\. 0 of its rows match\./);
   assert.match(alerts[1].html, /Each <b>Closed<\/b> row lands on up to 3 combined rows because sys_yrmo matches any value\./);
   assert.match(alerts[2].html, /<b>EP<\/b> has no sys_yrmo, so its rows sit at sys_yrmo = 0 and form 72 rows of their own\./);
   assert.match(alerts[3].html, /Two tables have <b>Earned Premium<\/b>\. The EP copy is named <span class="cs-mono">Earned Premium_EP<\/span>\./);
-  assert.equal(matchText({ read: 72, matched: 0, added: 72, left_out: 0 }, "all"), "0 of 72 matched · 72 added as new rows");
-  assert.equal(matchText({ read: 2, matched: 1, added: 0, left_out: 1, base_rows_dropped: 9 }, "match"), "1 of 2 matched · 1 left out · 9 combined rows dropped");
-  assert.equal(matchText({ read: 5, matched: 5 }, "base"), "5 of 5 matched · all matched");
-  assert.deepEqual(coverageSegments({ 1: 84, 3: 1200, 2: 0 }), [{ tables: 3, rows: 1200 }, { tables: 1, rows: 84 }]);
+  assert.equal(matchText({ read: 72, matched: 0, added: 72 }), "0 of 72 matched · 72 added as new rows");
+  assert.equal(matchText({ read: 5, matched: 5 }), "5 of 5 matched · all matched");
+});
+
+test("the Combined Table card previews the first names from each table within the tallest card's lines", () => {
+  // Fits whole: 3 + 2 lines.
+  assert.deepEqual(masterPreviewCounts([3, 2], 10), [3, 2]);
+  // 16 + 13 + 4 names in 26 lines: 10 + "more", 10 + "more", 4 = 26; 11 each would need 28.
+  assert.deepEqual(masterPreviewCounts([16, 13, 4], 26), [10, 10, 4]);
+  // A tiny budget still shows one name per table.
+  assert.deepEqual(masterPreviewCounts([5, 5], 1), [1, 1]);
+  // "+1 more" costs the line the hidden name would, so the name shows.
+  assert.deepEqual(masterPreviewCounts([2, 2], 2), [2, 2]);
+  assert.deepEqual(masterPreviewCounts([], 4), []);
+});
+
+test("the Preview tab rounds numbers with more than 4 decimals to 4", () => {
+  assert.equal(previewNumber("21.929432810002293"), "21.9294");
+  assert.equal(previewNumber("-18.158829884475086"), "-18.1588");
+  assert.equal(previewNumber("0.0"), "0.0");
+  assert.equal(previewNumber("12.5"), "12.5");
+  assert.equal(previewNumber("1.5e-07"), "1.5e-07");
+  assert.equal(previewNumber(""), "");
 });
 
 test("the import window's steps come from the combined module and its group headers name no connection", () => {
@@ -468,12 +477,11 @@ const SAVED = {
     { name: "CO_CD", map: { t1: { column: "CO_CD" }, t4: { column: "Co_Cd" } } },
     { name: "sys_yrmo", map: { t1: { column: "sys_yrmo" }, t4: { fill: "0" } } },
   ],
-  rows: { t4: "match" },
   exclude: { t4: ["FACID"] },
   rename: { t4: { "Earned Premium": "Budget Premium" } },
 };
 
-test("a saved combined source reopens with its tables, nicknames, keys and rules", () => {
+test("a saved combined source reopens with its tables, nicknames and keys", () => {
   const state = fromCombinedBlock(SAVED);
   assert.deepEqual(state.tables.map((table) => [table.id, tableLabel(table), table.restored]), [
     ["t1", "Loss", true],
@@ -541,14 +549,28 @@ test("reopened settings import again unchanged, and a change needs the Combine c
   calls.length = 0;
   assert.deepEqual(await feature.save(), { ok: true, source_type: "combined" });
   assert.deepEqual(calls, [["/source_table/combined/save", { project_name: "NJ_Annual_Prod_202608_Fake", combined: SAVED }]]);
-  // A changed rule is no longer the saved settings: the tables must be read and previewed.
-  feature.getState().rows.t4 = "all";
+  // A changed setting is no longer the saved settings: the tables must be read and previewed.
+  feature.getState().exclude.t4 = [];
   assert.equal(feature.validate().ok, false);
   feature.reset();
   assert.equal(feature.isActive(), false);
   // A block with fewer than two tables opens the single-table form.
   feature.load({ tables: [SAVED.tables[0]] }, { read: false });
   assert.equal(feature.isActive(), false);
+});
+
+test("a single-table source is listed as one table, and an incomplete form lists none", () => {
+  let settings = { method: "csv", csvPath: "E:\\NJ\\Loss.csv", profile: null };
+  const feature = createCombinedSourceFeature({ readSingleSettings: () => settings });
+  feature.loadSingle({ read: false });
+  assert.equal(feature.tableCount(), 1);
+  assert.equal(feature.isActive(), false, "one table imports through the single-table path");
+  assert.deepEqual(feature.getState().tables[0].csv_path, "E:\\NJ\\Loss.csv");
+  settings = { method: "csv", csvPath: "", profile: null };
+  feature.loadSingle({ read: false });
+  assert.equal(feature.tableCount(), 0);
+  assert.match(sourceDataJs, /if \(!combinedSource\.tableCount\(\)\) error = "Add a table to import\.";/);
+  assert.match(sourceDataJs, /combinedSource\.loadSingle\(\{ read: readTables \}\);/);
 });
 
 test("Import Data saves a combined source through its own route, then imports it", () => {

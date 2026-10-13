@@ -72,6 +72,13 @@ class SourceRefreshJobSubmitRequest(BaseModel):
     reserving_class_types: List[SourceRefreshReservingClassType] = []
 
 
+class SourceScopeSaveRequest(BaseModel):
+    project_name: str
+    # Same scope fields as the refresh job; empty means everything.
+    dataset_types: List[str] = []
+    reserving_class_types: List[SourceRefreshReservingClassType] = []
+
+
 class CombinedTableDescribeRequest(BaseModel):
     # One table of a combined source, in the shape of decision 3 of
     # docs/plans/completed/combined_source_import.md (id optional here).

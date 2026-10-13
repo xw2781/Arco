@@ -383,6 +383,7 @@ const sourceDataFeature = createSourceDataFeature({
   // host window; `window.ADAHost` alone is undefined here.
   getHostApi: () => window.ADAHost || window.parent?.ADAHost || window.top?.ADAHost,
   onProfileSave: (...args) => sourceImport.saveImportSettings(...args),
+  onScopeSave: (...args) => sourceImport.saveRefreshScope(...args),
   onListTables: (...args) => listSourceTables(...args),
   onListConnections: () => listSourceConnections(),
   onForgetConnection: (...args) => forgetSourceConnection(...args),

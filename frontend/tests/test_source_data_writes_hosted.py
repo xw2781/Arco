@@ -63,6 +63,7 @@ KINDS = (
     "field_mapping_save",
     "source_profile_save",
     "source_combined_save",
+    "source_scope_save",
     "source_csv_path_rewrite",
     "reserving_class_types_save",
     "table_summary_rebuild",
@@ -253,7 +254,6 @@ class SourceDataWritesTests(unittest.TestCase):
             {"id": "t2", "nickname": "EP", "source_type": "csv", "csv_path": SHARED_CSV},
         ],
         "keys": [{"name": "LOB", "map": {"t1": {"column": "LOB"}, "t2": {"column": "Lob"}}}],
-        "rows": {"t2": "match"},
         "exclude": {"t2": ["FACID"]},
         "rename": {},
     }

@@ -31,26 +31,40 @@
 .cs-text-color-5 { color: var(--cs-t5); }
 .cs-text-color-6 { color: var(--cs-t6); }
 
-/* With two or more tables the list replaces the single-table form. */
-.sd-import-body.cs-active > .sd-field,
-.sd-import-body.cs-active > .sd-source-method { display: none !important; }
+/* The table list replaces the single-table form, which stays hidden. */
+.sd-import-body.cs-list-mode > .sd-field,
+.sd-import-body.cs-list-mode > .sd-source-method { display: none !important; }
 
-.cs-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  min-width: 0;
+/* Under the last table row, Add Table is a quiet text button. */
+.cs-add-row {
+  padding: 4px 10px;
+  border-top: 1px solid var(--ar-color-border, #d8dde3);
+  background: var(--ar-color-surface, #fff);
 }
-.cs-bar-note { margin-right: auto; }
-.cs-bar-note[hidden] { display: none; }
+.cs-group-head + .cs-add-row,
+.cs-empty + .cs-add-row { border-top: 0; }
 .cs-add-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ar-color-accent, #2b6df6);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
 }
 .cs-add-btn svg { width: 12px; height: 12px; }
+.cs-add-btn:hover { background: var(--ar-color-accent-soft, #eaf2ff); }
+.cs-add-btn:disabled { opacity: 0.5; cursor: default; }
+.cs-empty {
+  padding: 10px 10px 4px;
+  font-size: 12px;
+  color: var(--ar-color-text-muted, #64748b);
+}
 
 .cs-list {
   display: flex;
@@ -58,7 +72,6 @@
   gap: 10px;
   min-width: 0;
 }
-.cs-list[hidden] { display: none; }
 .cs-group {
   border: 1px solid var(--ar-color-border, #d8dde3);
   border-radius: 4px;
@@ -83,7 +96,7 @@
 }
 .cs-row {
   display: grid;
-  grid-template-columns: 18px 10px minmax(0, 1fr) auto auto 24px;
+  grid-template-columns: 10px minmax(0, 1fr) auto 24px;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
@@ -95,19 +108,6 @@
 .cs-group-head + .cs-row { border-top: 0; }
 .cs-row:hover { background: var(--ar-color-surface-hover, #f4f7fa); }
 .cs-row:focus-visible { outline: 2px solid var(--ar-color-border-focus, #93c5fd); outline-offset: -2px; }
-.cs-row.is-dragging { opacity: 0.45; }
-.cs-row.cs-drop-before { box-shadow: inset 0 2px 0 var(--ar-color-accent, #2b6df6); }
-.cs-row.cs-drop-after { box-shadow: inset 0 -2px 0 var(--ar-color-accent, #2b6df6); }
-.cs-grip {
-  display: grid;
-  place-items: center;
-  height: 22px;
-  color: var(--ar-color-text-subtle, #94a3b8);
-  cursor: grab;
-  touch-action: none;
-}
-.cs-row.is-dragging .cs-grip { cursor: grabbing; }
-.cs-grip svg { width: 12px; height: 14px; }
 .cs-dot {
   display: inline-block;
   width: 10px;
@@ -135,15 +135,6 @@
 }
 .cs-num { font-variant-numeric: tabular-nums; }
 .cs-row-error { color: var(--ar-color-danger, #be123c); }
-.cs-base-tag {
-  padding: 0 7px;
-  border: 1px solid var(--ar-color-accent-border, #bcd0fb);
-  border-radius: 999px;
-  background: var(--ar-color-accent-soft, #eaf2ff);
-  color: var(--ar-color-accent, #2b6df6);
-  font-size: 11px;
-  white-space: nowrap;
-}
 .cs-icon-btn {
   display: inline-grid;
   place-items: center;
@@ -158,19 +149,6 @@
 }
 .cs-icon-btn:hover { background: var(--ar-color-surface-soft, #eef2f6); color: var(--ar-color-text, #1f2937); }
 .cs-icon-btn svg { width: 14px; height: 14px; }
-.cs-order-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 10px;
-  border: 1px dashed var(--ar-color-border-strong, #cbd5e1);
-  border-radius: 4px;
-  background: var(--ar-color-surface-muted, #f8fafc);
-  color: var(--ar-color-text-muted, #64748b);
-  font-size: 11px;
-  line-height: 1.45;
-}
-.cs-order-note svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
 .cs-mono { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; font-size: 11.5px; }
 
 /* Add Table menu: rendered in document.body above the import window. */
@@ -344,7 +322,38 @@
   border-radius: 4px;
   background: var(--ar-color-surface-muted, #f8fafc);
 }
-.cs-map { display: grid; align-items: stretch; width: max-content; }
+.cs-map { position: relative; display: grid; align-items: stretch; width: max-content; }
+/* Join Map drag: value columns drop onto the keys, key names reorder. */
+.cs-map [data-drag] { touch-action: none; user-select: none; }
+.cs-kname[data-drag],
+.cs-master-key[data-drag] { cursor: grab; }
+.cs-map .cs-drag-src { opacity: 0.45; cursor: grabbing; }
+.cs-drop-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ar-color-accent, #2b6df6);
+  pointer-events: none;
+  z-index: 2;
+}
+.cs-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  max-width: 260px;
+  padding: 3px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--ar-color-accent, #2b6df6);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ar-color-accent, #2b6df6) 8%, var(--ar-color-surface, #fff));
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.14);
+  color: var(--ar-color-text, #1f2937);
+  font-size: 12px;
+  pointer-events: none;
+}
 .cs-lc {
   display: flex;
   align-items: center;
@@ -421,17 +430,62 @@
 .cs-cc.cs-open:hover { background: var(--ar-color-surface-hover, #f4f7fa); }
 .cs-cc.cs-open:hover .cs-card-title b { color: var(--ar-color-accent, #2b6df6); }
 .cs-cc.cs-open:focus-visible { outline: 2px solid var(--ar-color-border-focus, #93c5fd); outline-offset: -2px; }
+/* Key links: one line runs from chip to chip, through the gutter and each
+   card's side padding, so a key reads as a single row across the map. */
+.cs-map { --cs-link: color-mix(in srgb, var(--ar-color-accent, #2b6df6) 38%, var(--ar-color-border-strong, #cbd5e1)); }
 .cs-gut { position: relative; min-height: 34px; }
 .cs-rail {
   position: absolute;
   top: 50%;
   left: -1px;
   right: -1px;
-  border-top: 2px solid var(--ar-color-border-strong, #cbd5e1);
+  margin-top: -1px;
+  border-top: 2px solid var(--cs-link);
   transition: border-color 140ms ease;
 }
 .cs-rail.cs-soft { border-top-style: dashed; }
+/* A soft glint drifts along each key line every 8s, one gutter after the
+   next (--cs-i is the gutter, --cs-k the key row), so the join reads as
+   flowing into the Combined Table. */
+.cs-rail::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ar-color-accent, #2b6df6), transparent) no-repeat;
+  background-size: 18px 100%;
+  background-position: -18px 0;
+  opacity: 0;
+  pointer-events: none;
+  animation: cs-flow 8s ease-in-out infinite;
+  animation-delay: calc(var(--cs-i, 0) * 0.55s + var(--cs-k, 0) * 0.07s);
+}
+@keyframes cs-flow {
+  0% { background-position: -18px 0; opacity: 0; }
+  3% { opacity: 0.85; }
+  14% { background-position: 30px 0; opacity: 0; }
+  100% { background-position: 30px 0; opacity: 0; }
+}
 .cs-gut.cs-hl .cs-rail { border-top-color: var(--ar-color-accent, #2b6df6); }
+.cs-cc.cs-key::before,
+.cs-cc.cs-key:not(.cs-key-end)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  margin-top: -1px;
+  border-top: 2px solid var(--cs-link);
+  pointer-events: none;
+  transition: border-color 140ms ease;
+}
+.cs-cc.cs-key::before { left: 0; }
+.cs-cc.cs-key::after { right: 0; }
+.cs-cc.cs-key.cs-soft::before,
+.cs-cc.cs-key.cs-soft::after { border-top-style: dashed; }
+.cs-cc.cs-key.cs-hl::before,
+.cs-cc.cs-key.cs-hl::after { border-top-color: var(--ar-color-accent, #2b6df6); }
 .cs-card-head { display: flex; flex-direction: column; gap: 3px; width: 100%; min-width: 0; }
 .cs-card-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .cs-card-title b {
@@ -453,38 +507,6 @@
   white-space: nowrap;
 }
 .cs-card-sub svg { width: 11px; height: 11px; flex: none; }
-.cs-base-label {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  font-size: 12px;
-  color: var(--ar-color-text-muted, #64748b);
-}
-.cs-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  height: 24px;
-  padding: 0 6px 0 5px;
-  border: 1px solid var(--ar-color-border-strong, #cbd5e1);
-  border-radius: 4px;
-  background: var(--ar-color-surface, #fff);
-  color: var(--ar-color-text, #1f2937);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.cs-pill:hover { border-color: var(--ar-color-accent, #2b6df6); background: var(--ar-color-accent-soft, #eaf2ff); }
-.cs-venn { width: 20px; height: 14px; flex: none; color: var(--ar-color-accent, #2b6df6); }
-.cs-caret {
-  flex: none;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid var(--ar-color-text-subtle, #94a3b8);
-}
 .cs-kcell {
   display: flex;
   align-items: center;
@@ -493,20 +515,26 @@
   min-width: 0;
   height: 26px;
   padding: 0 6px;
-  border: 1px solid transparent;
+  border: 1px solid var(--ar-color-border, #d8dde3);
   border-radius: 4px;
-  background: none;
+  background: var(--ar-color-surface-muted, #f8fafc);
   color: var(--ar-color-text, #1f2937);
   font: inherit;
   font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
-.cs-kcell:hover { border-color: var(--ar-color-border-strong, #cbd5e1); background: var(--ar-color-surface-muted, #f8fafc); }
+.cs-kcell:hover { border-color: var(--ar-color-accent, #2b6df6); background: var(--ar-color-surface, #fff); }
+.cs-cc.cs-hl .cs-kcell:not(.cs-warn),
+.cs-cc.cs-hl .cs-master-key { border-color: var(--ar-color-accent, #2b6df6); }
 .cs-kcell .cs-mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cs-kcell .cs-alt { margin-left: auto; font-size: 11px; color: var(--ar-color-text-subtle, #94a3b8); white-space: nowrap; }
 .cs-kcell svg { width: 13px; height: 13px; flex: none; }
-.cs-kcell.cs-virtual { border: 1px dashed var(--ar-color-border-strong, #cbd5e1); color: var(--ar-color-text-muted, #64748b); }
+.cs-kcell.cs-virtual {
+  border: 1px dashed var(--ar-color-border-strong, #cbd5e1);
+  background: var(--ar-color-surface, #fff);
+  color: var(--ar-color-text-muted, #64748b);
+}
 .cs-kcell.cs-virtual:hover { border-color: var(--ar-color-accent, #2b6df6); }
 .cs-kcell.cs-warn {
   border-color: color-mix(in srgb, var(--ar-color-warning, #b45309) 45%, transparent);
@@ -515,7 +543,19 @@
 .cs-kcell.cs-warn .cs-alt,
 .cs-kcell.cs-warn svg { color: var(--ar-color-warning, #b45309); }
 .cs-master-key {
-  padding-left: 6px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--ar-color-accent, #2b6df6) 35%, var(--ar-color-border-strong, #cbd5e1));
+  border-radius: 4px;
+  background: var(--ar-color-surface, #fff);
+  transition: border-color 140ms ease;
   font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
   font-size: 12px;
   font-weight: 700;
@@ -557,8 +597,10 @@
 .cs-crow.cs-off .cs-cn { color: var(--ar-color-text-subtle, #94a3b8); text-decoration: line-through; }
 .cs-crow.cs-off .cs-to { color: var(--ar-color-text-subtle, #94a3b8); }
 .cs-crow.cs-conflict .cs-to { color: var(--ar-color-warning, #b45309); }
-.cs-mcol { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; color: var(--ar-color-text, #1f2937); }
+/* 15px + the 2px list gap = the 17px line the Combined Table preview budgets for. */
+.cs-mcol { display: flex; align-items: center; gap: 6px; height: 15px; min-width: 0; font-size: 11.5px; color: var(--ar-color-text, #1f2937); }
 .cs-mcol span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-mcol.cs-mmore { padding-left: 13px; color: var(--ar-color-text-muted, #64748b); cursor: default; }
 
 .cs-result {
   min-width: 0;
@@ -636,26 +678,6 @@
     color-mix(in srgb, var(--ar-color-text-subtle, #94a3b8) 35%, transparent) 3px 5px);
 }
 .cs-match-text { font-size: 12px; color: var(--ar-color-text-muted, #64748b); }
-.cs-cover { display: grid; gap: 6px; }
-.cs-cover-bar {
-  display: flex;
-  height: 22px;
-  overflow: hidden;
-  border: 1px solid var(--ar-color-border, #d8dde3);
-  border-radius: 4px;
-}
-.cs-cover-bar div {
-  display: grid;
-  place-items: center;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  font-size: 11px;
-  color: #fff;
-}
-.cs-cover-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ar-color-text-muted, #64748b); }
-.cs-cover-legend span { display: inline-flex; align-items: center; gap: 5px; }
-.cs-cover-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .cs-prev-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--ar-color-text-muted, #64748b); }
 .cs-prev-legend > span { display: inline-flex; align-items: center; gap: 5px; }
 .cs-prev-count { margin-left: auto; }
@@ -705,7 +727,7 @@
 /* The dark theme paints every button like an input; these controls stay flat
    (the theme rule :root[data-arcrho-theme="dark"] :is(..., button) weighs 0-3-0,
    so `body` lifts these above it). */
-:root[data-arcrho-theme="dark"] body :is(.cs-kcell, .cs-crow, .cs-icon-btn, .cs-add-key, .cs-tab, .cs-pop-item) {
+:root[data-arcrho-theme="dark"] body :is(.cs-crow, .cs-icon-btn, .cs-add-key, .cs-add-btn, .cs-tab, .cs-pop-item) {
   border-color: transparent;
   background-color: transparent;
 }
@@ -720,7 +742,7 @@
   background-color: var(--ar-color-warning-soft);
 }
 :root[data-arcrho-theme="dark"] body .cs-icon-btn:hover { background-color: var(--ar-color-surface-soft); }
-:root[data-arcrho-theme="dark"] body :is(.cs-add-key, .cs-pop-item):hover { background-color: var(--ar-color-accent-soft); }
+:root[data-arcrho-theme="dark"] body :is(.cs-add-key, .cs-add-btn, .cs-pop-item):hover { background-color: var(--ar-color-accent-soft); }
 :root[data-arcrho-theme="dark"] body .cs-tab.is-active { border-bottom-color: var(--ar-color-accent); }
 
 /* Source Data header for a combined source: stacked table dots, the name, and
@@ -758,4 +780,5 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-pop, .cs-modal-back { animation: none; }
   .cs-mbar i, .cs-pane, .cs-cc, .cs-rail, .cs-lc .cs-icon-btn { transition: none; }
+  .cs-rail::after { animation: none; }
 }

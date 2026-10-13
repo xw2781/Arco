@@ -41,10 +41,6 @@ SOURCE_TYPE_COMBINED = "combined"
 SOURCE_TYPES = (SOURCE_TYPE_CSV, SOURCE_TYPE_MSSQL, SOURCE_TYPE_COMBINED)
 
 # --- Combined source rules ------------------------------------------------
-COMBINED_ROWS_ALL = "all"      # outer join (default)
-COMBINED_ROWS_BASE = "base"    # left join onto the running result
-COMBINED_ROWS_MATCH = "match"  # inner join
-COMBINED_ROW_RULES = (COMBINED_ROWS_ALL, COMBINED_ROWS_BASE, COMBINED_ROWS_MATCH)
 COMBINED_KEY_CONVERT_YYYYMM = "yyyymm"
 COMBINED_NICKNAME_MAX = 24
 
@@ -309,10 +305,11 @@ def _normalize_key_map_entry(entry: Any) -> Optional[Dict[str, Any]]:
 def normalize_combined_source(payload: Any) -> Dict[str, Any]:
     """Canonical `combined` block of a combined source's `source_import.json`.
 
-    The first table is the base; the others join onto the running result in
-    list order. Table ids are de-duplicated (first wins), entries naming an
-    unknown table are dropped, and every per-table map follows table order so
-    the payload is deterministic.
+    Every table is outer-joined on the keys, so no row of any table is lost;
+    the first table names the keys. A legacy ``rows`` entry is dropped. Table
+    ids are de-duplicated (first wins), entries naming an unknown table are
+    dropped, and every per-table map follows table order so the payload is
+    deterministic.
     """
     data = payload if isinstance(payload, dict) else {}
     tables = []
@@ -341,12 +338,6 @@ def normalize_combined_source(payload: Any) -> Dict[str, Any]:
                 key_map[table_id] = entry
         keys.append({"name": name, "map": key_map})
 
-    raw_rows = data.get("rows") if isinstance(data.get("rows"), dict) else {}
-    rows = {}
-    for table_id in ids[1:]:
-        rule = _text(raw_rows.get(table_id)).lower()
-        rows[table_id] = rule if rule in COMBINED_ROW_RULES else COMBINED_ROWS_ALL
-
     raw_exclude = data.get("exclude") if isinstance(data.get("exclude"), dict) else {}
     exclude: Dict[str, Any] = {}
     for table_id in ids:
@@ -373,7 +364,6 @@ def normalize_combined_source(payload: Any) -> Dict[str, Any]:
     return {
         "tables": tables,
         "keys": keys,
-        "rows": rows,
         "exclude": exclude,
         "rename": rename,
     }

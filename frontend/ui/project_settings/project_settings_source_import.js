@@ -13,6 +13,8 @@
  * its routes; this module only imports it.
  */
 
+import { sourceRefreshScopeRequestFields } from "./project_settings_source_refresh_job.js";
+
 export const SOURCE_TYPE_COMBINED = "combined";
 
 /** How far the upload has got, for the progress window's title. */
@@ -79,6 +81,25 @@ export function createSourceImport(deps = {}) {
     } catch (err) {
       setSourceStatus(err.message || "Could not save the import settings.", "error");
       setStatus(`Failed to save the import settings: ${err.message}`);
+      return false;
+    }
+  }
+
+  /** Remember the Import Scope choice for the project without importing. */
+  async function saveRefreshScope(scope) {
+    const name = String(getProjectName() || "").trim();
+    if (!name) return false;
+    try {
+      const res = await fetch("/source_table/scope", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project_name: name, ...sourceRefreshScopeRequestFields(scope) }),
+      });
+      if (!res.ok) throw new Error(await readResponseErrorDetail(res));
+      applySourceState(await res.json());
+      return true;
+    } catch (err) {
+      setSourceStatus(err.message || "Could not save the import scope.", "error");
       return false;
     }
   }
@@ -208,5 +229,5 @@ export function createSourceImport(deps = {}) {
     return { ok: true, rowCount: Number(job.result?.row_count || rowCount || 0) };
   }
 
-  return { saveImportSettings, importSourceData };
+  return { saveImportSettings, saveRefreshScope, importSourceData };
 }
