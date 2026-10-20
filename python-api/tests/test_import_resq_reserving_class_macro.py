@@ -154,8 +154,10 @@ class ImportResqReservingClassMacroTests(unittest.TestCase):
         would, so the rest of the macro sees the queue it expects.
         """
 
-        def run_workspace_mutation(kind, kwargs, *, local, gateway_required=False):
-            self.published.append({"kind": kind, "kwargs": kwargs, "gateway_required": gateway_required})
+        # Same signature as app_server.services.workspace_mutation_client, so an
+        # argument the app no longer accepts fails here as it would in Arco.
+        def run_workspace_mutation(kind, kwargs, *, local, request_id=None):
+            self.published.append({"kind": kind, "kwargs": kwargs})
             if self.publish_error is not None:
                 raise self.publish_error
             request_path, _ = self.module._request_paths(self.server_root, kwargs["request_id"])
@@ -244,7 +246,6 @@ class ImportResqReservingClassMacroTests(unittest.TestCase):
                     "request_id": request_id,
                     "request": payload,
                 },
-                "gateway_required": True,
             }],
         )
         self.assertEqual(json.loads(request_path.read_text(encoding="utf-8")), payload)

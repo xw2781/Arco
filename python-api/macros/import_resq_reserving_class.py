@@ -1,7 +1,7 @@
 # <arcrho-macro>
 # Title: Import ResQ Reserving Class
-# Version: 1.15.0
-# Release Note: The import request reaches the Arco Bridge through the Arco Server instead of being written over the shared drive; needs an Arco release that offers it.
+# Version: 1.15.1
+# Release Note: Fix "Could not publish Arco Bridge request": the import request is sent with the arguments the current Arco accepts.
 # Description: Import the ResQ datasets and methods you tick into the reserving-class path selected in the active Project Instance page, overwriting the existing ArcRho copies after copying the existing class to a dated backup folder. Ticked items whose ArcRho copy is newer than ResQ's are listed for review, with links that open them, before the overwrite is confirmed. A DFM User Entry value explained by the notes "Generate Notes for Combined Adjustment" wrote comes back as its growth and accounting cutoff formula rather than a plain number.
 # Scope: Reserving Class
 # Icon: download
@@ -303,7 +303,6 @@ def publish_import_request(
             PUBLISH_MUTATION_KIND,
             kwargs,
             local=lambda: resq_import_queue_service.publish_resq_import_request(**kwargs),
-            gateway_required=True,
         )
     except Exception as exc:
         detail = getattr(exc, "detail", None) or exc
