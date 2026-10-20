@@ -9,20 +9,19 @@ import {
 } from "/ui/shared/tabs/data/dataset_grid_view.js?v=20260919a";
 import { normalizeRange } from "/ui/shared/components/spreadsheet/table_selection.js?v=20260726a";
 import { createLineChart } from "/ui/dataset_viewer/tabs/dataset_chart_renderer.js?v=20261020b";
-import { createTriangleMinimap } from "/ui/dataset_viewer/tabs/dataset_chart_minimap.js?v=20261020a";
+import { createTriangleMinimap } from "/ui/dataset_viewer/tabs/dataset_chart_minimap.js?v=20261020b";
 import {
-  MAX_FOCUSED_SERIES,
   addFocusedSeries,
   buildChartMatrix,
   buildChartSeries,
   defaultFocusIds,
   effectiveDevLabels,
+  focusColorIndex,
   removeFocusedSeries,
-} from "/ui/dataset_viewer/tabs/dataset_chart_series.js?v=20261020b";
+} from "/ui/dataset_viewer/tabs/dataset_chart_series.js?v=20261020c";
 
-// Focus and context: every series is drawn as grey context, up to four focused
-// series get their own colour, and the minimap picks what to focus.
-const LIMIT_HINT_MS = 1600;
+// Focus and context: every series is drawn as grey context, each focused
+// series gets a colour, and the minimap picks what to focus.
 const COMPACT_AXIS_FROM = 10000;
 // The triangle panel is resizable; below LIST_BELOW_PX its cells are too small
 // to pick from, so it becomes a checkbox list of the plotted series.
@@ -49,7 +48,7 @@ const chart = {
 };
 let ui = null;
 let view = null;
-let hintTimer = 0;
+let focusExpanded = false;
 let minimapWidth = MINIMAP_DEFAULT_PX;
 
 function focusFor(plot) {
@@ -61,10 +60,21 @@ function focusFor(plot) {
 }
 
 function addFocus(plot, id) {
-  const added = addFocusedSeries(focusFor(plot), chart.slots[plot], id);
-  if (!added) flashLimitHint();
-  return added;
+  addFocusedSeries(focusFor(plot), chart.slots[plot], id);
 }
+
+// Series per year along the focused axis: origins for origin curves, ages for the age trend.
+function focusPeriodsPerYear(plot) {
+  return periodsPerYear(selectedLength(plot === "byRow" ? "originLenSelect" : "devLenSelect"));
+}
+
+function resetFocusToDefault(plot, list) {
+  chart.focus[plot] = [];
+  chart.slots[plot] = {};
+  for (const id of defaultFocusIds(list, plot, focusPeriodsPerYear(plot))) addFocus(plot, id);
+}
+
+const slotClass = (slot) => `dsChartSlot${focusColorIndex(slot)}`;
 
 function toggleFocus(id) {
   const ids = focusFor(chart.plot);
@@ -102,14 +112,6 @@ function selectModelCell(r, c) {
   state.selectionAnchor = cell;
   state.selRanges = [normalizeRange(cell.r, cell.c, cell.r, cell.c)];
   renderTable();
-}
-
-function flashLimitHint() {
-  const hint = ui?.focusBar.querySelector(".dsChartLimitHint");
-  if (!hint) return;
-  hint.classList.add("isShown");
-  clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => hint.classList.remove("isShown"), LIMIT_HINT_MS);
 }
 
 function el(tag, className, text) {
@@ -287,14 +289,16 @@ function ensureUi() {
   return true;
 }
 
+// The chips sit on one line in series order; the ones that do not fit hide
+// behind a "+N" toggle that opens the list onto as many lines as it needs.
 function renderFocusBar(list) {
   const bar = ui.focusBar;
-  bar.replaceChildren(el("span", "dsChartToolLabel", "Focus"));
   const ids = focusFor(chart.plot);
   const slots = chart.slots[chart.plot];
-  for (const id of [...ids].sort((a, b) => slots[a] - slots[b])) {
-    const series = list.find((candidate) => candidate.id === id);
-    if (!series) continue;
+  const chips = el("div", focusExpanded ? "dsChartChipList isExpanded" : "dsChartChipList");
+  for (const series of list) {
+    if (!ids.includes(series.id)) continue;
+    const id = series.id;
     const chip = el("span", "dsChartChip");
     const remove = el("button", "dsChartChipRemove", "×");
     remove.type = "button";
@@ -302,16 +306,22 @@ function renderFocusBar(list) {
     remove.addEventListener("click", () => toggleFocus(id));
     chip.addEventListener("pointerenter", () => ui.chart.setEmphasis(id));
     chip.addEventListener("pointerleave", () => ui.chart.setEmphasis(null));
-    chip.append(el("i", `dsChartChipKey dsChartSlot${slots[id]}`), el("span", null, series.label), remove);
-    bar.appendChild(chip);
+    chip.append(el("i", `dsChartChipKey ${slotClass(slots[id])}`), el("span", null, series.label), remove);
+    chips.appendChild(chip);
   }
-  bar.appendChild(el("span", "dsChartFocusCount", `${ids.length} / ${MAX_FOCUSED_SERIES}`));
-  const quick = el("button", "dsChartLinkButton", chart.plot === "byRow" ? "Recent 3" : "Early 3");
+  if (!ids.length) chips.appendChild(el("span", "dsChartFocusEmpty", "No focused series."));
+  // The widest label holds the toggle's room while the chips are measured.
+  const more = el("button", "dsChartLinkButton dsChartFocusMore", focusExpanded ? "Show less" : "+999 more");
+  more.type = "button";
+  more.addEventListener("click", () => {
+    focusExpanded = !focusExpanded;
+    renderDatasetChart();
+  });
+  const count = el("span", "dsChartFocusCount", `${ids.length} of ${list.length}`);
+  const quick = el("button", "dsChartLinkButton", chart.plot === "byRow" ? "Latest 3 Years" : "First 3 Years");
   quick.type = "button";
   quick.addEventListener("click", () => {
-    chart.focus[chart.plot] = [];
-    chart.slots[chart.plot] = {};
-    for (const id of defaultFocusIds(list, chart.plot)) addFocus(chart.plot, id);
+    resetFocusToDefault(chart.plot, list);
     renderDatasetChart();
   });
   const clear = el("button", "dsChartLinkButton", "Clear");
@@ -322,7 +332,16 @@ function renderFocusBar(list) {
     chart.slots[chart.plot] = {};
     renderDatasetChart();
   });
-  bar.append(quick, clear, el("span", "dsChartLimitHint", `Up to ${MAX_FOCUSED_SERIES} focused series. Remove one first.`));
+  bar.replaceChildren(el("span", "dsChartToolLabel", "Focus"), chips, more, count, quick, clear);
+
+  // Measured after layout: a chip that wrapped below the first line is hidden.
+  const all = [...chips.querySelectorAll(".dsChartChip")];
+  const top = all[0]?.offsetTop ?? 0;
+  const wrapped = all.filter((chip) => chip.offsetTop > top);
+  if (!focusExpanded) for (const chip of wrapped) chip.hidden = true;
+  more.hidden = !wrapped.length;
+  more.textContent = focusExpanded ? "Show less" : `+${wrapped.length} more`;
+  more.setAttribute("aria-expanded", String(focusExpanded));
 }
 
 function renderFilterList(list, ids, slots) {
@@ -338,7 +357,7 @@ function renderFilterList(list, ids, slots) {
     item.addEventListener("pointerenter", () => ui.chart.setEmphasis(series.id));
     item.addEventListener("pointerleave", () => ui.chart.setEmphasis(null));
     item.append(input, el("span", null, series.label));
-    if (checked) item.appendChild(el("i", `dsChartChipKey dsChartSlot${slots[series.id]}`));
+    if (checked) item.appendChild(el("i", `dsChartChipKey ${slotClass(slots[series.id])}`));
     return item;
   }));
   box.scrollTop = scrollTop;
@@ -407,16 +426,14 @@ export function renderDatasetChart() {
   const { xLabels, list } = buildChartSeries(matrix, plot, formatOrigin);
   if (chart.range && chart.range[1] > xLabels.length - 1) chart.range = null;
 
-  if (!chart.focus[plot]) {
-    for (const id of defaultFocusIds(list, plot)) addFocus(plot, id);
-  }
+  if (!chart.focus[plot]) resetFocusToDefault(plot, list);
   const ids = focusFor(plot);
   const slots = chart.slots[plot];
   const known = new Set(list.map((series) => series.id));
   for (const id of [...ids]) if (!known.has(id)) removeFocusedSeries(ids, slots, id);
 
   const series = list.map((s) => (ids.includes(s.id)
-    ? { ...s, kind: "focus", slot: slots[s.id] }
+    ? { ...s, kind: "focus", slot: focusColorIndex(slots[s.id]) }
     : { ...s, kind: "context" }));
 
   const active = activeModelCell();
@@ -457,7 +474,7 @@ export function renderDatasetChart() {
       rowsPerYear: periodsPerYear(originLen),
       colsPerYear: periodsPerYear(selectedLength("devLenSelect")),
       plot,
-      focus: ids.map((id) => ({ index: list.findIndex((s) => s.id === id), slot: slots[id] })),
+      focus: ids.map((id) => ({ index: list.findIndex((s) => s.id === id), slot: focusColorIndex(slots[id]) })),
       active,
       range: chart.range,
       formatValue,

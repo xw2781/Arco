@@ -57,7 +57,7 @@ function readColors(host) {
     text: read("--ds-chart-text-muted", "#64748b"),
     strong: read("--ds-chart-text-strong", "#0f172a"),
     accent: read("--ds-chart-accent", "#2b6df6"),
-    focus: [1, 2, 3, 4].map((n) => read(`--ds-chart-focus-${n}`, "#2a78d6")),
+    focus: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => read(`--ds-chart-focus-${n}`, "#2a78d6")),
   };
 }
 

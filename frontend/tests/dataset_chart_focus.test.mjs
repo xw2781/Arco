@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
-  MAX_FOCUSED_SERIES,
+  FOCUS_COLOR_COUNT,
   addFocusedSeries,
   buildChartMatrix,
   buildChartSeries,
   defaultFocusIds,
+  focusColorIndex,
   removeFocusedSeries,
 } from "../ui/dataset_viewer/tabs/dataset_chart_series.js";
 import { columnShade, labelStep, yearText } from "../ui/dataset_viewer/tabs/dataset_chart_minimap.js";
@@ -59,14 +60,23 @@ test("default focus picks the newest plottable origins or the earliest ages", ()
   assert.deepEqual(defaultFocusIds(ages, "byCol"), ["d:12", "d:24"]);
 });
 
-test("a focused series keeps its colour slot when another is removed", () => {
+test("default focus covers three years of periods", () => {
+  const list = Array.from({ length: 20 }, (_, k) => ({ id: `o:${k}`, values: [1, 2] }));
+  assert.equal(defaultFocusIds(list, "byRow", 4).length, 12);
+  assert.deepEqual(defaultFocusIds(list, "byRow", 4).slice(0, 1), ["o:8"]);
+  assert.equal(defaultFocusIds(list, "byRow", 1).length, 3);
+  assert.equal(defaultFocusIds(list, "byCol", 12).length, 20);
+});
+
+test("focus is unlimited and a focused series keeps its colour slot when another is removed", () => {
   const ids = [];
   const slots = {};
-  for (const id of ["a", "b", "c", "d"]) assert.equal(addFocusedSeries(ids, slots, id), true);
-  assert.equal(ids.length, MAX_FOCUSED_SERIES);
-  assert.equal(addFocusedSeries(ids, slots, "e"), false);
-  removeFocusedSeries(ids, slots, "b");
-  assert.deepEqual(slots, { a: 0, c: 2, d: 3 });
+  const many = Array.from({ length: FOCUS_COLOR_COUNT + 3 }, (_, k) => `s${k}`);
+  for (const id of many) assert.equal(addFocusedSeries(ids, slots, id), true);
+  assert.equal(ids.length, many.length);
+  assert.equal(focusColorIndex(slots.s9), 1);
+  removeFocusedSeries(ids, slots, "s1");
+  assert.equal(slots.s2, 2);
   addFocusedSeries(ids, slots, "e");
   assert.equal(slots.e, 1);
 });
@@ -102,9 +112,9 @@ test("the Chart tab mounts the focus-and-context layout through the versioned ch
     "ui/dataset_viewer/dataset_viewer_view.js",
     "ui/dataset_viewer/tabs/dataset_chart_tab.js",
   ].map((path) => readFile(new URL(path, frontendRoot), "utf8")));
-  assert.match(html, /dataset_viewer\.css\?v=20261020c/u);
+  assert.match(html, /dataset_viewer\.css\?v=20261020d/u);
   assert.doesNotMatch(html, /chart_legend\.css/u);
-  assert.match(main, /dataset_chart_tab\.js\?v=20261020c/u);
+  assert.match(main, /dataset_chart_tab\.js\?v=20261020d/u);
   assert.match(view, /id="dsChartRoot"[\s\S]*id="dsChartFocusBar"[\s\S]*id="dsChartMinimap"[\s\S]*id="dsChartPlot"[\s\S]*id="dsChartZoom"/u);
   // The chart's length buttons write through the Data tab's own length lists.
   assert.match(view, /id="dsChartOriginLen"[^>]*data-len-select="originLenSelect"/u);
@@ -112,7 +122,7 @@ test("the Chart tab mounts the focus-and-context layout through the versioned ch
   assert.match(view, /id="dsChartMinimapPanel"[\s\S]*id="dsChartFilterList"[\s\S]*id="dsChartMinimapResizer"/u);
   assert.match(tab, /setPointerCapture/u);
   assert.match(tab, /dataset_chart_renderer\.js\?v=20261020b/u);
-  assert.match(tab, /dataset_chart_minimap\.js\?v=20261020a/u);
-  assert.match(tab, /dataset_chart_series\.js\?v=20261020b/u);
+  assert.match(tab, /dataset_chart_minimap\.js\?v=20261020b/u);
+  assert.match(tab, /dataset_chart_series\.js\?v=20261020c/u);
   assert.doesNotMatch(view, /dsChartAverage/u);
 });

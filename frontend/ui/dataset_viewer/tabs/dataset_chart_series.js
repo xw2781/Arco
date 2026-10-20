@@ -1,8 +1,11 @@
 // Dataset Viewer chart data: turns the dataset model into chart series and
 // keeps the focused-series colour slots. No DOM access, so tests import it directly.
 
-export const MAX_FOCUSED_SERIES = 4;
-const DEFAULT_FOCUSED_SERIES = 3;
+// Focused series cycle through this many colours; the count is unlimited.
+export const FOCUS_COLOR_COUNT = 8;
+const DEFAULT_FOCUS_YEARS = 3;
+
+export const focusColorIndex = (slot) => slot % FOCUS_COLOR_COUNT;
 
 export function effectiveDevLabels(model) {
   const devs = Array.isArray(model?.dev_labels) ? model.dev_labels.map(String) : [];
@@ -71,20 +74,20 @@ export function buildChartSeries(matrix, plot, formatOrigin = String) {
 
 const pointCount = (values) => values.reduce((n, v) => n + (v == null ? 0 : 1), 0);
 
-// Newest origins for origin curves, earliest ages for the age trend.
-export function defaultFocusIds(list, plot) {
+// The newest three years of origins for origin curves, the earliest three years
+// of ages for the age trend; periodsPerYear turns years into series (4 a year
+// for quarterly).
+export function defaultFocusIds(list, plot, periodsPerYear = 1) {
+  const count = DEFAULT_FOCUS_YEARS * Math.max(1, periodsPerYear);
   const plotted = list.filter((series) => pointCount(series.values) >= 2);
-  const picked = plot === "byRow"
-    ? plotted.slice(-DEFAULT_FOCUSED_SERIES)
-    : plotted.slice(0, DEFAULT_FOCUSED_SERIES);
+  const picked = plot === "byRow" ? plotted.slice(-count) : plotted.slice(0, count);
   return picked.map((series) => series.id);
 }
 
-// A slot is a colour; a series keeps its slot while it stays focused, so
+// A slot picks a colour; a series keeps its slot while it stays focused, so
 // removing one focused series never repaints the others.
 export function addFocusedSeries(ids, slots, id) {
   if (ids.includes(id)) return true;
-  if (ids.length >= MAX_FOCUSED_SERIES) return false;
   const used = new Set(Object.values(slots));
   let slot = 0;
   while (used.has(slot)) slot++;

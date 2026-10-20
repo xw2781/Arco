@@ -466,6 +466,10 @@ body {
   --ds-chart-focus-2: #eb6834;
   --ds-chart-focus-3: #1baf7a;
   --ds-chart-focus-4: #4a3aa7;
+  --ds-chart-focus-5: #c2418e;
+  --ds-chart-focus-6: #0e93ad;
+  --ds-chart-focus-7: #a68412;
+  --ds-chart-focus-8: #8a5a3c;
   --ds-chart-context: #cbd5e1;
   --ds-chart-context-strong: #475569;
   --ds-chart-warning: #b45309;
@@ -479,6 +483,10 @@ body {
   --ds-chart-focus-2: #d95926;
   --ds-chart-focus-3: #199e70;
   --ds-chart-focus-4: #9085e9;
+  --ds-chart-focus-5: #d65aa3;
+  --ds-chart-focus-6: #2bb3cc;
+  --ds-chart-focus-7: #c9a82e;
+  --ds-chart-focus-8: #b58263;
   --ds-chart-context: #4b5263;
   --ds-chart-context-strong: #c5cad3;
   --ds-chart-warning: #e5c07b;
@@ -505,6 +513,39 @@ body {
   min-height: 38px;
   box-sizing: border-box;
   gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.dsChartFocusBar > :not(.dsChartChipList) {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* One line of chips; the overflow hides behind the "+N more" toggle. */
+.dsChartChipList {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-height: 22px;
+  overflow: hidden;
+}
+
+.dsChartChipList.isExpanded {
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.dsChartChipList > [hidden],
+#dsChartPage .dsChartFocusMore[hidden] {
+  display: none;
+}
+
+.dsChartFocusEmpty {
+  color: var(--ds-chart-text-muted);
+  font-size: 12px;
 }
 
 .dsChartToolLabel {
@@ -562,11 +603,12 @@ body {
 .dsChartChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0 4px 0 8px;
+  gap: 5px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 2px 0 7px;
   border: 1px solid var(--ds-chart-border);
-  border-radius: 12px;
+  border-radius: 11px;
   background: var(--ds-chart-surface);
   color: var(--ds-chart-text-strong);
   font-size: 12px;
@@ -624,17 +666,6 @@ body {
 #dsChartPage .dsChartLinkButton:disabled {
   color: var(--ds-chart-text-muted);
   cursor: default;
-}
-
-.dsChartLimitHint {
-  color: var(--ds-chart-warning);
-  font-size: 12px;
-  opacity: 0;
-  transition: opacity 160ms ease;
-}
-
-.dsChartLimitHint.isShown {
-  opacity: 1;
 }
 
 .dsChartBody {
@@ -881,6 +912,10 @@ body {
 .dsChartSlot1 { --ds-chart-series: var(--ds-chart-focus-2); }
 .dsChartSlot2 { --ds-chart-series: var(--ds-chart-focus-3); }
 .dsChartSlot3 { --ds-chart-series: var(--ds-chart-focus-4); }
+.dsChartSlot4 { --ds-chart-series: var(--ds-chart-focus-5); }
+.dsChartSlot5 { --ds-chart-series: var(--ds-chart-focus-6); }
+.dsChartSlot6 { --ds-chart-series: var(--ds-chart-focus-7); }
+.dsChartSlot7 { --ds-chart-series: var(--ds-chart-focus-8); }
 .dsChartContext { --ds-chart-series: var(--ds-chart-context); }
 .dsChartContext.isEmphasis { --ds-chart-series: var(--ds-chart-context-strong); }
 
