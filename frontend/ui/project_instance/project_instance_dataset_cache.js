@@ -170,6 +170,19 @@ async function fetchDatasetIndexSignature(selectedPath) {
   return toText(payload?.signature);
 }
 
+/**
+ * What the table shows from a snapshot, independent of row order. index.json
+ * also records the folder listing, so a new cache file (a length view the
+ * Engine wrote) rewrites it without changing any row; comparing rows keeps
+ * that rewrite from raising the refresh prompt. "" when there is nothing to
+ * compare.
+ */
+function datasetIndexRowsFingerprint(payload) {
+  const files = payload?.files;
+  if (!Array.isArray(files)) return "";
+  return JSON.stringify(files.map((item) => JSON.stringify(item ?? null)).sort());
+}
+
 /** Reads index.json's signature once and treats it as the loaded baseline. */
 async function baselineDatasetIndexSignature(selectedPath) {
   try {
@@ -180,6 +193,26 @@ async function baselineDatasetIndexSignature(selectedPath) {
   } catch (err) {
     datasetIndexWatch.error = toText(err?.message) || "Could not read the dataset index signature.";
   }
+}
+
+/**
+ * Re-reads the index after its signature moved and adopts the new signature
+ * when the rows match the loaded table. False when the rows differ or cannot
+ * be compared, so the caller still offers the refresh.
+ */
+async function datasetIndexRowsUnchanged(selectedPath, polledSignature) {
+  const baseline = datasetIndexWatch.rowsFingerprint;
+  if (!baseline) return false;
+  let payload;
+  try {
+    payload = await fetchCachedDatasetSnapshot(selectedPath);
+  } catch {
+    return false;
+  }
+  if (normalizePath(datasetIndexWatch.selectedPath).toLowerCase() !== selectedPath.toLowerCase()) return true;
+  if (datasetIndexRowsFingerprint(payload) !== baseline) return false;
+  datasetIndexWatch.signature = toText(payload?.index_signature) || polledSignature;
+  return true;
 }
 
 async function checkDatasetIndexSignature() {
@@ -215,6 +248,9 @@ async function checkDatasetIndexSignature() {
       datasetIndexWatch.signature = signature;
       return;
     }
+    if (await datasetIndexRowsUnchanged(selectedPath, signature)) return;
+    if (normalizePath(datasetIndexWatch.selectedPath).toLowerCase() !== selectedPath.toLowerCase()) return;
+    if (cachedDatasetFilter.loading) return;
     datasetIndexWatch.pending = true;
     syncDatasetIndexUpdatePrompt();
   } catch (err) {
@@ -263,6 +299,7 @@ async function stopDatasetIndexWatch(options = {}) {
   datasetIndexWatch.selectedPath = "";
   datasetIndexWatch.path = "";
   datasetIndexWatch.signature = "";
+  datasetIndexWatch.rowsFingerprint = "";
   datasetIndexWatch.checking = false;
   datasetIndexWatch.error = "";
   datasetIndexWatch.suppressUntil = 0;
@@ -285,6 +322,7 @@ async function startDatasetIndexWatchForSnapshot(payload, selectedPath) {
   // The snapshot just loaded is the new baseline whether or not the path
   // changed, so a refresh always clears what the poll had flagged.
   datasetIndexWatch.signature = "";
+  datasetIndexWatch.rowsFingerprint = datasetIndexRowsFingerprint(payload);
   ensureDatasetIndexVisibilityListener();
   startDatasetIndexPollTimer();
   syncDatasetIndexUpdatePrompt();

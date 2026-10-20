@@ -34,6 +34,7 @@ const { installProjectInstanceDatasetCache } = await import(
 
 function createHarness() {
   const signatureReads = [];
+  const snapshotReads = [];
   const state = {
     selectedPath: "Direct Group/COLL",
     datasetViewMode: "normal",
@@ -104,7 +105,9 @@ function createHarness() {
     els,
     nextPolledSignature: "",
     nextPolledAnswer: null,
+    nextSnapshot: null,
     signatureReads,
+    snapshotReads,
     state,
     async restore() {
       await api.stopDatasetIndexWatch();
@@ -115,6 +118,10 @@ function createHarness() {
     },
   };
   globalThis.fetch = async (url) => {
+    if (/\/datasets\/cached\?/u.test(String(url)) && harness.nextSnapshot) {
+      snapshotReads.push(String(url));
+      return { ok: true, status: 200, json: async () => harness.nextSnapshot };
+    }
     assert.match(String(url), /\/datasets\/cached\/index-signature\?/u);
     signatureReads.push(String(url));
     return {
@@ -250,6 +257,50 @@ test("a newer observation inside the settle window is adopted silently", async (
 
     assert.equal(harness.state.datasetIndexWatch.pending, false);
     assert.equal(harness.state.datasetIndexWatch.signature, "3000:80");
+  } finally {
+    await harness.restore();
+  }
+});
+
+const PAID = { name: "Paid Loss", last_modified: "2026-10-01 09:00:00", origin_length: 12 };
+const REPORTED = { name: "Reported Loss", last_modified: "2026-10-01 09:05:00", origin_length: 12 };
+
+test("an index rewrite that leaves every row unchanged is adopted silently", async () => {
+  const harness = createHarness();
+  try {
+    await harness.api.startDatasetIndexWatchForSnapshot(
+      { files: [PAID, REPORTED], index_signature: "2000:64" },
+      harness.state.selectedPath,
+    );
+    // A new length-view cache file changes only the folder listing, so the
+    // rebuilt index carries the same rows, possibly in another order.
+    harness.nextPolledSignature = "3000:80";
+    harness.nextSnapshot = { files: [REPORTED, PAID], index_signature: "3000.5:80" };
+    await harness.api.checkDatasetIndexSignature();
+
+    assert.equal(harness.snapshotReads.length, 1);
+    assert.equal(harness.state.datasetIndexWatch.pending, false);
+    assert.equal(harness.state.datasetIndexWatch.signature, "3000.5:80");
+  } finally {
+    await harness.restore();
+  }
+});
+
+test("an index rewrite that changes a row raises the refresh prompt", async () => {
+  const harness = createHarness();
+  try {
+    await harness.api.startDatasetIndexWatchForSnapshot(
+      { files: [PAID, REPORTED], index_signature: "2000:64" },
+      harness.state.selectedPath,
+    );
+    harness.nextPolledSignature = "3000:80";
+    harness.nextSnapshot = {
+      files: [PAID, { ...REPORTED, last_modified: "2026-10-02 10:00:00" }],
+      index_signature: "3000.5:80",
+    };
+    await harness.api.checkDatasetIndexSignature();
+
+    assert.equal(harness.state.datasetIndexWatch.pending, true);
   } finally {
     await harness.restore();
   }

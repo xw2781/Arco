@@ -218,6 +218,7 @@ export function createProjectInstanceContext(deps = {}) {
       path: "",
       selectedPath: "",
       signature: "",
+      rowsFingerprint: "",
       pending: false,
       checking: false,
       error: "",
