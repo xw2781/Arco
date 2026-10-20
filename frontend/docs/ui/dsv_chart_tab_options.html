@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSV Chart Options</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eef2f6;
+  --surface: #ffffff;
+  --panel: #f8fafc;
+  --panel-2: #fbfcfe;
+  --line: #d8dde3;
+  --line-soft: #e2e8f0;
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --muted: #64748b;
+  --accent: #2b6df6;
+  --accent-soft: #eaf1ff;
+  --font: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink-2); font: 12px/1.4 var(--font); }
+button { font: inherit; }
+.page { max-width: 1500px; margin: 0 auto; padding: 16px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+h1 { margin: 0; font-size: 20px; line-height: 1.15; color: var(--ink); }
+.sub { margin-top: 3px; color: var(--muted); }
+.viewTabs { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: var(--surface); }
+.viewTabs button { border: 0; background: transparent; padding: 7px 14px; color: #475569; cursor: pointer; transition: background-color 140ms ease, color 140ms ease; }
+.viewTabs button + button { border-left: 1px solid var(--line-soft); }
+.viewTabs button:hover:not(.on) { background: #f4f7fa; }
+.viewTabs button.on { background: var(--accent-soft); color: #1d4ed8; font-weight: 700; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+
+/* Mock DSV window */
+.win { display: flex; flex-direction: column; height: clamp(580px, calc(100vh - 110px), 860px); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); overflow: hidden; }
+.winTitle { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #f4f7fa; border-bottom: 1px solid var(--line); color: var(--ink); font-weight: 700; }
+.winTitle span { color: var(--muted); font-weight: 400; }
+.winTabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.winTabs div { padding: 7px 12px 6px; color: var(--muted); border-bottom: 2px solid transparent; }
+.winTabs div.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+.view { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.view[hidden] { display: none !important; }
+
+/* Toolbar */
+.tb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-bottom: 1px solid var(--line-soft); background: var(--panel-2); }
+.tb-l { color: var(--muted); font-size: 11px; font-weight: 700; }
+.tb-sep { width: 1px; height: 18px; background: var(--line-soft); margin: 0 2px; }
+.tb-grow { flex: 1 1 auto; }
+.seg { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 5px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 4px 10px; color: #475569; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.seg button + button { border-left: 1px solid var(--line-soft); }
+.seg button:hover:not(.on) { background: #f4f7fa; }
+.seg button.on { background: var(--accent-soft); color: #1d4ed8; font-weight: 700; }
+.chk { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.chk input { margin: 0; accent-color: var(--accent); }
+.btn { border: 1px solid #cbd5e1; border-radius: 5px; background: var(--surface); padding: 4px 10px; color: var(--ink-2); cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+.btn:hover { background: #f4f7fa; border-color: #b8c3d1; }
+.link { border: 0; background: none; padding: 0 2px; color: var(--accent); cursor: pointer; }
+.link:hover { text-decoration: underline; }
+
+/* Chart body */
+.body { flex: 1 1 auto; min-height: 0; display: grid; }
+.bodyA { grid-template-columns: minmax(0, 1fr) 236px; }
+.bodyB { grid-template-columns: 300px minmax(0, 1fr); }
+.bodyC { grid-template-columns: minmax(0, 1fr) 230px; }
+.chartCol { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.lc { position: relative; flex: 1 1 auto; min-height: 0; margin: 6px 4px 0; }
+.lc-svg { position: absolute; inset: 0; display: block; cursor: crosshair; }
+.lc-grid { stroke: #eef2f6; }
+.lc-zero, .lc-axis { stroke: #cbd5e1; }
+.lc-tick { font: 11px var(--font); fill: var(--muted); }
+.lc-title { font: 700 11px var(--font); fill: #475569; }
+.lc-cross { stroke: #94a3b8; stroke-dasharray: 3 3; }
+.lc-end { font: 700 11px var(--font); fill: var(--ink-2); paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+.lc-empty { font: 12px var(--font); fill: var(--muted); }
+.lc-tip { position: absolute; display: none; pointer-events: none; z-index: 5; min-width: 156px; padding: 6px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); }
+.lc-tip.dark { min-width: 0; padding: 5px 8px; background: rgba(17, 17, 17, 0.88); border: 0; border-radius: 4px; box-shadow: none; color: #fff; white-space: nowrap; }
+.tip-h { margin-bottom: 4px; color: var(--ink); font-size: 11px; font-weight: 700; }
+.tip-r { display: grid; grid-template-columns: 14px minmax(64px, auto) 1fr; gap: 7px; align-items: center; padding: 1px 4px; border-radius: 3px; line-height: 17px; white-space: nowrap; }
+.tip-r b { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.tip-r span.l { color: var(--muted); }
+.tip-r.on { background: #f1f5f9; }
+.tip-r.on span.l { color: var(--ink); font-weight: 700; }
+.tip-k { height: 2px; background: var(--c); }
+.tip-k.dash { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+.tip-k.none { background: transparent; }
+.status { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 30px; padding: 4px 12px; border-top: 1px solid var(--line-soft); color: var(--muted); }
+.status b { color: var(--ink); }
+.pinDot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border: 2px solid var(--ink); border-radius: 50%; vertical-align: -1px; }
+
+/* Option A legend */
+.lg { min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line-soft); background: var(--panel-2); }
+.lg-h { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 10px 6px; }
+.lg-t { color: var(--ink-2); font-size: 11px; font-weight: 700; }
+.lg-n { color: var(--muted); font-size: 11px; }
+.lg-s { margin: 0 10px 6px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font: inherit; color: var(--ink); background: var(--surface); outline: none; }
+.lg-s:focus { border-color: #8aa8ff; box-shadow: 0 0 0 2px rgba(138, 168, 255, 0.18); }
+.lg-q { display: flex; gap: 4px; padding: 0 10px 8px; }
+.lg-q button { flex: 1; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); padding: 3px 0; color: var(--ink-2); cursor: pointer; }
+.lg-q button:hover { background: #f4f7fa; }
+.lg-cols { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 6px; padding: 4px 15px; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: 11px; font-weight: 700; }
+.lg-cols span:first-child { grid-column: 2; }
+.lg-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 5px 8px; }
+.lg-row { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 6px; align-items: center; min-height: 26px; padding: 2px 6px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; outline: none; }
+.lg-row:hover { background: #f1f5f9; border-color: #d8e1ec; }
+.lg-row:focus-visible { border-color: #8aa8ff; box-shadow: 0 0 0 2px rgba(138, 168, 255, 0.18); }
+.lg-sw { height: 3px; border-radius: 2px; background: var(--c); }
+.lg-row.off .lg-sw { height: 0; border-top: 2px dashed #cbd5e1; background: none; }
+.lg-lab { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-val { color: var(--muted); font-variant-numeric: tabular-nums; }
+.lg-row.off .lg-lab, .lg-row.off .lg-val { color: #a0aec0; }
+.lg-only { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: none; border: 1px solid #cbd5e1; border-radius: 4px; background: var(--surface); padding: 1px 7px; color: var(--accent); font-size: 11px; cursor: pointer; }
+.lg-row:hover .lg-only, .lg-row:focus-visible .lg-only { display: block; }
+.lg-empty { padding: 12px 8px; color: var(--muted); }
+
+/* Option B */
+.chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 38px; padding: 6px 10px; border-bottom: 1px solid var(--line-soft); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 4px 0 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); transition: border-color 120ms ease, box-shadow 120ms ease; }
+.chip:hover { border-color: #b8c3d1; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); }
+.chip i { width: 14px; height: 3px; border-radius: 2px; background: var(--c); }
+.chip button { width: 18px; height: 18px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; line-height: 18px; padding: 0; }
+.chip button:hover { background: #eef2f6; color: var(--ink); }
+.chipCount { color: var(--muted); font-size: 11px; }
+.hint { color: #b45309; opacity: 0; transition: opacity 160ms ease; }
+.hint.show { opacity: 1; }
+.tri { min-height: 0; overflow: auto; padding: 10px; border-right: 1px solid var(--line-soft); background: var(--panel-2); }
+.tri-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.tri table { border-collapse: separate; border-spacing: 1px; font-size: 10px; }
+.tri th { padding: 0 3px; color: var(--muted); font-weight: 400; cursor: pointer; user-select: none; border-radius: 2px; transition: background-color 120ms ease, color 120ms ease; }
+.tri thead th { height: 18px; padding: 0; text-align: center; }
+.tri tbody th { text-align: right; padding-right: 5px; }
+.tri th:hover { background: #e2e8f0; color: var(--ink); }
+.tri th.f { color: var(--ink); font-weight: 700; }
+.tri th.hx { background: var(--accent-soft); color: #1d4ed8; }
+.tri td { width: 18px; height: 17px; border-radius: 2px; cursor: pointer; transition: box-shadow 120ms ease; }
+.tri td.e { background: transparent; cursor: default; }
+.tri td:not(.e):hover { box-shadow: inset 0 0 0 1px var(--ink-2); }
+.tri td.hx:not(.e) { box-shadow: inset 0 0 0 9px rgba(15, 23, 42, 0.07); }
+.tri td.pin { outline: 2px solid var(--ink); outline-offset: -2px; }
+.tri-key { display: flex; align-items: center; gap: 6px; margin: 8px 0 10px; color: var(--muted); font-size: 11px; }
+.tri-key i { width: 60px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, rgba(43, 109, 246, 0.06), rgba(43, 109, 246, 0.56)); }
+.tri ul { margin: 0; padding-left: 15px; color: var(--muted); }
+.tri li { margin: 2px 0; }
+.brush { position: relative; height: 40px; margin: 2px 4px 4px; }
+.brush svg { position: absolute; inset: 0; display: block; cursor: ew-resize; touch-action: none; }
+
+/* Current replica */
+.cHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px 0; }
+.cToggle { display: inline-flex; border: 1px solid #cfcfcf; border-radius: 6px; overflow: hidden; }
+.cToggle button { padding: 3px 10px; border: 0; background: #fff; color: #666; cursor: pointer; line-height: 1.4; }
+.cToggle button + button { border-left: 1px solid #cfcfcf; }
+.cToggle button.active { background: #e8edf5; color: #333; font-weight: 600; }
+.cLegend { min-height: 0; overflow: auto; padding: 10px; border-left: 1px solid var(--line-soft); background: var(--panel-2); }
+.cLegend h3 { display: flex; justify-content: space-between; margin: 0 0 7px; color: var(--ink-2); font-size: 11px; text-transform: uppercase; }
+.cLegend h3 span { color: var(--muted); font-weight: 400; }
+.c-lg { display: grid; grid-template-columns: 16px 18px minmax(0, 1fr); gap: 6px; align-items: center; min-height: 30px; padding: 3px 5px; border-radius: 4px; cursor: pointer; }
+.c-lg:hover { background: #f4f7fa; }
+.c-lg input { margin: 0; accent-color: var(--accent); }
+.c-sw { height: 2px; background: var(--c); }
+
+/* Notes */
+.notes { padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.notes h2 { margin: 0 0 2px; font-size: 14px; color: var(--ink); }
+.notes .tag { color: var(--muted); margin-bottom: 10px; }
+.notes h3 { margin: 12px 0 4px; font-size: 11px; color: var(--ink-2); }
+.notes ul { margin: 0; padding-left: 16px; }
+.notes li { margin: 3px 0; }
+.notes .trade { margin-top: 12px; padding: 8px 10px; border-left: 3px solid #b45309; background: #fffbeb; color: #78350f; }
+.notes .trade.good { border-left-color: #15803d; background: #f0fdf4; color: #14532d; }
+
+@media (max-width: 1060px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .bodyB { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(320px, 1fr); }
+  .tri { border-right: 0; border-bottom: 1px solid var(--line-soft); max-height: 260px; }
+}
+@media (max-width: 720px) {
+  .page { padding: 16px; }
+  .bodyA, .bodyC { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1fr) 200px; }
+  .lg, .cLegend { border-left: 0; border-top: 1px solid var(--line-soft); }
+  .win { height: auto; min-height: 720px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <h1>Dataset Viewer Chart Tab</h1>
+      <div class="sub">Two redesigns of the Chart tab, shown on a sample paid-loss triangle. Every control works.</div>
+    </div>
+    <div class="viewTabs" id="viewTabs">
+      <button data-v="current">Today</button>
+      <button data-v="a">Option A · Refined Curves</button>
+      <button data-v="b">Option B · Focus And Context</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="win">
+      <div class="winTitle">Paid Loss <span>· Sample Triangle · Annual</span></div>
+      <div class="winTabs"><div>Data</div><div>Details</div><div class="on">Chart</div><div>Notes</div></div>
+
+      <!-- Today -->
+      <section class="view" data-view="current" hidden>
+        <div class="cHeader">
+          <b id="cTitle">Development Curves</b>
+          <div class="cToggle" id="cToggle">
+            <button data-mode="col" title="By Column (Dev Period)">By Column</button>
+            <button data-mode="row" title="By Row (Origin)">By Row</button>
+          </div>
+        </div>
+        <div class="body bodyC">
+          <div class="chartCol"><div class="lc" id="cChart"></div></div>
+          <aside class="cLegend"><h3>Series <span id="cCount"></span></h3><div id="cLegend"></div></aside>
+        </div>
+      </section>
+
+      <!-- Option A -->
+      <section class="view" data-view="a" hidden>
+        <div class="tb">
+          <span class="tb-l">Plot</span>
+          <div class="seg" id="aPlot"><button data-v="row">Origin Curves</button><button data-v="col">Age Trend</button></div>
+          <span class="tb-sep"></span>
+          <span class="tb-l">Values</span>
+          <div class="seg" id="aValues"><button data-v="cum">Cumulative</button><button data-v="inc">Incremental</button><button data-v="ata">Age-To-Age</button></div>
+          <span class="tb-sep"></span>
+          <label class="chk"><input type="checkbox" id="aMarkers" checked> Markers</label>
+          <span class="tb-grow"></span>
+          <button class="btn" id="aReset">Reset view</button>
+        </div>
+        <div class="body bodyA">
+          <div class="chartCol">
+            <div class="lc" id="aChart"></div>
+            <div class="status" id="aStatus"></div>
+          </div>
+          <aside class="lg">
+            <div class="lg-h"><span class="lg-t">Series</span><span class="lg-n" id="aCount"></span></div>
+            <input class="lg-s" id="aSearch" type="search" placeholder="Filter series" autocomplete="off">
+            <div class="lg-q" id="aQuick"><button data-q="all">All</button><button data-q="none">None</button><button data-q="recent" id="aRecent">Recent 3</button></div>
+            <div class="lg-cols"><span id="aColName">Origin</span><span>Latest</span></div>
+            <div class="lg-list" id="aLegend" role="group" aria-label="Series visibility"></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Option B -->
+      <section class="view" data-view="b" hidden>
+        <div class="tb">
+          <span class="tb-l">Plot</span>
+          <div class="seg" id="bPlot"><button data-v="row">Origin Curves</button><button data-v="col">Age Trend</button></div>
+          <span class="tb-sep"></span>
+          <span class="tb-l">Values</span>
+          <div class="seg" id="bValues"><button data-v="cum">Cumulative</button><button data-v="inc">Incremental</button><button data-v="ata">Age-To-Age</button></div>
+          <span class="tb-sep"></span>
+          <label class="chk"><input type="checkbox" id="bAvg" checked> Average</label>
+        </div>
+        <div class="chips" id="bChips"></div>
+        <div class="body bodyB">
+          <aside class="tri">
+            <div class="tri-h"><span class="lg-t">Triangle</span><span class="lg-n" id="bTriMode"></span></div>
+            <table id="bTri"></table>
+            <div class="tri-key"><span>Low</span><i></i><span>High, within each age</span></div>
+            <ul>
+              <li>Click an origin to focus it</li>
+              <li>Click an age to plot it across origins</li>
+              <li>Click a cell to make it the active cell</li>
+            </ul>
+          </aside>
+          <div class="chartCol">
+            <div class="lc" id="bChart"></div>
+            <div class="brush" id="bBrush"></div>
+            <div class="status" id="bStatus"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="notes">
+      <section data-for="current" hidden>
+        <h2>Today</h2>
+        <div class="tag">A replica of the current Chart tab, for comparison.</div>
+        <h3>What Gets In The Way</h3>
+        <ul>
+          <li>Title and toggle use different names for one choice</li>
+          <li>10 colours repeat: 2014 and 2024 are both red</li>
+          <li>Fixed 1030 × 560 panel; does not fill the window</li>
+          <li>Tooltip needs a direct hit on a 3px dot</li>
+          <li>One value at a time; no side-by-side reading</li>
+          <li>No axis titles</li>
+          <li>Origin curves start at a made-up 0m point</li>
+          <li>Series list: checkboxes only, no All, None or filter</li>
+          <li>No incremental or age-to-age view</li>
+        </ul>
+      </section>
+      <section data-for="a" hidden>
+        <h2>Option A · Refined Curves</h2>
+        <div class="tag">Same layout as today, every part tightened.</div>
+        <h3>What Changes</h3>
+        <ul>
+          <li>Colour by origin age: older pale, newer dark, no repeats</li>
+          <li>Crosshair reads every series at one age</li>
+          <li>Hover a line or a list row to bring it forward</li>
+          <li>Values: Cumulative, Incremental, Age-To-Age</li>
+          <li>Series list: filter, All, None, Recent 3, Only</li>
+          <li>Latest diagonal value beside each series</li>
+          <li>Click a point to set the grid's active cell</li>
+          <li>Fills the window; axis titles; no 0m point</li>
+        </ul>
+        <h3>Try</h3>
+        <ul>
+          <li>Hover row 2017 in the list</li>
+          <li>Double-click a line to show only it</li>
+          <li>Switch Values to Age-To-Age</li>
+        </ul>
+        <div class="trade good">Low risk: renderer and series list only. Grid, tabs and saved settings are untouched.</div>
+      </section>
+      <section data-for="b" hidden>
+        <h2>Option B · Focus And Context</h2>
+        <div class="tag">Compare a few series against all the rest.</div>
+        <h3>What Changes</h3>
+        <ul>
+          <li>Every series stays visible as grey context</li>
+          <li>Up to 4 focused series get distinct colours and end labels</li>
+          <li>Mini triangle picks series by origin, age or cell</li>
+          <li>Crosshair column lights up in the triangle</li>
+          <li>Dashed simple average as a reference line</li>
+          <li>Drag the strip under the chart to zoom ages</li>
+        </ul>
+        <h3>Try</h3>
+        <ul>
+          <li>Click a grey line to focus it</li>
+          <li>Click age 36 in the triangle header</li>
+          <li>Drag across the zoom strip; double-click to reset</li>
+        </ul>
+        <div class="trade">More new behaviour: the triangle panel takes 300px, and focus is a new idea to learn.</div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function h(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- Sample triangle ----------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry32(20261020);
+const ORIGINS = Array.from({ length: 12 }, (_, i) => String(2014 + i));
+const AGES = Array.from({ length: 12 }, (_, j) => 12 * (j + 1));
+const PATTERN = [0.30, 0.55, 0.70, 0.80, 0.87, 0.92, 0.95, 0.972, 0.985, 0.993, 0.998, 1];
+const CUM = ORIGINS.map((o, i) => {
+  let ult = 6.2e6 * Math.pow(1.045, i) * (1 + 0.14 * (rnd() - 0.5));
+  if (o === "2020") ult *= 0.82;
+  if (o === "2017") ult *= 1.1;
+  const row = [];
+  let prev = 0;
+  for (let j = 0; j < AGES.length; j++) {
+    if (j >= AGES.length - i) { row.push(null); continue; }
+    let v = ult * PATTERN[j] * (1 + 0.05 * (rnd() - 0.5));
+    if (o === "2017" && j === 3) v *= 1.07;
+    v = Math.round(Math.max(v, prev * 1.001) / 100) * 100;
+    row.push(v);
+    prev = v;
+  }
+  return row;
+});
+
+function matrixFor(mode) {
+  const ages = AGES.map(String);
+  if (mode === "cum") return { cols: ages, m: CUM };
+  if (mode === "inc") return { cols: ages, m: CUM.map((r) => r.map((v, j) => (v == null ? null : j === 0 ? v : v - r[j - 1]))) };
+  const cols = AGES.slice(0, -1).map((a, j) => `${a}-${AGES[j + 1]}`);
+  return { cols, m: CUM.map((r) => cols.map((_, j) => (r[j] != null && r[j + 1] != null ? r[j + 1] / r[j] : null))) };
+}
+const VALUE_TITLES = { cum: "Cumulative Paid Loss", inc: "Incremental Paid Loss", ata: "Age-To-Age Factor" };
+function seriesSet(plot, mode) {
+  const { cols, m } = matrixFor(mode);
+  if (plot === "row") {
+    return {
+      xLabels: cols,
+      xTitle: mode === "ata" ? "Age Interval (Months)" : "Development Age (Months)",
+      list: ORIGINS.map((o, i) => ({ id: "o" + o, label: o, values: m[i].slice() })),
+    };
+  }
+  return {
+    xLabels: ORIGINS,
+    xTitle: "Origin Year",
+    list: cols.map((c, j) => ({ id: "c" + AGES[j], label: mode === "ata" ? c : "Age " + c, values: m.map((r) => r[j]) })),
+  };
+}
+const compactFmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 });
+const fmtFull = (v, mode) => (v == null ? "—" : mode === "ata" ? v.toFixed(3) : Math.round(v).toLocaleString("en-US"));
+const fmtAxis = (v, mode) => (mode === "ata" ? v.toFixed(2) : compactFmt.format(v));
+const tipTitle = (plot, mode, labels) => (xi) => (plot === "row" ? `Age ${labels[xi]} months` : `Origin ${labels[xi]}`);
+
+function niceTicks(min, max, count) {
+  if (min === max) { const d = Math.abs(min) * 0.1 || 1; min -= d; max += d; }
+  const raw = (max - min) / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const t = [];
+  for (let v = lo; v <= hi + step * 1e-6; v += step) t.push(+v.toFixed(10));
+  return { lo, hi, t };
+}
+function hexToRgb(x) { const n = parseInt(x.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return "#" + A.map((x, i) => Math.round(x + (B[i] - x) * t).toString(16).padStart(2, "0")).join("");
+}
+const ramp = (n, from, to) => Array.from({ length: n }, (_, i) => mix(from, to, n < 2 ? 1 : i / (n - 1)));
+
+// ---------- Line chart ----------
+let clipSeq = 0;
+class LineChart {
+  constructor(host, { tooltip = "crosshair" } = {}) {
+    this.host = host;
+    this.mode = tooltip;
+    this.svg = svgEl("svg", { class: "lc-svg" });
+    host.appendChild(this.svg);
+    this.tip = h("div", "lc-tip" + (tooltip === "nearest" ? " dark" : ""));
+    host.appendChild(this.tip);
+    this.hx = null; this.hy = 0; this.hoverId = null; this.legendId = null;
+    new ResizeObserver(() => this.render()).observe(host);
+    this.svg.addEventListener("pointermove", (e) => this.move(e));
+    this.svg.addEventListener("pointerleave", () => this.clearHover());
+    this.svg.addEventListener("click", () => {
+      if (this.o?.onPick && this.hx != null && this.hoverId) this.o.onPick(this.hoverId, this.hx);
+    });
+    this.svg.addEventListener("dblclick", () => {
+      if (this.o?.onSolo && this.hoverId) this.o.onSolo(this.hoverId);
+    });
+  }
+  set(o) { this.o = o; this.render(); }
+  setLegendHover(id) { this.legendId = id; this.render(); }
+  get emph() { return this.legendId || this.hoverId; }
+  clearHover() {
+    const had = this.hx != null;
+    this.hx = null; this.hoverId = null;
+    this.render();
+    if (had) this.o?.onHoverX?.(null);
+  }
+  move(e) {
+    const g = this.geo;
+    if (!g || !this.o) return;
+    const r = this.svg.getBoundingClientRect();
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    if (px < g.ml - 10 || px > g.ml + g.pw + 10 || py < g.mt - 10 || py > g.mt + g.ph + 10) {
+      if (this.hx != null) this.clearHover();
+      return;
+    }
+    const span = Math.max(1, g.i1 - g.i0);
+    const fx = g.i0 + ((px - g.ml) / g.pw) * span;
+    const xi = clamp(Math.round(fx), g.i0, g.i1);
+    let best = null, bd = this.mode === "nearest" ? 15 : 16;
+    for (const s of this.o.series) {
+      if (s.hidden) continue;
+      if (this.mode === "nearest") {
+        const v = s.values[xi];
+        if (v == null) continue;
+        const d = Math.hypot(g.x(xi) - px, g.y(v) - py);
+        if (d < bd) { bd = d; best = s.id; }
+        continue;
+      }
+      const a = clamp(Math.floor(fx), 0, s.values.length - 1), b = Math.min(a + 1, s.values.length - 1);
+      const va = s.values[a], vb = s.values[b];
+      let v = null;
+      if (va != null && vb != null) v = va + (vb - va) * (fx - a);
+      else if (s.values[xi] != null) v = s.values[xi];
+      if (v == null) continue;
+      const d = Math.abs(g.y(v) - py);
+      if (d < bd) { bd = d; best = s.id; }
+    }
+    const xChanged = xi !== this.hx;
+    this.hx = xi; this.hy = py; this.hoverId = best;
+    this.render();
+    if (xChanged) this.o.onHoverX?.(xi);
+  }
+  render() {
+    const o = this.o;
+    if (!o) return;
+    const W = this.host.clientWidth, H = this.host.clientHeight;
+    if (W < 60 || H < 60) return;
+    const svg = this.svg;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+    svg.replaceChildren();
+    const n = o.xLabels.length;
+    const [i0, i1] = o.range || [0, n - 1];
+    const shown = o.series.filter((s) => !s.hidden);
+    let lo = Infinity, hi = -Infinity;
+    for (const s of shown) {
+      for (let i = i0; i <= i1; i++) {
+        const v = s.values[i];
+        if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+      }
+    }
+    if (!isFinite(lo)) {
+      this.geo = null;
+      this.tip.style.display = "none";
+      const t = svgEl("text", { x: W / 2, y: H / 2, class: "lc-empty", "text-anchor": "middle" }, svg);
+      t.textContent = "No series shown. Pick one from the list.";
+      o.onRender?.();
+      return;
+    }
+    if (o.yZero) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+    const pad = (hi - lo) * 0.04 || 1;
+    hi += pad;
+    if (!(o.yZero && lo === 0)) lo -= pad;
+    const mt = 14, mb = o.xTitle ? 46 : 30;
+    const nt = niceTicks(lo, hi, Math.max(3, Math.round((H - mt - mb) / 56)));
+    const yLabels = nt.t.map((v) => o.fmtAxis(v));
+    const ml = Math.max(...yLabels.map((l) => l.length)) * 6.3 + 12 + (o.yTitle ? 22 : 0);
+    const mr = o.endLabels?.length ? 74 : 18;
+    const pw = W - ml - mr, ph = H - mt - mb;
+    const span = Math.max(1, i1 - i0);
+    const x = (i) => ml + ((i - i0) / span) * pw;
+    const y = (v) => mt + (1 - (v - nt.lo) / (nt.hi - nt.lo)) * ph;
+    this.geo = { x, y, i0, i1, ml, mt, pw, ph, W, H };
+
+    const g = svgEl("g", {}, svg);
+    nt.t.forEach((v, k) => {
+      const yy = Math.round(y(v)) + 0.5;
+      svgEl("line", { x1: ml, x2: ml + pw, y1: yy, y2: yy, class: v === 0 && o.yZero ? "lc-zero" : "lc-grid" }, g);
+      svgEl("text", { x: ml - 8, y: yy + 4, class: "lc-tick", "text-anchor": "end" }, g).textContent = yLabels[k];
+    });
+    const labW = Math.max(...o.xLabels.map((l) => String(l).length)) * 6.3 + 10;
+    const every = Math.max(1, Math.ceil(labW / (pw / span)));
+    for (let i = i0; i <= i1; i++) {
+      if ((i - i0) % every) continue;
+      const xx = Math.round(x(i)) + 0.5;
+      svgEl("line", { x1: xx, x2: xx, y1: mt + ph, y2: mt + ph + 4, class: "lc-axis" }, g);
+      svgEl("text", { x: xx, y: mt + ph + 17, class: "lc-tick", "text-anchor": "middle" }, g).textContent = o.xLabels[i];
+    }
+    svgEl("line", { x1: ml, x2: ml + pw, y1: mt + ph + 0.5, y2: mt + ph + 0.5, class: "lc-axis" }, g);
+    if (o.xTitle) svgEl("text", { x: ml + pw / 2, y: H - 8, class: "lc-title", "text-anchor": "middle" }, g).textContent = o.xTitle;
+    if (o.yTitle) svgEl("text", { class: "lc-title", "text-anchor": "middle", transform: `translate(12 ${mt + ph / 2}) rotate(-90)` }, g).textContent = o.yTitle;
+
+    const cid = "lcClip" + ++clipSeq;
+    const cp = svgEl("clipPath", { id: cid }, svgEl("defs", {}, svg));
+    svgEl("rect", { x: ml - 6, y: mt - 6, width: pw + 12, height: ph + 12 }, cp);
+    const plot = svgEl("g", { "clip-path": `url(#${cid})` }, svg);
+
+    const emph = this.emph;
+    const rank = (s) => (s.id === emph ? 3 : s.context ? 0 : s.dashed ? 1 : 2);
+    for (const s of [...shown].sort((a, b) => rank(a) - rank(b))) {
+      const isE = s.id === emph;
+      const dim = emph && !isE && !s.context;
+      let color = s.color, width = s.width || 2;
+      if (s.context) { color = isE ? "#475569" : "#cbd5e1"; width = isE ? 2 : 1.25; }
+      else if (isE) width += 0.75;
+      const segs = [];
+      let cur = [];
+      for (let i = Math.max(0, i0 - 1); i <= Math.min(n - 1, i1 + 1); i++) {
+        const v = s.values[i];
+        if (v == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push([x(i), y(v)]);
+      }
+      if (cur.length) segs.push(cur);
+      const op = dim ? 0.16 : 1;
+      for (const seg of segs) {
+        if (seg.length > 1) {
+          svgEl("path", {
+            d: "M" + seg.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join("L"),
+            fill: "none", stroke: color, "stroke-width": width, "stroke-dasharray": s.dashed ? "5 4" : null,
+            "stroke-linejoin": "round", "stroke-linecap": "round", opacity: op,
+          }, plot);
+        }
+        if ((o.markers && !s.context && !s.dashed) || seg.length === 1) {
+          for (const p of seg) {
+            svgEl("circle", { cx: p[0], cy: p[1], r: this.mode === "nearest" ? 3 : 2.75, fill: color, stroke: this.mode === "nearest" ? null : "#fff", "stroke-width": 1.5, opacity: op }, plot);
+          }
+        }
+      }
+    }
+
+    if (o.pinned && o.pinned.xi >= i0 && o.pinned.xi <= i1) {
+      const s = shown.find((q) => q.id === o.pinned.id);
+      const v = s?.values[o.pinned.xi];
+      if (v != null) {
+        svgEl("circle", { cx: x(o.pinned.xi), cy: y(v), r: 6, fill: "none", stroke: "#0f172a", "stroke-width": 2 }, svg);
+        svgEl("circle", { cx: x(o.pinned.xi), cy: y(v), r: 2, fill: "#0f172a" }, svg);
+      }
+    }
+
+    if (o.endLabels?.length) {
+      const items = [];
+      for (const id of o.endLabels) {
+        const s = shown.find((q) => q.id === id);
+        if (!s) continue;
+        let li = -1;
+        for (let i = i1; i >= i0; i--) if (s.values[i] != null) { li = i; break; }
+        if (li < 0) continue;
+        items.push({ s, x: x(li), y: y(s.values[li]), ty: y(s.values[li]) });
+      }
+      items.sort((a, b) => a.ty - b.ty);
+      for (let k = 1; k < items.length; k++) if (items[k].ty - items[k - 1].ty < 13) items[k].ty = items[k - 1].ty + 13;
+      for (const it of items) {
+        const dim = emph && emph !== it.s.id;
+        const gl = svgEl("g", { opacity: dim ? 0.35 : 1 }, svg);
+        svgEl("line", { x1: it.x + 4, y1: it.y, x2: it.x + 10, y2: it.ty, stroke: it.s.color, "stroke-width": 2, "stroke-dasharray": it.s.dashed ? "2 2" : null }, gl);
+        svgEl("text", { x: it.x + 13, y: it.ty + 4, class: "lc-end" }, gl).textContent = it.s.label;
+      }
+    }
+
+    if (this.hx != null && this.hx >= i0 && this.hx <= i1) this.drawHover(svg, shown);
+    else this.tip.style.display = "none";
+    svg.style.cursor = this.mode === "nearest" ? "default" : this.hoverId && o.onPick ? "pointer" : "crosshair";
+    o.onRender?.();
+  }
+  drawHover(svg, shown) {
+    const o = this.o, { x, y, mt, ph, W, H } = this.geo, xi = this.hx, tip = this.tip;
+    tip.replaceChildren();
+    if (this.mode === "nearest") {
+      const s = shown.find((q) => q.id === this.hoverId);
+      const v = s?.values[xi];
+      if (v == null) { tip.style.display = "none"; return; }
+      svgEl("circle", { cx: x(xi), cy: y(v), r: 4.5, fill: s.color }, svg);
+      tip.textContent = `${s.label} @ ${o.xLabels[xi]} = ${o.fmtVal(v)}`;
+      this.placeTip(x(xi), y(v) - 16, W, H);
+      return;
+    }
+    const xx = Math.round(x(xi)) + 0.5;
+    svgEl("line", { x1: xx, x2: xx, y1: mt, y2: mt + ph, class: "lc-cross" }, svg);
+    const emph = this.emph;
+    const rows = [];
+    const ctx = [];
+    for (const s of shown) {
+      const v = s.values[xi];
+      if (v == null) continue;
+      if (s.context && s.id !== emph) { ctx.push(v); continue; }
+      const col = s.context ? "#475569" : s.color;
+      svgEl("circle", { cx: x(xi), cy: y(v), r: s.id === emph ? 4.5 : 3.5, fill: col, stroke: "#fff", "stroke-width": 2 }, svg);
+      rows.push({ s, v, col });
+    }
+    rows.sort((a, b) => b.v - a.v);
+    tip.appendChild(h("div", "tip-h", o.tipTitle(xi)));
+    for (const r of rows) {
+      const row = h("div", "tip-r" + (r.s.id === emph ? " on" : ""));
+      const k = h("span", "tip-k" + (r.s.dashed ? " dash" : ""));
+      k.style.setProperty("--c", r.col);
+      row.append(k, h("b", null, o.fmtVal(r.v)), h("span", "l", r.s.label));
+      tip.appendChild(row);
+    }
+    if (ctx.length) {
+      const row = h("div", "tip-r");
+      row.append(h("span", "tip-k none"), h("b", null, `${o.fmtVal(Math.min(...ctx))} – ${o.fmtVal(Math.max(...ctx))}`), h("span", "l", `${ctx.length} others`));
+      tip.appendChild(row);
+    }
+    if (!rows.length && !ctx.length) tip.appendChild(h("div", "l", "No values here"));
+    this.placeTip(x(xi), this.hy, W, H, true);
+  }
+  placeTip(px, py, W, H, side) {
+    const tip = this.tip;
+    tip.style.display = "block";
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = side ? px + 14 : px + 12;
+    if (left + tw > W - 4) left = px - 14 - tw;
+    tip.style.left = Math.max(4, left) + "px";
+    tip.style.top = clamp(side ? py - th / 2 : py - th, 4, Math.max(4, H - th - 4)) + "px";
+  }
+}
+
+function setSeg(sel, val) { $$(sel + " button").forEach((b) => b.classList.toggle("on", b.dataset.v === val)); }
+function bindSeg(sel, fn) {
+  $(sel).addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-v]");
+    if (b) fn(b.dataset.v);
+  });
+}
+const lastIndex = (vals) => { for (let i = vals.length - 1; i >= 0; i--) if (vals[i] != null) return i; return -1; };
+const pointCount = (vals) => vals.filter((v) => v != null).length;
+function pinToSeries(p, plot, list) {
+  if (!p) return null;
+  const id = plot === "row" ? "o" + ORIGINS[p.r] : "c" + AGES[p.c];
+  const xi = plot === "row" ? p.c : p.r;
+  return list.some((s) => s.id === id && s.values[xi] != null) ? { id, xi } : null;
+}
+function seriesToCell(id, xi, plot) {
+  return plot === "row" ? { r: ORIGINS.indexOf(id.slice(1)), c: xi } : { r: xi, c: AGES.indexOf(+id.slice(1)) };
+}
+function pinStatus(el, pinned, mode, onClear, fallback) {
+  const { cols, m } = matrixFor(mode);
+  const v = pinned ? m[pinned.r]?.[pinned.c] : null;
+  if (v == null) { el.appendChild(h("span", null, fallback)); return; }
+  const left = h("span");
+  left.append(h("span", "pinDot"), "Active cell ", h("b", null, `${ORIGINS[pinned.r]} · Age ${cols[pinned.c]}`), " = ", h("b", null, fmtFull(v, mode)), " ");
+  const clr = h("button", "link", "Clear");
+  clr.onclick = onClear;
+  left.appendChild(clr);
+  el.appendChild(left);
+}
+
+// ---------- Today ----------
+const D3 = ["#d62728", "#1f77b4", "#2ca02c", "#ff7f0e", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"];
+const C = { plot: "col", hidden: { row: new Set(), col: new Set() } };
+const chartC = new LineChart($("#cChart"), { tooltip: "nearest" });
+function renderC() {
+  const ss = seriesSet(C.plot, "cum");
+  const hid = C.hidden[C.plot];
+  let xLabels = ss.xLabels, list = ss.list;
+  if (C.plot === "row") {
+    xLabels = ["0m", ...xLabels];
+    list = list.map((s) => ({ ...s, values: [0, ...s.values] }));
+  } else {
+    list = list.map((s) => ({ ...s, label: s.label.replace("Age ", "") }));
+  }
+  const series = list.map((s, k) => ({ ...s, color: D3[k % 10], hidden: hid.has(s.id) }));
+  $("#cTitle").textContent = C.plot === "col" ? "By Column (Dev Period)" : "Development Curves";
+  $$("#cToggle button").forEach((b) => b.classList.toggle("active", b.dataset.mode === C.plot));
+  const full = (v) => Math.round(v).toLocaleString("en-US");
+  chartC.set({ series, xLabels, xTitle: "", yTitle: "", yZero: false, markers: true, fmtAxis: full, fmtVal: full, tipTitle: (xi) => xLabels[xi] });
+  const L = $("#cLegend");
+  L.replaceChildren();
+  $("#cCount").textContent = `${series.length - hid.size}/${series.length}`;
+  for (const s of series) {
+    const lab = h("label", "c-lg");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !s.hidden;
+    cb.onchange = () => { cb.checked ? hid.delete(s.id) : hid.add(s.id); renderC(); };
+    const sw = h("span", "c-sw");
+    sw.style.setProperty("--c", s.color);
+    lab.append(cb, sw, h("span", null, s.label));
+    L.appendChild(lab);
+  }
+}
+$("#cToggle").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-mode]");
+  if (b) { C.plot = b.dataset.mode; renderC(); }
+});
+
+// ---------- Option A ----------
+const A = { plot: "row", values: "cum", markers: true, hidden: { row: new Set(), col: new Set() }, search: "", pinned: { r: 7, c: 2 } };
+const chartA = new LineChart($("#aChart"));
+let seriesA = [];
+function soloA(id) {
+  const hid = A.hidden[A.plot];
+  const visible = seriesA.filter((s) => !hid.has(s.id));
+  hid.clear();
+  if (!(visible.length === 1 && visible[0].id === id)) for (const s of seriesA) if (s.id !== id) hid.add(s.id);
+  renderA();
+}
+function renderA() {
+  const ss = seriesSet(A.plot, A.values);
+  const hid = A.hidden[A.plot];
+  const pal = A.plot === "row" ? ramp(ss.list.length, "#a9c6ee", "#0b3a8c") : ramp(ss.list.length, "#a3dccf", "#0a5c54");
+  seriesA = ss.list.map((s, k) => ({ ...s, color: pal[k], hidden: hid.has(s.id) }));
+  const vis = seriesA.filter((s) => !s.hidden && pointCount(s.values));
+  const ends = vis.length ? [...new Set([vis[0].id, vis[vis.length - 1].id])] : [];
+  setSeg("#aPlot", A.plot);
+  setSeg("#aValues", A.values);
+  $("#aMarkers").checked = A.markers;
+  chartA.set({
+    series: seriesA, xLabels: ss.xLabels, xTitle: ss.xTitle, yTitle: VALUE_TITLES[A.values],
+    yZero: A.values !== "ata", markers: A.markers, endLabels: ends,
+    fmtAxis: (v) => fmtAxis(v, A.values), fmtVal: (v) => fmtFull(v, A.values),
+    tipTitle: tipTitle(A.plot, A.values, ss.xLabels),
+    pinned: pinToSeries(A.pinned, A.plot, ss.list),
+    onPick: (id, xi) => { A.pinned = seriesToCell(id, xi, A.plot); renderA(); },
+    onSolo: soloA,
+  });
+  renderLegendA();
+  const st = $("#aStatus");
+  st.replaceChildren();
+  pinStatus(st, A.pinned, A.values, () => { A.pinned = null; renderA(); }, "Click a point to make it the active cell");
+  st.appendChild(h("span", null, "Double-click a line to show only it"));
+}
+function renderLegendA() {
+  const hid = A.hidden[A.plot];
+  const list = $("#aLegend");
+  list.replaceChildren();
+  $("#aCount").textContent = `${seriesA.length - hid.size} of ${seriesA.length}`;
+  $("#aColName").textContent = A.plot === "row" ? "Origin" : "Age";
+  $("#aRecent").textContent = A.plot === "row" ? "Recent 3" : "Early 3";
+  const q = A.search.trim().toLowerCase();
+  let count = 0;
+  for (const s of seriesA) {
+    if (q && !s.label.toLowerCase().includes(q)) continue;
+    count++;
+    const row = h("div", "lg-row" + (s.hidden ? " off" : ""));
+    row.tabIndex = 0;
+    row.setAttribute("role", "checkbox");
+    row.setAttribute("aria-checked", String(!s.hidden));
+    const sw = h("span", "lg-sw");
+    sw.style.setProperty("--c", s.color);
+    const li = lastIndex(s.values);
+    row.append(sw, h("span", "lg-lab", s.label), h("span", "lg-val", li < 0 ? "—" : fmtAxis(s.values[li], A.values)));
+    const only = h("button", "lg-only", "Only");
+    only.onclick = (e) => { e.stopPropagation(); soloA(s.id); };
+    row.appendChild(only);
+    const toggle = () => { hid.has(s.id) ? hid.delete(s.id) : hid.add(s.id); chartA.legendId = null; renderA(); };
+    row.onclick = toggle;
+    row.onkeydown = (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } };
+    row.onpointerenter = () => { if (!s.hidden) chartA.setLegendHover(s.id); };
+    row.onpointerleave = () => chartA.setLegendHover(null);
+    list.appendChild(row);
+  }
+  if (!count) list.appendChild(h("div", "lg-empty", "No series match."));
+}
+bindSeg("#aPlot", (v) => { A.plot = v; chartA.legendId = null; renderA(); });
+bindSeg("#aValues", (v) => { A.values = v; renderA(); });
+$("#aMarkers").onchange = (e) => { A.markers = e.target.checked; renderA(); };
+$("#aSearch").oninput = (e) => { A.search = e.target.value; renderLegendA(); };
+$("#aQuick").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]");
+  if (!b) return;
+  const hid = A.hidden[A.plot];
+  hid.clear();
+  if (b.dataset.q === "none") seriesA.forEach((s) => hid.add(s.id));
+  if (b.dataset.q === "recent") {
+    const withData = seriesA.filter((s) => pointCount(s.values) >= 2);
+    const keep = new Set((A.plot === "row" ? withData.slice(-3) : withData.slice(0, 3)).map((s) => s.id));
+    seriesA.forEach((s) => { if (!keep.has(s.id)) hid.add(s.id); });
+  }
+  renderA();
+});
+$("#aReset").onclick = () => {
+  A.hidden.row.clear(); A.hidden.col.clear();
+  A.search = ""; $("#aSearch").value = "";
+  A.markers = true; A.values = "cum";
+  renderA();
+};
+
+// ---------- Option B ----------
+const SLOT = ["#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7"];
+const B = {
+  plot: "row", values: "cum", avg: true, range: null, pinned: null,
+  focus: { row: ["o2017", "o2020", "o2023"], col: ["c12", "c36", "c60"] },
+  slots: { row: { o2017: 0, o2020: 1, o2023: 2 }, col: { c12: 0, c36: 1, c60: 2 } },
+};
+const chartB = new LineChart($("#bChart"));
+let brushSS = null;
+let hintTimer = 0;
+function flashB() {
+  const el = $("#bHint");
+  if (!el) return;
+  el.classList.add("show");
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => el.classList.remove("show"), 1600);
+}
+function addFocus(id, plot = B.plot) {
+  const f = B.focus[plot], sl = B.slots[plot];
+  if (f.includes(id)) return true;
+  if (f.length >= 4) { flashB(); return false; }
+  const used = new Set(Object.values(sl));
+  let slot = 0;
+  while (used.has(slot)) slot++;
+  sl[id] = slot;
+  f.push(id);
+  return true;
+}
+function removeFocus(id, plot = B.plot) {
+  const f = B.focus[plot];
+  const k = f.indexOf(id);
+  if (k >= 0) { f.splice(k, 1); delete B.slots[plot][id]; }
+}
+function toggleFocus(id) {
+  if (B.focus[B.plot].includes(id)) removeFocus(id); else addFocus(id);
+  renderB();
+}
+function switchPlotB(plot) {
+  if (B.plot !== plot) { B.plot = plot; B.range = null; chartB.legendId = null; }
+}
+function renderB() {
+  const ss = seriesSet(B.plot, B.values);
+  const f = B.focus[B.plot], sl = B.slots[B.plot];
+  const series = ss.list.map((s) => (f.includes(s.id) ? { ...s, color: SLOT[sl[s.id]], width: 2.25 } : { ...s, context: true }));
+  if (B.avg) {
+    const avg = ss.xLabels.map((_, i) => {
+      const vs = ss.list.map((s) => s.values[i]).filter((v) => v != null);
+      return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+    });
+    series.push({ id: "avg", label: "Average", values: avg, color: "#334155", dashed: true, width: 1.5 });
+  }
+  setSeg("#bPlot", B.plot);
+  setSeg("#bValues", B.values);
+  $("#bAvg").checked = B.avg;
+  brushSS = ss;
+  renderChipsB(ss);
+  renderTriangleB();
+  chartB.set({
+    series, xLabels: ss.xLabels, xTitle: ss.xTitle, yTitle: VALUE_TITLES[B.values],
+    yZero: B.values !== "ata", markers: true, range: B.range,
+    endLabels: [...f, ...(B.avg ? ["avg"] : [])],
+    fmtAxis: (v) => fmtAxis(v, B.values), fmtVal: (v) => fmtFull(v, B.values),
+    tipTitle: tipTitle(B.plot, B.values, ss.xLabels),
+    pinned: pinToSeries(B.pinned, B.plot, ss.list),
+    onPick: (id) => { if (id !== "avg") toggleFocus(id); },
+    onHoverX: markTriangle,
+    onRender: renderBrush,
+  });
+  const st = $("#bStatus");
+  st.replaceChildren();
+  pinStatus(st, B.pinned, B.values, () => { B.pinned = null; renderB(); }, "Click a grey line to focus it; click a coloured line to drop it");
+  const right = h("span");
+  if (B.range) {
+    right.append(`Showing ${ss.xLabels[B.range[0]]} to ${ss.xLabels[B.range[1]]} `);
+    const rs = h("button", "link", "Reset zoom");
+    rs.onclick = () => { B.range = null; renderB(); };
+    right.appendChild(rs);
+  } else right.textContent = "Drag the strip above to zoom";
+  st.appendChild(right);
+}
+function renderChipsB(ss) {
+  const el = $("#bChips");
+  el.replaceChildren();
+  const f = [...B.focus[B.plot]].sort((a, b) => B.slots[B.plot][a] - B.slots[B.plot][b]);
+  el.appendChild(h("span", "tb-l", "Focus"));
+  for (const id of f) {
+    const s = ss.list.find((q) => q.id === id);
+    if (!s) continue;
+    const chip = h("span", "chip");
+    const dot = h("i");
+    dot.style.setProperty("--c", SLOT[B.slots[B.plot][id]]);
+    const x = h("button", null, "×");
+    x.title = "Remove " + s.label;
+    x.onclick = () => { removeFocus(id); renderB(); };
+    chip.onpointerenter = () => chartB.setLegendHover(id);
+    chip.onpointerleave = () => chartB.setLegendHover(null);
+    chip.append(dot, h("span", null, s.label), x);
+    el.appendChild(chip);
+  }
+  el.appendChild(h("span", "chipCount", `${f.length} / 4`));
+  const quick = h("button", "link", B.plot === "row" ? "Recent 3" : "Early 3");
+  quick.onclick = () => {
+    const withData = ss.list.filter((s) => pointCount(s.values) >= 2);
+    const pick = B.plot === "row" ? withData.slice(-3) : withData.slice(0, 3);
+    B.focus[B.plot] = [];
+    B.slots[B.plot] = {};
+    pick.forEach((s) => addFocus(s.id));
+    renderB();
+  };
+  const clear = h("button", "link", "Clear");
+  clear.onclick = () => { B.focus[B.plot] = []; B.slots[B.plot] = {}; renderB(); };
+  el.append(quick, clear);
+  const hint = h("span", "hint", "Up to 4 focused series. Remove one first.");
+  hint.id = "bHint";
+  el.appendChild(hint);
+}
+function renderTriangleB() {
+  const { cols, m } = matrixFor(B.values);
+  const tbl = $("#bTri");
+  tbl.replaceChildren();
+  $("#bTriMode").textContent = { cum: "Cumulative", inc: "Incremental", ata: "Age-To-Age" }[B.values];
+  const f = B.focus[B.plot], sl = B.slots[B.plot];
+  const head = h("tr");
+  head.appendChild(h("th"));
+  cols.forEach((c, j) => {
+    const th = h("th", null, String(AGES[j]));
+    th.dataset.c = j;
+    th.title = (B.values === "ata" ? "Ages " + c : "Age " + c) + (B.plot === "row" ? " · plot across origins" : " · toggle focus");
+    const id = "c" + AGES[j];
+    if (B.plot === "col" && f.includes(id)) { th.classList.add("f"); th.style.boxShadow = `inset 0 -3px 0 ${SLOT[sl[id]]}`; }
+    th.onclick = () => {
+      if (B.plot === "col") return toggleFocus(id);
+      switchPlotB("col");
+      addFocus(id, "col");
+      renderB();
+    };
+    head.appendChild(th);
+  });
+  const thead = h("thead");
+  thead.appendChild(head);
+  tbl.appendChild(thead);
+  const mins = cols.map((_, j) => Math.min(...m.map((r) => r[j]).filter((v) => v != null)));
+  const maxs = cols.map((_, j) => Math.max(...m.map((r) => r[j]).filter((v) => v != null)));
+  const tb = h("tbody");
+  ORIGINS.forEach((o, r) => {
+    const tr = h("tr");
+    const th = h("th", null, o);
+    th.dataset.r = r;
+    const id = "o" + o;
+    if (B.plot === "row" && f.includes(id)) { th.classList.add("f"); th.style.boxShadow = `inset 3px 0 0 ${SLOT[sl[id]]}`; }
+    th.title = B.plot === "row" ? "Toggle focus" : "Plot this origin's curve";
+    th.onclick = () => {
+      if (B.plot === "row") return toggleFocus(id);
+      switchPlotB("row");
+      addFocus(id, "row");
+      renderB();
+    };
+    tr.appendChild(th);
+    cols.forEach((c, j) => {
+      const v = m[r][j];
+      const td = h("td");
+      td.dataset.r = r;
+      td.dataset.c = j;
+      if (v == null) { td.className = "e"; tr.appendChild(td); return; }
+      const t = maxs[j] > mins[j] ? (v - mins[j]) / (maxs[j] - mins[j]) : 0.5;
+      td.style.background = `rgba(43, 109, 246, ${(0.06 + 0.5 * t).toFixed(3)})`;
+      td.title = `${o} · Age ${c}: ${fmtFull(v, B.values)}`;
+      if (B.pinned && B.pinned.r === r && B.pinned.c === j) td.classList.add("pin");
+      td.onclick = () => {
+        B.pinned = { r, c: j };
+        addFocus(B.plot === "row" ? id : "c" + AGES[j]);
+        renderB();
+      };
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+}
+function markTriangle(xi) {
+  $$("#bTri .hx").forEach((e) => e.classList.remove("hx"));
+  if (xi == null) return;
+  const attr = B.plot === "row" ? "c" : "r";
+  $$(`#bTri [data-${attr}="${xi}"]`).forEach((e) => e.classList.add("hx"));
+}
+
+const brushHost = $("#bBrush");
+const brushSvg = svgEl("svg", {}, brushHost);
+function renderBrush() {
+  const ss = brushSS, g = chartB.geo;
+  const W = brushHost.clientWidth, H = brushHost.clientHeight;
+  brushSvg.replaceChildren();
+  brushSvg.__map = null;
+  if (!ss || !g || W < 60) return;
+  brushSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  brushSvg.setAttribute("width", W);
+  brushSvg.setAttribute("height", H);
+  const n = ss.xLabels.length, ml = g.ml, pw = g.pw;
+  const bx = (i) => ml + (i / (n - 1)) * pw;
+  let lo = Infinity, hi = -Infinity;
+  for (const s of ss.list) for (const v of s.values) if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  const by = (v) => 5 + (1 - (v - lo) / (hi - lo || 1)) * (H - 10);
+  svgEl("rect", { x: ml, y: 0.5, width: pw, height: H - 1, fill: "#fbfcfe", stroke: "#e2e8f0" }, brushSvg);
+  for (const s of ss.list) {
+    const pts = [];
+    s.values.forEach((v, i) => { if (v != null) pts.push(bx(i).toFixed(1) + "," + by(v).toFixed(1)); });
+    if (pts.length > 1) svgEl("path", { d: "M" + pts.join("L"), fill: "none", stroke: "#cbd5e1", "stroke-width": 1 }, brushSvg);
+  }
+  const [i0, i1] = B.range || [0, n - 1];
+  svgEl("rect", { x: ml, y: 0, width: Math.max(0, bx(i0) - ml), height: H, fill: "rgba(226, 232, 240, 0.7)" }, brushSvg);
+  svgEl("rect", { x: bx(i1), y: 0, width: Math.max(0, ml + pw - bx(i1)), height: H, fill: "rgba(226, 232, 240, 0.7)" }, brushSvg);
+  svgEl("rect", { x: bx(i0), y: 0.5, width: bx(i1) - bx(i0), height: H - 1, fill: "rgba(43, 109, 246, 0.05)", stroke: "#2b6df6", rx: 2 }, brushSvg);
+  for (const i of [i0, i1]) svgEl("rect", { x: bx(i) - 3, y: H / 2 - 9, width: 6, height: 18, rx: 2, fill: "#fff", stroke: "#2b6df6" }, brushSvg);
+  svgEl("text", { x: ml - 8, y: H / 2 + 4, class: "lc-tick", "text-anchor": "end" }, brushSvg).textContent = "Zoom";
+  brushSvg.__map = { ml, pw, n, bx };
+}
+brushSvg.addEventListener("pointerdown", (e) => {
+  const mp = brushSvg.__map;
+  if (!mp) return;
+  const r = brushSvg.getBoundingClientRect();
+  const toIdx = (p) => clamp(Math.round(((p - mp.ml) / mp.pw) * (mp.n - 1)), 0, mp.n - 1);
+  const px = e.clientX - r.left;
+  const [i0, i1] = B.range || [0, mp.n - 1];
+  const xL = mp.bx(i0), xR = mp.bx(i1), start = toIdx(px), span = i1 - i0;
+  let mode = "new", off = 0;
+  if (Math.abs(px - xL) < 8) mode = "l";
+  else if (Math.abs(px - xR) < 8) mode = "r";
+  else if (px > xL && px < xR) { mode = "move"; off = start - i0; }
+  brushSvg.setPointerCapture(e.pointerId);
+  const apply = (a, b) => {
+    if (b - a < 2) return;
+    const next = a === 0 && b === mp.n - 1 ? null : [a, b];
+    if (JSON.stringify(next) === JSON.stringify(B.range)) return;
+    B.range = next;
+    renderB();
+  };
+  const onMove = (ev) => {
+    const idx = toIdx(ev.clientX - r.left);
+    if (mode === "l") apply(Math.min(idx, i1 - 2), i1);
+    else if (mode === "r") apply(i0, Math.max(idx, i0 + 2));
+    else if (mode === "move") { const a = clamp(idx - off, 0, mp.n - 1 - span); apply(a, a + span); }
+    else apply(Math.min(start, idx), Math.max(start, idx));
+  };
+  const onUp = () => {
+    brushSvg.removeEventListener("pointermove", onMove);
+    brushSvg.removeEventListener("pointerup", onUp);
+    brushSvg.removeEventListener("pointercancel", onUp);
+  };
+  brushSvg.addEventListener("pointermove", onMove);
+  brushSvg.addEventListener("pointerup", onUp);
+  brushSvg.addEventListener("pointercancel", onUp);
+});
+brushSvg.addEventListener("dblclick", () => { B.range = null; renderB(); });
+bindSeg("#bPlot", (v) => { switchPlotB(v); renderB(); });
+bindSeg("#bValues", (v) => { if (v !== B.values) { B.values = v; B.range = null; } renderB(); });
+$("#bAvg").onchange = (e) => { B.avg = e.target.checked; renderB(); };
+
+// ---------- View switching ----------
+function showView(v) {
+  $$(".view").forEach((e) => { e.hidden = e.dataset.view !== v; });
+  $$(".notes section").forEach((e) => { e.hidden = e.dataset.for !== v; });
+  $$("#viewTabs button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  try { localStorage.setItem("dsvChartOptionsView", v); } catch (_) {}
+}
+$("#viewTabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-v]");
+  if (b) showView(b.dataset.v);
+});
+renderC();
+renderA();
+renderB();
+let startView = "a";
+try { startView = localStorage.getItem("dsvChartOptionsView") || "a"; } catch (_) {}
+showView(["current", "a", "b"].includes(startView) ? startView : "a");
+</script>
+</body>
+</html>

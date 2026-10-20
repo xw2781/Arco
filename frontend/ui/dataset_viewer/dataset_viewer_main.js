@@ -1,4 +1,4 @@
-import { mountDatasetViewer } from "/ui/dataset_viewer/dataset_viewer_view.js?v=20260926a";
+import { mountDatasetViewer } from "/ui/dataset_viewer/dataset_viewer_view.js?v=20261020c";
 import { configureDataTabHost } from "/ui/shared/tabs/data/data_tab_context.js";
 import { configureDataTabChart } from "/ui/shared/tabs/data/data_tab_chart_port.js";
 import { configureDataTabNotes } from "/ui/shared/tabs/data/data_tab_notes_port.js";
@@ -19,7 +19,7 @@ import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.j
 import {
   redrawDatasetChartSafely,
   renderDatasetChart,
-} from "/ui/dataset_viewer/tabs/dataset_chart_tab.js?v=20260907a";
+} from "/ui/dataset_viewer/tabs/dataset_chart_tab.js?v=20261020c";
 import { wireDatasetNotesEditor } from "/ui/dataset_viewer/tabs/dataset_notes_tab.js?v=20260715a";
 import { createLinksTab } from "/ui/shared/tabs/links/links_tab.js?v=20260907a";
 import { configureDataTabLinks } from "/ui/shared/tabs/data/data_tab_links_port.js";

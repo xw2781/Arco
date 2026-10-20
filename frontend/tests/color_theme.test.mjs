@@ -728,10 +728,10 @@ test("DFM Ratios dark mode keeps exclusions visible and selected averages restra
 
 test("changed theme and chart owners are reached through current cache-version chains", () => {
   const expectedReferences = [
-    ["../ui/dataset_viewer/dataset_viewer.html", "dataset_viewer_main.js?v=20260927c"],
-    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_viewer_view.js?v=20260926a"],
-    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_chart_tab.js?v=20260907a"],
-    ["../ui/dataset_viewer/tabs/dataset_chart_tab.js", "dataset_chart_renderer.js?v=20260724a"],
+    ["../ui/dataset_viewer/dataset_viewer.html", "dataset_viewer_main.js?v=20261020c"],
+    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_viewer_view.js?v=20261020c"],
+    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_chart_tab.js?v=20261020c"],
+    ["../ui/dataset_viewer/tabs/dataset_chart_tab.js", "dataset_chart_renderer.js?v=20261020b"],
     ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html", "bornhuetter_ferguson_main.js?v=20260927c"],
     ["../ui/method_pages/cape_cod/cape_cod.html", "cape_cod_main.js?v=20260927c"],
     ["../ui/method_pages/result_selection/result_selection.html", "result_selection_main.js?v=20260927c"],

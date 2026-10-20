@@ -1,495 +1,424 @@
-// Dataset Viewer chart renderer.
+// Dataset Viewer chart: an SVG line chart with a crosshair readout, plus the
+// zoom strip drawn under it. Colours come from CSS classes so a theme change
+// repaints without a redraw.
 
-import { renderChartLegend } from "../../shared/components/chart_legend/chart_legend.js?v=20260724a";
+const SVG_NS = "http://www.w3.org/2000/svg";
+const NEAR_LINE_PX = 16;
+const MIN_MARKER_SPACING_PX = 8;
+const END_LABEL_GAP_PX = 13;
 
-const DEFAULT_PALETTE = [
-  "#d62728","#1f77b4","#2ca02c","#ff7f0e","#9467bd",
-  "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"
-];
-const renderedChartCanvases = new Set();
-
-function getChartColor(propertyName, fallback) {
-  return window.ArcRhoColorTheme?.getCssColor?.(propertyName, fallback) || fallback;
-}
-
-function paintChartBackground(ctx, width, height) {
-  ctx.fillStyle = getChartColor("--ar-chart-background", "#ffffff");
-  ctx.fillRect(0, 0, width, height);
-}
-
-window.addEventListener("arcrho:color-theme-changed", () => {
-  for (const canvas of renderedChartCanvases) {
-    if (!canvas.isConnected) {
-      renderedChartCanvases.delete(canvas);
-      continue;
-    }
-    canvas.__chartRedraw?.();
+function svgEl(tag, attrs, parent) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const key in attrs) {
+    if (attrs[key] != null) el.setAttribute(key, attrs[key]);
   }
-});
+  if (parent) parent.appendChild(el);
+  return el;
+}
 
-function getEffectiveDevLabels(model) {
-  const devs = Array.isArray(model?.dev_labels) ? model.dev_labels : [];
-  const vals = Array.isArray(model?.values) ? model.values : [];
-  let maxCols = 0;
-  for (const row of vals) {
-    if (Array.isArray(row)) maxCols = Math.max(maxCols, row.length);
+function htmlEl(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+
+export function niceTicks(min, max, count) {
+  if (min === max) {
+    const pad = Math.abs(min) * 0.1 || 1;
+    min -= pad;
+    max += pad;
   }
-  if (!maxCols) return devs;
-  if (devs.length >= maxCols) return devs.slice(0, maxCols);
-  return devs.concat(Array(maxCols - devs.length).fill(""));
-}
-
-function resizeCanvasToCSS(canvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const w = Math.max(1, Math.floor(rect.width * dpr));
-  const h = Math.max(1, Math.floor(rect.height * dpr));
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w;
-    canvas.height = h;
-  }
-}
-
-// --- Shared: measure left padding needed for Y-axis labels ---
-function measurePadL(ctx, yTicks, formatValue) {
-  ctx.font = "11px Arial";
-  let maxW = 0;
-  for (const v of yTicks) {
-    const w = ctx.measureText(formatValue(v)).width;
-    if (w > maxW) maxW = w;
-  }
-  return Math.ceil(maxW) + 8; // 8px gap after label
-}
-
-// --- Shared: draw X-axis labels, rotated 90° if rotated=true ---
-function drawXLabels(ctx, labels, indices, getX, H, x0, x1, rotated) {
-  ctx.fillStyle = getChartColor("--ar-chart-dataset-text", "#333333");
-  ctx.font = "11px Arial";
-  if (rotated) {
-    for (const idx of indices) {
-      const x = getX(idx);
-      const text = String(labels[idx]);
-      ctx.save();
-      ctx.translate(x + 4, H - 6);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "left";
-      ctx.fillText(text, 0, 0);
-      ctx.restore();
-    }
-  } else {
-    for (const idx of indices) {
-      const x = getX(idx);
-      const text = String(labels[idx]);
-      const tw = ctx.measureText(text).width;
-      let tx = x - tw / 2;
-      if (tx < 2) tx = 2;
-      if (tx + tw > x1 + 10) tx = x1 + 10 - tw;
-      ctx.fillText(text, tx, H - 8);
-    }
-  }
-}
-
-// --- Shared: measure max X-label width (for rotated padding) ---
-function measureMaxXLabelWidth(ctx, labels) {
-  ctx.font = "11px Arial";
-  let maxW = 0;
-  for (const l of labels) {
-    const w = ctx.measureText(String(l)).width;
-    if (w > maxW) maxW = w;
-  }
-  return Math.ceil(maxW);
-}
-
-// --- Shared: compute nice tick step for ~targetTicks labels ---
-function niceStep(range, targetTicks) {
-  const rough = range / targetTicks;
-  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
-  const norm = rough / mag;
-  let step;
-  if (norm <= 1)        step = 1 * mag;
-  else if (norm <= 2)   step = 2 * mag;
-  else if (norm <= 2.5) step = 2.5 * mag;
-  else if (norm <= 5)   step = 5 * mag;
-  else                  step = 10 * mag;
-  return step;
-}
-
-// --- Shared: compute nice y-axis ticks (array of values) ---
-function computeNiceTicks(yMin, yMax, targetTicks) {
-  if (!isFinite(yMin) || !isFinite(yMax) || yMin >= yMax) return null;
-  const step = niceStep(yMax - yMin, targetTicks);
-  const niceMin = Math.floor(yMin / step) * step;
-  const niceMax = Math.ceil(yMax / step) * step;
+  const raw = (max - min) / Math.max(1, count);
+  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / magnitude;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * magnitude;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
   const ticks = [];
-  for (let v = niceMin; v <= niceMax + step * 0.001; v += step) {
-    ticks.push(v);
-  }
-  return { ticks, niceMin, niceMax };
+  for (let v = lo; v <= hi + step * 1e-6; v += step) ticks.push(Number(v.toFixed(10)));
+  return { lo, hi, ticks };
 }
 
-// --- Shared: compute y-range with 5% margin, respecting hidden lines ---
-function computeYRange(vals, mask, lineCount, pointCount, getRC, hiddenSet) {
-  let yMin = Infinity, yMax = -Infinity;
-  for (let line = 0; line < lineCount; line++) {
-    if (hiddenSet.has(line)) continue;
-    for (let pt = 0; pt < pointCount; pt++) {
-      const { r, c } = getRC(line, pt);
-      if (mask[r] && mask[r][c]) {
-        const v = vals[r][c];
-        if (typeof v === "number" && isFinite(v)) {
-          yMin = Math.min(yMin, v);
-          yMax = Math.max(yMax, v);
-        }
-      }
-    }
-  }
-  if (!isFinite(yMin) || !isFinite(yMax)) return null;
-  if (yMin === yMax) { yMin -= 1; yMax += 1; }
-  // Add 5% margin, then snap to nice ticks
-  const margin = (yMax - yMin) * 0.05;
-  const nice = computeNiceTicks(yMin - margin, yMax + margin, 10);
-  if (!nice) return null;
-  return { yMin: nice.niceMin, yMax: nice.niceMax, yTicks: nice.ticks };
+function seriesClass(series) {
+  if (series.kind === "focus") return `dsChartLine dsChartSlot${series.slot}`;
+  return "dsChartLine dsChartContext";
 }
 
-// --- Shared: store hit-test points for hover tooltip ---
-function storeHitPoints(canvas, allPts) {
-  canvas.__chartHitPts = allPts; // [{px, py, label, value}]
-}
-
-// --- Shared: draw markers on each data point ---
-function drawMarkers(ctx, pts, color, radius) {
-  ctx.fillStyle = color;
-  for (const [x, y] of pts) {
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-// ============================================================
-//  renderChart  (unified: byRow or byCol)
-//
-//  mode "byRow" = one line per origin (X = dev periods)
-//  mode "byCol" = one line per dev period (X = origins)
-// ============================================================
-export function renderChart(canvas, model, opts = {}) {
-  if (!canvas) return;
-  renderedChartCanvases.add(canvas);
-  canvas.__chartRedraw = () => renderChart(canvas, model, opts);
-
-  const mode = opts.mode || "byRow"; // "byRow" | "byCol"
-  const byCol = mode === "byCol";
-
-  const formatValue = typeof opts.formatValue === "function"
-    ? opts.formatValue
-    : (v) => (Number.isFinite(v) ? String(v) : "");
-  const palette = Array.isArray(opts.palette) && opts.palette.length
-    ? opts.palette
-    : DEFAULT_PALETTE;
-  const legendEnabled = opts.showLegend !== false;
-  const legendEl = opts.legendEl || null;
-  const legendState = legendEl ? getLegendState(legendEl) : null;
-  if (legendEl) {
-    // Strip _skipLegend so stored closures always use clean opts
-    const { _skipLegend: _, ...baseOpts } = opts;
-    legendEl.__chartLastRender = () => renderChart(canvas, model, baseOpts);
-    legendEl.__chartRedrawCanvas = () => renderChart(canvas, model, { ...baseOpts, _skipLegend: true });
-  }
-  const formatOriginLabel = opts.formatOriginLabel || ((l) => l);
-  const hiddenSet = legendState?.hiddenSet || new Set();
-  const originLen = Number(opts.originLen) || 12;
-  const rotateX = originLen <= 6;
-
-  if (!model || !Array.isArray(model.values) || !Array.isArray(model.mask)) {
-    const ctx = canvas.getContext("2d");
-    resizeCanvasToCSS(canvas);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    paintChartBackground(ctx, canvas.width, canvas.height);
-    ctx.font = "12px Arial";
-    ctx.fillStyle = getChartColor("--ar-chart-dataset-status-text", "#000000");
-    ctx.fillText("No data.", 10, 20);
-    return;
-  }
-
-  const origins = model.origin_labels || [];
-  const devs = getEffectiveDevLabels(model);
-  const vals = model.values;
-  const mask = model.mask;
-
-  // Dimension mapping based on mode
-  const lines      = byCol ? devs : origins;       // one line per...
-  const lineCount  = lines.length;
-
-  // byRow: prepend a dummy "0m" column so curves start from 0
-  const ptOffset   = byCol ? 0 : 1; // data point index offset (1 for dummy col)
-  const xLabels    = byCol ? origins : ["0m", ...devs];
-  const pointCount = xLabels.length;
-  const getRC      = byCol
-    ? (line, pt) => ({ r: pt, c: line })
-    : (line, pt) => ({ r: line, c: pt - ptOffset });
-
-  // Format X-axis labels (apply origin formatting when byCol)
-  const formattedXLabels = byCol
-    ? origins.map(o => formatOriginLabel(String(o)))
-    : xLabels.map(String);
-
-  resizeCanvasToCSS(canvas);
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  paintChartBackground(ctx, canvas.width, canvas.height);
-
-  const W = canvas.width;
-  const H = canvas.height;
-  const padR = 10, padT = 10;
-  const padB = rotateX ? (measureMaxXLabelWidth(ctx, formattedXLabels) + 10) : 24;
-
-  // y-range based on visible lines only (with nice ticks)
-  // For byRow, compute range from actual data columns only, then include 0
-  const dataPointCount = byCol ? pointCount : devs.length;
-  const dataGetRC = byCol ? getRC : (line, pt) => ({ r: line, c: pt });
-  const yRange = computeYRange(vals, mask, lineCount, dataPointCount, dataGetRC, hiddenSet);
-  if (yRange && !byCol) {
-    // Ensure 0 is included in the range (for the dummy "0m" column)
-    yRange.yMin = Math.min(yRange.yMin, 0);
-    if (yRange.yMax < 0) yRange.yMax = 0;
-    // Recompute nice ticks with 0 included
-    const nice = computeNiceTicks(yRange.yMin, yRange.yMax, 10);
-    if (nice) {
-      yRange.yMin = nice.niceMin;
-      yRange.yMax = nice.niceMax;
-      yRange.yTicks = nice.ticks;
-    }
-  }
-
-  if (!yRange || pointCount < 2) {
-    ctx.font = "12px Arial";
-    ctx.fillStyle = getChartColor("--ar-chart-dataset-status-text", "#000000");
-    ctx.fillText("Not enough data to plot.", 10, 20);
-    return;
-  }
-  const { yMin, yMax, yTicks } = yRange;
-
-  const padL = measurePadL(ctx, yTicks, formatValue);
-  const x0 = padL, y0 = padT, x1 = W - padR, y1 = H - padB;
-  const getX = (idx) => x0 + (idx / (pointCount - 1)) * (x1 - x0);
-
-  // Axes
-  ctx.strokeStyle = getChartColor("--ar-chart-dataset-axis", "#999999");
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); ctx.lineTo(x1, y1);
-  ctx.stroke();
-
-  // Y ticks
-  ctx.fillStyle = getChartColor("--ar-chart-dataset-text", "#333333"); ctx.font = "11px Arial";
-  for (const v of yTicks) {
-    const t = (v - yMin) / (yMax - yMin);
-    const y = y1 - t * (y1 - y0);
-    ctx.strokeStyle = getChartColor("--ar-chart-dataset-grid", "#eeeeee");
-    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
-    ctx.fillStyle = getChartColor("--ar-chart-dataset-text", "#333333");
-    ctx.fillText(formatValue(v), 6, y + 4);
-  }
-
-  // X ticks (limit to 40 labels max)
-  const MAX_X_LABELS = 40;
-  const xIndices = [];
-  if (pointCount <= MAX_X_LABELS) {
-    for (let i = 0; i < pointCount; i++) xIndices.push(i);
-  } else {
-    for (let i = 0; i < MAX_X_LABELS; i++) {
-      xIndices.push(Math.round(i * (pointCount - 1) / (MAX_X_LABELS - 1)));
-    }
-  }
-  for (const idx of xIndices) {
-    const x = getX(idx);
-    ctx.strokeStyle = getChartColor("--ar-chart-dataset-grid", "#eeeeee");
-    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
-  }
-  drawXLabels(ctx, formattedXLabels, xIndices, getX, H, x0, x1, rotateX);
-
-  // Draw curves
-  const allHitPts = [];
-  for (let line = 0; line < lineCount; line++) {
-    if (hiddenSet.has(line)) continue;
-
-    const pts = [];
-    const ptsMeta = [];
-    const color = palette[line % palette.length];
-
-    // byRow: prepend dummy point at x=0, y=0
-    if (!byCol) {
-      const x = getX(0);
-      const y = y1 - ((0 - yMin) / (yMax - yMin)) * (y1 - y0);
-      pts.push([x, y]);
-      ptsMeta.push({ px: x, py: y, label: `${origins[line]} @ 0m`, value: formatValue(0), color });
-    }
-
-    for (let pt = (byCol ? 0 : ptOffset); pt < pointCount; pt++) {
-      const { r, c } = getRC(line, pt);
-      if (mask[r] && mask[r][c]) {
-        const v = vals[r][c];
-        if (typeof v === "number" && isFinite(v)) {
-          const x = getX(pt);
-          const y = y1 - ((v - yMin) / (yMax - yMin)) * (y1 - y0);
-          pts.push([x, y]);
-          const lbl = byCol
-            ? `${devs[c]} @ ${formatOriginLabel(String(origins[r]))}`
-            : `${origins[r]} @ ${devs[c]}`;
-          ptsMeta.push({ px: x, py: y, label: lbl, value: formatValue(v), color });
-        }
-      }
-    }
-    if (pts.length < 2) continue;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
-    drawMarkers(ctx, pts, color, 3);
-
-    for (const m of ptsMeta) allHitPts.push(m);
-  }
-
-  storeHitPoints(canvas, allHitPts);
-
-  // Draw enlarged marker for hovered point
-  const hoverPt = canvas.__chartHoverPt;
-  if (hoverPt) {
-    const match = allHitPts.find(p => p.px === hoverPt.px && p.py === hoverPt.py);
-    if (match) {
-      canvas.__chartHoverPt = match;
-      ctx.fillStyle = match.color;
-      ctx.beginPath(); ctx.arc(match.px, match.py, 4.5, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  // HTML legend with checkboxes
-  if (legendEnabled && legendEl && !opts._skipLegend) {
-    renderChartLegend({
-      listElement: legendEl,
-      countElement: document.getElementById("devChartLegendCount"),
-      series: lines.map((label, index) => ({
-        id: index,
-        label: String(label ?? index),
-        color: palette[index % palette.length],
-      })),
-      hiddenIds: hiddenSet,
-      onVisibilityChange: () => triggerLegendRedraw(legendEl),
-    });
-  }
-
-  // Active cell highlight
-  const active = opts.activeCell;
-  if (active && Number.isFinite(active.r) && Number.isFinite(active.c)) {
-    const r = active.r, c = active.c;
-    const lineIdx = byCol ? c : r;
-    const ptIdx   = byCol ? r : c + ptOffset;
-    if (!hiddenSet.has(lineIdx) && mask[r] && mask[r][c] && typeof vals[r][c] === "number") {
-      const v = vals[r][c];
-      const x = getX(ptIdx);
-      const y = y1 - ((v - yMin) / (yMax - yMin)) * (y1 - y0);
-      ctx.fillStyle = getChartColor("--ar-chart-dataset-strong-text", "#000000");
-      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.font = "12px Arial";
-      const lbl = byCol
-        ? `${devs[c]} @ ${formatOriginLabel(String(origins[r]))} = ${formatValue(v)}`
-        : `${origins[r] ?? r} @ ${devs[c]} = ${formatValue(v)}`;
-      ctx.fillText(lbl, x0 + 8, y0 + 16);
-    }
-  }
-}
-
-// Keep legacy exports as thin wrappers for backward compatibility
-export function renderDevChart(canvas, model, opts = {}) {
-  renderChart(canvas, model, { ...opts, mode: "byRow" });
-}
-
-export function renderColChart(canvas, model, opts = {}) {
-  renderChart(canvas, model, { ...opts, mode: "byCol" });
-}
-
-// ============================================================
-//  Legend state management
-// ============================================================
-function getLegendState(legendEl) {
-  if (!legendEl) return null;
-  if (!legendEl.__chartLegendState) {
-    legendEl.__chartLegendState = {
-      hiddenSet: new Set(),
-    };
-  }
-  return legendEl.__chartLegendState;
-}
-
-function triggerLegendRedraw(legendEl) {
-  if (legendEl.__chartLastRender) {
-    legendEl.__chartLastRender();
-  }
-}
-
-// ============================================================
-//  Canvas hover tooltip (shared setup)
-// ============================================================
-export function setupChartHover(canvas) {
-  if (!canvas || canvas.__chartHoverSetup) return;
-  canvas.__chartHoverSetup = true;
-
-  let tooltip = document.getElementById("chartTooltip");
-  if (!tooltip) {
-    tooltip = document.createElement("div");
-    tooltip.id = "chartTooltip";
-    tooltip.className = "chartTooltip";
-    document.body.appendChild(tooltip);
-  }
-
-  canvas.addEventListener("mousemove", (e) => {
-    const hitPts = canvas.__chartHitPts;
-    if (!hitPts || !hitPts.length) { tooltip.style.display = "none"; return; }
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const mx = (e.clientX - rect.left) * dpr;
-    const my = (e.clientY - rect.top) * dpr;
-
-    // Find closest point within threshold
-    let best = null, bestDist = 15 * dpr; // 15px threshold
-    for (const pt of hitPts) {
-      const dx = pt.px - mx, dy = pt.py - my;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d < bestDist) { bestDist = d; best = pt; }
-    }
-
-    const prevHover = canvas.__chartHoverPt;
-    if (best) {
-      tooltip.textContent = `${best.label} = ${best.value}`;
-      tooltip.style.display = "block";
-      // Position tooltip near cursor
-      const tx = e.clientX + 12;
-      const ty = e.clientY - 28;
-      tooltip.style.left = `${tx}px`;
-      tooltip.style.top = `${ty}px`;
-      if (prevHover !== best) {
-        canvas.__chartHoverPt = best;
-        if (canvas.__chartRedraw) canvas.__chartRedraw();
-      }
+function segmentsOf(values, from, to, x, y) {
+  const segments = [];
+  let current = [];
+  for (let i = from; i <= to; i++) {
+    const v = values[i];
+    if (v == null) {
+      if (current.length) segments.push(current);
+      current = [];
     } else {
-      tooltip.style.display = "none";
-      if (prevHover) {
-        canvas.__chartHoverPt = null;
-        if (canvas.__chartRedraw) canvas.__chartRedraw();
+      current.push([x(i), y(v)]);
+    }
+  }
+  if (current.length) segments.push(current);
+  return segments;
+}
+
+const pathData = (points) => "M" + points.map(([px, py]) => `${px.toFixed(1)},${py.toFixed(1)}`).join("L");
+
+export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeChange } = {}) {
+  const svg = svgEl("svg", { class: "dsChartSvg" });
+  const tip = htmlEl("div", "dsChartTip");
+  plotHost.append(svg, tip);
+  const zoomSvg = svgEl("svg", { class: "dsChartZoomSvg" });
+  zoomHost.appendChild(zoomSvg);
+
+  let options = null;
+  let geometry = null;
+  let hoverIndex = null;
+  let hoverY = 0;
+  let hoverId = null;
+  let externalEmphasis = null;
+  let hoverLayer = null;
+  let renderedEmphasis = null;
+  let clipSeq = 0;
+  let zoomMap = null;
+
+  const emphasis = () => externalEmphasis || hoverId;
+
+  function render(next) {
+    if (next) options = next;
+    if (!options) return;
+    const width = plotHost.clientWidth;
+    const height = plotHost.clientHeight;
+    svg.replaceChildren();
+    hoverLayer = null;
+    geometry = null;
+    if (width < 60 || height < 60) return;
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+
+    const { series, xLabels } = options;
+    const count = xLabels.length;
+    const [i0, i1] = options.range || [0, Math.max(0, count - 1)];
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const s of series) {
+      for (let i = i0; i <= i1; i++) {
+        const v = s.values[i];
+        if (v != null) {
+          lo = Math.min(lo, v);
+          hi = Math.max(hi, v);
+        }
       }
     }
+    if (!Number.isFinite(lo)) {
+      tip.style.display = "none";
+      svgEl("text", { x: width / 2, y: height / 2, class: "dsChartEmpty", "text-anchor": "middle" }, svg)
+        .textContent = options.emptyText || "Not enough data to plot.";
+      renderZoom();
+      return;
+    }
+    if (options.yZero) {
+      lo = Math.min(lo, 0);
+      hi = Math.max(hi, 0);
+    }
+    const pad = (hi - lo) * 0.04 || 1;
+    hi += pad;
+    if (!(options.yZero && lo === 0)) lo -= pad;
+
+    const mt = 14;
+    const mb = 46;
+    const nice = niceTicks(lo, hi, Math.max(3, Math.round((height - mt - mb) / 56)));
+    const yLabels = nice.ticks.map((v) => options.formatAxis(v));
+    const ml = Math.max(...yLabels.map((label) => label.length)) * 6.3 + 34;
+    const mr = options.endLabelIds?.length ? 78 : 18;
+    const pw = Math.max(10, width - ml - mr);
+    const ph = Math.max(10, height - mt - mb);
+    const span = Math.max(1, i1 - i0);
+    const x = (i) => ml + ((i - i0) / span) * pw;
+    const y = (v) => mt + (1 - (v - nice.lo) / (nice.hi - nice.lo)) * ph;
+    geometry = { x, y, i0, i1, ml, mt, pw, ph, width, height };
+
+    const axes = svgEl("g", {}, svg);
+    nice.ticks.forEach((v, k) => {
+      const yy = Math.round(y(v)) + 0.5;
+      svgEl("line", { x1: ml, x2: ml + pw, y1: yy, y2: yy, class: v === 0 && options.yZero ? "dsChartAxis" : "dsChartGrid" }, axes);
+      svgEl("text", { x: ml - 8, y: yy + 4, class: "dsChartTick", "text-anchor": "end" }, axes).textContent = yLabels[k];
+    });
+    const labelWidth = Math.max(...xLabels.map((label) => String(label).length)) * 6.3 + 10;
+    const every = Math.max(1, Math.ceil(labelWidth / (pw / span)));
+    for (let i = i0; i <= i1; i++) {
+      if ((i - i0) % every) continue;
+      const xx = Math.round(x(i)) + 0.5;
+      svgEl("line", { x1: xx, x2: xx, y1: mt + ph, y2: mt + ph + 4, class: "dsChartAxis" }, axes);
+      svgEl("text", { x: xx, y: mt + ph + 17, class: "dsChartTick", "text-anchor": "middle" }, axes).textContent = xLabels[i];
+    }
+    svgEl("line", { x1: ml, x2: ml + pw, y1: mt + ph + 0.5, y2: mt + ph + 0.5, class: "dsChartAxis" }, axes);
+    svgEl("text", { x: ml + pw / 2, y: height - 8, class: "dsChartAxisTitle", "text-anchor": "middle" }, axes)
+      .textContent = options.xTitle;
+    svgEl("text", {
+      class: "dsChartAxisTitle",
+      "text-anchor": "middle",
+      transform: `translate(12 ${mt + ph / 2}) rotate(-90)`,
+    }, axes).textContent = options.yTitle;
+
+    const clipId = `dsChartClip${++clipSeq}`;
+    const clip = svgEl("clipPath", { id: clipId }, svgEl("defs", {}, svg));
+    svgEl("rect", { x: ml - 6, y: mt - 6, width: pw + 12, height: ph + 12 }, clip);
+    const plot = svgEl("g", { "clip-path": `url(#${clipId})` }, svg);
+
+    const emph = emphasis();
+    renderedEmphasis = emph;
+    const rank = (s) => (s.id === emph ? 2 : s.kind === "context" ? 0 : 1);
+    const markers = pw / span >= MIN_MARKER_SPACING_PX;
+    const from = Math.max(0, i0 - 1);
+    const to = Math.min(count - 1, i1 + 1);
+    for (const s of [...series].sort((a, b) => rank(a) - rank(b))) {
+      const state = s.id === emph ? " isEmphasis" : emph && s.kind !== "context" ? " isDimmed" : "";
+      const group = svgEl("g", { class: seriesClass(s) + state }, plot);
+      for (const segment of segmentsOf(s.values, from, to, x, y)) {
+        if (segment.length > 1) svgEl("path", { d: pathData(segment) }, group);
+        if ((markers && s.kind === "focus") || segment.length === 1) {
+          for (const [px, py] of segment) svgEl("circle", { cx: px, cy: py, r: 2.75, class: "dsChartMarker" }, group);
+        }
+      }
+    }
+
+    const pinned = options.pinned;
+    if (pinned && pinned.index >= i0 && pinned.index <= i1) {
+      const v = series.find((s) => s.id === pinned.id)?.values[pinned.index];
+      if (v != null) {
+        svgEl("circle", { cx: x(pinned.index), cy: y(v), r: 6, class: "dsChartPinRing" }, svg);
+        svgEl("circle", { cx: x(pinned.index), cy: y(v), r: 2, class: "dsChartPinDot" }, svg);
+      }
+    }
+
+    drawEndLabels(series, emph);
+    hoverLayer = svgEl("g", {}, svg);
+    drawHover();
+    svg.classList.toggle("isPickable", !!hoverId && !!onPick);
+    renderZoom();
+  }
+
+  function drawEndLabels(series, emph) {
+    const { x, y, i0, i1 } = geometry;
+    const items = [];
+    for (const id of options.endLabelIds || []) {
+      const s = series.find((candidate) => candidate.id === id);
+      if (!s) continue;
+      let last = -1;
+      for (let i = i1; i >= i0; i--) {
+        if (s.values[i] != null) { last = i; break; }
+      }
+      if (last < 0) continue;
+      const py = y(s.values[last]);
+      items.push({ s, px: x(last), py, ty: py });
+    }
+    items.sort((a, b) => a.ty - b.ty);
+    for (let k = 1; k < items.length; k++) {
+      if (items[k].ty - items[k - 1].ty < END_LABEL_GAP_PX) items[k].ty = items[k - 1].ty + END_LABEL_GAP_PX;
+    }
+    for (const item of items) {
+      const dimmed = emph && emph !== item.s.id ? " isDimmed" : "";
+      const group = svgEl("g", { class: seriesClass(item.s) + " dsChartEndLabel" + dimmed }, svg);
+      svgEl("path", { d: `M${item.px + 4},${item.py}L${item.px + 10},${item.ty}` }, group);
+      svgEl("text", { x: item.px + 13, y: item.ty + 4 }, group).textContent = item.s.label;
+    }
+  }
+
+  function drawHover() {
+    if (!hoverLayer || !geometry) return;
+    hoverLayer.replaceChildren();
+    const { x, y, mt, ph, width, height, i0, i1 } = geometry;
+    if (hoverIndex == null || hoverIndex < i0 || hoverIndex > i1) {
+      tip.style.display = "none";
+      return;
+    }
+    const xx = Math.round(x(hoverIndex)) + 0.5;
+    svgEl("line", { x1: xx, x2: xx, y1: mt, y2: mt + ph, class: "dsChartCrosshair" }, hoverLayer);
+    const emph = emphasis();
+    const rows = [];
+    const others = [];
+    for (const s of options.series) {
+      const v = s.values[hoverIndex];
+      if (v == null) continue;
+      if (s.kind === "context" && s.id !== emph) {
+        others.push(v);
+        continue;
+      }
+      svgEl("circle", {
+        cx: x(hoverIndex), cy: y(v), r: s.id === emph ? 4.5 : 3.5,
+        class: `${seriesClass(s)} dsChartHoverDot`,
+      }, hoverLayer);
+      rows.push({ s, v });
+    }
+    rows.sort((a, b) => b.v - a.v);
+    tip.replaceChildren(htmlEl("div", "dsChartTipTitle", options.tipTitle(hoverIndex)));
+    for (const { s, v } of rows) {
+      const row = htmlEl("div", "dsChartTipRow" + (s.id === emph ? " isEmphasis" : ""));
+      row.append(htmlEl("span", `dsChartTipKey ${seriesClass(s)}`), htmlEl("b", null, options.formatValue(v)), htmlEl("span", null, s.label));
+      tip.appendChild(row);
+    }
+    if (others.length) {
+      const row = htmlEl("div", "dsChartTipRow");
+      const rangeText = `${options.formatValue(Math.min(...others))} – ${options.formatValue(Math.max(...others))}`;
+      row.append(htmlEl("span", "dsChartTipKey"), htmlEl("b", null, rangeText), htmlEl("span", null, `${others.length} others`));
+      tip.appendChild(row);
+    }
+    tip.style.display = "block";
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = x(hoverIndex) + 14;
+    if (left + tw > width - 4) left = x(hoverIndex) - 14 - tw;
+    tip.style.left = `${Math.max(4, left)}px`;
+    tip.style.top = `${clamp(hoverY - th / 2, 4, Math.max(4, height - th - 4))}px`;
+  }
+
+  function nearestSeries(fx, index, py) {
+    let best = null;
+    let bestDistance = NEAR_LINE_PX;
+    for (const s of options.series) {
+      const a = clamp(Math.floor(fx), 0, s.values.length - 1);
+      const b = Math.min(a + 1, s.values.length - 1);
+      const va = s.values[a];
+      const vb = s.values[b];
+      let v = null;
+      if (va != null && vb != null) v = va + (vb - va) * (fx - a);
+      else if (s.values[index] != null) v = s.values[index];
+      if (v == null) continue;
+      const distance = Math.abs(geometry.y(v) - py);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = s.id;
+      }
+    }
+    return best;
+  }
+
+  function clearHover() {
+    if (hoverIndex == null && hoverId == null) return;
+    hoverIndex = null;
+    const hadEmphasis = hoverId != null;
+    hoverId = null;
+    if (hadEmphasis && !externalEmphasis) render();
+    else drawHover();
+    svg.classList.remove("isPickable");
+    onHoverX?.(null);
+  }
+
+  svg.addEventListener("pointermove", (event) => {
+    if (!geometry) return;
+    const rect = svg.getBoundingClientRect();
+    const px = event.clientX - rect.left;
+    const py = event.clientY - rect.top;
+    const { ml, mt, pw, ph, i0, i1 } = geometry;
+    if (px < ml - 10 || px > ml + pw + 10 || py < mt - 10 || py > mt + ph + 10) {
+      clearHover();
+      return;
+    }
+    const fx = i0 + ((px - ml) / pw) * Math.max(1, i1 - i0);
+    const index = clamp(Math.round(fx), i0, i1);
+    const indexChanged = index !== hoverIndex;
+    hoverIndex = index;
+    hoverY = py;
+    hoverId = nearestSeries(fx, index, py);
+    if (emphasis() !== renderedEmphasis) render();
+    else drawHover();
+    svg.classList.toggle("isPickable", !!hoverId && !!onPick);
+    if (indexChanged) onHoverX?.(index);
+  });
+  svg.addEventListener("pointerleave", clearHover);
+  svg.addEventListener("click", () => {
+    if (hoverId && hoverIndex != null) onPick?.(hoverId, hoverIndex);
   });
 
-  canvas.addEventListener("mouseleave", () => {
-    tooltip.style.display = "none";
-    if (canvas.__chartHoverPt) {
-      canvas.__chartHoverPt = null;
-      if (canvas.__chartRedraw) canvas.__chartRedraw();
+  function renderZoom() {
+    zoomSvg.replaceChildren();
+    zoomMap = null;
+    const width = zoomHost.clientWidth;
+    const height = zoomHost.clientHeight;
+    const count = options?.xLabels.length || 0;
+    if (!geometry || width < 60 || count < 3) return;
+    zoomSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    zoomSvg.setAttribute("width", width);
+    zoomSvg.setAttribute("height", height);
+    const { ml, pw } = geometry;
+    const bx = (i) => ml + (i / (count - 1)) * pw;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const s of options.series) {
+      for (const v of s.values) {
+        if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+      }
     }
+    const by = (v) => 5 + (1 - (v - lo) / (hi - lo || 1)) * (height - 10);
+    svgEl("rect", { x: ml, y: 0.5, width: pw, height: height - 1, class: "dsChartZoomTrack" }, zoomSvg);
+    const lines = svgEl("g", { class: "dsChartZoomLines" }, zoomSvg);
+    for (const s of options.series) {
+      for (const segment of segmentsOf(s.values, 0, count - 1, bx, by)) {
+        if (segment.length > 1) svgEl("path", { d: pathData(segment) }, lines);
+      }
+    }
+    const [i0, i1] = options.range || [0, count - 1];
+    svgEl("rect", { x: ml, y: 0, width: Math.max(0, bx(i0) - ml), height, class: "dsChartZoomShade" }, zoomSvg);
+    svgEl("rect", { x: bx(i1), y: 0, width: Math.max(0, ml + pw - bx(i1)), height, class: "dsChartZoomShade" }, zoomSvg);
+    svgEl("rect", { x: bx(i0), y: 0.5, width: bx(i1) - bx(i0), height: height - 1, rx: 2, class: "dsChartZoomWindow" }, zoomSvg);
+    for (const i of [i0, i1]) {
+      svgEl("rect", { x: bx(i) - 3, y: height / 2 - 9, width: 6, height: 18, rx: 2, class: "dsChartZoomHandle" }, zoomSvg);
+    }
+    svgEl("text", { x: ml - 8, y: height / 2 + 4, class: "dsChartTick", "text-anchor": "end" }, zoomSvg).textContent = "Zoom";
+    zoomMap = { ml, pw, count, bx };
+  }
+
+  zoomSvg.addEventListener("pointerdown", (event) => {
+    if (!zoomMap || event.button !== 0) return;
+    const { ml, pw, count, bx } = zoomMap;
+    const rect = zoomSvg.getBoundingClientRect();
+    const toIndex = (clientX) => clamp(Math.round(((clientX - rect.left - ml) / pw) * (count - 1)), 0, count - 1);
+    const px = event.clientX - rect.left;
+    const [i0, i1] = options.range || [0, count - 1];
+    const start = toIndex(event.clientX);
+    const span = i1 - i0;
+    // With nothing zoomed, a drag anywhere draws a new window.
+    let mode = "new";
+    if (Math.abs(px - bx(i0)) < 8) mode = "start";
+    else if (Math.abs(px - bx(i1)) < 8) mode = "end";
+    else if (options.range && px > bx(i0) && px < bx(i1)) mode = "move";
+    const offset = start - i0;
+    zoomSvg.setPointerCapture(event.pointerId);
+    const apply = (a, b) => {
+      if (b - a < 1) return;
+      const next = a === 0 && b === count - 1 ? null : [a, b];
+      const current = options.range;
+      if (next?.[0] === current?.[0] && next?.[1] === current?.[1]) return;
+      onRangeChange?.(next);
+    };
+    const move = (moveEvent) => {
+      const index = toIndex(moveEvent.clientX);
+      if (mode === "start") apply(Math.min(index, i1 - 1), i1);
+      else if (mode === "end") apply(i0, Math.max(index, i0 + 1));
+      else if (mode === "move") {
+        const a = clamp(index - offset, 0, count - 1 - span);
+        apply(a, a + span);
+      } else apply(Math.min(start, index), Math.max(start, index));
+    };
+    const end = () => {
+      zoomSvg.removeEventListener("pointermove", move);
+      zoomSvg.removeEventListener("pointerup", end);
+      zoomSvg.removeEventListener("pointercancel", end);
+    };
+    zoomSvg.addEventListener("pointermove", move);
+    zoomSvg.addEventListener("pointerup", end);
+    zoomSvg.addEventListener("pointercancel", end);
   });
+  zoomSvg.addEventListener("dblclick", () => onRangeChange?.(null));
+
+  return {
+    render,
+    setEmphasis(id) {
+      externalEmphasis = id || null;
+      render();
+    },
+  };
 }

@@ -255,25 +255,41 @@ export function mountDatasetViewer(container) {
   <div id="dsChartPage" data-page="chart" style="display:none;">
     <div class="right">
       <div class="panel" id="chartPanel">
-        <div class="panelInner">
-          <div class="chartHeader">
-            <span class="small"><b id="chartTitle">Development Curves</b></span>
-            <div class="chartToggle" id="chartModeToggle">
-              <button class="chartToggleBtn active" data-mode="byCol" title="By Column (Dev Period)">By Column</button>
-              <button class="chartToggleBtn" data-mode="byRow" title="By Row (Origin)">By Row</button>
+        <div class="panelInner" id="dsChartRoot">
+          <div class="dsChartToolbar">
+            <span class="dsChartToolLabel">Plot</span>
+            <div class="dsChartSegment" id="dsChartPlotMode" role="group" aria-label="Plot">
+              <button type="button" data-value="byRow">Origin Curves</button>
+              <button type="button" data-value="byCol">Age Trend</button>
             </div>
+            <span class="dsChartToolSeparator"></span>
+            <span class="dsChartToolLabel">Values</span>
+            <div class="dsChartSegment" id="dsChartValuesMode" role="group" aria-label="Values">
+              <button type="button" data-value="value">Values</button>
+              <button type="button" data-value="incremental">Incremental</button>
+              <button type="button" data-value="ratio">Age-To-Age</button>
+            </div>
+            <span class="dsChartToolSeparator"></span>
+            <!-- Each length mirrors, and writes through, the Data tab's control. -->
+            <span class="dsChartToolLabel">Origin Length</span>
+            <div class="dsChartSegment" id="dsChartOriginLen" role="group" aria-label="Origin Length" data-len-select="originLenSelect"></div>
+            <span class="dsChartToolLabel">Development Length</span>
+            <div class="dsChartSegment" id="dsChartDevLen" role="group" aria-label="Development Length" data-len-select="devLenSelect"></div>
           </div>
-          <div class="chartRow">
-            <div class="chartCanvasWrap">
-              <canvas id="devChart"></canvas>
-            </div>
-            <aside class="arChartLegendPanel" aria-labelledby="devChartLegendTitle">
-              <div class="arChartLegendHeader">
-                <h3 class="arChartLegendTitle" id="devChartLegendTitle">Series</h3>
-                <span class="arChartLegendCount" id="devChartLegendCount"></span>
-              </div>
-              <div class="arChartLegendList" id="devChartLegend" role="group" aria-label="Chart series visibility"></div>
+          <div class="dsChartFocusBar" id="dsChartFocusBar"></div>
+          <div class="dsChartBody" id="dsChartBody">
+            <aside class="dsChartMinimapPanel" id="dsChartMinimapPanel" aria-label="Triangle">
+              <div class="dsChartPanelHead" id="dsChartPanelHead">Triangle</div>
+              <div class="dsChartMinimap" id="dsChartMinimap"></div>
+              <div class="dsChartMinimapKey"><span>Low</span><i></i><span>High, within each age</span></div>
+              <div class="dsChartFilterList" id="dsChartFilterList" role="group" aria-labelledby="dsChartPanelHead"></div>
+              <div class="dsChartMinimapResizer" id="dsChartMinimapResizer" role="separator" aria-orientation="vertical" aria-label="Resize triangle panel" tabindex="0"></div>
             </aside>
+            <div class="dsChartMain">
+              <div class="dsChartPlot" id="dsChartPlot"></div>
+              <div class="dsChartZoom" id="dsChartZoom"></div>
+              <div class="dsChartStatus" id="dsChartStatus"></div>
+            </div>
           </div>
         </div>
       </div>

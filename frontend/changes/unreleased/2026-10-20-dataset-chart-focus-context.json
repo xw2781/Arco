@@ -1,0 +1,12 @@
+{
+  "type": "improvement",
+  "scope": "dataset",
+  "audience": "user",
+  "summary": "The Dataset Chart tab now shows every series in grey and lets you focus up to four in colour, picked from a triangle map beside the chart.",
+  "details": [
+    "Plot origin curves or one age across origins, as values, incremental values, or age-to-age factors.",
+    "The triangle map fits any triangle size; hover it for a close-up, click an origin, age, or cell, or drag a box to zoom.",
+    "One readout lists the focused series and the range of the rest at the pointer.",
+    "Drag the strip under the chart to zoom into a range of ages or origins."
+  ]
+}

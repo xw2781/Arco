@@ -9,7 +9,7 @@ Only manual/input datasets have editable values in the Dataset Viewer. Calculate
 
 ## Entry Points
 <!-- AUTO-GEN:BEGIN frontend.project_instance.entry_points -->
-- `ui/project_instance/project_instance.html`: external scripts `/ui/project_instance/project_instance.js?v=20260929smb`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
+- `ui/project_instance/project_instance.html`: external scripts `/ui/project_instance/project_instance.js?v=20261013group1`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
 
 Detected `fetch(...)` targets in key JS files:
 - `${GRAPH_ENDPOINT}?${query.toString()}`
