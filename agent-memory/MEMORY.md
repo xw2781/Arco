@@ -112,3 +112,4 @@
 - [Build listener down: local build_exe](build-listener-down-local-build.md) — on the Server PC run build_exe.py with ARCRHO_DEPLOY_ROOT; delete venvs/builds after
 - [Temp files on E:](temp-files-on-e-drive.md) — standing rule since 2026-10-12: all temp files go in repo tmp_data/ on E:, never C: or the session scratchpad
 - [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme only and short bullet points, not prose
+- [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button; scope feature button rules under the page id and screenshot both themes
