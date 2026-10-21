@@ -77,21 +77,10 @@ export function mountDatasetViewer(container) {
           </div>
 
           <div class="dsDetailLabel arDetailsLabel">
-            <label id="dsPrecedentsTitle">Precedents : </label>
+            <label id="dsDependenciesTitle">Dependencies : </label>
           </div>
           <div class="dsDetailInput arDetailsField">
-            <div class="arDetailsChipBox">
-              <div id="dsPrecedentsList" class="arDetailsChipList" aria-live="polite"></div>
-            </div>
-          </div>
-
-          <div class="dsDetailLabel arDetailsLabel">
-            <label id="dsDependentsTitle">Dependents : </label>
-          </div>
-          <div class="dsDetailInput arDetailsField">
-            <div class="arDetailsChipBox">
-              <div id="dsDependentsList" class="arDetailsChipList" aria-live="polite"></div>
-            </div>
+            <div id="dsDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="dsDependenciesTitle" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -276,7 +265,6 @@ export function mountDatasetViewer(container) {
             <span class="dsChartToolLabel">Development Length</span>
             <div class="dsChartSegment" id="dsChartDevLen" role="group" aria-label="Development Length" data-len-select="devLenSelect"></div>
           </div>
-          <div class="dsChartFocusBar" id="dsChartFocusBar"></div>
           <div class="dsChartBody" id="dsChartBody">
             <aside class="dsChartMinimapPanel" id="dsChartMinimapPanel" aria-label="Triangle">
               <div class="dsChartPanelHead" id="dsChartPanelHead">Triangle</div>

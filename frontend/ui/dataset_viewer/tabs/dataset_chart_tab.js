@@ -8,8 +8,8 @@ import {
   renderTable,
 } from "/ui/shared/tabs/data/dataset_grid_view.js?v=20260919a";
 import { normalizeRange } from "/ui/shared/components/spreadsheet/table_selection.js?v=20260726a";
-import { createLineChart } from "/ui/dataset_viewer/tabs/dataset_chart_renderer.js?v=20261020b";
-import { createTriangleMinimap } from "/ui/dataset_viewer/tabs/dataset_chart_minimap.js?v=20261020b";
+import { createLineChart } from "/ui/dataset_viewer/tabs/dataset_chart_renderer.js?v=20261020d";
+import { createTriangleMinimap } from "/ui/dataset_viewer/tabs/dataset_chart_minimap.js?v=20261020d";
 import {
   addFocusedSeries,
   buildChartMatrix,
@@ -31,6 +31,8 @@ const MINIMAP_MAX_PX = 560;
 const MINIMAP_MAX_SHARE = 0.6;
 const MINIMAP_LIST_BELOW_PX = 200;
 const MINIMAP_KEY_STEP_PX = 16;
+// More focused series than this draw without end labels, which would pile up.
+const END_LABELS_UP_TO = 10;
 const VALUE_TITLES = {
   value: "Value",
   incremental: "Incremental Value",
@@ -42,13 +44,18 @@ const chart = {
   plot: "byRow",
   values: "value",
   range: null,
+  // A box zoom's value window; null lets the axis fit the focused lines.
+  yRange: null,
   shapeKey: "",
+  // Right-clicking a series in the triangle or the list shows it alone.
+  solo: { byRow: null, byCol: null },
+  // The last series picked, where a shift-click range starts.
+  anchor: { byRow: null, byCol: null },
   focus: { byRow: null, byCol: null },
   slots: { byRow: {}, byCol: {} },
 };
 let ui = null;
 let view = null;
-let focusExpanded = false;
 let minimapWidth = MINIMAP_DEFAULT_PX;
 
 function focusFor(plot) {
@@ -76,17 +83,84 @@ function resetFocusToDefault(plot, list) {
 
 const slotClass = (slot) => `dsChartSlot${focusColorIndex(slot)}`;
 
+function clearZoom() {
+  chart.range = null;
+  chart.yRange = null;
+}
+
+// A second right-click on the series already shown alone brings the rest back.
+function toggleSolo(plot, id) {
+  setPlot(plot);
+  chart.solo[plot] = chart.solo[plot] === id ? null : id;
+  if (chart.solo[plot]) addFocus(plot, id);
+  chart.yRange = null;
+  renderDatasetChart();
+}
+
 function toggleFocus(id) {
+  chart.solo[chart.plot] = null;
   const ids = focusFor(chart.plot);
   if (ids.includes(id)) removeFocusedSeries(ids, chart.slots[chart.plot], id);
   else addFocus(chart.plot, id);
   renderDatasetChart();
 }
 
+// Click toggles one series; shift-click focuses every series from the last one
+// picked through this one. Picking a series of the other plot switches to it.
+function pickSeries(plot, id, { extend = false } = {}) {
+  const list = view?.list || [];
+  if (chart.plot !== plot) {
+    setPlot(plot);
+    chart.solo[plot] = null;
+    addFocus(plot, id);
+  } else {
+    chart.solo[plot] = null;
+    const from = list.findIndex((series) => series.id === chart.anchor[plot]);
+    const to = list.findIndex((series) => series.id === id);
+    if (extend && from >= 0 && to >= 0) {
+      for (let i = Math.min(from, to); i <= Math.max(from, to); i++) addFocus(plot, list[i].id);
+    } else {
+      const ids = focusFor(plot);
+      if (ids.includes(id)) removeFocusedSeries(ids, chart.slots[plot], id);
+      else addFocus(plot, id);
+    }
+  }
+  chart.anchor[plot] = id;
+  renderDatasetChart();
+}
+
+function focusState(list, ids) {
+  const count = list.filter((series) => ids.includes(series.id)).length;
+  return count === 0 ? "none" : count === list.length ? "all" : "some";
+}
+
+// The select-all box: with every series focused it clears them, otherwise it
+// focuses them all, like a tri-state checkbox.
+function toggleAllFocus() {
+  const list = view?.list || [];
+  const plot = chart.plot;
+  chart.solo[plot] = null;
+  if (focusState(list, focusFor(plot)) === "all") {
+    chart.focus[plot] = [];
+    chart.slots[plot] = {};
+  } else {
+    for (const series of list) addFocus(plot, series.id);
+  }
+  renderDatasetChart();
+}
+
+function resetAllFocus() {
+  chart.solo[chart.plot] = null;
+  resetFocusToDefault(chart.plot, view?.list || []);
+  renderDatasetChart();
+}
+
+const defaultFocusText = (plot) => (plot === "byRow" ? "the latest 3 years" : "the first 3 years");
+
 function setPlot(plot) {
   if (chart.plot === plot) return;
   chart.plot = plot;
-  chart.range = null;
+  clearZoom();
 }
 
 function selectedLength(id) {
@@ -231,7 +305,6 @@ function ensureUi() {
     plotMode: byId("dsChartPlotMode"),
     valuesMode: byId("dsChartValuesMode"),
     lengths: [byId("dsChartOriginLen"), byId("dsChartDevLen")].filter(Boolean),
-    focusBar: byId("dsChartFocusBar"),
     status: byId("dsChartStatus"),
     body: byId("dsChartBody"),
     minimapPanel: byId("dsChartMinimapPanel"),
@@ -245,27 +318,19 @@ function ensureUi() {
   ui.chart = createLineChart(byId("dsChartPlot"), byId("dsChartZoom"), {
     onPick: (id) => toggleFocus(id),
     onHoverX: (index) => ui.minimap.setCross(index),
-    onRangeChange: (range) => {
+    onRangeChange: (range, yRange) => {
       chart.range = range;
+      chart.yRange = yRange || null;
       renderDatasetChart();
     },
   });
   ui.minimap = createTriangleMinimap(byId("dsChartMinimap"), {
-    onPickOrigin: (r) => {
-      const id = `o:${view.matrix.originLabels[r]}`;
-      if (chart.plot === "byRow") return toggleFocus(id);
-      setPlot("byRow");
-      addFocus("byRow", id);
-      renderDatasetChart();
-    },
-    onPickAge: (c) => {
-      const id = `d:${view.matrix.colKeys[c]}`;
-      if (chart.plot === "byCol") return toggleFocus(id);
-      setPlot("byCol");
-      addFocus("byCol", id);
-      renderDatasetChart();
-    },
+    onPickOrigin: (r, how) => pickSeries("byRow", `o:${view.matrix.originLabels[r]}`, how),
+    onPickAge: (c, how) => pickSeries("byCol", `d:${view.matrix.colKeys[c]}`, how),
+    onPickAll: toggleAllFocus,
+    onResetAll: resetAllFocus,
     onPickCell: (r, c) => {
+      chart.solo[chart.plot] = null;
       addFocus(chart.plot, chart.plot === "byRow" ? `o:${view.matrix.originLabels[r]}` : `d:${view.matrix.colKeys[c]}`);
       selectModelCell(r, c);
     },
@@ -273,8 +338,11 @@ function ensureUi() {
       const [a, b] = chart.plot === "byRow" ? [c0, c1] : [r0, r1];
       if (b - a < 1) return;
       chart.range = [a, b];
+      chart.yRange = null;
       renderDatasetChart();
     },
+    onSoloOrigin: (r) => toggleSolo("byRow", `o:${view.matrix.originLabels[r]}`),
+    onSoloAge: (c) => toggleSolo("byCol", `d:${view.matrix.colKeys[c]}`),
   });
   onSegment(ui.plotMode, (plot) => {
     setPlot(plot);
@@ -283,80 +351,75 @@ function ensureUi() {
   onSegment(ui.valuesMode, (mode) => {
     if (mode === chart.values) return;
     chart.values = mode;
-    chart.range = null;
+    clearZoom();
     renderDatasetChart();
   });
   return true;
 }
 
-// The chips sit on one line in series order; the ones that do not fit hide
-// behind a "+N" toggle that opens the list onto as many lines as it needs.
-function renderFocusBar(list) {
-  const bar = ui.focusBar;
-  const ids = focusFor(chart.plot);
-  const slots = chart.slots[chart.plot];
-  const chips = el("div", focusExpanded ? "dsChartChipList isExpanded" : "dsChartChipList");
-  for (const series of list) {
-    if (!ids.includes(series.id)) continue;
-    const id = series.id;
-    const chip = el("span", "dsChartChip");
-    const remove = el("button", "dsChartChipRemove", "×");
-    remove.type = "button";
-    remove.setAttribute("aria-label", `Remove ${series.label}`);
-    remove.addEventListener("click", () => toggleFocus(id));
-    chip.addEventListener("pointerenter", () => ui.chart.setEmphasis(id));
-    chip.addEventListener("pointerleave", () => ui.chart.setEmphasis(null));
-    chip.append(el("i", `dsChartChipKey ${slotClass(slots[id])}`), el("span", null, series.label), remove);
-    chips.appendChild(chip);
-  }
-  if (!ids.length) chips.appendChild(el("span", "dsChartFocusEmpty", "No focused series."));
-  // The widest label holds the toggle's room while the chips are measured.
-  const more = el("button", "dsChartLinkButton dsChartFocusMore", focusExpanded ? "Show less" : "+999 more");
-  more.type = "button";
-  more.addEventListener("click", () => {
-    focusExpanded = !focusExpanded;
-    renderDatasetChart();
-  });
-  const count = el("span", "dsChartFocusCount", `${ids.length} of ${list.length}`);
-  const quick = el("button", "dsChartLinkButton", chart.plot === "byRow" ? "Latest 3 Years" : "First 3 Years");
-  quick.type = "button";
-  quick.addEventListener("click", () => {
-    resetFocusToDefault(chart.plot, list);
-    renderDatasetChart();
-  });
-  const clear = el("button", "dsChartLinkButton", "Clear");
-  clear.type = "button";
-  clear.disabled = !ids.length;
-  clear.addEventListener("click", () => {
-    chart.focus[chart.plot] = [];
-    chart.slots[chart.plot] = {};
-    renderDatasetChart();
-  });
-  bar.replaceChildren(el("span", "dsChartToolLabel", "Focus"), chips, more, count, quick, clear);
+// The panel's head names the panel, counts the focused series, and says when
+// one series is shown alone.
+function renderPanelHead(title, list, ids) {
+  const head = ui.panelHead;
+  head.replaceChildren(
+    el("span", "dsChartPanelTitle", title),
+    el("span", "dsChartFocusCount", `${list.filter((series) => ids.includes(series.id)).length} of ${list.length} focused`),
+  );
+  const solo = chart.solo[chart.plot];
+  if (!solo) return;
+  const label = list.find((series) => series.id === solo)?.label ?? "";
+  const showAll = el("button", "dsChartLinkButton", "Show all");
+  showAll.type = "button";
+  showAll.addEventListener("click", () => toggleSolo(chart.plot, solo));
+  head.append(el("span", "dsChartPanelSolo", `Only ${label}`), showAll);
+}
 
-  // Measured after layout: a chip that wrapped below the first line is hidden.
-  const all = [...chips.querySelectorAll(".dsChartChip")];
-  const top = all[0]?.offsetTop ?? 0;
-  const wrapped = all.filter((chip) => chip.offsetTop > top);
-  if (!focusExpanded) for (const chip of wrapped) chip.hidden = true;
-  more.hidden = !wrapped.length;
-  more.textContent = focusExpanded ? "Show less" : `+${wrapped.length} more`;
-  more.setAttribute("aria-expanded", String(focusExpanded));
+// Clicks are handled on the row, so the checkbox never toggles itself: click
+// toggles, shift-click focuses a range, right-click shows the series alone.
+function filterRow(className, label, checked, onClick, onContext, hint) {
+  const item = el("label", checked ? `${className} isChecked` : className);
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = checked;
+  input.tabIndex = -1;
+  item.title = hint;
+  item.addEventListener("click", (event) => {
+    event.preventDefault();
+    onClick(event);
+  });
+  item.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    onContext();
+  });
+  item.append(input, el("span", null, label));
+  return { item, input };
 }
 
 function renderFilterList(list, ids, slots) {
   const box = ui.filterList;
   const scrollTop = box.scrollTop;
-  box.replaceChildren(...list.map((series) => {
+  const state = focusState(list, ids);
+  const all = filterRow(
+    "dsChartFilterItem isAll",
+    "All",
+    state === "all",
+    toggleAllFocus,
+    resetAllFocus,
+    `Click to focus all or none; right-click for ${defaultFocusText(chart.plot)}`,
+  );
+  all.input.indeterminate = state === "some";
+  box.replaceChildren(all.item, ...list.map((series) => {
     const checked = ids.includes(series.id);
-    const item = el("label", checked ? "dsChartFilterItem isChecked" : "dsChartFilterItem");
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.checked = checked;
-    input.addEventListener("change", () => toggleFocus(series.id));
+    const { item } = filterRow(
+      "dsChartFilterItem",
+      series.label,
+      checked,
+      (event) => pickSeries(chart.plot, series.id, { extend: event.shiftKey }),
+      () => toggleSolo(chart.plot, series.id),
+      "Click to focus or drop; shift-click for a range; right-click to show it alone",
+    );
     item.addEventListener("pointerenter", () => ui.chart.setEmphasis(series.id));
     item.addEventListener("pointerleave", () => ui.chart.setEmphasis(null));
-    item.append(input, el("span", null, series.label));
     if (checked) item.appendChild(el("i", `dsChartChipKey ${slotClass(slots[series.id])}`));
     return item;
   }));
@@ -380,16 +443,19 @@ function renderStatus({ matrix, xLabels, active, formatValue }) {
     left.textContent = "Click a grey line to focus it, or a coloured line to drop it.";
   }
   const right = el("span");
-  if (chart.range) {
+  if (chart.range || chart.yRange) {
     const reset = el("button", "dsChartLinkButton", "Reset zoom");
     reset.type = "button";
     reset.addEventListener("click", () => {
-      chart.range = null;
+      clearZoom();
       renderDatasetChart();
     });
-    right.append(`Showing ${xLabels[chart.range[0]]} to ${xLabels[chart.range[1]]} `, reset);
+    const parts = [];
+    if (chart.range) parts.push(`${xLabels[chart.range[0]]} to ${xLabels[chart.range[1]]}`);
+    if (chart.yRange) parts.push(`values ${chart.yRange.map(formatValue).join(" to ")}`);
+    right.append(`Showing ${parts.join(", ")} `, reset);
   } else {
-    right.textContent = "Drag the strip above to zoom.";
+    right.textContent = "Drag a box on the chart to zoom; double-click to reset.";
   }
   status.append(left, right);
 }
@@ -403,14 +469,13 @@ export function renderDatasetChart() {
   renderLengthControls();
   const compact = minimapWidth < MINIMAP_LIST_BELOW_PX;
   ui.minimapPanel.classList.toggle("isCompact", compact);
-  ui.panelHead.textContent = compact ? (chart.plot === "byRow" ? "Origins" : "Ages") : "Triangle";
 
   if (!matrix || !matrix.values.length || !matrix.colLabels.length) {
     view = null;
     ui.chart.render({ series: [], xLabels: [], emptyText: "No data." });
     ui.minimap.render(null);
     ui.filterList.replaceChildren();
-    ui.focusBar.replaceChildren();
+    ui.panelHead.textContent = "Triangle";
     ui.status.replaceChildren();
     return;
   }
@@ -418,13 +483,13 @@ export function renderDatasetChart() {
   const shapeKey = `${chart.values}|${matrix.originLabels.join(",")}|${matrix.colLabels.join(",")}`;
   if (shapeKey !== chart.shapeKey) {
     chart.shapeKey = shapeKey;
-    chart.range = null;
+    clearZoom();
   }
   const originLen = selectedLength("originLenSelect");
   const formatOrigin = (label) => formatDatasetOriginLabel(label, originLen);
   const plot = chart.plot;
   const { xLabels, list } = buildChartSeries(matrix, plot, formatOrigin);
-  if (chart.range && chart.range[1] > xLabels.length - 1) chart.range = null;
+  if (chart.range && chart.range[1] > xLabels.length - 1) clearZoom();
 
   if (!chart.focus[plot]) resetFocusToDefault(plot, list);
   const ids = focusFor(plot);
@@ -432,9 +497,13 @@ export function renderDatasetChart() {
   const known = new Set(list.map((series) => series.id));
   for (const id of [...ids]) if (!known.has(id)) removeFocusedSeries(ids, slots, id);
 
-  const series = list.map((s) => (ids.includes(s.id)
-    ? { ...s, kind: "focus", slot: focusColorIndex(slots[s.id]) }
-    : { ...s, kind: "context" }));
+  if (chart.solo[plot] && !known.has(chart.solo[plot])) chart.solo[plot] = null;
+  const solo = chart.solo[plot];
+  const series = list
+    .filter((s) => !solo || s.id === solo)
+    .map((s) => (ids.includes(s.id)
+      ? { ...s, kind: "focus", slot: focusColorIndex(slots[s.id]) }
+      : { ...s, kind: "context" }));
 
   const active = activeModelCell();
   const pinned = active && (plot === "byRow"
@@ -447,7 +516,7 @@ export function renderDatasetChart() {
     ? (v) => v.toFixed(2)
     : largest >= COMPACT_AXIS_FROM ? (v) => compactFormat.format(v) : formatDatasetChartValue;
 
-  view = { matrix };
+  view = { matrix, list };
   ui.chart.render({
     series,
     xLabels,
@@ -456,8 +525,9 @@ export function renderDatasetChart() {
     // Zoomed in, the axis fits the visible values instead of reaching down to zero.
     yZero: !ratio && !chart.range,
     range: chart.range,
+    yRange: chart.yRange,
     pinned,
-    endLabelIds: ids,
+    endLabelIds: solo ? [solo] : ids.length <= END_LABELS_UP_TO ? ids : [],
     formatAxis,
     formatValue,
     tipTitle: (i) => (plot === "byRow" ? `Age ${xLabels[i]}` : xLabels[i]),
@@ -474,15 +544,22 @@ export function renderDatasetChart() {
       rowsPerYear: periodsPerYear(originLen),
       colsPerYear: periodsPerYear(selectedLength("devLenSelect")),
       plot,
-      focus: ids.map((id) => ({ index: list.findIndex((s) => s.id === id), slot: focusColorIndex(slots[id]) })),
+      focus: (solo ? [solo] : ids).map((id) => ({ index: list.findIndex((s) => s.id === id), slot: focusColorIndex(slots[id]) })),
       active,
       range: chart.range,
       formatValue,
-      rowAction: plot === "byRow" ? "Click to focus or drop this origin" : "Click to plot this origin's curve",
-      colAction: plot === "byCol" ? "Click to focus or drop this age" : "Click to plot this age across origins",
+      rowAction: plot === "byRow"
+        ? "Click to focus or drop; shift-click for a range; right-click to show it alone"
+        : "Click to plot this origin's curve; right-click to show it alone",
+      colAction: plot === "byCol"
+        ? "Click to focus or drop; shift-click for a range; right-click to show it alone"
+        : "Click to plot this age across origins; right-click to show it alone",
+      allState: focusState(list, ids),
+      allLabel: plot === "byRow" ? "All origins" : "All ages",
+      allAction: `Click to focus all or none; right-click for ${defaultFocusText(plot)}`,
     });
   }
-  renderFocusBar(list);
+  renderPanelHead(compact ? (plot === "byRow" ? "Origins" : "Ages") : "Triangle", list, ids);
   renderStatus({ matrix: { ...matrix, originLabels: matrix.originLabels.map(formatOrigin) }, xLabels, active, formatValue });
 }
 

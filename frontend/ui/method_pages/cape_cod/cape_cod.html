@@ -7,7 +7,8 @@
   <title>Cape Cod</title>
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20260820b">
+<link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/table_colors_window.css?v=20261003a">
@@ -86,17 +87,9 @@
                         </div>
                       </span>
                     </div>
-                    <label class="arDetailsLabel" id="ccPrecedentsLabel">Precedents : </label>
+                    <label class="arDetailsLabel" id="ccDependenciesLabel">Dependencies : </label>
                     <div class="arDetailsField">
-                      <div class="arDetailsChipBox">
-                        <div id="ccPrecedentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="ccPrecedentsLabel"></div>
-                      </div>
-                    </div>
-                    <label class="arDetailsLabel" id="ccDependentsLabel">Dependents : </label>
-                    <div class="arDetailsField">
-                      <div class="arDetailsChipBox">
-                        <div id="ccDependentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="ccDependentsLabel"></div>
-                      </div>
+                      <div id="ccDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="ccDependenciesLabel" aria-live="polite"></div>
                     </div>
                   </div>
                 </div>
@@ -244,6 +237,6 @@
   </div>
 
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
-  <script type="module" src="/ui/method_pages/cape_cod/cape_cod_main.js?v=20260927c"></script>
+  <script type="module" src="/ui/method_pages/cape_cod/cape_cod_main.js?v=20261020a"></script>
 </body>
 </html>

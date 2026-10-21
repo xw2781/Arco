@@ -1,0 +1,11 @@
+/* One accent per dependency-graph family: the stripe on a Dependency Graph
+   box, its port-list rows and legend swatch, and the boxes of the Dataset
+   Viewer's Details dependency map. Both surfaces read these tokens, so a
+   family keeps one colour wherever it is drawn. */
+:root {
+  --dg-family-dataset: #94a3b8;
+  --dg-family-calculated: #0f766e;
+  --dg-family-engine: #475569;
+  --dg-family-generated: #0891b2;
+  --dg-family-method: var(--ar-color-accent);
+}

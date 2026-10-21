@@ -3,7 +3,7 @@
 import {
   createDetailsDependenciesView,
   normalizeDependencyEntries,
-} from "/ui/shared/tabs/details/details_dependencies.js?v=20260820b";
+} from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
 
 export function registerDataTabDetailsController(runtime) {
   const {
@@ -26,8 +26,8 @@ export function registerDataTabDetailsController(runtime) {
     getDatasetAuditLog()?.render(entries);
   }
 
-  // The formula field and the Precedents/Dependents chips are the shared Details
-  // surface every method page also shows, so this controller only supplies the
+  // The formula field and the Dependencies map are the shared Details surface
+  // every method page also shows, so this controller only supplies the
   // Data-tab context it needs and delegates the rendering.
   let dependenciesView = null;
 
@@ -35,8 +35,8 @@ export function registerDataTabDetailsController(runtime) {
     if (dependenciesView) return dependenciesView;
     dependenciesView = createDetailsDependenciesView({
       formulaBox: "dsDetailFormulaBox",
-      precedentsList: "dsPrecedentsList",
-      dependentsList: "dsDependentsList",
+      dependencyMap: "dsDependencyMap",
+      getSelfName: () => buildDatasetSidecarContextPayload().dataset_name,
       getDatasetTypeFormula: (name) => getDatasetTypeFormulaByName(name),
       // The Data tab knows every dataset type in the project, so a formula can
       // name a source that is not in the persisted Precedents graph yet.

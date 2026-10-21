@@ -7,7 +7,8 @@
   <title>Bootstrap</title>
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
-  <link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20260820b">
+  <link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
+  <link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/table_colors_window.css?v=20261003a">
@@ -53,17 +54,9 @@
                 <input class="bstInput arDetailsControl" id="bstDfmInput" type="text" readonly>
                 <button class="bstIconButton" id="bstDfmBtn" type="button" aria-label="Select DFM">...</button>
               </div>
-              <label class="arDetailsLabel" id="bstPrecedentsLabel">Precedents : </label>
+              <label class="arDetailsLabel" id="bstDependenciesLabel">Dependencies : </label>
               <div class="arDetailsField">
-                <div class="arDetailsChipBox">
-                  <div id="bstPrecedentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bstPrecedentsLabel"></div>
-                </div>
-              </div>
-              <label class="arDetailsLabel" id="bstDependentsLabel">Dependents : </label>
-              <div class="arDetailsField">
-                <div class="arDetailsChipBox">
-                  <div id="bstDependentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bstDependentsLabel"></div>
-                </div>
+                <div id="bstDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="bstDependenciesLabel" aria-live="polite"></div>
               </div>
             </div>
           </div>
@@ -333,6 +326,6 @@
   </div>
 
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
-  <script type="module" src="/ui/method_pages/bootstrap/bootstrap_main.js?v=20260927c"></script>
+  <script type="module" src="/ui/method_pages/bootstrap/bootstrap_main.js?v=20261020a"></script>
 </body>
 </html>

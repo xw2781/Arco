@@ -1,29 +1,29 @@
 /*
  * Shared Details "inputs and dependencies" surface.
  *
- * The Dataset Viewer and every method page show the same three things in the
- * second Details section: the formula or pickers the output is computed from,
- * the Precedents it reads, and the Dependents that read it. This module owns
- * how those read - the chips, the plain-text formula, the hover tooltip, and
- * the click that opens a related dataset or method - so a method page cannot
- * drift from the Dataset Viewer.
+ * The Dataset Viewer and every method page show the same things in the second
+ * Details section: the formula or pickers the output is computed from, and one
+ * Dependencies map of the Precedents it reads and the Dependents that read it.
+ * This module owns how those read - the plain-text formula, the map, the hover
+ * tooltip, the click that opens a related dataset or method, and the button
+ * that opens the full Dependency Graph - so no page can drift from another.
  *
- * Everything a host differs on is injected: which elements to fill, how to
- * resolve a dataset type's own formula, and how to report status. The module
- * itself knows nothing about either feature.
+ * Everything a host differs on is injected: which elements to fill, what the
+ * output is called and which method publishes it, how to resolve a dataset
+ * type's own formula, and how to report status. The module itself knows
+ * nothing about any one page.
  */
 
+import { createDetailsDependencyMap, requestDependencyGraph } from "./details_dependency_map.js?v=20261020b";
+
 export const DETAILS_DEPENDENCY_CLASS_NAMES = Object.freeze({
-  chipBox: "arDetailsChipBox",
-  chipList: "arDetailsChipList",
-  chip: "arDetailsChip",
   chipLabel: "arDetailsChipLabel",
-  calculatedIcon: "arDetailsCalculatedIcon",
   formulaBox: "arDetailsFormulaBox",
   formulaText: "arDetailsFormulaText",
   formulaOperator: "arDetailsFormulaOperator",
   formulaComponent: "arDetailsFormulaComponent",
   tooltip: "arDetailsFormulaTooltip",
+  tooltipTitle: "arDetailsFormulaTooltipTitle",
   tooltipBody: "arDetailsFormulaTooltipBody",
 });
 
@@ -255,8 +255,9 @@ export function formatDetailsFormulaText(formula, names = []) {
 
 export function createDetailsDependenciesView({
   formulaBox = null,
-  precedentsList = null,
-  dependentsList = null,
+  dependencyMap = null,
+  getSelfName = () => "",
+  getSelfMethodType = () => "",
   getDatasetTypeFormula = () => "",
   getExtraComponentNames = () => [],
   getBerquistShermanContract = () => null,
@@ -276,22 +277,11 @@ export function createDetailsDependenciesView({
     return target;
   }
 
-  function createCalculatedIcon() {
-    const icon = doc.createElement("span");
-    icon.className = DETAILS_DEPENDENCY_CLASS_NAMES.calculatedIcon;
-    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    const path = doc.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", "M4 7h8v6H4zM12 11h8v6h-8zM12 3h8v6h-8z");
-    svg.appendChild(path);
-    icon.appendChild(svg);
-    return icon;
-  }
-
-  function entryHasFormula(entry) {
+  // A related dataset whose sidecar entry carries no formula may still be
+  // calculated by its Dataset Type, which is what its box is labelled by.
+  function entryFormula(entry) {
     const datasetTypeName = String(entry?.datasetTypeName || entry?.datasetName || "").trim();
-    return !!String(entry?.formula || getDatasetTypeFormula(datasetTypeName) || "").trim();
+    return String(entry?.formula || getDatasetTypeFormula(datasetTypeName) || "").trim();
   }
 
   // Routing keeps the canonical method type; only the labels a user reads use
@@ -300,11 +290,6 @@ export function createDetailsDependenciesView({
     const text = normalizeDependencyText(value);
     if (METHOD_TYPE_LABELS[text]) return METHOD_TYPE_LABELS[text];
     return getBerquistShermanContract(text)?.methodType || "";
-  }
-
-  function methodTypeLabel(value) {
-    const methodType = normalizeMethodType(value);
-    return getBerquistShermanContract(methodType)?.displayLabel || methodType;
   }
 
   function appendChipLabel(parent, text) {
@@ -336,8 +321,8 @@ export function createDetailsDependenciesView({
   }
 
   // A formula component is the name the user wrote, so it reads as text. Opening
-  // the dataset it refers to belongs to the Precedents row directly below,
-  // which lists the same sources as chips; a second, differently-shaped way in
+  // the dataset it refers to belongs to the Dependencies map directly below,
+  // which shows the same sources as boxes; a second, differently-shaped way in
   // would only make the expression harder to read.
   //
   // The quotes are always drawn, whether or not the source text carried them:
@@ -428,17 +413,28 @@ export function createDetailsDependenciesView({
     }
   }
 
-  function showTooltip(dependency, event) {
-    const formula = String(dependency?.formula || "").trim();
-    if (!formula) return;
+  // A map box's name may be cut short, so its tooltip leads with the full name
+  // and adds the formula when the box has one.
+  function showTooltip(node, event) {
+    const formula = String(node?.formula || "").trim();
+    const name = String(node?.name || "").trim();
+    if (!formula && !name) return;
     const tooltip = ensureTooltip();
     tooltip.style.width = "";
     tooltip.replaceChildren();
-    const body = doc.createElement("div");
-    body.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltipBody;
-    appendFormulaOperator(body, "=");
-    renderFormulaTokens(body, formula);
-    tooltip.appendChild(body);
+    if (name) {
+      const heading = doc.createElement("div");
+      heading.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltipTitle;
+      heading.textContent = name;
+      tooltip.appendChild(heading);
+    }
+    if (formula) {
+      const body = doc.createElement("div");
+      body.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltipBody;
+      appendFormulaOperator(body, "=");
+      renderFormulaTokens(body, formula);
+      tooltip.appendChild(body);
+    }
     tooltip.hidden = false;
     fitTooltipWidth(tooltip);
     positionTooltip(tooltip, event);
@@ -476,37 +472,46 @@ export function createDetailsDependenciesView({
     }
   }
 
-  function buildChip(entry, { describeFormula = false } = {}) {
-    const button = doc.createElement("button");
-    button.type = "button";
-    button.className = DETAILS_DEPENDENCY_CLASS_NAMES.chip;
-    if (entryHasFormula(entry)) button.appendChild(createCalculatedIcon());
-    appendChipLabel(button, entry.datasetName);
-    const methodType = normalizeMethodType(entry.methodType);
-    const openLabel = methodType
-      ? `Open ${methodTypeLabel(entry.methodType)} method ${entry.datasetName}`
-      : `Open related item ${entry.datasetName}`;
-    button.setAttribute("aria-label", describeFormula && entry.formula
-      ? `${openLabel}. Formula: ${entry.formula}`
-      : openLabel);
-    button.addEventListener("mouseenter", (event) => showTooltip(entry, event));
-    button.addEventListener("mousemove", (event) => {
-      positionTooltip(doc.getElementById(TOOLTIP_ELEMENT_ID), event);
-    });
-    button.addEventListener("mouseleave", hideTooltip);
-    button.addEventListener("blur", hideTooltip);
-    button.addEventListener("click", () => openRelated(entry, { openMethod: true }));
-    return button;
+  // The full graph belongs to the Project Instance page, so the map's button
+  // asks it to open the graph for this class with this output in focus.
+  function openDependencyGraph() {
+    try {
+      requestDependencyGraph({
+        windowRef: win,
+        instanceId,
+        reservingClass: (getContext() || {}).reservingClass,
+        datasetName: getSelfName(),
+      });
+      setStatus("Opening Dependency Graph...");
+    } catch {
+      setStatus("Could not open the Dependency Graph from this window.");
+    }
   }
 
-  function renderChipList(target, entries, options) {
-    const list = resolveElement(target);
-    if (!list) return null;
-    hideTooltip();
-    const normalized = normalizeDependencyEntries(entries);
-    list.replaceChildren();
-    for (const entry of normalized) list.appendChild(buildChip(entry, options));
-    return normalized;
+  // The button is drawn only where there is a Project Instance page to ask.
+  const mapContainer = resolveElement(dependencyMap);
+  const map = mapContainer && createDetailsDependencyMap({
+    container: mapContainer,
+    canOpenGraph: isProjectInstanceHost,
+    onOpenEntry: (entry) => openRelated(entry, { openMethod: true }),
+    onOpenGraph: openDependencyGraph,
+    showTooltip,
+    moveTooltip: (event) => positionTooltip(doc.getElementById(TOOLTIP_ELEMENT_ID), event),
+    hideTooltip,
+    documentRef: doc,
+    windowRef: win,
+  });
+  const mapState = { formula: "", precedents: [], dependents: [] };
+  const withFormula = (entries) => normalizeDependencyEntries(entries)
+    .map((entry) => ({ ...entry, formula: entryFormula(entry) }));
+
+  function paintMap(changes) {
+    Object.assign(mapState, changes);
+    map?.render({
+      self: { name: getSelfName(), formula: mapState.formula, methodType: getSelfMethodType() },
+      precedents: mapState.precedents,
+      dependents: mapState.dependents,
+    });
   }
 
   return {
@@ -514,7 +519,7 @@ export function createDetailsDependenciesView({
 
     /**
      * Paints the formula field. `precedents` is what makes a bare name in the
-     * text resolve to a dataset, so pass the same list the Precedents row got.
+     * text resolve to a dataset, so pass the same list the map got.
      */
     renderFormula(formula, precedents = []) {
       const box = resolveElement(formulaBox);
@@ -523,17 +528,20 @@ export function createDetailsDependenciesView({
       box.replaceChildren();
       box.removeAttribute("title");
       box.classList.toggle("empty", !formulaText);
+      paintMap({ formula: formulaText });
       if (!formulaText) return "";
       renderFormulaTokens(box, formulaText, precedents);
       return formulaText;
     },
 
     renderPrecedents(entries = []) {
-      return renderChipList(precedentsList, entries, { describeFormula: false });
+      paintMap({ precedents: withFormula(entries) });
+      return mapState.precedents;
     },
 
     renderDependents(entries = []) {
-      return renderChipList(dependentsList, entries, { describeFormula: true });
+      paintMap({ dependents: withFormula(entries) });
+      return mapState.dependents;
     },
 
     clear() {
@@ -542,8 +550,7 @@ export function createDetailsDependenciesView({
         box.replaceChildren();
         box.classList.add("empty");
       }
-      renderChipList(precedentsList, [], {});
-      renderChipList(dependentsList, [], {});
+      paintMap({ formula: "", precedents: [], dependents: [] });
     },
 
     hideTooltip,
@@ -564,6 +571,8 @@ export function createDetailsDependenciesController({
   ...viewOptions
 } = {}) {
   const view = createDetailsDependenciesView({
+    // The map is centred on the dataset the graph is read for.
+    getSelfName: () => (getIdentity() || {}).datasetName,
     ...viewOptions,
     getContext: () => {
       const identity = getIdentity() || {};

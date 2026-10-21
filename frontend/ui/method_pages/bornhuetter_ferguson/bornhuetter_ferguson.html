@@ -7,7 +7,8 @@
   <title>Bornhuetter Ferguson</title>
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20260820b">
+<link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/table_colors_window.css?v=20261003a">
@@ -65,17 +66,9 @@
                     <div class="bfFieldControl arDetailsField bfPriorPicker">
                       <div class="bfPriorList" id="bfPriorList" role="list" aria-label="Selected prior vectors"></div>
                     </div>
-                    <label class="arDetailsLabel" id="bfPrecedentsLabel">Precedents : </label>
+                    <label class="arDetailsLabel" id="bfDependenciesLabel">Dependencies : </label>
                     <div class="arDetailsField">
-                      <div class="arDetailsChipBox">
-                        <div id="bfPrecedentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bfPrecedentsLabel"></div>
-                      </div>
-                    </div>
-                    <label class="arDetailsLabel" id="bfDependentsLabel">Dependents : </label>
-                    <div class="arDetailsField">
-                      <div class="arDetailsChipBox">
-                        <div id="bfDependentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bfDependentsLabel"></div>
-                      </div>
+                      <div id="bfDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="bfDependenciesLabel" aria-live="polite"></div>
                     </div>
                   </div>
                 </div>
@@ -198,6 +191,6 @@
   </div>
 
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
-  <script type="module" src="/ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson_main.js?v=20260927c"></script>
+  <script type="module" src="/ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson_main.js?v=20261020a"></script>
 </body>
 </html>

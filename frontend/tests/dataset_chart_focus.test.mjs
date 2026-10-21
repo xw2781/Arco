@@ -112,17 +112,19 @@ test("the Chart tab mounts the focus-and-context layout through the versioned ch
     "ui/dataset_viewer/dataset_viewer_view.js",
     "ui/dataset_viewer/tabs/dataset_chart_tab.js",
   ].map((path) => readFile(new URL(path, frontendRoot), "utf8")));
-  assert.match(html, /dataset_viewer\.css\?v=20261020d/u);
+  assert.match(html, /dataset_viewer\.css\?v=20261020f/u);
   assert.doesNotMatch(html, /chart_legend\.css/u);
-  assert.match(main, /dataset_chart_tab\.js\?v=20261020d/u);
-  assert.match(view, /id="dsChartRoot"[\s\S]*id="dsChartFocusBar"[\s\S]*id="dsChartMinimap"[\s\S]*id="dsChartPlot"[\s\S]*id="dsChartZoom"/u);
+  assert.match(main, /dataset_chart_tab\.js\?v=20261020g/u);
+  assert.match(view, /id="dsChartRoot"[\s\S]*id="dsChartMinimapPanel"[\s\S]*id="dsChartPanelHead"[\s\S]*id="dsChartMinimap"[\s\S]*id="dsChartPlot"[\s\S]*id="dsChartZoom"/u);
+  // Every focus action lives in the triangle panel; the separate focus bar is gone.
+  assert.doesNotMatch(view, /dsChartFocusBar/u);
   // The chart's length buttons write through the Data tab's own length lists.
   assert.match(view, /id="dsChartOriginLen"[^>]*data-len-select="originLenSelect"/u);
   assert.match(view, /id="dsChartDevLen"[^>]*data-len-select="devLenSelect"/u);
   assert.match(view, /id="dsChartMinimapPanel"[\s\S]*id="dsChartFilterList"[\s\S]*id="dsChartMinimapResizer"/u);
   assert.match(tab, /setPointerCapture/u);
-  assert.match(tab, /dataset_chart_renderer\.js\?v=20261020b/u);
-  assert.match(tab, /dataset_chart_minimap\.js\?v=20261020b/u);
+  assert.match(tab, /dataset_chart_renderer\.js\?v=20261020d/u);
+  assert.match(tab, /dataset_chart_minimap\.js\?v=20261020d/u);
   assert.match(tab, /dataset_chart_series\.js\?v=20261020c/u);
   assert.doesNotMatch(view, /dsChartAverage/u);
 });

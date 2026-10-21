@@ -9,7 +9,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20260820b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -246,8 +246,8 @@ wireSamePropagationScopePause({
   getReservingClass: () => state.reservingClass,
 });
 const detailsDependencies = createDetailsDependenciesController({
-  precedentsList: "sconPrecedentsList",
-  dependentsList: "sconDependentsList",
+  dependencyMap: "sconDependencyMap",
+  getSelfMethodType: () => "Stochastic Consolidation",
   getIdentity: () => ({
     projectName: state.project,
     reservingClass: state.reservingClass,

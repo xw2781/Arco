@@ -516,14 +516,8 @@
 .pi-dependency-graph-menu { display: none; width: 148px; max-width: min(148px, calc(100vw - 16px)); }
 
 /* One accent per family, shared by the node stripe, the popover rows, and
-   the legend swatch. */
-.pi-dependency-graph-page {
-  --dg-family-dataset: #94a3b8;
-  --dg-family-calculated: #0f766e;
-  --dg-family-engine: #475569;
-  --dg-family-generated: #0891b2;
-  --dg-family-method: var(--ar-color-accent);
-}
+   the legend swatch. The colours themselves live in
+   shared/styles/dependency_families.css. */
 
 .dg-node[data-family="calculated"], .dg-port-popover-row[data-family="calculated"], .pi-dependency-graph-legend [data-family="calculated"] { --dg-node-accent: var(--dg-family-calculated); --dg-family-accent: var(--dg-family-calculated); }
 .dg-node[data-family="engine"], .dg-port-popover-row[data-family="engine"], .pi-dependency-graph-legend [data-family="engine"] { --dg-node-accent: var(--dg-family-engine); --dg-family-accent: var(--dg-family-engine); }

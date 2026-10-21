@@ -7,7 +7,8 @@
   <title>Berquist Sherman</title>
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20260820b">
+<link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/tabs/links/links_tab.css?v=20260901b">
   <link rel="stylesheet" href="/ui/shared/tabs/audit_log/audit_log.css?v=20260714a">
@@ -114,17 +115,9 @@
             <section class="bsPanel arDetailsSection">
               <div class="bsPanelBody">
                 <div class="bsFieldGrid arDetailsGrid">
-                  <label class="bsLabel arDetailsLabel" id="bsPrecedentsLabel">Precedents : </label>
+                  <label class="bsLabel arDetailsLabel" id="bsDependenciesLabel">Dependencies : </label>
                   <div class="arDetailsField">
-                    <div class="arDetailsChipBox">
-                      <div id="bsPrecedentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bsPrecedentsLabel"></div>
-                    </div>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" id="bsDependentsLabel">Dependents : </label>
-                  <div class="arDetailsField">
-                    <div class="arDetailsChipBox">
-                      <div id="bsDependentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="bsDependentsLabel"></div>
-                    </div>
+                    <div id="bsDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="bsDependenciesLabel" aria-live="polite"></div>
                   </div>
                 </div>
               </div>
@@ -261,6 +254,6 @@
   </div>
 
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
-  <script type="module" src="/ui/method_pages/berquist_sherman/berquist_sherman_main.js?v=20260924b"></script>
+  <script type="module" src="/ui/method_pages/berquist_sherman/berquist_sherman_main.js?v=20261020a"></script>
 </body>
 </html>

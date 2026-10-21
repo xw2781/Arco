@@ -4,9 +4,8 @@ import test from "node:test";
 
 const moduleUrl = new URL("../ui/shared/tabs/details/details_dependencies.js", import.meta.url);
 const moduleSource = await readFile(moduleUrl, "utf8");
-const { formatDetailsFormulaText, formulaComponentNames, tokenizeDetailsFormula } = await import(
-  `data:text/javascript;base64,${Buffer.from(moduleSource).toString("base64")}`
-);
+// Loaded from disk so its relative import of the dependency map resolves.
+const { formatDetailsFormulaText, formulaComponentNames, tokenizeDetailsFormula } = await import(moduleUrl.href);
 
 const NAMES = [
   "C 32 - Reported DFM w/ Selected LDFs",

@@ -17,7 +17,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20260820b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
 import { createPageCloseConfirm } from "/ui/shared/components/close_confirm/close_confirm.js";
 import { showMethodSaveReviewWarning } from "/ui/shared/components/message_box/method_save_review_warning.js?v=20260925a";
 import { showPageMessageBox } from "/ui/shared/components/message_box/message_box.js?v=20260925a";
@@ -374,8 +374,8 @@ syncDetailsLabelWidth({
 // The UI layer runs inside a `with (ctx)` block and cannot import, so the shared
 // Details dependency controller is built here and reached through `ctx`.
 const detailsDependencies = createDetailsDependenciesController({
-  precedentsList: "rsPrecedentsList",
-  dependentsList: "rsDependentsList",
+  dependencyMap: "rsDependencyMap",
+  getSelfMethodType: () => "Result Selection",
   // The graph is keyed by the dataset this method publishes, not the method.
   getIdentity: () => ({
     projectName: state.project,

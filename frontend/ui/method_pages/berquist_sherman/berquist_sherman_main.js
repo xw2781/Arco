@@ -11,7 +11,7 @@ import {
 } from "/ui/shared/tabbed_page/tabbed_page.js?v=20260913a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth, syncDetailsSections } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20260820b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -2667,8 +2667,8 @@ let detailsDependencies = null;
 function getDetailsDependencies() {
   if (!detailsDependencies) {
     detailsDependencies = createDetailsDependenciesController({
-      precedentsList: "bsPrecedentsList",
-      dependentsList: "bsDependentsList",
+      dependencyMap: "bsDependencyMap",
+      getSelfMethodType: () => contract?.methodType,
       getIdentity: () => ({
         projectName: state.project,
         reservingClass: state.reservingClass,

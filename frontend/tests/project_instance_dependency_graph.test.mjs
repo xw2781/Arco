@@ -379,7 +379,7 @@ test("the Project Instance page wires the toolbar icon, the window kind, and the
   const host = await read("../ui/project_instance/project_instance_dependency_graph.js");
   assert.match(host, /kind: DEPENDENCY_GRAPH_WINDOW_KIND,/);
   assert.match(host, /export const DEPENDENCY_GRAPH_WINDOW_KIND = "dependency_graph";/);
-  assert.match(host, /iframeSrc: buildDependencyGraphWindowUrl\(inst, path\),/);
+  assert.match(host, /iframeSrc: buildDependencyGraphWindowUrl\(inst, path, focusName\),/);
   assert.match(host, /\/ui\/project_instance\/dependency_graph_window\.html\?/);
 
   // A tool window: never part of the persisted Project Instance state.
@@ -409,10 +409,14 @@ test("the graph page and its read are registered end to end", async () => {
     assert.ok(pageHtml.includes(`<span data-family="${kind.family}">${kind.label}</span>`), kind.label);
   }
   // Every family the legend spells has its own accent, shared by the node
-  // stripe, the popover row, and the swatch.
+  // stripe, the popover row, and the swatch. The colours live in one shared
+  // sheet the Dataset Viewer's dependency map reads too.
   const familyCss = await read("../ui/project_instance/dependency_graph_window.css");
+  const familyTokens = await read("../ui/shared/styles/dependency_families.css");
+  assert.match(pageHtml, /\/ui\/shared\/styles\/dependency_families\.css\?v=\d{8}[a-z]/);
   for (const family of ["dataset", "calculated", "engine", "generated", "method"]) {
-    assert.match(familyCss, new RegExp(`--dg-family-${family}:`), family);
+    assert.match(familyTokens, new RegExp(`--dg-family-${family}:`), family);
+    assert.doesNotMatch(familyCss, new RegExp(`--dg-family-${family}:`), family);
     assert.ok(
       familyCss.includes(`.dg-node[data-family="${family}"], .dg-port-popover-row[data-family="${family}"], .pi-dependency-graph-legend [data-family="${family}"]`),
       family,

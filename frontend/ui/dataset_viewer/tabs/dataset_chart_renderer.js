@@ -6,6 +6,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const NEAR_LINE_PX = 16;
 const MIN_MARKER_SPACING_PX = 8;
 const END_LABEL_GAP_PX = 13;
+const BRUSH_START_PX = 5;
 
 function svgEl(tag, attrs, parent) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -82,6 +83,8 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
   let renderedEmphasis = null;
   let clipSeq = 0;
   let zoomMap = null;
+  let brush = null;
+  let suppressClick = false;
 
   const emphasis = () => externalEmphasis || hoverId;
 
@@ -101,17 +104,25 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
     const { series, xLabels } = options;
     const count = xLabels.length;
     const [i0, i1] = options.range || [0, Math.max(0, count - 1)];
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (const s of series) {
-      for (let i = i0; i <= i1; i++) {
-        const v = s.values[i];
-        if (v != null) {
-          lo = Math.min(lo, v);
-          hi = Math.max(hi, v);
+    const extentOf = (list) => {
+      let min = Infinity;
+      let max = -Infinity;
+      for (const s of list) {
+        for (let i = i0; i <= i1; i++) {
+          const v = s.values[i];
+          if (v != null) {
+            min = Math.min(min, v);
+            max = Math.max(max, v);
+          }
         }
       }
-    }
+      return [min, max];
+    };
+    // The value axis fits the focused lines so they fill the plot; grey context
+    // lines may run past its edges and are clipped there.
+    let [lo, hi] = extentOf(series.filter((s) => s.kind === "focus"));
+    const fitsFocus = Number.isFinite(lo);
+    if (!fitsFocus) [lo, hi] = extentOf(series);
     if (!Number.isFinite(lo)) {
       tip.style.display = "none";
       svgEl("text", { x: width / 2, y: height / 2, class: "dsChartEmpty", "text-anchor": "middle" }, svg)
@@ -119,26 +130,39 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
       renderZoom();
       return;
     }
-    if (options.yZero) {
-      lo = Math.min(lo, 0);
-      hi = Math.max(hi, 0);
-    }
-    const pad = (hi - lo) * 0.04 || 1;
-    hi += pad;
-    if (!(options.yZero && lo === 0)) lo -= pad;
-
     const mt = 14;
     const mb = 46;
-    const nice = niceTicks(lo, hi, Math.max(3, Math.round((height - mt - mb) / 56)));
+    const tickCount = Math.max(3, Math.round((height - mt - mb) / 56));
+    // A box zoom fixes the value window; fitted focused lines get a small margin.
+    // Either way the scale is exact and the ticks are the round values inside it.
+    const exact = (a, b) => ({ lo: a, hi: b, ticks: niceTicks(a, b, tickCount).ticks.filter((v) => v >= a && v <= b) });
+    let nice;
+    if (options.yRange) {
+      nice = exact(...options.yRange);
+    } else if (fitsFocus) {
+      const pad = (hi - lo) * 0.06 || Math.abs(hi) * 0.1 || 1;
+      nice = exact(lo - pad, hi + pad);
+    } else {
+      if (options.yZero) {
+        lo = Math.min(lo, 0);
+        hi = Math.max(hi, 0);
+      }
+      const pad = (hi - lo) * 0.04 || 1;
+      hi += pad;
+      if (!(options.yZero && lo === 0)) lo -= pad;
+      nice = niceTicks(lo, hi, tickCount);
+    }
     const yLabels = nice.ticks.map((v) => options.formatAxis(v));
-    const ml = Math.max(...yLabels.map((label) => label.length)) * 6.3 + 34;
+    const ml = Math.max(0, ...yLabels.map((label) => label.length)) * 6.3 + 34;
     const mr = options.endLabelIds?.length ? 78 : 18;
     const pw = Math.max(10, width - ml - mr);
     const ph = Math.max(10, height - mt - mb);
     const span = Math.max(1, i1 - i0);
     const x = (i) => ml + ((i - i0) / span) * pw;
     const y = (v) => mt + (1 - (v - nice.lo) / (nice.hi - nice.lo)) * ph;
-    geometry = { x, y, i0, i1, ml, mt, pw, ph, width, height };
+    const valueAt = (py) => nice.lo + (1 - (py - mt) / ph) * (nice.hi - nice.lo);
+    const inPlotY = (py) => py >= mt - 0.5 && py <= mt + ph + 0.5;
+    geometry = { x, y, valueAt, inPlotY, i0, i1, ml, mt, pw, ph, width, height };
 
     const axes = svgEl("g", {}, svg);
     nice.ticks.forEach((v, k) => {
@@ -165,7 +189,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
 
     const clipId = `dsChartClip${++clipSeq}`;
     const clip = svgEl("clipPath", { id: clipId }, svgEl("defs", {}, svg));
-    svgEl("rect", { x: ml - 6, y: mt - 6, width: pw + 12, height: ph + 12 }, clip);
+    svgEl("rect", { x: ml - 6, y: mt, width: pw + 12, height: ph }, clip);
     const plot = svgEl("g", { "clip-path": `url(#${clipId})` }, svg);
 
     const emph = emphasis();
@@ -188,7 +212,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
     const pinned = options.pinned;
     if (pinned && pinned.index >= i0 && pinned.index <= i1) {
       const v = series.find((s) => s.id === pinned.id)?.values[pinned.index];
-      if (v != null) {
+      if (v != null && geometry.inPlotY(y(v))) {
         svgEl("circle", { cx: x(pinned.index), cy: y(v), r: 6, class: "dsChartPinRing" }, svg);
         svgEl("circle", { cx: x(pinned.index), cy: y(v), r: 2, class: "dsChartPinDot" }, svg);
       }
@@ -196,6 +220,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
 
     drawEndLabels(series, emph);
     hoverLayer = svgEl("g", {}, svg);
+    if (brush?.band) svg.appendChild(brush.band);
     drawHover();
     svg.classList.toggle("isPickable", !!hoverId && !!onPick);
     renderZoom();
@@ -213,6 +238,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
       }
       if (last < 0) continue;
       const py = y(s.values[last]);
+      if (!geometry.inPlotY(py)) continue;
       items.push({ s, px: x(last), py, ty: py });
     }
     items.sort((a, b) => a.ty - b.ty);
@@ -247,7 +273,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
         others.push(v);
         continue;
       }
-      svgEl("circle", {
+      if (geometry.inPlotY(y(v))) svgEl("circle", {
         cx: x(hoverIndex), cy: y(v), r: s.id === emph ? 4.5 : 3.5,
         class: `${seriesClass(s)} dsChartHoverDot`,
       }, hoverLayer);
@@ -308,7 +334,7 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
   }
 
   svg.addEventListener("pointermove", (event) => {
-    if (!geometry) return;
+    if (!geometry || brush) return;
     const rect = svg.getBoundingClientRect();
     const px = event.clientX - rect.left;
     const py = event.clientY - rect.top;
@@ -328,9 +354,82 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
     svg.classList.toggle("isPickable", !!hoverId && !!onPick);
     if (indexChanged) onHoverX?.(index);
   });
-  svg.addEventListener("pointerleave", clearHover);
+  svg.addEventListener("pointerleave", () => {
+    if (!brush) clearHover();
+  });
   svg.addEventListener("click", () => {
+    if (suppressClick) {
+      suppressClick = false;
+      return;
+    }
     if (hoverId && hoverIndex != null) onPick?.(hoverId, hoverIndex);
+  });
+
+  // Dragging a box over the plot zooms to the ages (or origins) and the values
+  // it covers. A flat box zooms only across, a narrow one only up and down,
+  // and a plain click still picks a line.
+  svg.addEventListener("pointerdown", (event) => {
+    if (!geometry || event.button !== 0 || !onRangeChange) return;
+    const rect = svg.getBoundingClientRect();
+    const { ml, mt, pw, ph } = geometry;
+    const startX = event.clientX - rect.left;
+    const startY = event.clientY - rect.top;
+    if (startX < ml || startX > ml + pw || startY < mt || startY > mt + ph) return;
+    suppressClick = false;
+    const pointerId = event.pointerId;
+    const begin = { band: null, endX: startX, endY: startY };
+    const move = (moveEvent) => {
+      const px = clamp(moveEvent.clientX - rect.left, ml, ml + pw);
+      const py = clamp(moveEvent.clientY - rect.top, mt, mt + ph);
+      begin.endX = px;
+      begin.endY = py;
+      if (!brush) {
+        if (Math.hypot(px - startX, py - startY) < BRUSH_START_PX) return;
+        brush = begin;
+        svg.setPointerCapture(pointerId);
+        hoverIndex = null;
+        drawHover();
+        svg.classList.remove("isPickable");
+        onHoverX?.(null);
+        brush.band = svgEl("rect", { class: "dsChartBrush" }, svg);
+      }
+      brush.band.setAttribute("x", Math.min(startX, px));
+      brush.band.setAttribute("width", Math.abs(px - startX));
+      brush.band.setAttribute("y", Math.min(startY, py));
+      brush.band.setAttribute("height", Math.abs(py - startY));
+    };
+    const end = (endEvent) => {
+      svg.removeEventListener("pointermove", move);
+      svg.removeEventListener("pointerup", end);
+      svg.removeEventListener("pointercancel", end);
+      if (!brush) return;
+      const done = brush;
+      brush = null;
+      done.band.remove();
+      suppressClick = true;
+      if (endEvent.type === "pointercancel" || !geometry) return;
+      const { i0, i1, valueAt } = geometry;
+      const last = options.xLabels.length - 1;
+      let range = options.range || null;
+      if (Math.abs(done.endX - startX) >= BRUSH_START_PX) {
+        const toIndex = (px) => i0 + ((px - ml) / pw) * Math.max(1, i1 - i0);
+        const a = clamp(Math.round(toIndex(Math.min(startX, done.endX))), 0, last);
+        const b = clamp(Math.round(toIndex(Math.max(startX, done.endX))), 0, last);
+        if (b - a >= 1) range = a === 0 && b === last ? null : [a, b];
+      }
+      let yRange = null;
+      if (Math.abs(done.endY - startY) >= BRUSH_START_PX) {
+        yRange = [valueAt(Math.max(startY, done.endY)), valueAt(Math.min(startY, done.endY))];
+      }
+      if (range === (options.range || null) && !yRange) return;
+      onRangeChange(range, yRange);
+    };
+    svg.addEventListener("pointermove", move);
+    svg.addEventListener("pointerup", end);
+    svg.addEventListener("pointercancel", end);
+  });
+  svg.addEventListener("dblclick", () => {
+    if (options?.range || options?.yRange) onRangeChange?.(null, null);
   });
 
   function renderZoom() {
@@ -388,11 +487,11 @@ export function createLineChart(plotHost, zoomHost, { onPick, onHoverX, onRangeC
     const offset = start - i0;
     zoomSvg.setPointerCapture(event.pointerId);
     const apply = (a, b) => {
-      if (b - a < 1) return;
+        if (b - a < 1) return;
       const next = a === 0 && b === count - 1 ? null : [a, b];
       const current = options.range;
       if (next?.[0] === current?.[0] && next?.[1] === current?.[1]) return;
-      onRangeChange?.(next);
+      onRangeChange?.(next, options.yRange || null);
     };
     const move = (moveEvent) => {
       const index = toIndex(moveEvent.clientX);

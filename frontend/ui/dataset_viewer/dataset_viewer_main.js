@@ -1,4 +1,4 @@
-import { mountDatasetViewer } from "/ui/dataset_viewer/dataset_viewer_view.js?v=20261020c";
+import { mountDatasetViewer } from "/ui/dataset_viewer/dataset_viewer_view.js?v=20261020d";
 import { configureDataTabHost } from "/ui/shared/tabs/data/data_tab_context.js";
 import { configureDataTabChart } from "/ui/shared/tabs/data/data_tab_chart_port.js";
 import { configureDataTabNotes } from "/ui/shared/tabs/data/data_tab_notes_port.js";
@@ -19,7 +19,7 @@ import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.j
 import {
   redrawDatasetChartSafely,
   renderDatasetChart,
-} from "/ui/dataset_viewer/tabs/dataset_chart_tab.js?v=20261020d";
+} from "/ui/dataset_viewer/tabs/dataset_chart_tab.js?v=20261020g";
 import { wireDatasetNotesEditor } from "/ui/dataset_viewer/tabs/dataset_notes_tab.js?v=20260715a";
 import { createLinksTab } from "/ui/shared/tabs/links/links_tab.js?v=20260907a";
 import { configureDataTabLinks } from "/ui/shared/tabs/data/data_tab_links_port.js";
@@ -137,7 +137,7 @@ configureDataTabNotes({ mountNotes: wireDatasetNotesEditor });
 configureDataTabPageHost(mountDatasetViewerTabs);
 
 const datasetDataTab = await import(
-  "/ui/shared/tabs/data/data_tab_controller.js?v=20260926a"
+  "/ui/shared/tabs/data/data_tab_controller.js?v=20261020a"
 );
 
 const postLinksStatus = (message, tone = "") => {

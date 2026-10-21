@@ -32,6 +32,11 @@
 // arcrho:dependency-graph-refresh whenever it reloads its own dataset table
 // from disk, so the diagram follows a save, a delete, or an import without a
 // manual refresh.
+//
+// A Dataset Viewer's Details map opens this window for its own dataset: the
+// dataset arrives as `focus` in the query string, or as
+// arcrho:dependency-graph-focus when the window is already open, and its box
+// is selected and scrolled into the middle once the graph is drawn.
 import { openContextMenu } from "/ui/shared/components/context_menu/context_menu.js?v=20260811b";
 import { attachArcrhoTooltip } from "/ui/shared/components/tooltip/tooltip.js?v=20260925a";
 import {
@@ -45,7 +50,11 @@ import { dependencyFilterSummary, filterDependencyGraph, hiddenDependencyLinks }
 import { readDependencyGraphPreferences, writeDependencyGraphPreferences } from "/ui/project_instance/dependency_graph_preferences.js?v=20260921a";
 import { statusNeedsReview } from "/ui/shared/dataset/review_status.js";
 import { reviewStatusIconSvg } from "/ui/shared/components/status_icon/status_icon.js?v=20260911a";
-import { DEPENDENCY_GRAPH_ACTION_MESSAGE, DEPENDENCY_GRAPH_ACTION_RESULT_MESSAGE } from "/ui/project_instance/dependency_graph_contract.js?v=20260920a";
+import {
+  DEPENDENCY_GRAPH_ACTION_MESSAGE,
+  DEPENDENCY_GRAPH_ACTION_RESULT_MESSAGE,
+  DEPENDENCY_GRAPH_FOCUS_MESSAGE,
+} from "/ui/project_instance/dependency_graph_contract.js?v=20261020a";
 import "/ui/shared/integrations/zoom_bridge.js?v=20260521a";
 
 const GRAPH_ENDPOINT = "/datasets/dependency-graph";
@@ -197,6 +206,8 @@ const params = new URLSearchParams(window.location.search);
 const inst = text(params.get("inst"));
 const projectName = text(params.get("project"));
 const reservingClass = text(params.get("class"));
+// The dataset to bring into view once the graph has loaded.
+let pendingFocus = dependencyGraphKey(params.get("focus"));
 const preferences = readDependencyGraphPreferences();
 
 const els = {
@@ -938,6 +949,21 @@ function render() {
 // Highlighting: the selected chain and search matches
 // ---------------------------------------------------------------------------
 
+/** Selects the dataset a caller asked for and scrolls its box into the middle. */
+function applyPendingFocus() {
+  const key = pendingFocus;
+  if (!key || !view.loaded) return;
+  pendingFocus = "";
+  if (!view.nodeEls.has(key)) {
+    setStatus(view.filterResult?.active
+      ? "That dataset is hidden by the current filters."
+      : "That dataset has no dependency connections.");
+    return;
+  }
+  setSelection(key);
+  goToNode(key);
+}
+
 function setSelection(key) {
   if (view.selectedKey === key) return;
   view.selectedKey = key;
@@ -1043,6 +1069,7 @@ async function loadGraph({ keepViewport = false } = {}) {
     view.loading = false;
     view.loaded = true;
     applyGraph({ keepViewport });
+    applyPendingFocus();
   } catch (error) {
     if (seq !== view.requestSeq) return;
     view.loading = false;
@@ -1078,6 +1105,10 @@ function init() {
   attachArcrhoTooltip(els.refresh, "Refresh");
   window.addEventListener("message", (event) => {
     if (event.data?.type === "arcrho:dependency-graph-refresh") void loadGraph({ keepViewport: true });
+    if (event.source === window.parent && event.data?.type === DEPENDENCY_GRAPH_FOCUS_MESSAGE) {
+      pendingFocus = dependencyGraphKey(event.data.datasetName);
+      applyPendingFocus();
+    }
     if (event.source === window.parent && event.data?.type === DEPENDENCY_GRAPH_ACTION_RESULT_MESSAGE) {
       view.actionPending = false;
       setStatus(event.data.message || "", event.data.ok ? "" : "error");

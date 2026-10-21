@@ -1,0 +1,11 @@
+{
+  "type": "improvement",
+  "scope": "details",
+  "audience": "user",
+  "summary": "Every Details tab - datasets and all method pages - now shows precedents and dependents as one small dependency map.",
+  "details": [
+    "Inputs sit on the left and dependents on the right, coloured by kind like the Dependency Graph.",
+    "Hover a box to see its full name and formula; click it to open that dataset or method.",
+    "The button in the map's corner opens the full Dependency Graph with this dataset or method selected."
+  ]
+}

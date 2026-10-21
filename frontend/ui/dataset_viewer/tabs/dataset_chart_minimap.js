@@ -1,6 +1,6 @@
 // Dataset Viewer chart minimap: the whole triangle drawn to fit its panel, with
-// edge strips for picking an origin or an age, a loupe for small cells, and a
-// drag box that zooms the chart.
+// edge strips for picking an origin or an age, a select-all box in the corner,
+// a loupe for small cells, and a drag box that zooms the chart.
 
 const TOP_STRIP_PX = 18;
 const MAX_CELL_PX = 18;
@@ -12,6 +12,7 @@ const LOUPE_CELL_PX = 14;
 const LOUPE_BELOW_CELL_PX = 10;
 const DRAG_START_PX = 4;
 const LABEL_FONT = "10px Arial, \"Segoe UI\", Tahoma, sans-serif";
+const ALL_BOX_PX = 10;
 
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 
@@ -61,7 +62,9 @@ function readColors(host) {
   };
 }
 
-export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCell, onZoomBox } = {}) {
+export function createTriangleMinimap(host, {
+  onPickOrigin, onPickAge, onPickCell, onZoomBox, onSoloOrigin, onSoloAge, onPickAll, onResetAll,
+} = {}) {
   const canvas = document.createElement("canvas");
   canvas.className = "dsChartMinimapCanvas";
   host.appendChild(canvas);
@@ -185,6 +188,7 @@ export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCel
       const half = ctx.measureText(text).width / 2;
       ctx.fillText(text, Math.min(left + c * cell + cell / 2, width - half - 1), top - 8);
     }
+    drawAllBox(ctx, colors, L);
 
     const outline = (r, c, lineWidth) => {
       const size = Math.max(cell, 5);
@@ -211,6 +215,35 @@ export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCel
     }
   }
 
+  // A tri-state checkbox in the corner where the label strips meet: checked when
+  // every series is focused, a dash when some are.
+  function drawAllBox(ctx, colors, L) {
+    if (!data.allState) return;
+    const x = L.left - 8 - ALL_BOX_PX + 0.5;
+    const y = Math.round((L.top - ALL_BOX_PX) / 2) - 1 + 0.5;
+    const on = data.allState !== "none";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = on ? colors.accent : "transparent";
+    ctx.strokeStyle = on ? colors.accent : hover?.zone === "all" ? colors.strong : colors.text;
+    ctx.beginPath();
+    ctx.rect(x, y, ALL_BOX_PX - 1, ALL_BOX_PX - 1);
+    if (on) ctx.fill();
+    ctx.stroke();
+    if (!on) return;
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (data.allState === "all") {
+      ctx.moveTo(x + 2, y + 4.5);
+      ctx.lineTo(x + 4, y + 6.5);
+      ctx.lineTo(x + 7, y + 2.5);
+    } else {
+      ctx.moveTo(x + 2, y + 4.5);
+      ctx.lineTo(x + 7, y + 4.5);
+    }
+    ctx.stroke();
+  }
+
   function hitTest(clientX, clientY) {
     if (!layout) return null;
     const rect = canvas.getBoundingClientRect();
@@ -219,6 +252,7 @@ export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCel
     const { left, top, cell, rows, cols } = layout;
     const c = Math.floor((px - left) / cell);
     const r = Math.floor((py - top) / cell);
+    if (px < left && py < top && px >= 0 && py >= 0) return data.allState ? { zone: "all" } : null;
     if (py < top && c >= 0 && c < cols) return { zone: "col", c };
     if (px < left && r >= 0 && r < rows) return { zone: "row", r };
     if (r >= 0 && r < rows && c >= 0 && c < cols) return { zone: "cell", r, c, hasValue: data.values[r]?.[c] != null };
@@ -260,7 +294,9 @@ export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCel
 
   function showTip(target, clientX, clientY) {
     tip.replaceChildren();
-    if (target.zone === "row") {
+    if (target.zone === "all") {
+      tip.append(line("dsChartMinimapTipTitle", data.allLabel), line("dsChartMinimapTipNote", data.allAction));
+    } else if (target.zone === "row") {
       tip.append(line("dsChartMinimapTipTitle", String(data.rowLabels[target.r])), line("dsChartMinimapTipNote", data.rowAction));
     } else if (target.zone === "col") {
       tip.append(line("dsChartMinimapTipTitle", `Age ${data.colLabels[target.c]}`), line("dsChartMinimapTipNote", data.colAction));
@@ -326,21 +362,36 @@ export function createTriangleMinimap(host, { onPickOrigin, onPickAge, onPickCel
       dragBox = { r0: Math.min(start.r, r), r1: Math.max(start.r, r), c0: Math.min(start.c, c), c1: Math.max(start.c, c) };
       draw();
     };
-    const end = () => {
+    const end = (endEvent) => {
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", end);
       canvas.removeEventListener("pointercancel", end);
       const box = dragBox;
       dragBox = null;
       draw();
+      if (endEvent.type === "pointercancel") return;
+      const extend = endEvent.shiftKey;
       if (dragging && box) onZoomBox?.(box);
-      else if (start.zone === "row") onPickOrigin?.(start.r);
-      else if (start.zone === "col") onPickAge?.(start.c);
+      else if (start.zone === "all") onPickAll?.();
+      else if (start.zone === "row") onPickOrigin?.(start.r, { extend });
+      else if (start.zone === "col") onPickAge?.(start.c, { extend });
       else if (start.hasValue) onPickCell?.(start.r, start.c);
     };
     canvas.addEventListener("pointermove", move);
     canvas.addEventListener("pointerup", end);
     canvas.addEventListener("pointercancel", end);
+  });
+
+  // Right-clicking an origin or age label shows that one series alone;
+  // right-clicking the corner box goes back to the default focus.
+  canvas.addEventListener("contextmenu", (event) => {
+    const target = hitTest(event.clientX, event.clientY);
+    if (!target || target.zone === "cell") return;
+    event.preventDefault();
+    hideTip();
+    if (target.zone === "all") onResetAll?.();
+    else if (target.zone === "row") onSoloOrigin?.(target.r);
+    else onSoloAge?.(target.c);
   });
 
   window.addEventListener("arcrho:color-theme-changed", () => draw());

@@ -1,100 +1,241 @@
 /*
  * Look for the Details "inputs and dependencies" section: the formula field,
- * the Precedents and Dependents chip boxes, and the formula hover tooltip.
+ * the Dependencies map of precedents and dependents, and the hover tooltip.
  *
  * This sheet is the only owner of that look. It sits beside
- * `details_form_layout.css` because the Dataset Viewer and all five method
- * pages paint the same surface, and a page stylesheet must not restate it.
+ * `details_form_layout.css` because the Dataset Viewer and every method page
+ * paint the same surface, and a page stylesheet must not restate it.
  */
 
+/* The map box keeps the chip-box token names the Dark theme already sets. */
 .arDetailsRoot {
-  --ar-details-chip-border: #d4d4d4;
-  --ar-details-chip-background: #ffffff;
-  --ar-details-chip-hover-border: #9d9d9d;
-  --ar-details-chip-hover-background: #f6f9ff;
   --ar-details-chip-box-border: #d7deea;
   --ar-details-chip-box-background: #f8fafc;
   --ar-details-formula-operator: #64748b;
-  --ar-details-calculated-icon: #2563eb;
 }
 
-/* ---- Precedents and Dependents ------------------------------------------ */
-
-.arDetailsChipBox {
-  width: 100%;
-  min-height: 34px;
-  padding: 6px;
-  border: 1px solid var(--ar-details-chip-box-border);
-  border-radius: var(--tabbed-page-control-radius, 4px);
-  background: var(--ar-details-chip-box-background);
-  box-sizing: border-box;
-}
-
-.arDetailsChipList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 20px;
-  align-items: center;
-}
-
-/* A related dataset is a set member, not part of an expression, so it keeps the
-   pill the formula gave up. */
-.arDetailsChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 360px;
-  min-height: 22px;
-  padding: 2px 9px;
-  border: 1px solid var(--ar-details-chip-border);
-  border-radius: 14px;
-  background: var(--ar-details-chip-background);
-  color: var(--ar-details-control-color, #000);
-  font-size: 12px;
-  font-family: var(--ar-details-font-family);
-  line-height: 16px;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.arDetailsChip:hover,
-.arDetailsChip:focus {
-  border-color: var(--ar-details-chip-hover-border);
-  background: var(--ar-details-chip-hover-background);
-  outline: none;
-}
-
+/* A quoted name inside the formula field. */
 .arDetailsChipLabel {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Marks a related dataset that is itself calculated. It rides on the chip
-   rather than inside the formula, where it competed with the expression. */
-.arDetailsCalculatedIcon {
-  width: 14px;
-  height: 14px;
+/* ---- Dependency map ----------------------------------------------------- */
+
+/* A one-step slice of the Dependency Graph, on the Dataset Viewer and every
+   method page: precedents on the left, this output in the middle, dependents
+   on the right. Its colours read the shared --ar-color-* and --dg-family-*
+   tokens the full graph uses, so the Dark theme needs no companion rule. */
+.arDetailsDepMap {
+  width: 100%;
+  padding: 6px 10px 10px;
+  border: 1px solid var(--ar-details-chip-box-border);
+  border-radius: var(--tabbed-page-control-radius, 4px);
+  background: var(--ar-details-chip-box-background);
+  box-sizing: border-box;
+}
+
+/* The map is taller than a field, so its label stands at the top of the row
+   rather than at mid-height, placed where a one-line field's label sits. */
+.arDetailsLabel:has(+ .arDetailsField .arDetailsDepMap) {
+  align-self: start;
+  padding-top: calc((var(--ar-details-control-height, 30px) - 1.25em) / 2);
+}
+
+/* The header and the stage share one column grid, so each title sits over its
+   own column. Both leave room on the right for the open button. */
+.arDetailsDepMapHeader,
+.arDetailsDepMapStage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 40px;
+}
+
+.arDetailsDepMapHeader {
+  position: relative;
+  min-height: 24px;
+  align-items: center;
+  padding-right: 30px;
+}
+
+.arDetailsDepMapTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ar-color-text-muted);
+}
+
+.arDetailsDepMapTitle.is-in { text-align: right; }
+.arDetailsDepMapTitle.is-self { text-align: center; }
+
+/* Scoped through the header so it outranks the Dark theme's rule for every
+   button. */
+.arDetailsDepMap .arDetailsDepMapHeader button.arDetailsDepMapOpen {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ar-details-calculated-icon);
-  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ar-color-text-muted);
+  cursor: pointer;
 }
 
-.arDetailsCalculatedIcon svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.arDetailsDepMap .arDetailsDepMapHeader button.arDetailsDepMapOpen:hover,
+.arDetailsDepMap .arDetailsDepMapHeader button.arDetailsDepMapOpen:focus-visible {
+  outline: none;
+  border-color: var(--ar-color-border-strong);
+  background: var(--ar-color-surface);
+  color: var(--ar-color-text-strong);
 }
+
+.arDetailsDepMapOpen svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+
+/* A long list of dependents scrolls inside the map rather than pushing the
+   rest of the Details tab away. */
+.arDetailsDepMapScroll {
+  max-height: 300px;
+  margin-top: 4px;
+  padding-right: 30px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.arDetailsDepMapStage {
+  position: relative;
+  align-items: center;
+}
+
+.arDetailsDepMapEdges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.arDetailsDepMapColumn {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arDetailsDepMapColumn.is-in { align-items: flex-end; }
+.arDetailsDepMapColumn.is-self { align-items: center; }
+.arDetailsDepMapColumn.is-out { align-items: flex-start; }
+
+.arDetailsDepNode {
+  --ar-dep-node-accent: var(--dg-family-dataset);
+  width: min(100%, 320px);
+  min-height: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 9px;
+  border: 1px solid var(--ar-color-border-strong);
+  border-left: 3px solid var(--ar-dep-node-accent);
+  border-radius: 4px;
+  background: var(--ar-color-surface-raised);
+  color: var(--ar-color-text);
+  font-family: var(--ar-details-font-family);
+  text-align: left;
+  overflow: hidden;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.arDetailsDepNode[role="button"] { cursor: pointer; }
+
+.arDetailsDepNode[role="button"]:hover,
+.arDetailsDepNode[role="button"]:focus-visible {
+  outline: none;
+  border-color: var(--ar-color-border-focus);
+  border-left-color: var(--ar-dep-node-accent);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* The dataset the window shows is the focus of the map, as a selected box is
+   in the full graph. */
+.arDetailsDepNode[data-side="self"] {
+  border-color: var(--ar-color-accent);
+  border-left-color: var(--ar-dep-node-accent);
+  box-shadow: 0 0 0 2px rgba(43, 109, 246, 0.18);
+  cursor: default;
+}
+
+.arDetailsDepNode[data-family="calculated"] { --ar-dep-node-accent: var(--dg-family-calculated); }
+.arDetailsDepNode[data-family="engine"] { --ar-dep-node-accent: var(--dg-family-engine); }
+.arDetailsDepNode[data-family="generated"] { --ar-dep-node-accent: var(--dg-family-generated); }
+.arDetailsDepNode[data-family="method"] { --ar-dep-node-accent: var(--dg-family-method); }
+
+.arDetailsDepNodeName,
+.arDetailsDepNodeKind {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One line per box keeps a long dependent list short: the name takes what the
+   kind label leaves, and only the name is cut. */
+.arDetailsDepNodeName {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+  color: var(--ar-color-text-strong);
+}
+
+.arDetailsDepNodeKind {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ar-color-text-muted);
+}
+
+.arDetailsDepMapEmpty {
+  width: min(100%, 320px);
+  min-height: 26px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--ar-color-border-strong);
+  border-radius: 4px;
+  color: var(--ar-color-text-muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.arDetailsDepMapEdge {
+  fill: none;
+  stroke: var(--ar-color-border-strong);
+  stroke-width: 1.4;
+  transition: stroke 140ms ease;
+}
+
+.arDetailsDepMapEdge.is-in.is-lit { stroke: var(--ar-color-accent); }
+.arDetailsDepMapEdge.is-out.is-lit { stroke: var(--ar-color-success); }
+
+.arDetailsDepMapArrow { fill: var(--ar-color-border-strong); }
+.arDetailsDepMapArrow.is-in { fill: var(--ar-color-accent); }
+.arDetailsDepMapArrow.is-out { fill: var(--ar-color-success); }
 
 /* ---- Formula ------------------------------------------------------------- */
 
@@ -185,6 +326,15 @@
   font-family: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
   pointer-events: none;
 }
+
+.arDetailsFormulaTooltipTitle {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.arDetailsFormulaTooltipTitle + .arDetailsFormulaTooltipBody { margin-top: 4px; }
 
 .arDetailsFormulaTooltipBody {
   display: flex;

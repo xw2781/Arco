@@ -11,17 +11,13 @@ const dependenciesCss = await readFile(
   "utf8",
 );
 
-test("a Details precedent or dependent chip requests method-aware routing", () => {
-  const chipBuilder = dependenciesSource.match(
-    /function buildChip[\s\S]*?\r?\n  \}\r?\n/u,
-  )?.[0] || "";
-
-  assert.match(chipBuilder, /openRelated\(entry, \{ openMethod: true \}\)/u);
+test("a Details map box requests method-aware routing", () => {
+  assert.match(dependenciesSource, /onOpenEntry: \(entry\) => openRelated\(entry, \{ openMethod: true \}\)/u);
   assert.match(dependenciesSource, /"cape cod": "Cape Cod"/u);
   assert.match(dependenciesSource, /getBerquistShermanContract\(text\)\?\.methodType/u);
 });
 
-test("the formula names its sources as quoted text and leaves opening them to Precedents", () => {
+test("the formula names its sources as quoted text and leaves opening them to the map", () => {
   const formulaComponent = dependenciesSource.match(
     /function appendFormulaComponent[\s\S]*?\r?\n  \}\r?\n/u,
   )?.[0] || "";
@@ -52,49 +48,45 @@ test("Project Instance falls back to Dataset Viewer when method-aware routing fi
   assert.match(handler, /else \{\s*frame = openDatasetWindow\(datasetName,/u);
 });
 
-test("the Dataset Viewer and every method page render Precedents and Dependents from one owner", async () => {
-  const consumers = [
-    ["../ui/shared/tabs/data/data_tab_details_controller.js", "dsPrecedentsList", "dsDependentsList"],
-    ["../ui/method_pages/dfm/dfm_details_dependencies.js", "dfmPrecedentsList", "dfmDependentsList"],
-    ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson_main.js", "bfPrecedentsList", "bfDependentsList"],
-    ["../ui/method_pages/cape_cod/cape_cod_main.js", "ccPrecedentsList", "ccDependentsList"],
-    ["../ui/method_pages/result_selection/result_selection_main.js", "rsPrecedentsList", "rsDependentsList"],
-    ["../ui/method_pages/berquist_sherman/berquist_sherman_main.js", "bsPrecedentsList", "bsDependentsList"],
-  ];
+// Every Details tab: [page script, markup, element-id prefix, method type the
+// middle box is labelled with]. The Dataset Viewer's middle box is a dataset.
+const DETAILS_HOSTS = [
+  ["../ui/shared/tabs/data/data_tab_details_controller.js", "../ui/dataset_viewer/dataset_viewer_view.js", "ds", null],
+  ["../ui/method_pages/dfm/dfm_details_dependencies.js", "../ui/method_pages/dfm/dfm.html", "dfm", '"DFM"'],
+  ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson_main.js", "../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html", "bf", '"Bornhuetter Ferguson"'],
+  ["../ui/method_pages/cape_cod/cape_cod_main.js", "../ui/method_pages/cape_cod/cape_cod.html", "cc", '"Cape Cod"'],
+  ["../ui/method_pages/result_selection/result_selection_main.js", "../ui/method_pages/result_selection/result_selection.html", "rs", '"Result Selection"'],
+  ["../ui/method_pages/berquist_sherman/berquist_sherman_main.js", "../ui/method_pages/berquist_sherman/berquist_sherman.html", "bs", "contract?.methodType"],
+  ["../ui/method_pages/bootstrap/bootstrap_main.js", "../ui/method_pages/bootstrap/bootstrap.html", "bst", '"Bootstrap"'],
+  ["../ui/method_pages/stochastic_consolidation/stochastic_consolidation_main.js", "../ui/method_pages/stochastic_consolidation/stochastic_consolidation.html", "scon", '"Stochastic Consolidation"'],
+];
+const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 
-  for (const [path, precedentsId, dependentsId] of consumers) {
-    const source = await readFile(new URL(path, import.meta.url), "utf8");
-    assert.match(source, /shared\/tabs\/details\/details_dependencies\.js/u, path);
-    assert.match(source, new RegExp(`precedentsList: "${precedentsId}"`, "u"), path);
-    assert.match(source, new RegExp(`dependentsList: "${dependentsId}"`, "u"), path);
+test("every Details tab draws one Dependencies map through the shared owner", async () => {
+  for (const [scriptPath, markupPath, prefix, methodType] of DETAILS_HOSTS) {
+    const source = await readFile(new URL(scriptPath, import.meta.url), "utf8");
+    assert.match(source, /shared\/tabs\/details\/details_dependencies\.js\?v=20261020b/u, scriptPath);
+    assert.match(source, new RegExp(`dependencyMap: "${prefix}DependencyMap"`, "u"), scriptPath);
+    if (methodType) {
+      assert.match(source, new RegExp(`getSelfMethodType: \\(\\) => ${escapeRe(methodType)}`, "u"), scriptPath);
+    }
     // Only the owner reads the sidecar graph: no page picks the v4 lower-case
     // `precedents` / `dependents` off a payload itself, and none still reads
-    // the retired Title Case keys.
-    assert.doesNotMatch(source, /\.(?:Precedents|Dependents|precedents|dependents)\b/u, path);
-  }
+    // the retired Title Case keys or names a chip list.
+    assert.doesNotMatch(source, /\.(?:Precedents|Dependents|precedents|dependents)\b|precedentsList|dependentsList/u, scriptPath);
 
-  // The markup has to carry the ids the controllers name, and the shared chip
-  // classes rather than page-local copies. These are element ids, so the role
-  // half stays camelCase; the sidecar keys are the lower-case ones above.
-  const markup = [
-    ["../ui/dataset_viewer/dataset_viewer_view.js", "ds"],
-    ["../ui/method_pages/dfm/dfm.html", "dfm"],
-    ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html", "bf"],
-    ["../ui/method_pages/cape_cod/cape_cod.html", "cc"],
-    ["../ui/method_pages/result_selection/result_selection.html", "rs"],
-    ["../ui/method_pages/berquist_sherman/berquist_sherman.html", "bs"],
-  ];
-  for (const [path, prefix] of markup) {
-    const source = await readFile(new URL(path, import.meta.url), "utf8");
-    for (const role of ["Precedents", "Dependents"]) {
-      assert.match(
-        source,
-        new RegExp(`id="${prefix}${role}List" class="arDetailsChipList"`, "u"),
-        `${path} ${role}`,
-      );
+    const markup = await readFile(new URL(markupPath, import.meta.url), "utf8");
+    assert.match(markup, new RegExp(`id="${prefix}DependencyMap" class="arDetailsDepMap"`, "u"), markupPath);
+    assert.doesNotMatch(markup, /arDetailsChipBox|arDetailsChipList|PrecedentsList|DependentsList/u, markupPath);
+    if (markupPath.endsWith(".html")) {
+      assert.match(markup, /\/ui\/shared\/styles\/dependency_families\.css\?v=\d{8}[a-z]/u, markupPath);
+      assert.match(markup, /\/ui\/shared\/tabs\/details\/details_dependencies\.css\?v=20261020c/u, markupPath);
     }
-    assert.match(source, /class="arDetailsChipBox"/u, path);
   }
+  // The shared module owns the map and the open-graph request; no chip code is left.
+  assert.match(dependenciesSource, /from "\.\/details_dependency_map\.js\?v=20261020b"/u);
+  assert.doesNotMatch(dependenciesSource, /buildChip|renderChipList|arDetailsChipBox/u);
+  assert.doesNotMatch(dependenciesCss, /\.arDetailsChip\b|\.arDetailsChipBox|\.arDetailsChipList|\.arDetailsCalculatedIcon/u);
 });
 
 test("a method page reads its graph for the dataset it publishes, not for the method", async () => {
@@ -120,7 +112,7 @@ test("a method page reads its graph for the dataset it publishes, not for the me
   assert.equal(refreshes, 2);
 });
 
-test("no page keeps its own copy of the dependency chip or formula rendering", async () => {
+test("no page keeps its own copy of the dependency map or formula rendering", async () => {
   const featureDirs = [
     "../ui/dataset_viewer/",
     "../ui/method_pages/dfm/",
@@ -128,6 +120,8 @@ test("no page keeps its own copy of the dependency chip or formula rendering", a
     "../ui/method_pages/cape_cod/",
     "../ui/method_pages/result_selection/",
     "../ui/method_pages/berquist_sherman/",
+    "../ui/method_pages/bootstrap/",
+    "../ui/method_pages/stochastic_consolidation/",
   ];
   for (const dir of featureDirs) {
     const dirUrl = new URL(dir, import.meta.url);
@@ -136,9 +130,48 @@ test("no page keeps its own copy of the dependency chip or formula rendering", a
       const css = await readFile(new URL(entry.name, dirUrl), "utf8");
       assert.doesNotMatch(
         css,
-        /\.arDetailsChip\b|\.arDetailsChipBox|\.arDetailsFormulaBox|\.arDetailsFormulaComponent/u,
+        /\.arDetailsDepMap|\.arDetailsDepNode|\.arDetailsFormulaBox|\.arDetailsFormulaComponent/u,
         `${dir}${entry.name} must not restate the shared dependency look`,
       );
     }
   }
+});
+
+test("a Details map opens the full Dependency Graph through the Project Instance page", async () => {
+  const { requestDependencyGraph } = await import("../ui/shared/tabs/details/details_dependency_map.js");
+  const posted = [];
+  requestDependencyGraph({
+    windowRef: { parent: { postMessage: (message, origin) => posted.push([message, origin]) } },
+    instanceId: "pi_ds_1",
+    reservingClass: " Fake\\NJ ",
+    datasetName: " Paid Loss ",
+  });
+  assert.deepEqual(posted, [[{
+    type: "arcrho:project-instance-open-dependency-graph",
+    inst: "pi_ds_1",
+    reservingClass: "Fake\\NJ",
+    focusDatasetName: "Paid Loss",
+  }, "*"]]);
+
+  const host = await readFile(
+    new URL("../ui/project_instance/project_instance_dependency_graph.js", import.meta.url),
+    "utf8",
+  );
+  assert.match(host, /openDependencyGraph\(\{ path: event\.data\.reservingClass, focus: event\.data\.focusDatasetName \}\)/u);
+  assert.match(host, /if \(focus\) params\.set\("focus", focus\)/u);
+
+  const graph = await readFile(new URL("../ui/project_instance/dependency_graph_window.js", import.meta.url), "utf8");
+  assert.match(graph, /let pendingFocus = dependencyGraphKey\(params\.get\("focus"\)\)/u);
+  assert.match(graph, /applyGraph\(\{ keepViewport \}\);\s*applyPendingFocus\(\);/u);
+});
+
+test("the dependency map labels a box the way the full graph labels its node", async () => {
+  const { dependencyMapNodeKind, dependencyMapEdgePath } = await import("../ui/shared/tabs/details/details_dependency_map.js");
+  assert.deepEqual(dependencyMapNodeKind({}), { family: "dataset", label: "Dataset" });
+  assert.deepEqual(dependencyMapNodeKind({ formula: "\"A\" + \"B\"" }), { family: "calculated", label: "Calculated" });
+  assert.deepEqual(dependencyMapNodeKind({ methodType: "DFM" }), { family: "method", label: "DFM" });
+  assert.equal(
+    dependencyMapEdgePath({ right: 10, top: 0, height: 20 }, { left: 50, top: 40, height: 20 }),
+    "M10 10C30 10,30 50,50 50",
+  );
 });

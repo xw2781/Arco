@@ -7,7 +7,8 @@
   <title>Development Factor Method</title>
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d"/>
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b"/>
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20260820b"/>
+<link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a"/>
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c"/>
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a"/>
   <link rel="stylesheet" href="/ui/shared/tabs/links/links_tab.css?v=20260901b"/>
   <link rel="stylesheet" href="/ui/shared/styles/scrollbars.css?v=20260516a"/>
@@ -92,17 +93,9 @@
               <div id="dfmTriTypeDropdown" class="datasetDropdown"></div>
             </div>
           </div>
-          <label class="arDetailsLabel" id="dfmPrecedentsLabel">Precedents : </label>
+          <label class="arDetailsLabel" id="dfmDependenciesLabel">Dependencies : </label>
           <div class="arDetailsField">
-            <div class="arDetailsChipBox">
-              <div id="dfmPrecedentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="dfmPrecedentsLabel"></div>
-            </div>
-          </div>
-          <label class="arDetailsLabel" id="dfmDependentsLabel">Dependents : </label>
-          <div class="arDetailsField">
-            <div class="arDetailsChipBox">
-              <div id="dfmDependentsList" class="arDetailsChipList" aria-live="polite" aria-labelledby="dfmDependentsLabel"></div>
-            </div>
+            <div id="dfmDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="dfmDependenciesLabel" aria-live="polite"></div>
           </div>
         </div>
       </div>
@@ -463,7 +456,7 @@
       try {
         // The user's table colours are painted before the page is revealed.
         (await import("/ui/shared/components/spreadsheet/table_colors.js?v=20260927b")).bootTableColors({ page: "dfm" });
-        await import("/ui/method_pages/dfm/dfm_data_tab_adapter.js?v=20260926a");
+        await import("/ui/method_pages/dfm/dfm_data_tab_adapter.js?v=20261020a");
         try {
           await window.ADA_DATASET_READY;
         } catch (err) {

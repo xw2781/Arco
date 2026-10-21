@@ -69,7 +69,7 @@ import {
   scheduleDfmMethodPreview,
   cancelDfmMethodAsyncTasks,
   buildDfmMethodPayload,
-} from "/ui/method_pages/dfm/dfm_persistence.js?v=20260927smb19";
+} from "/ui/method_pages/dfm/dfm_persistence.js?v=20261020a";
 import { wireRatioSyncChannel, requestRatioStateSync } from "/ui/method_pages/dfm/dfm_sync.js?v=20260927smb19";
 import {
   applyArcBotDfmEdit,
