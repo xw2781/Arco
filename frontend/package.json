@@ -10,6 +10,7 @@
     "build:python": "build\\build_python_server.bat",
     "build:arcode:python": "build\\build_arcode_python_server.bat",
     "build:arcode:icons": "node-portable\\node.exe build/helpers/convert_icon.js icons/icon_wing_geo_v8.svg build/generated/arcode-icons",
+    "build:mac": "build/build_mac.sh",
     "build:electron": "node-portable\\node.exe build/installer/patch_nsis_installer_progress.js && node-portable\\node.exe node_modules/electron-builder/cli.js --win",
     "build:arcode:electron": "set ARCRHO_APP_MODE=arcode&& node-portable\\node.exe build/helpers/convert_icon.js icons/icon_wing_geo_v8.svg build/generated/arcode-icons && node-portable\\node.exe build/installer/patch_nsis_installer_progress.js && node-portable\\node.exe node_modules/electron-builder/cli.js --config electron-builder.arcode.json --win",
     "clean:python-artifacts": "node -e \"const fs=require('fs'); ['python_dist','python_build','build/python_packages'].forEach((p)=>fs.rmSync(p,{recursive:true,force:true}));\"",
@@ -68,6 +69,23 @@
       ],
       "icon": "icons/icon.png",
       "signAndEditExecutable": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/generated/mac-icon/icon.png",
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "afterPack": "build/helpers/mac_adhoc_sign.js",
+    "dmg": {
+      "artifactName": "Arco-${version}-${arch}.dmg"
     },
     "nsis": {
       "oneClick": false,
