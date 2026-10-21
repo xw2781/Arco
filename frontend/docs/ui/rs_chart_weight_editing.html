@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RS Chart Weight Editing</title>
+<style>
+/* Layout: mock RS window (Chart tab) on the left, design notes on the right; stacks when narrow. */
+:root {
+  color-scheme: light;
+  --bg: #eef2f6;
+  --surface: #ffffff;
+  --panel: #f8fafc;
+  --panel-2: #fbfcfe;
+  --line: #d8dde3;
+  --line-soft: #e2e8f0;
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --muted: #64748b;
+  --accent: #2b6df6;
+  --accent-soft: #eaf1ff;
+  --amber: #b45309;
+  --amber-soft: #fff7ed;
+  --red: #be123c;
+  --font: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink-2); font: 12px/1.4 var(--font); }
+button, input { font: inherit; }
+.page { max-width: 1560px; margin: 0 auto; padding: 16px; }
+.top { margin-bottom: 12px; }
+h1 { margin: 0; font-size: 20px; line-height: 1.15; color: var(--ink); }
+.sub { margin-top: 3px; color: var(--muted); }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start; }
+
+/* Mock RS window */
+.win { display: flex; flex-direction: column; height: clamp(600px, calc(100vh - 96px), 880px); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); overflow: hidden; }
+.winTitle { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; background: #f4f7fa; border-bottom: 1px solid var(--line); color: var(--ink); font-weight: 700; }
+.winTitle span { color: var(--muted); font-weight: 400; }
+.winTabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.winTabs div { padding: 7px 12px 6px; color: var(--muted); border-bottom: 2px solid transparent; }
+.winTabs div.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+
+/* Toolbar */
+.tb { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-bottom: 1px solid var(--line-soft); background: var(--panel-2); }
+.tb-l { color: var(--muted); font-size: 11px; font-weight: 700; }
+.tb-sep { width: 1px; height: 18px; background: var(--line-soft); margin: 0 2px; }
+.tb-grow { flex: 1 1 auto; }
+.seg { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; background: var(--surface); }
+.seg button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; padding: 4px 10px; height: 26px; color: #475569; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.seg button + button { border-left: 1px solid var(--line-soft); }
+.seg button:hover:not(.on) { background: #f4f7fa; }
+.seg button.on { background: var(--accent-soft); color: #1d4ed8; font-weight: 700; }
+.seg svg, .btn svg { width: 14px; height: 14px; flex: none; }
+.chk { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.chk input { margin: 0; accent-color: var(--accent); }
+.btn { display: inline-flex; align-items: center; gap: 5px; height: 26px; border: 1px solid #cbd5e1; border-radius: 4px; background: var(--surface); padding: 0 10px; color: var(--ink-2); cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+.btn:hover:not(:disabled) { background: #f4f7fa; border-color: #b8c3d1; }
+.btn:disabled { color: #a3adba; cursor: default; }
+.btn.primary { background: var(--accent-soft); border-color: #b9cdfb; color: #1d4ed8; }
+.btn.primary:hover:not(:disabled) { background: #dde8ff; border-color: #9db9f8; }
+.btn:focus-visible, .seg button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid rgba(43, 109, 246, 0.45); outline-offset: 1px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip.dirty { background: var(--amber-soft); color: var(--amber); border: 1px solid #fed7aa; }
+.chip.clean { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+/* Chart body */
+.body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 248px; }
+.plot { position: relative; min-width: 0; min-height: 0; }
+.plot canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hint { position: absolute; left: 70px; top: 8px; color: var(--muted); font-size: 11px; pointer-events: none; background: rgba(255, 255, 255, 0.86); padding: 1px 4px; border-radius: 3px; }
+.box { position: absolute; border: 1px dashed var(--accent); background: rgba(43, 109, 246, 0.08); pointer-events: none; }
+.box.zoom { border-style: solid; background: rgba(43, 109, 246, 0.1); }
+.tip { position: absolute; z-index: 5; min-width: 150px; max-width: 240px; padding: 6px 8px; background: #ffffff; border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08); pointer-events: none; display: grid; gap: 2px; }
+.tip strong { color: var(--ink); }
+.tip .row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.tip .muted { color: var(--muted); }
+.tip .act { color: #1d4ed8; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* Selection action bar */
+.selbar { position: absolute; z-index: 6; display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; background: #ffffff; border: 1px solid var(--line); border-radius: 5px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1); animation: pop 150ms ease; }
+.selbar .count { font-weight: 700; color: var(--ink); white-space: nowrap; }
+.wIn { width: 58px; height: 26px; padding: 0 6px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.wIn:focus { border-color: #93b4f9; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16); outline: none; }
+.iconBtn { width: 26px; height: 26px; display: inline-grid; place-items: center; border: 0; background: transparent; border-radius: 4px; color: var(--muted); cursor: pointer; }
+.iconBtn:hover { background: #f1f5f9; color: var(--ink); }
+.iconBtn svg { width: 12px; height: 12px; }
+@keyframes pop { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+/* Context menu */
+.menu { position: fixed; z-index: 20; min-width: 236px; padding: 4px; background: #ffffff; border: 1px solid var(--line); border-radius: 5px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12); animation: pop 120ms ease; }
+.menu .mh { padding: 5px 8px 4px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 8px; border-radius: 3px; color: var(--ink-2); cursor: pointer; }
+.menu button:hover:not(:disabled), .menu button:focus-visible { background: var(--accent-soft); color: #1d4ed8; outline: none; }
+.menu button:disabled { color: #a3adba; cursor: default; }
+.menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 2px; }
+
+/* Side panel: legend + origin inspector */
+.side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.sec { padding: 10px 10px 8px; }
+.sec + .sec { border-top: 1px solid var(--line); }
+.secH { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.secH h3 { margin: 0; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.secH span { color: var(--muted); font-size: 11px; }
+.leg { display: grid; gap: 1px; }
+.leg label { display: flex; align-items: center; gap: 7px; padding: 3px 4px; border-radius: 3px; cursor: pointer; user-select: none; }
+.leg label:hover { background: #eef2f6; }
+.leg input { margin: 0; accent-color: var(--accent); }
+.leg .line { width: 16px; height: 0; border-top: 2px solid; }
+.leg .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav { display: inline-flex; gap: 2px; }
+.inspT { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.inspT th { text-align: left; font-size: 11px; color: var(--muted); font-weight: 700; padding: 0 2px 4px; }
+.inspT th.r, .inspT td.r { text-align: right; }
+.inspT td { padding: 2px; border-top: 1px solid var(--line-soft); white-space: nowrap; }
+.inspT td.nm { max-width: 78px; overflow: hidden; text-overflow: ellipsis; }
+.inspT input { width: 46px; height: 22px; padding: 0 4px; border: 1px solid #cbd5e1; border-radius: 3px; text-align: right; color: #1d4ed8; background: #fff; }
+.inspT input.zero { color: #94a3b8; }
+.inspT tr.off td { color: #94a3b8; }
+.inspFoot { margin-top: 8px; display: grid; gap: 4px; padding: 7px 8px; background: #ffffff; border: 1px solid var(--line-soft); border-radius: 4px; font-variant-numeric: tabular-nums; }
+.inspFoot .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.inspFoot .su { font-weight: 700; color: var(--ink); background: #fef9c3; padding: 0 4px; border-radius: 2px; }
+.inspFoot .su.ovr { color: var(--red); }
+.linkBtn { border: 0; background: none; padding: 0; color: #1d4ed8; cursor: pointer; font-size: 11px; }
+.linkBtn:disabled { color: #a3adba; cursor: default; }
+
+/* Footer */
+.foot { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-top: 1px solid var(--line); background: var(--panel-2); color: var(--muted); min-height: 32px; }
+.foot .log { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Notes */
+.notes { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 12px; }
+.notes h2 { margin: 0 0 5px; font-size: 13px; color: var(--ink); }
+.notes ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.notes b { color: var(--ink); }
+.kbd { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; font-size: 11px; background: var(--panel); }
+
+.toast { position: fixed; right: 18px; bottom: 18px; z-index: 30; padding: 8px 12px; background: #0f172a; color: #fff; border-radius: 5px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2); animation: toastIn 170ms ease; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .win { height: auto; }
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .plot { height: 440px; }
+  .side { border-left: 0; border-top: 1px solid var(--line); }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <h1>Result Selection Chart: Weight Editing</h1>
+    <div class="sub">Interactive design demo. Sample figures for NJ BI Total, accident years 2012–2025. Edits here change only this page.</div>
+  </div>
+
+  <div class="stage">
+    <section class="win" aria-label="Result Selection window mock">
+      <div class="winTitle">RS@BI Selected Ultimate <span>· NJ BI Total</span></div>
+      <div class="winTabs"><div>Details</div><div>Method</div><div class="on">Chart</div><div>Results</div><div>Validation</div><div>Notes</div><div>Audit Log</div></div>
+
+      <div class="tb">
+        <span class="tb-l">Mode</span>
+        <div class="seg" role="group" aria-label="Chart mode">
+          <button type="button" id="modeWeights" class="on" aria-pressed="true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 13h10M5 13V8M8 13V4M11 13V6.5"/></svg>Edit Weights</button>
+          <button type="button" id="modeZoom" aria-pressed="false">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5M5.3 7h3.4M7 5.3v3.4"/></svg>Zoom</button>
+        </div>
+        <span class="tb-sep"></span>
+        <label class="chk"><input type="checkbox" id="showLane" checked>Weight Strip</label>
+        <label class="chk"><input type="checkbox" id="sizeByWeight" checked>Size Points By Weight</label>
+        <span class="tb-grow"></span>
+        <button type="button" class="btn" id="undoBtn" disabled title="Undo the last chart edit (Ctrl+Z)">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5.5 4 2.5 7l3 3"/><path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H8"/></svg>Undo</button>
+        <button type="button" class="btn" id="resetZoom" disabled>Full View</button>
+      </div>
+
+      <div class="body">
+        <div class="plot" id="plot">
+          <canvas id="cv" tabindex="0" role="img" aria-label="Result Selection chart with editable weights"></canvas>
+          <div class="hint" id="hint">Click a point to include or exclude it · drag a box to select · drag the black point to override</div>
+          <div class="box" id="box" hidden></div>
+          <div class="tip" id="tip" hidden></div>
+          <div class="selbar" id="selbar" hidden>
+            <span class="count" id="selCount">0 points</span>
+            <input class="wIn" id="selWeight" type="number" min="0" step="0.1" value="1.0" aria-label="Weight for selected points">
+            <button type="button" class="btn primary" id="selSet">Set Weight</button>
+            <button type="button" class="btn" id="selOnly" title="Selected points get the weight; every other method in those origins gets 0">Use Only These</button>
+            <button type="button" class="btn" id="selClear">Exclude</button>
+            <button type="button" class="iconBtn" id="selClose" aria-label="Clear selection"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+          </div>
+        </div>
+        <aside class="side">
+          <div class="sec">
+            <div class="secH"><h3>Columns</h3><span id="legCount"></span></div>
+            <div class="leg" id="leg"></div>
+          </div>
+          <div class="sec">
+            <div class="secH">
+              <h3 id="inspTitle">Origin</h3>
+              <span class="nav">
+                <button type="button" class="iconBtn" id="prevRow" aria-label="Previous origin"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg></button>
+                <button type="button" class="iconBtn" id="nextRow" aria-label="Next origin"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4.5 2.5 8 6 4.5 9.5"/></svg></button>
+              </span>
+            </div>
+            <table class="inspT">
+              <thead><tr><th>Method</th><th class="r">Value</th><th class="r">Weight</th><th class="r">Eff.</th></tr></thead>
+              <tbody id="inspBody"></tbody>
+            </table>
+            <div class="inspFoot">
+              <div class="row"><span>Selected Ultimate</span><span class="su" id="inspSU"></span></div>
+              <div class="row"><span class="muted" id="inspCalc"></span><button type="button" class="linkBtn" id="inspRevert">Revert To Calculated</button></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="foot">
+        <span class="chip clean" id="dirty">Saved</span>
+        <span class="log" id="log">No chart edits yet.</span>
+        <button type="button" class="btn primary" id="saveBtn" disabled>Save</button>
+      </div>
+    </section>
+
+    <aside class="notes" aria-label="Design notes">
+      <div>
+        <h2>Gestures In Edit Weights</h2>
+        <ul>
+          <li><b>Click a point:</b> include or exclude it (weight 1 ↔ 0). Same as double-clicking the source cell in Method.</li>
+          <li><b>Filled vs hollow:</b> filled points count toward the Selected Ultimate; hollow points are excluded. Point size follows effective weight.</li>
+          <li><b>Drag a box:</b> select points, then Set Weight, Use Only These, or Exclude. <span class="kbd">Ctrl</span>-drag adds to the selection.</li>
+          <li><b>Weight Strip:</b> one 100% bar per origin. Drag a divider to shift weight between two methods; it snaps at 0, 25, 50, 75 and 100%.</li>
+          <li><b>Black point:</b> drag it up or down to enter a custom ultimate (red). Release on a method's point to use only that method instead. Double-click reverts.</li>
+          <li><b>Right-click a point:</b> use only this method, use it from this origin on, or exclude it.</li>
+          <li><b>Origin inspector:</b> click an origin label or strip column to type exact weights. <span class="kbd">←</span> <span class="kbd">→</span> step origins.</li>
+          <li><b>Zoom mode:</b> today's box zoom; points cannot be edited. Double-click restores the full view in either mode.</li>
+        </ul>
+      </div>
+      <div>
+        <h2>What It Changes</h2>
+        <ul>
+          <li><b>Same data as Method:</b> writes the existing weights and custom ultimates. No new saved fields.</li>
+          <li><b>Normal save:</b> each edit marks the method unsaved; Save works as today.</li>
+          <li><b>Hidden columns:</b> keep their weights. The strip shows them faded so nothing counts unseen.</li>
+          <li><b>Grid sync:</b> switching to Method shows the same weights and selected-cell highlights.</li>
+        </ul>
+      </div>
+      <div>
+        <h2>Open Decisions</h2>
+        <ul>
+          <li><b>Default mode:</b> Edit Weights (shown) or Zoom, which keeps today's behaviour.</li>
+          <li><b>Undo:</b> RS has no undo today. Chart-only undo, page-wide undo, or none?</li>
+          <li><b>Strip snaps:</b> quarter steps, or free drag with <span class="kbd">Shift</span> to snap?</li>
+          <li><b>Override drag:</b> keep it, or leave custom ultimates to Method only?</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="menu" id="menu" hidden role="menu"></div>
+
+<script>
+(() => {
+  // ---------- Sample method ----------
+  const origins = Array.from({ length: 14 }, (_, i) => String(2012 + i));
+  const base = origins.map((_, i) => 41800 * 1.042 ** i);
+  const mk = (noise) => base.map((b, i) => Math.round(b * (1 + noise[i])));
+  const sources = [
+    { name: "Paid CL", color: "#2b6df6", values: mk([0.004, -0.003, 0.006, 0.002, -0.005, 0.008, -0.006, 0.011, 0.015, -0.02, 0.034, -0.048, 0.09, -0.16]) },
+    { name: "Incurred CL", color: "#0f766e", values: mk([0.002, 0.001, -0.002, 0.004, 0.003, -0.004, 0.005, -0.006, 0.009, 0.012, -0.018, 0.026, -0.035, 0.062]) },
+    { name: "Paid BF", color: "#b45309", values: mk([0.006, -0.004, 0.005, 0.003, -0.006, 0.007, -0.004, 0.01, 0.012, -0.012, 0.018, -0.022, 0.03, -0.04]) },
+    { name: "Incurred BF", color: "#7c3aed", values: mk([0.003, 0.002, -0.003, 0.004, 0.002, -0.003, 0.004, -0.004, 0.006, 0.008, -0.01, 0.014, -0.016, 0.022]) },
+    { name: "Expected Loss", color: "#0e7490", values: base.map((b) => Math.round(b * 1.018)) },
+  ];
+  const initialWeights = [
+    [1, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0],
+    [1, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 0, 0, 0],
+    [0, 1, 0, 1, 0], [0, 1, 0, 1, 0], [0, 0, 1, 2, 0], [0, 0, 1, 2, 0], [0, 0, 0, 1, 1],
+  ];
+  sources.forEach((s, si) => { s.weights = initialWeights.map((row) => row[si]); });
+  let overrides = {};
+  const N = origins.length;
+  const SU_COLOR = "#111827";
+
+  // ---------- Model ----------
+  const calcAt = (r) => {
+    let num = 0, den = 0;
+    for (const s of sources) { const w = s.weights[r]; if (w > 0 && s.values[r] != null) { num += s.values[r] * w; den += w; } }
+    return den > 0 ? num / den : null;
+  };
+  const suAt = (r) => (r in overrides ? overrides[r] : calcAt(r));
+  const totalW = (r) => sources.reduce((t, s) => t + (s.weights[r] > 0 ? s.weights[r] : 0), 0);
+  const effAt = (si, r) => { const t = totalW(r); return t > 0 ? Math.max(0, sources[si].weights[r]) / t : 0; };
+  const fmt = (v) => (v == null ? "" : Math.round(v).toLocaleString("en-US"));
+  const fmtW = (w) => (Math.round(w * 100) / 100).toFixed(Math.round(w * 100) % 10 ? 2 : 1);
+  const pct = (f) => `${(f * 100).toFixed(1)}%`;
+
+  // ---------- Undo + dirty ----------
+  const undoStack = [];
+  let changeCount = 0;
+  const snapshot = () => ({ w: sources.map((s) => s.weights.slice()), o: { ...overrides } });
+  function commit(label, before) {
+    undoStack.push({ ...before, label });
+    if (undoStack.length > 50) undoStack.shift();
+    changeCount += 1;
+    setLog(label);
+    refreshAll();
+  }
+  function undo() {
+    const last = undoStack.pop();
+    if (!last) return;
+    sources.forEach((s, i) => { s.weights = last.w[i]; });
+    overrides = last.o;
+    changeCount = Math.max(0, changeCount - 1);
+    setLog(`Undid: ${last.label}`);
+    refreshAll();
+  }
+
+  // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
+  const cv = $("cv"), plot = $("plot"), tip = $("tip"), box = $("box"), selbar = $("selbar"), menu = $("menu");
+  const hidden = new Set();
+  let mode = "weights";
+  let activeRow = 12;
+  let zoom = null;
+  let selection = new Set(); // "si:r"
+  let drag = null;
+  let geo = null; // layout of last draw
+  let hits = [];  // drawn points for hit tests
+
+  function setLog(text) { $("log").textContent = text; }
+  function toast(text) {
+    const t = document.createElement("div");
+    t.className = "toast"; t.textContent = text; document.body.appendChild(t);
+    setTimeout(() => t.remove(), 1800);
+  }
+
+  // ---------- Drawing ----------
+  function niceStep(range, target = 6) {
+    const rough = Math.max(range, 1e-9) / target, mag = 10 ** Math.floor(Math.log10(rough)), n = rough / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  }
+  function valueRange() {
+    if (zoom) return { min: zoom.vMin, max: zoom.vMax };
+    const vals = [];
+    sources.forEach((s, si) => { if (!hidden.has(si)) s.values.forEach((v) => v != null && vals.push(v)); });
+    for (let r = 0; r < N; r += 1) { const v = suAt(r); if (v != null) vals.push(v); }
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.06, step = niceStep(hi - lo + pad * 2);
+    return { min: Math.floor((lo - pad) / step) * step, max: Math.ceil((hi + pad) / step) * step };
+  }
+
+  function draw() {
+    const rect = cv.getBoundingClientRect();
+    const W = Math.max(1, Math.floor(rect.width)), H = Math.max(1, Math.floor(rect.height));
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    const c = cv.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = "#ffffff"; c.fillRect(0, 0, W, H);
+    hits = [];
+
+    const showLane = $("showLane").checked;
+    const range = drag?.type === "su" ? drag.range : valueRange();
+    const step = niceStep(range.max - range.min);
+    const ticks = [];
+    for (let v = Math.ceil(range.min / step) * step; v <= range.max + step * 1e-3; v += step) ticks.push(v);
+    c.font = '11px Arial, "Segoe UI", sans-serif';
+    const widest = Math.max(...ticks.map((t) => c.measureText(fmt(t)).width));
+    const x0 = Math.max(62, Math.ceil(widest) + 16), x1 = W - 22;
+    const laneH = showLane ? 56 : 0, labelH = 26;
+    const y0 = 30, yLaneBottom = H - labelH, yLaneTop = yLaneBottom - laneH;
+    const y1 = showLane ? yLaneTop - 14 : yLaneBottom - 4;
+    const iMin = zoom ? zoom.iMin : 0, iMax = zoom ? zoom.iMax : N - 1;
+    const xs = x0 + 9, xe = x1 - 9;
+    const xFor = (i) => xs + ((i - iMin) / (iMax - iMin)) * (xe - xs);
+    const yFor = (v) => y1 - ((v - range.min) / (range.max - range.min)) * (y1 - y0);
+    const valueAt = (y) => range.max - ((y - y0) / (y1 - y0)) * (range.max - range.min);
+    const band = (xe - xs) / Math.max(1, iMax - iMin);
+    geo = { W, H, x0, x1, y0, y1, xs, xe, yLaneTop, yLaneBottom, laneH, iMin, iMax, xFor, yFor, valueAt, range, band, lanes: [] };
+
+    // active origin band
+    if (activeRow >= Math.floor(iMin) && activeRow <= Math.ceil(iMax)) {
+      const ax = xFor(activeRow), bw = Math.max(14, Math.min(band * 0.9, 46));
+      c.fillStyle = "rgba(43, 109, 246, 0.06)";
+      c.fillRect(ax - bw / 2, y0 - 4, bw, yLaneBottom - y0 + 4);
+    }
+
+    // grid + y ticks
+    c.textAlign = "right"; c.textBaseline = "middle";
+    for (const t of ticks) {
+      const y = yFor(t);
+      c.strokeStyle = "#e5eaf0"; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x0, Math.round(y) + 0.5); c.lineTo(x1, Math.round(y) + 0.5); c.stroke();
+      c.fillStyle = "#5f6b7a"; c.fillText(fmt(t), x0 - 8, y);
+    }
+    c.strokeStyle = "#aeb8c5";
+    c.beginPath(); c.moveTo(x0 + 0.5, y0); c.lineTo(x0 + 0.5, y1 + 0.5); c.lineTo(x1, y1 + 0.5); c.stroke();
+
+    // x labels
+    const lo = Math.max(0, Math.ceil(iMin - 1e-9)), hi = Math.min(N - 1, Math.floor(iMax + 1e-9));
+    const every = Math.max(1, Math.ceil((hi - lo + 1) / Math.max(2, Math.floor((x1 - x0) / 44))));
+    c.textAlign = "center"; c.textBaseline = "top";
+    for (let r = lo; r <= hi; r += 1) {
+      if ((r - lo) % every && r !== hi && r !== activeRow) continue;
+      c.fillStyle = r === activeRow ? "#1d4ed8" : "#4b5563";
+      c.font = r === activeRow ? 'bold 11px Arial, "Segoe UI", sans-serif' : '11px Arial, "Segoe UI", sans-serif';
+      c.fillText(origins[r], xFor(r), yLaneBottom + 8);
+    }
+    c.font = '11px Arial, "Segoe UI", sans-serif';
+
+    // series
+    c.save();
+    c.beginPath(); c.rect(x0 - 5, y0 - 5, x1 - x0 + 10, y1 - y0 + 10); c.clip();
+    const sizeByWeight = $("sizeByWeight").checked;
+    sources.forEach((s, si) => {
+      if (hidden.has(si)) return;
+      c.strokeStyle = s.color; c.globalAlpha = 0.55; c.lineWidth = 1.5; c.lineJoin = "round";
+      c.beginPath();
+      let open = false;
+      for (let r = 0; r < N; r += 1) {
+        const v = s.values[r];
+        if (v == null) { open = false; continue; }
+        const x = xFor(r), y = yFor(v);
+        open ? c.lineTo(x, y) : c.moveTo(x, y); open = true;
+      }
+      c.stroke(); c.globalAlpha = 1;
+      for (let r = 0; r < N; r += 1) {
+        const v = s.values[r];
+        if (v == null) continue;
+        const x = xFor(r), y = yFor(v), w = s.weights[r], eff = effAt(si, r);
+        const on = w > 0;
+        const rad = on ? (sizeByWeight ? 3 + eff * 3.4 : 4) : 3;
+        const isSel = selection.has(`${si}:${r}`);
+        if (isSel) {
+          c.strokeStyle = "#2b6df6"; c.lineWidth = 1.5; c.setLineDash([2, 2]);
+          c.beginPath(); c.arc(x, y, rad + 3.5, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+        }
+        c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2);
+        if (on) { c.fillStyle = s.color; c.fill(); c.strokeStyle = "#ffffff"; c.lineWidth = 1; c.stroke(); }
+        else { c.fillStyle = "#ffffff"; c.fill(); c.strokeStyle = s.color; c.globalAlpha = 0.7; c.lineWidth = 1.4; c.stroke(); c.globalAlpha = 1; }
+        hits.push({ kind: "src", si, r, x, y, v, rad });
+      }
+    });
+
+    // selected ultimate
+    const suVal = (r) => (drag?.type === "su" && drag.r === r && drag.preview != null ? drag.preview : suAt(r));
+    c.strokeStyle = SU_COLOR; c.lineWidth = 2.4; c.lineJoin = "round";
+    c.beginPath();
+    let open = false;
+    for (let r = 0; r < N; r += 1) {
+      const v = suVal(r);
+      if (v == null) { open = false; continue; }
+      open ? c.lineTo(xFor(r), yFor(v)) : c.moveTo(xFor(r), yFor(v)); open = true;
+    }
+    c.stroke();
+    for (let r = 0; r < N; r += 1) {
+      const v = suVal(r);
+      if (v == null) continue;
+      const x = xFor(r), y = yFor(v);
+      const ovr = drag?.type === "su" && drag.r === r ? drag.snap == null : r in overrides;
+      c.beginPath();
+      c.moveTo(x, y - 5.2); c.lineTo(x + 5.2, y); c.lineTo(x, y + 5.2); c.lineTo(x - 5.2, y); c.closePath();
+      c.fillStyle = ovr ? "#be123c" : SU_COLOR; c.fill();
+      c.strokeStyle = "#ffffff"; c.lineWidth = 1.2; c.stroke();
+      hits.push({ kind: "su", r, x, y, v, rad: 5.2 });
+    }
+    // drag guide
+    if (drag?.type === "su" && drag.preview != null) {
+      const y = yFor(drag.preview);
+      c.strokeStyle = drag.snap != null ? sources[drag.snap].color : "#be123c";
+      c.setLineDash([4, 3]); c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.setLineDash([]);
+    }
+    c.restore();
+
+    // weight strip
+    if (showLane) {
+      c.fillStyle = "#64748b"; c.textAlign = "right"; c.textBaseline = "middle";
+      c.font = 'bold 11px Arial, "Segoe UI", sans-serif';
+      c.fillText("Weight", x0 - 8, yLaneTop + laneH / 2);
+      c.font = '11px Arial, "Segoe UI", sans-serif';
+      c.strokeStyle = "#e5eaf0"; c.beginPath(); c.moveTo(x0, yLaneTop - 7.5); c.lineTo(x1, yLaneTop - 7.5); c.stroke();
+      const bw = Math.max(8, Math.min(band * 0.56, 26));
+      for (let r = lo; r <= hi; r += 1) {
+        const x = xFor(r), t = totalW(r), segs = [];
+        if (t <= 0) {
+          c.setLineDash([3, 2]); c.strokeStyle = "#cbd5e1";
+          c.strokeRect(x - bw / 2 + 0.5, yLaneTop + 0.5, bw - 1, laneH - 1); c.setLineDash([]);
+        } else {
+          let acc = 0;
+          sources.forEach((s, si) => {
+            const f = effAt(si, r);
+            if (f <= 0) return;
+            const yb = yLaneBottom - acc * laneH, yt = yLaneBottom - (acc + f) * laneH;
+            c.globalAlpha = hidden.has(si) ? 0.3 : 0.9;
+            c.fillStyle = s.color; c.fillRect(x - bw / 2, yt, bw, yb - yt);
+            c.globalAlpha = 1;
+            segs.push({ si, f0: acc, f1: acc + f, yt, yb });
+            acc += f;
+          });
+          c.strokeStyle = "#ffffff"; c.lineWidth = 1;
+          for (let k = 0; k < segs.length - 1; k += 1) {
+            const yy = Math.round(segs[k].yt) + 0.5;
+            c.beginPath(); c.moveTo(x - bw / 2, yy); c.lineTo(x + bw / 2, yy); c.stroke();
+          }
+          if (drag?.type === "lane" && drag.r === r) {
+            const yy = segs[drag.k]?.yt;
+            if (yy != null) { c.strokeStyle = "#0f172a"; c.lineWidth = 2; c.beginPath(); c.moveTo(x - bw / 2 - 3, yy); c.lineTo(x + bw / 2 + 3, yy); c.stroke(); }
+          }
+        }
+        geo.lanes[r] = { x, bw, segs };
+      }
+    }
+
+    $("resetZoom").disabled = !zoom;
+    cv.setAttribute("aria-label", `Result Selection chart, ${N} origin periods, ${mode === "weights" ? "weight editing" : "zoom"} mode.`);
+  }
+
+  let raf = null;
+  const schedule = () => { if (raf == null) raf = requestAnimationFrame(() => { raf = null; draw(); }); };
+  new ResizeObserver(schedule).observe(cv);
+
+  // ---------- Side panel ----------
+  function renderLegend() {
+    const leg = $("leg");
+    leg.replaceChildren();
+    const items = sources.map((s, si) => ({ name: s.name, color: s.color, si }));
+    items.push({ name: "Selected Ultimate", color: SU_COLOR, si: -1 });
+    for (const it of items) {
+      const lab = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = it.si < 0 || !hidden.has(it.si); cb.disabled = it.si < 0;
+      cb.addEventListener("change", () => { cb.checked ? hidden.delete(it.si) : hidden.add(it.si); hideTip(); refreshAll(); });
+      const ln = document.createElement("span"); ln.className = "line"; ln.style.borderColor = it.color;
+      const nm = document.createElement("span"); nm.className = "name"; nm.textContent = it.name;
+      lab.append(cb, ln, nm); leg.appendChild(lab);
+    }
+    $("legCount").textContent = `${sources.length - hidden.size + 1} of ${sources.length + 1}`;
+  }
+
+  function renderInspector() {
+    const r = activeRow;
+    $("inspTitle").textContent = `Origin ${origins[r]}`;
+    const body = $("inspBody");
+    body.replaceChildren();
+    sources.forEach((s, si) => {
+      const tr = document.createElement("tr");
+      if (!(s.weights[r] > 0)) tr.className = "off";
+      const nm = document.createElement("td"); nm.className = "nm";
+      nm.innerHTML = `<span class="sw" style="background:${s.color}"></span>`;
+      nm.append(s.name); nm.title = s.name;
+      const val = document.createElement("td"); val.className = "r"; val.textContent = fmt(s.values[r]);
+      const wt = document.createElement("td"); wt.className = "r";
+      const inp = document.createElement("input");
+      inp.type = "number"; inp.min = "0"; inp.step = "0.1"; inp.id = `w-${si}`;
+      inp.value = fmtW(s.weights[r]); inp.className = s.weights[r] > 0 ? "" : "zero";
+      inp.setAttribute("aria-label", `${s.name} weight for ${origins[r]}`);
+      inp.addEventListener("change", () => {
+        const w = Math.max(0, Number(inp.value) || 0);
+        if (w === s.weights[r]) return;
+        const before = snapshot();
+        s.weights[r] = w;
+        commit(`${s.name} ${origins[r]} weight set to ${fmtW(w)}`, before);
+      });
+      wt.appendChild(inp);
+      const ef = document.createElement("td"); ef.className = "r"; ef.textContent = pct(effAt(si, r));
+      tr.append(nm, val, wt, ef); body.appendChild(tr);
+    });
+    const ovr = r in overrides;
+    const su = $("inspSU");
+    su.textContent = fmt(suAt(r)); su.classList.toggle("ovr", ovr);
+    $("inspCalc").textContent = ovr ? `Calculated ${fmt(calcAt(r))}` : "Calculated";
+    $("inspRevert").disabled = !ovr;
+  }
+
+  function refreshAll() {
+    renderLegend(); renderInspector(); schedule();
+    $("undoBtn").disabled = !undoStack.length;
+    const d = $("dirty");
+    d.className = `chip ${changeCount ? "dirty" : "clean"}`;
+    d.textContent = changeCount ? `Unsaved · ${changeCount} ${changeCount === 1 ? "edit" : "edits"}` : "Saved";
+    $("saveBtn").disabled = !changeCount;
+  }
+
+  // ---------- Hit testing ----------
+  const pt = (e) => { const b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+  function hitPoint(p) {
+    let best = null, bestD = Infinity;
+    for (const h of hits) {
+      const d = Math.hypot(h.x - p.x, h.y - p.y);
+      const reach = Math.max(7, h.rad + 3);
+      const score = d - (h.kind === "su" ? 1.5 : 0);
+      if (d <= reach && score < bestD) { best = h; bestD = score; }
+    }
+    return best;
+  }
+  function hitLane(p) {
+    if (!geo || !$("showLane").checked || p.y < geo.yLaneTop - 4 || p.y > geo.yLaneBottom + 4) return null;
+    for (const r in geo.lanes) {
+      const l = geo.lanes[r];
+      if (Math.abs(p.x - l.x) > Math.max(l.bw / 2 + 3, geo.band / 2)) continue;
+      const inBar = Math.abs(p.x - l.x) <= l.bw / 2 + 4;
+      if (inBar) for (let k = 0; k < l.segs.length - 1; k += 1) {
+        if (Math.abs(p.y - l.segs[k].yt) <= 4) return { kind: "divider", r: Number(r), k, lane: l };
+      }
+      return { kind: "column", r: Number(r), lane: l };
+    }
+    return null;
+  }
+  const inPlot = (p) => geo && p.x >= geo.x0 && p.x <= geo.x1 && p.y >= geo.y0 && p.y <= geo.y1;
+  function rowFromLabel(p) {
+    if (!geo || p.y < geo.yLaneBottom || p.y > geo.H) return null;
+    const i = Math.round(geo.iMin + ((p.x - geo.xs) / (geo.xe - geo.xs)) * (geo.iMax - geo.iMin));
+    return i >= 0 && i < N ? i : null;
+  }
+
+  // ---------- Tooltip ----------
+  function hideTip() { tip.hidden = true; }
+  function showTip(p, html) {
+    tip.innerHTML = html; tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.min(Math.max(8, p.x + 14), plot.clientWidth - w - 8)}px`;
+    tip.style.top = `${Math.max(8, p.y - h - 10)}px`;
+  }
+  function tipForPoint(h) {
+    if (h.kind === "su") {
+      const ovr = h.r in overrides;
+      return `<strong>Selected Ultimate</strong><div class="row"><span>${origins[h.r]}</span><span>${fmt(h.v)}</span></div>`
+        + (ovr ? `<div class="row muted"><span>Calculated</span><span>${fmt(calcAt(h.r))}</span></div>` : "")
+        + (mode === "weights" ? `<span class="act">Drag to set a custom ultimate${ovr ? " · double-click to revert" : ""}</span>` : "");
+    }
+    const s = sources[h.si], w = s.weights[h.r];
+    return `<strong><span class="sw" style="background:${s.color}"></span>${s.name}</strong>`
+      + `<div class="row"><span>${origins[h.r]}</span><span>${fmt(h.v)}</span></div>`
+      + `<div class="row muted"><span>Weight ${fmtW(w)}</span><span>${pct(effAt(h.si, h.r))}</span></div>`
+      + (mode === "weights" ? `<span class="act">Click to ${w > 0 ? "exclude" : "include"} · right-click for more</span>` : "");
+  }
+  function tipForLane(l) {
+    const r = l.r, rows = sources.map((s, si) => ({ s, si, f: effAt(si, r) })).filter((x) => x.f > 0).reverse();
+    const lines = rows.map((x) => `<div class="row"><span><span class="sw" style="background:${x.s.color}"></span>${x.s.name}</span><span>${pct(x.f)}</span></div>`).join("");
+    return `<strong>${origins[r]} weights</strong>${lines || '<span class="muted">No method selected</span>'}`
+      + (l.kind === "divider" ? '<span class="act">Drag to shift weight</span>' : '<span class="act">Click to inspect</span>');
+  }
+
+  // ---------- Edits ----------
+  function toggleWeight(si, r) {
+    const s = sources[si], before = snapshot();
+    s.weights[r] = s.weights[r] > 0 ? 0 : 1;
+    commit(`${s.name} ${origins[r]} ${s.weights[r] > 0 ? "included" : "excluded"}`, before);
+  }
+  function useOnly(si, fromRow, toRow) {
+    const before = snapshot();
+    for (let r = fromRow; r <= toRow; r += 1) {
+      if (sources[si].values[r] == null) continue;
+      sources.forEach((s, k) => { s.weights[r] = k === si ? 1 : 0; });
+      delete overrides[r];
+    }
+    commit(fromRow === toRow ? `${origins[fromRow]} uses only ${sources[si].name}` : `${origins[fromRow]}–${origins[toRow]} use only ${sources[si].name}`, before);
+  }
+  function selectionRows() { return [...selection].map((k) => k.split(":").map(Number)); }
+  function applySelection(kind) {
+    const w = Math.max(0, Number($("selWeight").value) || 0), before = snapshot(), items = selectionRows();
+    if (!items.length) return;
+    if (kind === "only") {
+      const rows = new Set(items.map(([, r]) => r));
+      rows.forEach((r) => sources.forEach((s) => { s.weights[r] = 0; }));
+    }
+    items.forEach(([si, r]) => { sources[si].weights[r] = kind === "clear" ? 0 : w; });
+    const n = items.length;
+    commit(kind === "clear" ? `${n} points excluded` : kind === "only" ? `${n} points used only, weight ${fmtW(w)}` : `${n} points set to weight ${fmtW(w)}`, before);
+    clearSelection();
+  }
+  function clearSelection() { selection = new Set(); selbar.hidden = true; schedule(); }
+  function showSelbar(anchor) {
+    const n = selection.size;
+    if (!n) { selbar.hidden = true; return; }
+    $("selCount").textContent = `${n} ${n === 1 ? "point" : "points"}`;
+    selbar.hidden = false;
+    const w = selbar.offsetWidth, h = selbar.offsetHeight;
+    selbar.style.left = `${Math.min(Math.max(8, anchor.x - w / 2), plot.clientWidth - w - 8)}px`;
+    selbar.style.top = `${Math.min(Math.max(8, anchor.y + 10), plot.clientHeight - h - 8)}px`;
+  }
+  function setActive(r) { activeRow = Math.max(0, Math.min(N - 1, r)); refreshAll(); }
+
+  // ---------- Context menu ----------
+  function openMenu(e, h) {
+    const items = [];
+    if (h.kind === "su") {
+      items.push({ head: `Selected Ultimate · ${origins[h.r]}` });
+      items.push({ label: "Edit In Inspector", run: () => { setActive(h.r); } });
+      items.push({ label: "Revert To Calculated", disabled: !(h.r in overrides), run: () => revert(h.r) });
+    } else {
+      const s = sources[h.si];
+      items.push({ head: `${s.name} · ${origins[h.r]}` });
+      items.push({ label: s.weights[h.r] > 0 ? "Exclude This Point" : "Include This Point", run: () => toggleWeight(h.si, h.r) });
+      items.push({ label: `Use Only ${s.name} For ${origins[h.r]}`, run: () => useOnly(h.si, h.r, h.r) });
+      items.push({ label: `Use Only ${s.name} From ${origins[h.r]} On`, run: () => useOnly(h.si, h.r, N - 1) });
+      items.push({ sep: true });
+      items.push({ label: "Type Exact Weights…", run: () => { setActive(h.r); document.getElementById(`w-${h.si}`)?.focus(); } });
+    }
+    menu.replaceChildren();
+    for (const it of items) {
+      if (it.head) { const d = document.createElement("div"); d.className = "mh"; d.textContent = it.head; menu.appendChild(d); continue; }
+      if (it.sep) { menu.appendChild(document.createElement("hr")); continue; }
+      const b = document.createElement("button");
+      b.type = "button"; b.role = "menuitem"; b.textContent = it.label; b.disabled = !!it.disabled;
+      b.addEventListener("click", () => { closeMenu(); it.run(); });
+      menu.appendChild(b);
+    }
+    menu.hidden = false;
+    const w = menu.offsetWidth, hh = menu.offsetHeight;
+    menu.style.left = `${Math.min(e.clientX, innerWidth - w - 8)}px`;
+    menu.style.top = `${Math.min(e.clientY, innerHeight - hh - 8)}px`;
+    menu.querySelector("button:not(:disabled)")?.focus();
+  }
+  function closeMenu() { menu.hidden = true; }
+  function revert(r) {
+    if (!(r in overrides)) return;
+    const before = snapshot();
+    delete overrides[r];
+    commit(`${origins[r]} custom ultimate reverted`, before);
+  }
+
+  // ---------- Pointer handling ----------
+  function setBox(a, b, isZoom) {
+    box.className = `box${isZoom ? " zoom" : ""}`;
+    box.style.left = `${Math.min(a.x, b.x)}px`; box.style.top = `${Math.min(a.y, b.y)}px`;
+    box.style.width = `${Math.abs(b.x - a.x)}px`; box.style.height = `${Math.abs(b.y - a.y)}px`;
+    box.hidden = false;
+  }
+  const clampToPlot = (p) => ({ x: Math.min(Math.max(p.x, geo.x0), geo.x1), y: Math.min(Math.max(p.y, geo.y0), geo.y1) });
+
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || !geo) return;
+    closeMenu(); hideTip(); cv.focus();
+    const p = pt(e);
+    if (mode === "zoom") {
+      if (inPlot(p)) drag = { type: "zoom", a: p, b: p };
+    } else {
+      const h = hitPoint(p);
+      const lane = h ? null : hitLane(p);
+      if (h?.kind === "su") {
+        drag = { type: "su", r: h.r, a: p, moved: false, preview: null, snap: null, range: { ...geo.range } };
+      } else if (h) {
+        drag = { type: "point", h, a: p };
+      } else if (lane?.kind === "divider") {
+        const segA = lane.lane.segs[lane.k], segB = lane.lane.segs[lane.k + 1];
+        drag = { type: "lane", r: lane.r, k: lane.k, a: segA.si, b: segB.si, f0: segA.f0, f2: segB.f1,
+          wSum: sources[segA.si].weights[lane.r] + sources[segB.si].weights[lane.r], before: snapshot() };
+        setActive(lane.r);
+      } else if (lane?.kind === "column") {
+        setActive(lane.r);
+      } else if (rowFromLabel(p) != null) {
+        setActive(rowFromLabel(p));
+      } else if (inPlot(p)) {
+        if (!(e.ctrlKey || e.metaKey)) clearSelection();
+        drag = { type: "marquee", a: p, b: p, base: new Set(selection) };
+      }
+    }
+    if (drag) { cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+  });
+
+  cv.addEventListener("pointermove", (e) => {
+    const p = pt(e);
+    if (!drag) {
+      if (!geo) return;
+      const h = hitPoint(p), lane = h ? null : hitLane(p);
+      if (h) { showTip(p, tipForPoint(h)); cv.style.cursor = mode === "weights" ? (h.kind === "su" ? "ns-resize" : "pointer") : "default"; }
+      else if (lane && mode === "weights") { showTip(p, tipForLane(lane)); cv.style.cursor = lane.kind === "divider" ? "ns-resize" : "pointer"; }
+      else { hideTip(); cv.style.cursor = rowFromLabel(p) != null && mode === "weights" ? "pointer" : inPlot(p) ? "crosshair" : "default"; }
+      return;
+    }
+    if (drag.type === "zoom" || drag.type === "marquee") {
+      drag.b = clampToPlot(p);
+      setBox(drag.a, drag.b, drag.type === "zoom");
+      if (drag.type === "marquee") {
+        const l = Math.min(drag.a.x, drag.b.x), r = Math.max(drag.a.x, drag.b.x), t = Math.min(drag.a.y, drag.b.y), b = Math.max(drag.a.y, drag.b.y);
+        selection = new Set(drag.base);
+        for (const h of hits) if (h.kind === "src" && h.x >= l && h.x <= r && h.y >= t && h.y <= b) selection.add(`${h.si}:${h.r}`);
+        schedule();
+      }
+    } else if (drag.type === "su") {
+      if (!drag.moved && Math.abs(p.y - drag.a.y) < 3) return;
+      drag.moved = true;
+      const y = Math.min(Math.max(p.y, geo.y0), geo.y1);
+      let snap = null, snapV = null;
+      sources.forEach((s, si) => {
+        const v = s.values[drag.r];
+        if (v != null && !hidden.has(si) && Math.abs(geo.yFor(v) - y) <= 6 && snap == null) { snap = si; snapV = v; }
+      });
+      drag.snap = snap;
+      drag.preview = snap != null ? snapV : Math.round(geo.valueAt(y));
+      const note = snap != null ? `Release to use only ${sources[snap].name}` : "Release to set a custom ultimate";
+      showTip({ x: geo.xFor(drag.r), y }, `<strong>Selected Ultimate · ${origins[drag.r]}</strong><div class="row"><span>New</span><span>${fmt(drag.preview)}</span></div><div class="row muted"><span>Calculated</span><span>${fmt(calcAt(drag.r))}</span></div><span class="act">${note}</span>`);
+      schedule();
+    } else if (drag.type === "lane") {
+      const f = Math.min(Math.max((geo.yLaneBottom - p.y) / geo.laneH, drag.f0), drag.f2);
+      let share = (f - drag.f0) / (drag.f2 - drag.f0);
+      for (const s of [0, 0.25, 0.5, 0.75, 1]) if (Math.abs(share - s) < 0.04) share = s;
+      const wa = Math.round(drag.wSum * share * 100) / 100;
+      sources[drag.a].weights[drag.r] = wa;
+      sources[drag.b].weights[drag.r] = Math.round((drag.wSum - wa) * 100) / 100;
+      const l = geo.lanes[drag.r];
+      showTip({ x: l.x, y: geo.yLaneTop }, `<strong>${origins[drag.r]}</strong><div class="row"><span><span class="sw" style="background:${sources[drag.b].color}"></span>${sources[drag.b].name}</span><span>${pct(1 - share)}</span></div><div class="row"><span><span class="sw" style="background:${sources[drag.a].color}"></span>${sources[drag.a].name}</span><span>${pct(share)}</span></div>`);
+      renderInspector(); schedule();
+    }
+  });
+
+  function endDrag(e, cancelled) {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (cv.hasPointerCapture?.(e.pointerId)) cv.releasePointerCapture(e.pointerId);
+    box.hidden = true;
+    if (cancelled) { if (d.type === "lane") { sources.forEach((s, i) => { s.weights = d.before.w[i]; }); } refreshAll(); return; }
+    if (d.type === "zoom") {
+      const l = Math.min(d.a.x, d.b.x), r = Math.max(d.a.x, d.b.x), t = Math.min(d.a.y, d.b.y), b = Math.max(d.a.y, d.b.y);
+      if (r - l >= 6 && b - t >= 6) {
+        const idx = (x) => geo.iMin + ((x - geo.xs) / (geo.xe - geo.xs)) * (geo.iMax - geo.iMin);
+        zoom = { iMin: idx(l), iMax: idx(r), vMin: geo.valueAt(b), vMax: geo.valueAt(t) };
+        schedule();
+      }
+    } else if (d.type === "marquee") {
+      if (Math.abs(d.b.x - d.a.x) < 4 && Math.abs(d.b.y - d.a.y) < 4) { selection = d.base; schedule(); }
+      else showSelbar({ x: Math.max(d.a.x, d.b.x) - Math.abs(d.b.x - d.a.x) / 2, y: Math.max(d.a.y, d.b.y) });
+    } else if (d.type === "point") {
+      const p = pt(e);
+      if (Math.hypot(p.x - d.a.x, p.y - d.a.y) < 4) {
+        if (e.ctrlKey || e.metaKey) {
+          const key = `${d.h.si}:${d.h.r}`;
+          selection.has(key) ? selection.delete(key) : selection.add(key);
+          showSelbar({ x: d.h.x, y: d.h.y + 6 }); schedule();
+        } else { activeRow = d.h.r; toggleWeight(d.h.si, d.h.r); }
+      }
+    } else if (d.type === "su") {
+      hideTip();
+      if (!d.moved) { setActive(d.r); return; }
+      const before = snapshot();
+      activeRow = d.r;
+      if (d.snap != null) {
+        sources.forEach((s, k) => { s.weights[d.r] = k === d.snap ? 1 : 0; });
+        delete overrides[d.r];
+        commit(`${origins[d.r]} uses only ${sources[d.snap].name}`, before);
+      } else {
+        overrides[d.r] = d.preview;
+        commit(`${origins[d.r]} custom ultimate ${fmt(d.preview)}`, before);
+      }
+    } else if (d.type === "lane") {
+      hideTip();
+      const changed = sources.some((s, i) => s.weights[d.r] !== d.before.w[i][d.r]);
+      if (changed) commit(`${origins[d.r]} weight shifted between ${sources[d.a].name} and ${sources[d.b].name}`, d.before);
+      else refreshAll();
+    }
+  }
+  cv.addEventListener("pointerup", (e) => endDrag(e, false));
+  cv.addEventListener("pointercancel", (e) => endDrag(e, true));
+  cv.addEventListener("pointerleave", () => { if (!drag) hideTip(); });
+  cv.addEventListener("dblclick", (e) => {
+    const h = mode === "weights" ? hitPoint(pt(e)) : null;
+    if (h?.kind === "su" && h.r in overrides) { revert(h.r); return; }
+    if (!h && zoom) { zoom = null; schedule(); }
+  });
+  cv.addEventListener("contextmenu", (e) => {
+    const h = hitPoint(pt(e));
+    if (!h || mode !== "weights") return;
+    e.preventDefault(); hideTip(); openMenu(e, h);
+  });
+  cv.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { setActive(activeRow - 1); e.preventDefault(); }
+    else if (e.key === "ArrowRight") { setActive(activeRow + 1); e.preventDefault(); }
+    else if (e.key === "Escape") { clearSelection(); closeMenu(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && document.activeElement?.tagName !== "INPUT") { undo(); e.preventDefault(); }
+    if (e.key === "Escape") closeMenu();
+  });
+  document.addEventListener("pointerdown", (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(); });
+
+  // ---------- Toolbar ----------
+  function setMode(next) {
+    mode = next;
+    $("modeWeights").classList.toggle("on", mode === "weights");
+    $("modeZoom").classList.toggle("on", mode === "zoom");
+    $("modeWeights").setAttribute("aria-pressed", String(mode === "weights"));
+    $("modeZoom").setAttribute("aria-pressed", String(mode === "zoom"));
+    $("hint").textContent = mode === "weights"
+      ? "Click a point to include or exclude it · drag a box to select · drag the black point to override"
+      : "Drag a box to zoom · double-click to restore the full view";
+    clearSelection(); hideTip(); schedule();
+  }
+  $("modeWeights").addEventListener("click", () => setMode("weights"));
+  $("modeZoom").addEventListener("click", () => setMode("zoom"));
+  $("showLane").addEventListener("change", schedule);
+  $("sizeByWeight").addEventListener("change", schedule);
+  $("undoBtn").addEventListener("click", undo);
+  $("resetZoom").addEventListener("click", () => { zoom = null; schedule(); });
+  $("selSet").addEventListener("click", () => applySelection("set"));
+  $("selOnly").addEventListener("click", () => applySelection("only"));
+  $("selClear").addEventListener("click", () => applySelection("clear"));
+  $("selClose").addEventListener("click", clearSelection);
+  $("prevRow").addEventListener("click", () => setActive(activeRow - 1));
+  $("nextRow").addEventListener("click", () => setActive(activeRow + 1));
+  $("inspRevert").addEventListener("click", () => revert(activeRow));
+  $("saveBtn").addEventListener("click", () => { changeCount = 0; undoStack.length = 0; setLog("Saved. The method grid and output vector use these weights."); refreshAll(); toast("Result Selection saved"); });
+
+  refreshAll();
+})();
+</script>
+</body>
+</html>

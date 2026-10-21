@@ -140,6 +140,46 @@
         }
         postDirty(true);
         postResultSelectionDependencyPreview();
+        ctx.rsHistory?.noteEdit(historyEditKey());
+      }
+
+      // Repeated typing into one field, or digits typed into one highlighted
+      // Weight range, merges into a single undo step.
+      function historyEditKey() {
+        if (state.weightEditSession?.key) return `weights:${state.weightEditSession.key}`;
+        const active = document.activeElement;
+        if (!isTypingTarget(active)) return "";
+        return `field:${active.id || active.name || active.className || active.tagName}`;
+      }
+
+      // A field the person types into; a checkbox or button keeps page undo.
+      function isTypingTarget(target) {
+        const field = target?.closest?.("input,textarea,select,[contenteditable='true']");
+        if (!field) return false;
+        return !(field.tagName === "INPUT" && /^(checkbox|radio|button|submit|reset|range|color)$/i.test(field.type));
+      }
+
+      function syncHistoryControls() {
+        const blocked = !!state.loadBlocked;
+        if (els.undoBtn) els.undoBtn.disabled = blocked || !ctx.rsHistory?.canUndo;
+        if (els.redoBtn) els.redoBtn.disabled = blocked || !ctx.rsHistory?.canRedo;
+      }
+
+      async function runHistory(direction) {
+        const history = ctx.rsHistory;
+        if (!history || history.applying) return false;
+        if (state.loadBlocked || state.initialLoadPending || state.persistedMutationInFlight) {
+          postStatus("Wait for the Result Selection to finish loading or saving before undoing.", "warn");
+          return false;
+        }
+        try {
+          const moved = direction === "redo" ? await history.redo() : await history.undo();
+          if (moved) postStatus(direction === "redo" ? "Redid the last undone change." : "Undid the last change.");
+          return moved;
+        } catch (err) {
+          postStatus(`Result Selection ${direction} failed: ${err?.message || err}`, "error");
+          return false;
+        }
       }
 
       function syncLoadBlockedControls() {
@@ -168,6 +208,7 @@
         for (const control of controls) {
           if (control) control.disabled = blocked;
         }
+        syncHistoryControls();
       }
 
       function sourceMessageNames(message = {}) {
@@ -344,6 +385,8 @@
           else if (index < state.sources.length) state.sources[index] = built;
         }
         renderMethodGrid();
+        // Undo must not bring back source values that changed upstream.
+        ctx.rsHistory?.reset();
         return true;
       }
 
@@ -421,6 +464,7 @@
           renderMethodGrid();
         }
         reapplyActiveDependencyPreviews();
+        ctx.rsHistory?.reset();
         postStatus(
           state.needsReview
             ? `Result Selection still needs review after ${reason}.`
@@ -590,6 +634,7 @@
           state.hasDependencyPreview = state.dependencyPreviews.size > 0;
           renderMethodGrid();
           if (options.publish !== false) postResultSelectionDependencyPreview();
+          ctx.rsHistory?.reset();
         }
         return changed;
       }
@@ -1236,6 +1281,16 @@
             closeRatioBasisContextMenu();
             return;
           }
+          // A text field keeps its own typing undo; everywhere else Ctrl+Z and
+          // Ctrl+Y (or Ctrl+Shift+Z) step through the whole method's history.
+          const historyKey = (event.ctrlKey || event.metaKey) && !event.altKey
+            ? String(event.key || "").toLowerCase()
+            : "";
+          if ((historyKey === "z" || historyKey === "y") && !isTypingTarget(event.target)) {
+            event.preventDefault();
+            void runHistory(historyKey === "y" || event.shiftKey ? "redo" : "undo");
+            return;
+          }
           if (handleMethodHighlightArrowKey(event)) return;
           if (handleResultsHighlightArrowKey(event)) return;
           if (
@@ -1420,6 +1475,8 @@
             },
           });
         });
+        els.undoBtn?.addEventListener("click", () => void runHistory("undo"));
+        els.redoBtn?.addEventListener("click", () => void runHistory("redo"));
         els.saveBtn?.addEventListener("click", () => {
           saveResultSelection()
             // A save keeps the window open; only Cancel and a confirmed dirty
@@ -1571,6 +1628,7 @@
         }
         setTab(state.activeTab);
         markClean();
+        ctx.rsHistory?.reset();
         void ctx.refreshDetailsDependencies?.();
         if (loadError) {
           syncLoadBlockedControls();
@@ -1605,6 +1663,8 @@
         postDirty,
         setNeedsReview,
         markDirty,
+        syncHistoryControls,
+        runHistory,
         sourceMessageNames,
         sourceMessageMatchesContext,
         sourceMessageMatchesSource,

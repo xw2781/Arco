@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/ui/shared/components/workspace/workspace.css?v=20260721a"/>
   <link rel="stylesheet" href="/ui/shared/components/context_menu/context_menu.css?v=20260715a"/>
   <link rel="stylesheet" href="/ui/shared/components/chart_legend/chart_legend.css?v=20260724b"/>
-  <link rel="stylesheet" href="/ui/method_pages/result_selection/result_selection.css?v=20260927b"/>
+  <link rel="stylesheet" href="/ui/method_pages/result_selection/result_selection.css?v=20261021a"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/light.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/dark.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/revolutionary.css?v=20260923c"/>
@@ -162,14 +162,63 @@
     </section>
     <section id="rsChartPage" data-page="chart" class="rsPage" role="tabpanel">
       <section class="rsChartPanel" aria-label="Dataset Vectors">
-        <div class="rsChartBody">
+        <div class="rsChartToolbar" role="toolbar" aria-label="Chart tools">
+          <span class="rsChartToolLabel">Mode</span>
+          <div class="rsChartSegment" role="group" aria-label="Chart mode">
+            <button id="rsChartModeWeights" type="button" aria-pressed="true">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 13h10M5 13V8M8 13V4M11 13V6.5"/></svg>Edit Weights
+            </button>
+            <button id="rsChartModeZoom" type="button" aria-pressed="false">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.5 13.5M5.3 7h3.4M7 5.3v3.4"/></svg>Zoom
+            </button>
+          </div>
+          <span class="rsChartToolSeparator" aria-hidden="true"></span>
+          <label class="rsChartToolCheck"><input id="rsChartShowStrip" type="checkbox" checked/> Weight Strip</label>
+          <span class="rsChartToolSpacer"></span>
+          <button id="rsChartFullView" class="rsChartToolButton" type="button" disabled>Full View</button>
+        </div>
+        <div class="rsChartBody" id="rsChartBody">
           <div class="rsChartPlot">
-            <canvas class="rsChartCanvas" id="rsChartCanvas" role="img"></canvas>
+            <canvas class="rsChartCanvas" id="rsChartCanvas" role="img" tabindex="0"></canvas>
             <div class="rsChartEmpty" id="rsChartEmpty">Add a source dataset to plot vectors.</div>
             <div class="rsChartZoomBox" id="rsChartZoomBox" hidden></div>
             <div class="rsChartTooltip" id="rsChartTooltip" role="status" hidden></div>
+            <div class="rsChartSideResizer" id="rsChartSideResizer" role="separator" aria-orientation="vertical" aria-label="Resize side panel" tabindex="0" title="Drag to resize; double-click to reset"></div>
+            <div class="rsChartSelectionBar" id="rsChartSelectionBar" role="group" aria-label="Selected points" hidden>
+              <span class="rsChartSelectionCount" id="rsChartSelectionCount"></span>
+              <input id="rsChartSelectionWeight" class="rsChartSelectionWeight" type="number" min="0" step="1" value="1.0" aria-label="Weight for the selected points"/>
+              <button id="rsChartSelectionSet" class="rsChartToolButton rsChartPrimaryButton" type="button">Set Weight</button>
+              <button id="rsChartSelectionOnly" class="rsChartToolButton" type="button" title="The selected points get this weight and every other method in their origins gets 0">Use Only These</button>
+              <button id="rsChartSelectionExclude" class="rsChartToolButton" type="button">Exclude</button>
+              <button id="rsChartSelectionClose" class="rsChartIconButton" type="button" aria-label="Clear selection">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg>
+              </button>
+            </div>
           </div>
-          <aside class="arChartLegendPanel" aria-labelledby="rsChartLegendTitle">
+          <aside class="arChartLegendPanel rsChartSide" id="rsChartSide" aria-labelledby="rsChartLegendTitle">
+            <section class="rsChartInspector" aria-labelledby="rsChartInspectorTitle">
+              <div class="rsChartInspectorHeader">
+                <h3 class="rsChartInspectorTitle" id="rsChartInspectorTitle">Origin</h3>
+                <span class="rsChartInspectorNav">
+                  <button id="rsChartInspectorPrev" class="rsChartIconButton" type="button" aria-label="Previous origin">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7.5 2.5 4 6l3.5 3.5"/></svg>
+                  </button>
+                  <button id="rsChartInspectorNext" class="rsChartIconButton" type="button" aria-label="Next origin">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg>
+                  </button>
+                </span>
+              </div>
+              <table class="rsChartInspectorTable">
+                <thead><tr><th>Method</th><th>Value</th><th>Weight</th><th>Eff.</th></tr></thead>
+                <tbody id="rsChartInspectorBody"></tbody>
+              </table>
+              <div class="rsChartInspectorUltimate">
+                <span>Selected Ultimate</span>
+                <span class="rsChartInspectorUltimateValue" id="rsChartInspectorUltimate"></span>
+                <span class="rsChartInspectorCalculated" id="rsChartInspectorCalculated"></span>
+                <button id="rsChartInspectorRevert" class="rsChartLinkButton" type="button" hidden>Revert To Calculated</button>
+              </div>
+            </section>
             <div class="arChartLegendHeader">
               <h3 class="arChartLegendTitle" id="rsChartLegendTitle">Columns</h3>
               <span class="arChartLegendCount" id="rsChartLegendCount"></span>
@@ -195,6 +244,14 @@
     </section>
   </div>
   <div class="rsSaveBar">
+    <span class="rsHistoryButtons" role="group" aria-label="Undo history">
+      <button id="rsUndoBtn" class="rsHistoryBtn" type="button" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M5.5 4 2.5 7l3 3"/><path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H8"/></svg>
+      </button>
+      <button id="rsRedoBtn" class="rsHistoryBtn" type="button" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10.5 4l3 3-3 3"/><path d="M13 7H6.5a3.5 3.5 0 0 0 0 7H8"/></svg>
+      </button>
+    </span>
     <button id="rsSaveBtn" class="rsSaveBtn is-clean" type="button" disabled>Save</button>
     <button id="rsCancelBtn" class="rsCancelBtn" type="button" disabled>Cancel</button>
   </div>
@@ -211,14 +268,15 @@
     <button type="button" data-rs-source-action="add">Add</button>
     <button type="button" data-rs-source-action="delete">Delete</button>
   </div>
+  <div id="rsChartMenu" class="rsCellContextMenu rsChartMenu" role="menu" aria-hidden="true"></div>
   <div id="rsRatioBasisContextMenu" class="rsCellContextMenu rsRatioBasisContextMenu" role="menu" aria-hidden="true">
     <button type="button" role="menuitem" data-rs-ratio-basis-action="delete">Delete</button>
   </div>
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
-  <script src="/ui/method_pages/result_selection/result_selection_ui.js?v=20260924a"></script>
-  <script src="/ui/method_pages/result_selection/result_selection_data.js?v=20260916a"></script>
-  <script src="/ui/method_pages/result_selection/result_selection_grids.js?v=20260924a"></script>
-  <script src="/ui/method_pages/result_selection/result_selection_model.js?v=20260913a"></script>
-  <script type="module" src="/ui/method_pages/result_selection/result_selection_main.js?v=20261020a"></script>
+  <script src="/ui/method_pages/result_selection/result_selection_ui.js?v=20261020a"></script>
+  <script src="/ui/method_pages/result_selection/result_selection_data.js?v=20261020a"></script>
+  <script src="/ui/method_pages/result_selection/result_selection_grids.js?v=20261020a"></script>
+  <script src="/ui/method_pages/result_selection/result_selection_model.js?v=20261020a"></script>
+  <script type="module" src="/ui/method_pages/result_selection/result_selection_main.js?v=20261020b"></script>
 </body>
 </html>

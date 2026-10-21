@@ -734,7 +734,7 @@ test("changed theme and chart owners are reached through current cache-version c
     ["../ui/dataset_viewer/tabs/dataset_chart_tab.js", "dataset_chart_renderer.js?v=20261020d"],
     ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html", "bornhuetter_ferguson_main.js?v=20261020a"],
     ["../ui/method_pages/cape_cod/cape_cod.html", "cape_cod_main.js?v=20261020a"],
-    ["../ui/method_pages/result_selection/result_selection.html", "result_selection_main.js?v=20261020a"],
+    ["../ui/method_pages/result_selection/result_selection.html", "result_selection_main.js?v=20261020b"],
     ["../ui/method_pages/dfm/dfm.html", "dfm_main.js?v=20260927smb19"],
     ["../ui/project_settings/project_settings.html", "project_settings.js?v=20261013group1"],
     ["../ui/project_settings/project_settings.js", "project_settings_dataset_types.js?v=20261013group1"],

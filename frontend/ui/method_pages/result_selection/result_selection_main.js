@@ -40,7 +40,8 @@ import {
 import {
   buildResultSelectionChartSeries,
   createResultSelectionChart,
-} from "/ui/method_pages/result_selection/result_selection_chart.js?v=20260916b";
+} from "/ui/method_pages/result_selection/result_selection_chart.js?v=20261021a";
+import { createResultSelectionHistory } from "/ui/method_pages/result_selection/result_selection_history.js?v=20261020a";
 import { readProjectInstanceDatasetSnapshot } from "/ui/shared/dataset/project_instance_dataset_snapshot.js?v=20260725a";
 import {
   resultSelectionUpdateContexts,
@@ -204,10 +205,13 @@ const els = {
   chartEmpty: document.getElementById("rsChartEmpty"),
   chartTooltip: document.getElementById("rsChartTooltip"),
   chartZoomBox: document.getElementById("rsChartZoomBox"),
+  chartMenu: document.getElementById("rsChartMenu"),
   resultsGrid: document.getElementById("rsResultsGrid"),
   auditLogMount: document.getElementById("rsAuditLogMount"),
   saveBar: document.querySelector(".rsSaveBar"),
   saveBtn: document.getElementById("rsSaveBtn"),
+  undoBtn: document.getElementById("rsUndoBtn"),
+  redoBtn: document.getElementById("rsRedoBtn"),
   cancelBtn: document.getElementById("rsCancelBtn"),
   notesInput: rsNotesController.elements.input,
   cellContextMenu: document.getElementById("rsCellContextMenu"),
@@ -326,6 +330,13 @@ Object.defineProperties(ctx, {
   },
 });
 
+// Page-wide undo/redo over whole-method snapshots; see result_selection_history.js.
+ctx.rsHistory = createResultSelectionHistory({
+  capture: () => ctx.snapshotPayload(),
+  restore: (snapshot) => ctx.restoreHistorySnapshot(snapshot),
+  onStateChange: () => ctx.syncHistoryControls?.(),
+});
+
 function installResultSelectionPart(name, installer) {
   if (typeof installer !== "function") {
     throw new Error(`Result Selection ${name} module failed to load.`);
@@ -346,6 +357,71 @@ const rsChart = createResultSelectionChart({
   emptyState: els.chartEmpty,
   tooltip: els.chartTooltip,
   zoomBox: els.chartZoomBox,
+  menu: els.chartMenu,
+  toolbar: {
+    weightsModeButton: document.getElementById("rsChartModeWeights"),
+    zoomModeButton: document.getElementById("rsChartModeZoom"),
+    stripToggle: document.getElementById("rsChartShowStrip"),
+    fullViewButton: document.getElementById("rsChartFullView"),
+  },
+  selectionBar: {
+    root: document.getElementById("rsChartSelectionBar"),
+    count: document.getElementById("rsChartSelectionCount"),
+    weightInput: document.getElementById("rsChartSelectionWeight"),
+    setButton: document.getElementById("rsChartSelectionSet"),
+    onlyButton: document.getElementById("rsChartSelectionOnly"),
+    excludeButton: document.getElementById("rsChartSelectionExclude"),
+    closeButton: document.getElementById("rsChartSelectionClose"),
+  },
+  sidePanel: {
+    body: document.getElementById("rsChartBody"),
+    panel: document.getElementById("rsChartSide"),
+    resizer: document.getElementById("rsChartSideResizer"),
+  },
+  inspector: {
+    title: document.getElementById("rsChartInspectorTitle"),
+    prevButton: document.getElementById("rsChartInspectorPrev"),
+    nextButton: document.getElementById("rsChartInspectorNext"),
+    body: document.getElementById("rsChartInspectorBody"),
+    ultimate: document.getElementById("rsChartInspectorUltimate"),
+    calculated: document.getElementById("rsChartInspectorCalculated"),
+    revertButton: document.getElementById("rsChartInspectorRevert"),
+  },
+  // A chart edit goes through the same weight and override setters as the
+  // Method grid, so it is one ordinary method change and one undo step.
+  onEdit: ({ label, weights, ultimates }) => {
+    if (state.loadBlocked) {
+      ctx.markDirty();
+      return;
+    }
+    for (const change of weights) ctx.setWeightValue(change.sourceIndex, change.rowIndex, change.weight);
+    for (const change of ultimates) {
+      if (change.value === null) ctx.clearUltimateOverride(change.rowIndex);
+      else ctx.setUltimateOverride(change.rowIndex, change.value);
+    }
+    ctx.markDirty();
+    ctx.renderMethodGrid();
+    if (label) ctx.postStatus(label);
+  },
+  // Live Weight-strip drags preview a row through the page's own calculation,
+  // with the dragged weights applied only for the duration of the call.
+  previewRow: (rowIndex, weightsBySource) => {
+    const saved = [];
+    for (const [sourceIndex, weight] of weightsBySource) {
+      const source = state.sources[sourceIndex];
+      if (!source) continue;
+      saved.push([source, source.weights[rowIndex]]);
+      source.weights[rowIndex] = weight;
+    }
+    try {
+      return {
+        ultimate: ctx.selectedUltimateAt(rowIndex),
+        effective: new Map(state.sources.map((_, sourceIndex) => [sourceIndex, ctx.effectiveWeightAt(sourceIndex, rowIndex) ?? 0])),
+      };
+    } finally {
+      for (const [source, weight] of saved) source.weights[rowIndex] = weight;
+    }
+  },
 });
 
 ctx.renderResultSelectionChart = function renderResultSelectionChart() {
@@ -358,6 +434,9 @@ ctx.renderResultSelectionChart = function renderResultSelectionChart() {
       sources: state.sources,
       sourceIndexes,
       selectedUltimateValues: ctx.selectedUltimateVector(),
+      calculatedUltimateValues: ctx.calculatedUltimateVector(),
+      overriddenRows: Array.from({ length: rowCount }, (_, index) => ctx.isUltimateOverridden(index)),
+      effectiveWeightAt: ctx.effectiveWeightAt,
       selectedUltimateLabel: "Selected Ultimate",
       rowCount,
     }),

@@ -1,0 +1,18 @@
+{
+  "type": "feature",
+  "scope": "result selection",
+  "audience": "user",
+  "summary": "Set Result Selection weights directly on the Chart tab, and undo or redo any Result Selection change.",
+  "details": [
+    "Click a point to include or exclude that method for that origin; included points are filled and sized by their share.",
+    "Drag a box over points to give them one weight, use only them, or exclude them.",
+    "The Weight strip under the chart shows each origin's split; drag a divider to shift weight between two methods.",
+    "Drag the Selected Ultimate point to enter a custom ultimate, or release it on a method's point to use only that method; double-click reverts.",
+    "Right-click a point to use only that method for one origin or from that origin on.",
+    "The Origin panel beside the chart lists every method's value, weight, and share for one origin, with weights you can type.",
+    "Weight boxes step by 1.0 with their arrows or the mouse wheel, and Edit Weights mode shows a pencil pointer over the chart.",
+    "Drag the side panel's left edge to make it wider or narrower; double-click the edge to reset it.",
+    "Zoom mode keeps the box zoom; Full View or a double-click restores the whole chart.",
+    "Undo and Redo buttons, Ctrl+Z, and Ctrl+Y step through every change on every tab until the window closes."
+  ]
+}

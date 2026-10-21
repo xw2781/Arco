@@ -1422,6 +1422,7 @@
         applyMethodHighlightDom();
         renderResultsGrid();
         ctx.renderResultSelectionChart?.();
+        ctx.rsHistory?.noteRender();
       }
 
       function renderResultsGrid() {

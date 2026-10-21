@@ -148,8 +148,12 @@
         return true;
       }
 
+      // The save time is left out so two snapshots of the same method compare
+      // equal, which undo relies on to tell a clean state from a dirty one.
       function snapshotPayload() {
-        return JSON.stringify({ method: buildPayload(), notes: els.notesInput?.value || "" });
+        const method = buildPayload();
+        delete method.method_metadata;
+        return JSON.stringify({ method, notes: els.notesInput?.value || "" });
       }
 
       function markClean() {

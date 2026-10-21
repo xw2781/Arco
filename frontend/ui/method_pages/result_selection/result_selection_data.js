@@ -795,6 +795,24 @@
         markClean();
       }
 
+      // Undo and redo land on a snapshot taken by the page history. Source and
+      // Ratio Basis loads still in flight belong to the state being left, so
+      // their sequence numbers move on and their results are dropped.
+      async function restoreHistorySnapshot(snapshotText) {
+        const snapshot = JSON.parse(snapshotText);
+        state.sourceReloadSeq = Number(state.sourceReloadSeq || 0) + 1;
+        state.ratioBasisReloadSeq = Number(state.ratioBasisReloadSeq || 0) + 1;
+        await applyPayload(snapshot.method || {});
+        setNotesText(String(snapshot.notes ?? ""));
+        if (snapshotText === cleanSnapshot) {
+          clearResultSelectionDependencyPreview("clean");
+          postDirty(false, true);
+        } else {
+          postDirty(true);
+          postResultSelectionDependencyPreview();
+        }
+      }
+
       async function openRatioBasisDatasetPicker() {
         const names = getRatioBasisNames();
         if (names.length >= MAX_RATIO_BASIS_COUNT) {
@@ -891,6 +909,7 @@
         useOrRefreshRatioBasisValues,
         refreshMissingRatioBasisValues,
         restoreCleanState,
+        restoreHistorySnapshot,
         openRatioBasisDatasetPicker
       };
     }
