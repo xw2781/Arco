@@ -225,11 +225,10 @@ test("Details fields and the shared dependency surface stay readable in Dark mod
   const dark = read("../ui/shared/styles/themes/dark.css");
   const control = declarationsFor(dark, "#dsDetailsPage .arDetailsControl");
   const readonly = declarationsFor(dark, "#dsDetailsPage :is(.arDetailsControl[readonly]");
-  // The chips, the formula field, and the tooltip are one surface the Dataset
+  // The Data Flow map and the formula field are one surface the Dataset
   // Viewer and all five method pages share, so Dark mode moves its tokens
   // rather than repainting each page.
   const surface = declarationsFor(dark, ":root[data-arcrho-theme=\"dark\"] .arDetailsRoot");
-  const tooltip = declarationsFor(dark, ".arDetailsFormulaTooltip");
 
   assert.match(control, /background-color:\s*var\(--ar-color-input\)/);
   assert.match(control, /color:\s*var\(--ar-color-text-strong\)/);
@@ -240,7 +239,8 @@ test("Details fields and the shared dependency surface stay readable in Dark mod
   // The formula carries no chip or token shape any more: a source name is body
   // text and an operator is quiet punctuation - colour only, no fill.
   assert.match(surface, /--ar-details-formula-operator:\s*var\(--ar-color-text-muted\)/);
-  assert.match(tooltip, /background-color:\s*var\(--ar-color-surface-raised\)/);
+  // The map shows no tooltips, so the theme keeps no rule for one.
+  assert.doesNotMatch(dark, /arDetailsFormulaTooltip/u);
   // No page may repaint the shared surface behind the tokens' back.
   assert.doesNotMatch(dark, /dsFormulaComponent|dsDependentLink|dsDatasetChipBox/u);
 });
@@ -728,8 +728,8 @@ test("DFM Ratios dark mode keeps exclusions visible and selected averages restra
 
 test("changed theme and chart owners are reached through current cache-version chains", () => {
   const expectedReferences = [
-    ["../ui/dataset_viewer/dataset_viewer.html", "dataset_viewer_main.js?v=20261020d"],
-    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_viewer_view.js?v=20261020d"],
+    ["../ui/dataset_viewer/dataset_viewer.html", "dataset_viewer_main.js?v=20261021b"],
+    ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_viewer_view.js?v=20261021a"],
     ["../ui/dataset_viewer/dataset_viewer_main.js", "dataset_chart_tab.js?v=20261020g"],
     ["../ui/dataset_viewer/tabs/dataset_chart_tab.js", "dataset_chart_renderer.js?v=20261020d"],
     ["../ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html", "bornhuetter_ferguson_main.js?v=20261020a"],

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
 <link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261021f">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/table_colors_window.css?v=20261003a">
@@ -52,21 +52,11 @@
 
                 <div class="arDetailsSection">
                   <div class="bfFieldGrid arDetailsGrid">
-                    <label class="bfLabel arDetailsLabel" for="bfLatestInput">Latest : </label>
-                    <div class="bfFieldControl arDetailsField withPicker">
-                      <input class="bfInput arDetailsControl" id="bfLatestInput" type="text" readonly>
-                      <button class="bfIconButton" id="bfLatestBtn" type="button" title="Select latest" aria-label="Select latest">...</button>
-                    </div>
-                    <label class="bfLabel arDetailsLabel" for="bfDfmInput">Development Pattern : </label>
-                    <div class="bfFieldControl arDetailsField withPicker">
-                      <input class="bfInput arDetailsControl" id="bfDfmInput" type="text" readonly>
-                      <button class="bfIconButton" id="bfDfmBtn" type="button" title="Select development pattern" aria-label="Select development pattern">...</button>
-                    </div>
-                    <label class="bfLabel arDetailsLabel bfPriorLabel" for="bfPriorAddBtn">Prior Vector : </label>
-                    <div class="bfFieldControl arDetailsField bfPriorPicker">
-                      <div class="bfPriorList" id="bfPriorList" role="list" aria-label="Selected prior vectors"></div>
-                    </div>
-                    <label class="arDetailsLabel" id="bfDependenciesLabel">Dependencies : </label>
+                    <!-- Latest, Development Pattern and Prior Vector are chosen on
+                         the Data Flow map; these hold the chosen names. -->
+                    <input id="bfLatestInput" type="hidden">
+                    <input id="bfDfmInput" type="hidden">
+                    <label class="arDetailsLabel" id="bfDependenciesLabel">Data Flow : </label>
                     <div class="arDetailsField">
                       <div id="bfDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="bfDependenciesLabel" aria-live="polite"></div>
                     </div>
@@ -184,10 +174,6 @@
     <button type="button" role="menuitem" data-bf-cell-action="paste">Paste values</button>
     <button type="button" role="menuitem" data-bf-cell-action="remove-highlights">Remove Highlights</button>
     <button type="button" role="menuitem" data-bf-cell-action="table-colors" data-table-colors></button>
-  </div>
-
-  <div class="bfCellContextMenu bfPriorContextMenu" id="bfPriorContextMenu" role="menu" aria-hidden="true">
-    <button type="button" role="menuitem" data-bf-prior-action="delete">Delete</button>
   </div>
 
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>

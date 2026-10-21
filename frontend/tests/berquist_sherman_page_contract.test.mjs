@@ -18,8 +18,10 @@ const [html, main, css] = await Promise.all([
 ]);
 
 test("every B&S source picker uses a calculation role key", () => {
+  // The sources are chosen on the Data Flow map from these definitions.
+  const definitions = main.match(/const ROLE_DEFINITIONS = Object\.freeze\(\{[\s\S]*?\n\}\);/u)?.[0] || "";
   const roles = Array.from(
-    html.matchAll(/data-picker-role="([^"]+)"/gu),
+    definitions.matchAll(/key: "([^"]+)"/gu),
     (match) => match[1],
   );
   // Both variants list their sources in the ResQ Details tab order.
@@ -32,7 +34,7 @@ test("every B&S source picker uses a calculation role key", () => {
     "reported_claim_numbers",
     "closed_claim_numbers",
   ]);
-  assert.doesNotMatch(html, /data-picker-role="(?:sr|cra)_/u);
+  assert.doesNotMatch(definitions, /key: "(?:sr|cra)_/u);
 });
 
 test("B&S rejects source format and period mismatches", () => {

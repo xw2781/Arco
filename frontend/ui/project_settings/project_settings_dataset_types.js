@@ -15,7 +15,7 @@ import {
 } from "/ui/project_settings/project_settings_dataset_types_job.js?v=20260927smb18";
 import { createDatasetTypeCategoryCombo } from "/ui/project_settings/project_settings_dataset_type_category_combo.js?v=20260811dtcategory1";
 import { createDatasetTypeFormatSelect } from "/ui/project_settings/project_settings_dataset_type_format_select.js?v=20260812dtformat2";
-import { formatDetailsFormulaText } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { formatDetailsFormulaText } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { createTableGroupRow } from "/ui/shared/components/table_group_row/table_group_row.js?v=20261013a";
 import {
   clearTableSkeletonRows,

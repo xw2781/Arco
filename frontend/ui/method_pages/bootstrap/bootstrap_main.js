@@ -9,7 +9,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -147,8 +147,6 @@ const els = {
   outputTypeBtn: document.getElementById("bstOutputTypeBtn"),
   projectInput: document.getElementById("bstProjectInput"),
   classInput: document.getElementById("bstClassInput"),
-  dfmInput: document.getElementById("bstDfmInput"),
-  dfmBtn: document.getElementById("bstDfmBtn"),
   originLengthInput: document.getElementById("bstOriginLengthInput"),
   developmentLengthInput: document.getElementById("bstDevelopmentLengthInput"),
   modelControl: document.getElementById("bstModelControl"),
@@ -524,7 +522,13 @@ function renderSettingsControls() {
   els.nameInput.value = s.name;
   els.nameInput.readOnly = state.persisted;
   els.outputTypeInput.value = s.outputType;
-  els.dfmInput.value = s.dfmMethod;
+  // The DFM is chosen on the Details Data Flow map.
+  detailsDependencies.setInputs([{
+    key: "dfm",
+    label: "DFM",
+    values: [s.dfmMethod].filter(Boolean),
+    pick: (anchor) => openPicker("dfm", anchor),
+  }]);
   const snapshot = dfmSnapshot();
   els.originLengthInput.value = snapshot.origin_length ? String(snapshot.origin_length) : "";
   els.developmentLengthInput.value = snapshot.development_length ? String(snapshot.development_length) : "";
@@ -1260,7 +1264,6 @@ function wireInputs() {
     markDirty();
   });
   els.outputTypeBtn.addEventListener("click", () => openPicker("output", els.outputTypeBtn));
-  els.dfmBtn.addEventListener("click", () => openPicker("dfm", els.dfmBtn));
   els.targetBtn.addEventListener("click", () => openPicker("target", els.targetBtn));
   els.targetClearBtn.addEventListener("click", () => {
     updateSetting("targetUltimate", "");

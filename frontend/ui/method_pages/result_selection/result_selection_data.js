@@ -813,50 +813,44 @@
         }
       }
 
-      async function openRatioBasisDatasetPicker() {
+      async function openRatioBasisDatasetPicker(anchor) {
         const names = getRatioBasisNames();
         if (names.length >= MAX_RATIO_BASIS_COUNT) {
           postStatus(`A maximum of ${MAX_RATIO_BASIS_COUNT} Ratio Basis datasets is allowed.`, "warn");
           return;
         }
         const input = (els.ratioBasisInputs || []).find((candidate) => candidate && !text(candidate.value)) || null;
-        const button = els.ratioBasisAddButton || null;
         if (!input) return;
         if (!state.project) {
           postStatus("Select a project before choosing a Ratio Basis dataset.", "warn");
           return;
         }
         await ensureDatasetCatalogLoaded();
-        if (button) button.disabled = true;
-        try {
-          await openDatasetNamePicker({
-            projectName: state.project,
-            initialName: "",
-            anchorElement: button,
-            title: "Add Ratio Basis",
-            includeCalculated: true,
-            setStatus: (message) => {
-              const msg = text(message);
-              if (msg) postStatus(msg, "warn");
-            },
-            onError: (err) => {
-              console.error("Failed to open Ratio Basis picker:", err);
-              postStatus(`Error loading ratio-basis dataset names: ${String(err?.message || err)}`, "error");
-            },
-            onSelect: (name) => {
-              const selected = text(name);
-              if (!selected) return;
-              if (matchRatioBasisName(selected, getRatioBasisNames())) {
-                postStatus(`Ratio Basis is already selected: ${selected}`, "warn");
-                return;
-              }
-              input.value = selected;
-              input.dispatchEvent(new Event("change", { bubbles: true }));
-            },
-          });
-        } finally {
-          if (button) button.disabled = getRatioBasisNames().length >= MAX_RATIO_BASIS_COUNT;
-        }
+        await openDatasetNamePicker({
+          projectName: state.project,
+          initialName: "",
+          anchorElement: anchor instanceof Element ? anchor : null,
+          title: "Add Ratio Basis",
+          includeCalculated: true,
+          setStatus: (message) => {
+            const msg = text(message);
+            if (msg) postStatus(msg, "warn");
+          },
+          onError: (err) => {
+            console.error("Failed to open Ratio Basis picker:", err);
+            postStatus(`Error loading ratio-basis dataset names: ${String(err?.message || err)}`, "error");
+          },
+          onSelect: (name) => {
+            const selected = text(name);
+            if (!selected) return;
+            if (matchRatioBasisName(selected, getRatioBasisNames())) {
+              postStatus(`Ratio Basis is already selected: ${selected}`, "warn");
+              return;
+            }
+            input.value = selected;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          },
+        });
       }
 
       return {

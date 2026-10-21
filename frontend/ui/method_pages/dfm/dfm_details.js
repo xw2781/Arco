@@ -15,8 +15,12 @@ import {
 import { resetRatioChartThresholds } from "/ui/method_pages/dfm/dfm_ratios_tab.js?v=20260927smb19";
 import {
   scheduleRatioSelectionLoad,
-} from "/ui/method_pages/dfm/dfm_persistence.js?v=20261020a";
+} from "/ui/method_pages/dfm/dfm_persistence.js?v=20261021b";
 import { openDatasetNamePicker } from "/ui/shared/components/pickers/dataset_name_picker.js";
+import {
+  setDfmInputTrianglePicker,
+  syncDfmDetailsInputs,
+} from "/ui/method_pages/dfm/dfm_details_dependencies.js?v=20261021b";
 import {
   loadProjectUserPreferences,
   scheduleProjectUserPreferencesSave,
@@ -82,13 +86,6 @@ async function loadOutputTypeNames(projectName, _pathValue = "", options = {}) {
 
 function closeOutputTypeDropdown() {
   const dropdown = document.getElementById("dfmOutputVectorDropdown");
-  if (!dropdown) return;
-  dropdown.classList.remove("open");
-  dropdown.innerHTML = "";
-}
-
-function closeTriangleTypeDropdown() {
-  const dropdown = document.getElementById("dfmTriTypeDropdown");
   if (!dropdown) return;
   dropdown.classList.remove("open");
   dropdown.innerHTML = "";
@@ -260,6 +257,7 @@ function applyDfmObjectPrefsToDetails(prefs, options = {}) {
   changed = applyTextInputValue("triInput", dfmPrefs.inputTriangle, {
     replace: !!options?.replace,
   }) || changed;
+  syncDfmDetailsInputs();
   changed = applySelectValue("originLenSelect", dfmPrefs.originLength, options) || changed;
   changed = applySelectValue("devLenSelect", dfmPrefs.developmentLength, options) || changed;
   changed = applyTextInputValue("decimalPlaces", dfmPrefs.decimalPlaces, options) || changed;
@@ -803,37 +801,27 @@ function wireOutputTypePicker() {
   void syncOutputTypeForCurrentProject();
 }
 
+// The Input Triangle is chosen on the Details Data Flow map, which opens
+// this picker anchored to its own box.
 function wireTriangleTypePicker() {
   const triInput = document.getElementById("triInput");
-  const button = document.getElementById("dfmTriTypeBtn");
-  const dropdown = document.getElementById("dfmTriTypeDropdown");
-  if (!triInput || !button || !dropdown || button.dataset.wired === "1") return;
-  button.dataset.wired = "1";
-
-  const resetPickerCache = () => {
-    closeTriangleTypeDropdown();
-    const nativeDatasetDropdown = document.getElementById("datasetDropdown");
-    nativeDatasetDropdown?.classList.remove("open");
-  };
-
-  const openPicker = async (options = {}) => {
+  if (!triInput || triInput.dataset.wired === "1") return;
+  triInput.dataset.wired = "1";
+  triInput.addEventListener("change", syncDfmDetailsInputs);
+  setDfmInputTrianglePicker(async (anchor) => {
     const projectName = toText(getResolvedProjectName());
-    closeTriangleTypeDropdown();
-    const nativeDatasetDropdown = document.getElementById("datasetDropdown");
-    nativeDatasetDropdown?.classList.remove("open");
     if (!projectName) {
-      if (options?.alertOnContextMissing) alert("Select a project first.");
+      alert("Select a project first.");
       return;
     }
-    button.disabled = true;
     try {
       await openDatasetNamePicker({
         projectName,
         initialName: triInput.value,
-        anchorElement: triInput,
+        anchorElement: anchor instanceof Element ? anchor : null,
         title: "Select Input Triangle",
         allowedDataFormats: ["Triangle"],
-        forceReload: !!options?.forceReload,
+        forceReload: true,
         emptyMessage: "No input triangles found (Triangle).",
         setStatus: (message) => {
           const text = toText(message);
@@ -850,62 +838,7 @@ function wireTriangleTypePicker() {
     } catch (err) {
       console.error("Failed to load input-triangle options:", err);
       postDfmStatus(`Error loading triangle names: ${String(err?.message || err)}`, { tone: "error" });
-    } finally {
-      button.disabled = false;
     }
-  };
-
-  button.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    void openPicker({ forceReload: true, alertOnContextMissing: true });
-  });
-
-  triInput.addEventListener("input", () => {
-    closeTriangleTypeDropdown();
-    const nativeDatasetDropdown = document.getElementById("datasetDropdown");
-    nativeDatasetDropdown?.classList.remove("open");
-  });
-
-  triInput.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeTriangleTypeDropdown();
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      void openPicker({ forceReload: false, alertOnContextMissing: false });
-    }
-  });
-
-  document.addEventListener("mousedown", (e) => {
-    if (!dropdown.classList.contains("open")) return;
-    const target = e.target;
-    if (dropdown.contains(target) || button.contains(target)) return;
-    closeTriangleTypeDropdown();
-  }, true);
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeTriangleTypeDropdown();
-  }, true);
-
-  const projectInput = document.getElementById("projectSelect");
-  const pathInput = document.getElementById("pathInput");
-  projectInput?.addEventListener("change", () => {
-    resetPickerCache();
-    closeTriangleTypeDropdown();
-  });
-  projectInput?.addEventListener("input", () => {
-    resetPickerCache();
-    closeTriangleTypeDropdown();
-  });
-  pathInput?.addEventListener("change", () => {
-    resetPickerCache();
-    closeTriangleTypeDropdown();
-  });
-  pathInput?.addEventListener("input", () => {
-    resetPickerCache();
-    closeTriangleTypeDropdown();
   });
 }
 

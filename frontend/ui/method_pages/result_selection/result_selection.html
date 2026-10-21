@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d"/>
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b"/>
 <link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a"/>
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c"/>
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261021f"/>
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a"/>
   <link rel="stylesheet" href="/ui/shared/styles/scrollbars.css?v=20260516a"/>
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c"/>
@@ -55,18 +55,13 @@
 
         <div class="arDetailsSection">
           <div class="rsDetailsGrid arDetailsGrid">
-            <label class="rsBasisLabel arDetailsLabel" for="rsRatioBasisAddBtn">Ratio Basis : </label>
-            <div class="rsFieldRow arDetailsField">
-              <div class="rsRatioBasisPicker">
-                <div id="rsRatioBasisList" class="rsRatioBasisList" role="list" aria-live="polite"></div>
-                <button id="rsRatioBasisAddBtn" class="rsRatioBasisAdd" type="button" aria-label="Add ratio basis">+ Add datasets</button>
-                <input id="rsRatioBasisInput" type="hidden"/>
-                <input id="rsRatioBasisInput2" type="hidden"/>
-                <input id="rsRatioBasisInput3" type="hidden"/>
-                <input id="rsStatisticDecimalsInput" type="hidden" value="1"/>
-              </div>
-            </div>
-            <label class="arDetailsLabel" id="rsDependenciesLabel">Dependencies : </label>
+            <!-- Ratio Basis is chosen on the Data Flow map; these hold the
+                 chosen names. -->
+            <input id="rsRatioBasisInput" type="hidden"/>
+            <input id="rsRatioBasisInput2" type="hidden"/>
+            <input id="rsRatioBasisInput3" type="hidden"/>
+            <input id="rsStatisticDecimalsInput" type="hidden" value="1"/>
+            <label class="arDetailsLabel" id="rsDependenciesLabel">Data Flow : </label>
             <div class="arDetailsField">
               <div id="rsDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="rsDependenciesLabel" aria-live="polite"></div>
             </div>
@@ -269,9 +264,6 @@
     <button type="button" data-rs-source-action="delete">Delete</button>
   </div>
   <div id="rsChartMenu" class="rsCellContextMenu rsChartMenu" role="menu" aria-hidden="true"></div>
-  <div id="rsRatioBasisContextMenu" class="rsCellContextMenu rsRatioBasisContextMenu" role="menu" aria-hidden="true">
-    <button type="button" role="menuitem" data-rs-ratio-basis-action="delete">Delete</button>
-  </div>
   <script src="/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d" data-auto="1"></script>
   <script src="/ui/method_pages/result_selection/result_selection_ui.js?v=20261020a"></script>
   <script src="/ui/method_pages/result_selection/result_selection_data.js?v=20261020a"></script>

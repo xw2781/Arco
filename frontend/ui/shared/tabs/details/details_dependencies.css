@@ -1,6 +1,6 @@
 /*
- * Look for the Details "inputs and dependencies" section: the formula field,
- * the Dependencies map of precedents and dependents, and the hover tooltip.
+ * Look for the Details "inputs and dependencies" section: the formula field
+ * and the Data Flow map of precedents and dependents.
  *
  * This sheet is the only owner of that look. It sits beside
  * `details_form_layout.css` because the Dataset Viewer and every method page
@@ -43,41 +43,61 @@
   padding-top: calc((var(--ar-details-control-height, 30px) - 1.25em) / 2);
 }
 
-/* The header and the stage share one column grid, so each title sits over its
-   own column. Both leave room on the right for the open button. */
-.arDetailsDepMapHeader,
-.arDetailsDepMapStage {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: 40px;
-}
+/* The map is positioned so the open button can sit in its top-right corner,
+   in the lane the scroll box leaves free. */
+.arDetailsDepMap { position: relative; }
 
 .arDetailsDepMapHeader {
-  position: relative;
-  min-height: 24px;
-  align-items: center;
-  padding-right: 30px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
 }
 
 .arDetailsDepMapTitle {
+  grid-row: 1;
   min-width: 0;
+  padding: 5px 0 5px 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  color: var(--ar-color-text-muted);
+  /* A long dependent list scrolls under the titles, not over them. Each title
+     starts just past its boxes' 3px stripe. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ar-details-chip-box-background);
+}
+
+/* The text, not the title cell, is what gets cut, so the cell can paint past
+   its own edges. */
+.arDetailsDepMapTitleText {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ar-color-text-muted);
 }
 
-.arDetailsDepMapTitle.is-in { text-align: right; }
-.arDetailsDepMapTitle.is-self { text-align: center; }
+/* The first title's background runs on under the others and across the gaps
+   between them, so arrows to boxes scrolled out of sight never show through
+   the title row. The later titles paint over it, and the scroll box clips it
+   at the map's edge. */
+.arDetailsDepMapTitle.is-in::before {
+  content: "";
+  position: absolute;
+  inset: 0 -100vw 0 0;
+  z-index: -1;
+  background: inherit;
+}
+
+.arDetailsDepMapTitle.is-in { grid-column: 1; }
+.arDetailsDepMapTitle.is-self { grid-column: 2; }
+.arDetailsDepMapTitle.is-out { grid-column: 3; }
 
 /* Scoped through the header so it outranks the Dark theme's rule for every
    button. */
 .arDetailsDepMap .arDetailsDepMapHeader button.arDetailsDepMapOpen {
-  position: absolute;
-  top: 0;
-  right: -4px;
   width: 24px;
   height: 24px;
   display: inline-flex;
@@ -108,17 +128,32 @@
 /* A long list of dependents scrolls inside the map rather than pushing the
    rest of the Details tab away. */
 .arDetailsDepMapScroll {
-  max-height: 300px;
-  margin-top: 4px;
+  max-height: 600px;
   padding-right: 30px;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
+/* When every name fits, the map script sets each column's width and the arrow
+   length from the names: spare room lengthens the arrows and widens the boxes,
+   each up to a cap, and anything past both caps stays empty on the right. This
+   template is what applies when the names do not fit: each column starts as
+   wide as its longest name needs, never narrower than a readable box (a pixel
+   width capped at a share of the map; the map script reads the same two
+   numbers), and the columns shrink evenly towards that floor, cutting names. */
 .arDetailsDepMapStage {
+  --ar-dep-map-column-min-px: 210;
+  --ar-dep-map-column-min-share: 0.28;
+  --ar-dep-map-column-min: min(calc(var(--ar-dep-map-column-min-px) * 1px), calc(var(--ar-dep-map-column-min-share) * 100%));
   position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(var(--ar-dep-map-column-min), auto));
+  grid-template-rows: auto auto;
+  column-gap: 48px;
   align-items: center;
 }
+
+.arDetailsDepMapStage > .arDetailsDepMapColumn { grid-row: 2; }
 
 .arDetailsDepMapEdges {
   position: absolute;
@@ -135,13 +170,11 @@
   gap: 4px;
 }
 
-.arDetailsDepMapColumn.is-in { align-items: flex-end; }
-.arDetailsDepMapColumn.is-self { align-items: center; }
-.arDetailsDepMapColumn.is-out { align-items: flex-start; }
-
 .arDetailsDepNode {
   --ar-dep-node-accent: var(--dg-family-dataset);
-  width: min(100%, 320px);
+  /* Every box takes its column's full width, so long names show as much as the
+     Data Flow box allows. */
+  width: 100%;
   min-height: 26px;
   box-sizing: border-box;
   display: flex;
@@ -193,7 +226,7 @@
 }
 
 /* One line per box keeps a long dependent list short: the name takes what the
-   kind label leaves, and only the name is cut. */
+   label leaves, and takes any spare room in a stretched box. */
 .arDetailsDepNodeName {
   flex: 1 1 auto;
   font-size: 12px;
@@ -202,15 +235,101 @@
   color: var(--ar-color-text-strong);
 }
 
+/* The label keeps its full width while it can, so a short kind such as Dataset
+   is never cut, but it never takes more than this share of the box, so a long
+   role such as Development Pattern cannot push the name out. */
 .arDetailsDepNodeKind {
   flex: 0 0 auto;
+  max-width: 45%;
   font-size: 11px;
   line-height: 14px;
   color: var(--ar-color-text-muted);
 }
 
+/* ---- Input slots ---------------------------------------------------------- */
+
+/* On a method page an input box carries the buttons that change it. They sit
+   after the role label, take no room when the page offers none, and are
+   scoped through the map so they outrank the Dark theme's rule for every
+   button. */
+.arDetailsDepNodeActions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -5px;
+}
+
+.arDetailsDepMap .arDetailsDepNode button.arDetailsDepNodeAction {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ar-color-text-muted);
+  font: 700 11px/1 var(--ar-details-font-family);
+  cursor: pointer;
+}
+
+.arDetailsDepMap .arDetailsDepNode button.arDetailsDepNodeAction:hover,
+.arDetailsDepMap .arDetailsDepNode button.arDetailsDepNodeAction:focus-visible {
+  outline: none;
+  border-color: var(--ar-color-border-strong);
+  background: var(--ar-color-surface);
+  color: var(--ar-color-text-strong);
+}
+
+/* Removing is the one destructive action, so it warms on hover as the list
+   chips it replaced did. */
+.arDetailsDepMap .arDetailsDepNode button.arDetailsDepNodeAction.is-remove:hover,
+.arDetailsDepMap .arDetailsDepNode button.arDetailsDepNodeAction.is-remove:focus-visible {
+  border-color: transparent;
+  background: var(--ar-color-danger-soft, #fff1f2);
+  color: var(--ar-color-danger, #be123c);
+}
+
+.arDetailsDepNodeAction svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* An input still to choose: dashed and quiet at rest, blue-tinted when it
+   can be clicked, as a drop target reads. */
+.arDetailsDepNode.is-placeholder {
+  border: 1px dashed var(--ar-color-border-strong);
+  background: transparent;
+}
+
+.arDetailsDepNode.is-placeholder .arDetailsDepNodeName {
+  font-weight: 400;
+  color: var(--ar-color-text-muted);
+}
+
+.arDetailsDepNode.is-placeholder[role="button"]:hover,
+.arDetailsDepNode.is-placeholder[role="button"]:focus-visible {
+  border-color: var(--ar-color-border-focus);
+  border-left-color: var(--ar-color-border-focus);
+  background: rgba(43, 109, 246, 0.06);
+  box-shadow: none;
+}
+
+.arDetailsDepNode.is-placeholder[role="button"]:hover .arDetailsDepNodeName,
+.arDetailsDepNode.is-placeholder[role="button"]:focus-visible .arDetailsDepNodeName {
+  color: var(--ar-color-accent);
+}
+
+.arDetailsDepNode.is-placeholder[aria-disabled="true"] { opacity: 0.6; }
+
 .arDetailsDepMapEmpty {
-  width: min(100%, 320px);
+  width: 100%;
   min-height: 26px;
   box-sizing: border-box;
   display: flex;
@@ -293,8 +412,8 @@
 }
 
 /* A quoted dataset name is body text, in the same colour as every other value on
-   the tab. It is deliberately not a link: the Precedents row below lists the
-   same sources as chips and owns opening them. */
+   the tab. It is deliberately not a link: the Data Flow map below shows the
+   same sources as boxes and owns opening them. */
 .arDetailsFormulaComponent {
   display: inline-flex;
   align-items: center;
@@ -307,41 +426,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ---- Formula tooltip ----------------------------------------------------- */
-
-/* The tooltip is appended to `body`, outside any `.arDetailsRoot`, so it cannot
-   inherit the Details tokens and states its own values. */
-.arDetailsFormulaTooltip {
-  position: fixed;
-  z-index: 10000;
-  max-width: min(624px, calc(100vw - 24px));
-  padding: 9px 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-  color: #1e293b;
-  font-family: Arial, "Segoe UI", "SegoeUI", Tahoma, sans-serif;
-  pointer-events: none;
-}
-
-.arDetailsFormulaTooltipTitle {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.arDetailsFormulaTooltipTitle + .arDetailsFormulaTooltipBody { margin-top: 4px; }
-
-.arDetailsFormulaTooltipBody {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 5px;
-  align-items: center;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: normal;
 }

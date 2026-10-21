@@ -1446,13 +1446,6 @@
   color: var(--ar-color-text-strong);
 }
 
-:root[data-arcrho-theme="dark"] .arDetailsFormulaTooltip {
-  border-color: var(--ar-color-border-strong);
-  background-color: var(--ar-color-surface-raised);
-  color: var(--ar-color-text);
-  box-shadow: var(--ar-shadow-floating);
-}
-
 :root[data-arcrho-theme="dark"] :is(.datasetPrimaryBtn, .chartToggleBtn.active) {
   border-color: var(--ar-color-border-focus);
   background-color: var(--ar-color-accent-soft);
@@ -1740,12 +1733,10 @@
   .bfDropdownButton,
   .bfDropdownMenu,
   .bfStepperInput,
-  .bfPriorList,
   .rsInput,
   .rsDropdownButton,
   .rsDropdownMenu,
-  .rsStepperInput,
-  .rsRatioBasisPicker
+  .rsStepperInput
 ) {
   border-color: var(--ar-color-border-strong);
   background-color: var(--ar-color-input);

@@ -30,7 +30,7 @@ Detected `arcrho:*` message types in key JS files:
 <!-- MANUAL:BEGIN -->
 - Opens from Project Instance as a floating iframe method window at `/ui/method_pages/cape_cod/cape_cod.html`. Home no longer offers a Cape Cod launch card. `tab_actions.openCapeCodTab` and the shell's `cape_cod` tab type remain only so a previously opened standalone Cape Cod tab still restores; the shell API does not expose an entry point that creates one.
 - Uses `ui/shared/tabbed_page/` for reusable tab chrome and pop-out behavior, and the shared Details/Notes/Audit tab presentation modules; tab order is `Details`, `Method`, `Ultimates`, `Ratios`, `Notes`, `Audit Log`, matching the ResQ Cape Cod editor.
-- The Details tab is three sections separated by light rules and carrying no headings: identity - Name, Output Type, Project, Segment - then the datasets the method is built from - `Latest`, `Exposure`, and `Prior Ultimate`, followed by the Dependencies map - then Origin Length at the shared short field width. The three source pickers moved here from the Method tab so Cape Cod matches Bornhuetter Ferguson and Berquist Sherman; each keeps the trailing detail it had in its old three-column strip, inside its own field cell: `Latest` its `Type : Triangle` note, and `Prior Ultimate` its `Type` mode dropdown.
+- The Details tab is three sections separated by light rules and carrying no headings: identity - Name, Output Type, Project, Segment - then `Prior Ultimate Type` (the `Latest / Ultimates` or `Pattern` mode dropdown) and the Data Flow map, where the datasets the method is built from - `Latest`, `Exposure`, and `Prior Ultimate` - are chosen through each box's `...` button or a dashed `Choose` box while empty - then Origin Length at the shared short field width.
 - `Ctrl+PageUp` and `Ctrl+PageDown` cycle through Cape Cod tabs with wraparound through the shared tabbed-page runtime, including when the shell or Project Instance host still owns keyboard focus.
 - Loads a saved method through `/cape-cod/load`, which reads only `methods/CC@<Name>.json` and the output sidecar; the response also carries the derived as-if `ultimates_triangle` for the Ultimates tab.
 - Saves through `/cape-cod/save`, which publishes `methods/CC@<Name>.json`, the native `datasets/<Name>@<OriginLength>.csv`, supported coarser CSV variants, and the output sidecar as one server-owned transaction with the sidecar written last.
@@ -63,7 +63,7 @@ Detected `arcrho:*` message types in key JS files:
 ## Known Risks
 <!-- MANUAL:BEGIN -->
 - The JS calculation mirror must remain identical to the Python contract; a drifted mirror makes the server reject saves because derived columns no longer match the embedded snapshots.
-- The persisted method label must remain `Cape Cod` so Project Instance and Dependencies map boxes route to the Cape Cod page.
+- The persisted method label must remain `Cape Cod` so Project Instance and Data Flow map boxes route to the Cape Cod page.
 - Percentage Developed near 1.0 makes Future Exposure a small difference of large numbers; ArcRho's canonical six-decimal rounding bounds its absolute error at the exposure scale, which is visible only when decimals are increased.
 - Out-of-band source-file edits bypass the managed dependency event and require an ArcRho save or explicit repair before a Cape Cod can be refreshed automatically.
 <!-- MANUAL:END -->

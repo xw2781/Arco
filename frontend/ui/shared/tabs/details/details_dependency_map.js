@@ -10,13 +10,20 @@
  * width of the Details tab without a layout engine.
  *
  * The map draws; the host decides what a box does. `onOpenEntry` opens a
- * related dataset or method, `onOpenGraph` opens the full graph (usually
- * through `requestDependencyGraph`), and the tooltip callbacks show a box's
- * name and formula on hover.
+ * related dataset or method, and `onOpenGraph` opens the full graph (usually
+ * through `requestDependencyGraph`). The map shows no tooltips: hovering a box
+ * only lights its arrow.
+ *
+ * On a method page the precedents column is also where the method's inputs are
+ * chosen. Each input slot the page hands over is drawn as one box per chosen
+ * dataset, labelled with the input's role instead of its kind, with a "..."
+ * button that opens the page's picker and an x where the page allows removal.
+ * An empty slot is a dashed "Choose" box and a slot that takes several
+ * datasets ends in a dashed "Add" box; both open the picker anchored to
+ * themselves. The page keeps owning the value; the map only asks.
  */
 import { dependencyNodeKind } from "../../../project_instance/dependency_graph_layout.js?v=20260920c";
 import { DEPENDENCY_GRAPH_OPEN_MESSAGE } from "../../../project_instance/dependency_graph_contract.js?v=20261020a";
-import { attachArcrhoTooltip } from "../../components/tooltip/tooltip.js?v=20260925a";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ARROW_IDS = Object.freeze({
@@ -40,6 +47,33 @@ export function dependencyMapNodeKind({ methodType = "", formula = "" } = {}) {
     method_type: methodType,
     source_kind: String(formula || "").trim() ? "calculated" : "",
   });
+}
+
+// The arrows between the columns never get shorter than `min`, so a crowded map
+// still reads as a flow, nor longer than `max`. A box grows with spare room up
+// to `cardMax`, or to its full text when that is wider; past both caps the
+// room is left empty on the right of the map.
+const DEP_MAP_LIMITS = Object.freeze({ arrowMin: 48, arrowMax: 160, cardMax: 360, arrowShare: 0.5 });
+
+/**
+ * How the three columns share the map's width. `naturalWidths` is what each
+ * column needs to show its longest name in full, `stageWidth` the room the map
+ * has, and `columnMin` the narrowest a column may be.
+ *
+ * When every name fits, half of the room left over lengthens the two arrows
+ * and the rest widens the boxes, each up to its cap, and `columns` gives each
+ * column's width. When the names do not fit, `columns` is null: the arrows
+ * stay at their minimum and the stylesheet shrinks the columns evenly.
+ */
+export function dependencyMapLayout({ stageWidth = 0, naturalWidths = [], columnMin = 0 } = {}) {
+  const { arrowMin, arrowMax, cardMax, arrowShare } = DEP_MAP_LIMITS;
+  const widths = naturalWidths.map((width) => Math.max(Math.ceil(width), Math.ceil(columnMin)));
+  const spare = stageWidth - widths.reduce((sum, width) => sum + width, 0) - 2 * arrowMin;
+  if (spare < 0) return { gap: arrowMin, columns: null };
+  const gap = Math.floor(Math.min(arrowMax, arrowMin + (spare * arrowShare) / 2));
+  const perColumn = (spare - 2 * (gap - arrowMin)) / widths.length;
+  const columns = widths.map((width) => Math.floor(Math.min(width + perColumn, Math.max(width, cardMax))));
+  return { gap, columns };
 }
 
 /** One arrow from the right edge of one box to the left edge of the next. */
@@ -71,9 +105,6 @@ export function createDetailsDependencyMap({
   canOpenGraph = false,
   onOpenEntry = () => {},
   onOpenGraph = () => {},
-  showTooltip = () => {},
-  moveTooltip = () => {},
-  hideTooltip = () => {},
   documentRef = globalThis.document,
   windowRef = globalThis.window,
 } = {}) {
@@ -107,13 +138,17 @@ export function createDetailsDependencyMap({
 
   function mount() {
     if (els || !container) return els;
+    // The header holds only the open button. The column titles sit in the
+    // stage's own grid, so each one lines up with a column sized to its names.
     const header = el("div", "arDetailsDepMapHeader");
-    const titles = {
-      in: el("span", "arDetailsDepMapTitle is-in"),
-      self: el("span", "arDetailsDepMapTitle is-self"),
-      out: el("span", "arDetailsDepMapTitle is-out"),
-    };
-    header.append(titles.in, titles.self, titles.out);
+    // Each title cell paints the title row's background; the text inside it is
+    // what gets cut, so the cell itself can reach across the gaps.
+    const titleCells = {};
+    const titles = {};
+    for (const side of ["in", "self", "out"]) {
+      titleCells[side] = el("div", `arDetailsDepMapTitle is-${side}`);
+      titles[side] = titleCells[side].appendChild(el("span", "arDetailsDepMapTitleText"));
+    }
 
     if (canOpenGraph) {
       const open = el("button", "arDetailsDepMapOpen");
@@ -123,7 +158,6 @@ export function createDetailsDependencyMap({
       icon.appendChild(svgEl("use", { href: "/ui/project_instance/dependency-graph.svg?v=20260920c#dependency-graph" }));
       open.appendChild(icon);
       open.addEventListener("click", () => onOpenGraph());
-      attachArcrhoTooltip(open, "Open Dependency Graph");
       header.appendChild(open);
     }
 
@@ -142,7 +176,7 @@ export function createDetailsDependencyMap({
       self: el("div", "arDetailsDepMapColumn is-self"),
       out: el("div", "arDetailsDepMapColumn is-out"),
     };
-    stage.append(svg, columns.in, columns.self, columns.out);
+    stage.append(svg, columns.in, columns.self, columns.out, titleCells.in, titleCells.self, titleCells.out);
     scroll.appendChild(stage);
     container.replaceChildren(header, scroll);
 
@@ -155,6 +189,29 @@ export function createDetailsDependencyMap({
     return els;
   }
 
+  // Enter and Space act on the box itself, not on a button inside it.
+  function onActivate(node, action) {
+    node.tabIndex = 0;
+    node.setAttribute("role", "button");
+    node.addEventListener("click", action);
+    node.addEventListener("keydown", (event) => {
+      if (event.target !== node || (event.key !== "Enter" && event.key !== " ")) return;
+      event.preventDefault();
+      action();
+    });
+  }
+
+  function actionButton(className, ariaLabel, action) {
+    const button = el("button", `arDetailsDepNodeAction ${className}`);
+    button.type = "button";
+    button.setAttribute("aria-label", ariaLabel);
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      action();
+    });
+    return button;
+  }
+
   function buildNode(entry, side) {
     const kind = dependencyMapNodeKind(entry);
     // A box is a focusable div rather than a button: the Dark theme restyles
@@ -163,35 +220,53 @@ export function createDetailsDependencyMap({
     node.dataset.family = kind.family;
     node.dataset.side = side;
     const name = el("span", "arDetailsDepNodeName", entry.name);
-    const label = el("span", "arDetailsDepNodeKind", kind.label);
+    // An input box names the role it fills; its stripe still shows the kind.
+    const label = el("span", "arDetailsDepNodeKind", entry.role || kind.label);
     node.append(name, label);
     if (side === "self") {
       node.setAttribute("aria-label", `${entry.methodType ? "This method" : "This dataset"}: ${entry.name}`);
     } else {
-      node.tabIndex = 0;
-      node.setAttribute("role", "button");
-      node.setAttribute("aria-label", `Open ${kind.label} ${entry.name}`);
-      node.addEventListener("click", () => onOpenEntry(entry.source));
-      node.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        onOpenEntry(entry.source);
-      });
+      onActivate(node, () => onOpenEntry(entry.source));
+      node.setAttribute("aria-label", `Open ${entry.role || kind.label} ${entry.name}`);
     }
-    node.addEventListener("mouseenter", (event) => {
-      setLit(node, true);
-      showTooltip(entry, event);
-    });
-    node.addEventListener("mousemove", (event) => moveTooltip(event));
-    node.addEventListener("mouseleave", () => {
-      setLit(node, false);
-      hideTooltip();
-    });
+    const slot = entry.slot;
+    if (slot && !slot.disabled) {
+      const actions = el("span", "arDetailsDepNodeActions");
+      // A single input is replaced in place; a list input is changed by
+      // removing one entry and adding another.
+      if (!slot.multiple) {
+        const change = actionButton("is-change", `Change ${slot.label}`, () => slot.pick(node, { index: entry.index }));
+        change.textContent = "...";
+        actions.appendChild(change);
+      }
+      if (typeof slot.remove === "function") {
+        const remove = actionButton("is-remove", `Remove ${entry.name}`, () => slot.remove(entry.index));
+        const icon = svgEl("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" });
+        icon.appendChild(svgEl("path", { d: "M6 6l12 12M18 6L6 18" }));
+        remove.appendChild(icon);
+        actions.appendChild(remove);
+      }
+      if (actions.childElementCount) node.appendChild(actions);
+    }
+    node.addEventListener("mouseenter", () => setLit(node, true));
+    node.addEventListener("mouseleave", () => setLit(node, false));
     node.addEventListener("focus", () => setLit(node, true));
-    node.addEventListener("blur", () => {
-      setLit(node, false);
-      hideTooltip();
-    });
+    node.addEventListener("blur", () => setLit(node, false));
+    return node;
+  }
+
+  // A dashed box for an input still to choose: an empty slot, or the next
+  // entry of a slot that takes several datasets.
+  function buildPlaceholder(slot, text) {
+    const node = el("div", "arDetailsDepNode is-placeholder");
+    node.dataset.side = "in";
+    node.appendChild(el("span", "arDetailsDepNodeName", text));
+    if (slot.disabled) {
+      node.setAttribute("aria-disabled", "true");
+    } else {
+      onActivate(node, () => slot.pick(node, { index: null }));
+      node.setAttribute("aria-label", text);
+    }
     return node;
   }
 
@@ -201,11 +276,17 @@ export function createDetailsDependencyMap({
       column.appendChild(el("div", "arDetailsDepMapEmpty", SIDES[side].empty));
       return [];
     }
-    return entries.map((entry) => {
+    const linked = [];
+    for (const entry of entries) {
+      if (entry.placeholder) {
+        column.appendChild(buildPlaceholder(entry.slot, entry.placeholder));
+        continue;
+      }
       const node = buildNode(entry, side);
       column.appendChild(node);
-      return node;
-    });
+      linked.push(node);
+    }
+    return linked;
   }
 
   // Hovering a box lights the arrow it shares with this dataset - blue for an
@@ -219,10 +300,47 @@ export function createDetailsDependencyMap({
     }
   }
 
+  // What a box needs to show its text in full: its width with the name's room
+  // swapped for the name text's own width, which is wider when the name is cut
+  // and narrower when a stretched box gives it spare room, plus whatever a cut
+  // label hides. An empty-column note needs no more than the column floor.
+  function naturalWidth(node) {
+    const name = node.querySelector(".arDetailsDepNodeName");
+    if (!name) return 0;
+    const range = doc.createRange();
+    range.selectNodeContents(name);
+    const label = node.querySelector(".arDetailsDepNodeKind");
+    return node.offsetWidth
+      - name.clientWidth
+      + Math.ceil(range.getBoundingClientRect().width)
+      + (label ? Math.max(0, label.scrollWidth - label.clientWidth) : 0);
+  }
+
+  // The column floor is defined once, in the stylesheet, as a pixel width
+  // capped at a share of the map.
+  function columnMin(stageWidth) {
+    const style = win.getComputedStyle(els.stage);
+    const px = Number.parseFloat(style.getPropertyValue("--ar-dep-map-column-min-px")) || 0;
+    const share = Number.parseFloat(style.getPropertyValue("--ar-dep-map-column-min-share")) || 0;
+    return Math.min(px, share * stageWidth);
+  }
+
+  // Sizes the columns and arrows from the names they hold. When the names do
+  // not fit, the stylesheet's own column template takes over.
+  function fitColumns() {
+    const { stage, columns } = els;
+    const stageWidth = stage.clientWidth;
+    const naturalWidths = ["in", "self", "out"].map((side) => Math.max(0, ...Array.from(columns[side].children, naturalWidth)));
+    const layout = dependencyMapLayout({ stageWidth, naturalWidths, columnMin: columnMin(stageWidth) });
+    stage.style.columnGap = `${layout.gap}px`;
+    stage.style.gridTemplateColumns = layout.columns ? layout.columns.map((width) => `${width}px`).join(" ") : "";
+  }
+
   function draw() {
     drawFrame = 0;
     if (!els) return;
     const { stage, svg } = els;
+    if (stage.clientWidth) fitColumns();
     const origin = stage.getBoundingClientRect();
     for (const edge of edges) edge.path.remove();
     if (!origin.width || !origin.height) return;
@@ -263,20 +381,35 @@ export function createDetailsDependencyMap({
      * Paints the map. `self` is this output ({ name, formula, methodType }, the
      * method type only on a method page); each entry is a normalized
      * dependency ({ datasetName, formula, methodType }).
+     *
+     * `inputs` is the method's input slots, each `{ slot, values }`: `slot`
+     * is what the page handed over ({ label, multiple, max, disabled, pick,
+     * remove }) and `values` the normalized entries chosen for it. Slot
+     * boxes come first, in slot order, then `precedents` the method reads
+     * some other way.
      */
-    render({ self = {}, precedents = [], dependents = [] } = {}) {
+    render({ self = {}, inputs = [], precedents = [], dependents = [] } = {}) {
       const parts = mount();
       if (!parts) return;
-      hideTooltip();
       const toNode = (entry) => ({
         name: entry.datasetName,
         formula: entry.formula,
         methodType: entry.methodType,
         source: entry,
       });
-      const inputs = precedents.map(toNode);
+      const slotNodes = inputs.flatMap(({ slot, values }) => {
+        const nodes = values.map((entry, index) => ({ ...toNode(entry), role: slot.label, slot, index }));
+        if (slot.multiple && values.length < (slot.max || Infinity)) {
+          nodes.push({ slot, placeholder: `+ Add ${slot.label}` });
+        } else if (!values.length) {
+          nodes.push({ slot, placeholder: `Choose ${slot.label}` });
+        }
+        return nodes;
+      });
+      const inputNodes = [...slotNodes, ...precedents.map(toNode)];
       const outputs = dependents.map(toNode);
-      parts.titles.in.textContent = inputs.length ? `${SIDES.in.title} (${inputs.length})` : SIDES.in.title;
+      const inputCount = inputNodes.filter((node) => !node.placeholder).length;
+      parts.titles.in.textContent = inputCount ? `${SIDES.in.title} (${inputCount})` : SIDES.in.title;
       parts.titles.out.textContent = outputs.length ? `${SIDES.out.title} (${outputs.length})` : SIDES.out.title;
 
       // On a method page the middle box is the dataset the method publishes,
@@ -289,7 +422,7 @@ export function createDetailsDependencyMap({
         methodType: String(self.methodType || "").trim(),
       }, "self");
       parts.columns.self.replaceChildren(selfNode);
-      const inNodes = fillColumn(parts.columns.in, inputs, "in");
+      const inNodes = fillColumn(parts.columns.in, inputNodes, "in");
       const outNodes = fillColumn(parts.columns.out, outputs, "out");
       edges = [
         ...inNodes.map((node) => ({ side: "in", node })),

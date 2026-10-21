@@ -8,7 +8,7 @@ import {
   normalizeReviewStatus,
   statusNeedsReview,
 } from "/ui/shared/dataset/review_status.js";
-import { formatDetailsFormulaText } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { formatDetailsFormulaText } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import {
   BERQUIST_SHERMAN_VARIANTS,
   berquistShermanDisplayLabel,

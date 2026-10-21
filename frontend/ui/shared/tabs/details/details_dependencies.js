@@ -3,10 +3,10 @@
  *
  * The Dataset Viewer and every method page show the same things in the second
  * Details section: the formula or pickers the output is computed from, and one
- * Dependencies map of the Precedents it reads and the Dependents that read it.
- * This module owns how those read - the plain-text formula, the map, the hover
- * tooltip, the click that opens a related dataset or method, and the button
- * that opens the full Dependency Graph - so no page can drift from another.
+ * Data Flow map of the Precedents it reads and the Dependents that read it.
+ * This module owns how those read - the plain-text formula, the map, the click
+ * that opens a related dataset or method, and the button that opens the full
+ * Dependency Graph - so no page can drift from another.
  *
  * Everything a host differs on is injected: which elements to fill, what the
  * output is called and which method publishes it, how to resolve a dataset
@@ -14,7 +14,7 @@
  * nothing about any one page.
  */
 
-import { createDetailsDependencyMap, requestDependencyGraph } from "./details_dependency_map.js?v=20261020b";
+import { createDetailsDependencyMap, requestDependencyGraph } from "./details_dependency_map.js?v=20261021c";
 
 export const DETAILS_DEPENDENCY_CLASS_NAMES = Object.freeze({
   chipLabel: "arDetailsChipLabel",
@@ -22,12 +22,7 @@ export const DETAILS_DEPENDENCY_CLASS_NAMES = Object.freeze({
   formulaText: "arDetailsFormulaText",
   formulaOperator: "arDetailsFormulaOperator",
   formulaComponent: "arDetailsFormulaComponent",
-  tooltip: "arDetailsFormulaTooltip",
-  tooltipTitle: "arDetailsFormulaTooltipTitle",
-  tooltipBody: "arDetailsFormulaTooltipBody",
 });
-
-const TOOLTIP_ELEMENT_ID = "arDetailsFormulaTooltip";
 
 const METHOD_TYPE_LABELS = Object.freeze({
   dfm: "DFM",
@@ -321,7 +316,7 @@ export function createDetailsDependenciesView({
   }
 
   // A formula component is the name the user wrote, so it reads as text. Opening
-  // the dataset it refers to belongs to the Dependencies map directly below,
+  // the dataset it refers to belongs to the Data Flow map directly below,
   // which shows the same sources as boxes; a second, differently-shaped way in
   // would only make the expression harder to read.
   //
@@ -346,103 +341,6 @@ export function createDetailsDependenciesView({
       else if (token.type === "operator") appendFormulaOperator(parent, token.value);
       else appendFormulaText(parent, token.value);
     }
-  }
-
-  function ensureTooltip() {
-    let tooltip = doc.getElementById(TOOLTIP_ELEMENT_ID);
-    if (tooltip) return tooltip;
-    tooltip = doc.createElement("div");
-    tooltip.id = TOOLTIP_ELEMENT_ID;
-    tooltip.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltip;
-    tooltip.hidden = true;
-    doc.body.appendChild(tooltip);
-    return tooltip;
-  }
-
-  function positionTooltip(tooltip, event) {
-    if (!tooltip || tooltip.hidden) return;
-    const margin = 12;
-    const rect = tooltip.getBoundingClientRect();
-    let left = event.clientX + margin;
-    let top = event.clientY + margin;
-    if (left + rect.width > win.innerWidth - margin) {
-      left = Math.max(margin, event.clientX - rect.width - margin);
-    }
-    if (top + rect.height > win.innerHeight - margin) {
-      top = Math.max(margin, event.clientY - rect.height - margin);
-    }
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-  }
-
-  // A wrapped tooltip keeps the full max-width even when its last line is short,
-  // which reads as a ragged empty column; shrink it to the widest actual line.
-  function fitTooltipWidth(tooltip) {
-    if (!tooltip || tooltip.hidden) return;
-    const body = tooltip.querySelector(`.${DETAILS_DEPENDENCY_CLASS_NAMES.tooltipBody}`);
-    const items = Array.from(body?.children || []);
-    if (!body || !items.length) return;
-
-    const tooltipStyle = win.getComputedStyle(tooltip);
-    const padBorderX = [
-      tooltipStyle.paddingLeft,
-      tooltipStyle.paddingRight,
-      tooltipStyle.borderLeftWidth,
-      tooltipStyle.borderRightWidth,
-    ].reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0);
-    const maxWidth = Number.parseFloat(tooltipStyle.maxWidth) || (win.innerWidth - 24);
-    const currentWidth = tooltip.getBoundingClientRect().width;
-    const lineExtents = new Map();
-    for (const item of items) {
-      const rect = item.getBoundingClientRect();
-      if (!rect.width || !rect.height) continue;
-      const key = String(Math.round(rect.top * 2) / 2);
-      const line = lineExtents.get(key) || { left: rect.left, right: rect.right };
-      line.left = Math.min(line.left, rect.left);
-      line.right = Math.max(line.right, rect.right);
-      lineExtents.set(key, line);
-    }
-    let widestLine = 0;
-    for (const line of lineExtents.values()) {
-      widestLine = Math.max(widestLine, line.right - line.left);
-    }
-    if (!widestLine) return;
-    const targetWidth = Math.ceil(Math.min(maxWidth, widestLine + padBorderX + 2));
-    if (targetWidth > 80 && targetWidth < currentWidth - 1) {
-      tooltip.style.width = `${targetWidth}px`;
-    }
-  }
-
-  // A map box's name may be cut short, so its tooltip leads with the full name
-  // and adds the formula when the box has one.
-  function showTooltip(node, event) {
-    const formula = String(node?.formula || "").trim();
-    const name = String(node?.name || "").trim();
-    if (!formula && !name) return;
-    const tooltip = ensureTooltip();
-    tooltip.style.width = "";
-    tooltip.replaceChildren();
-    if (name) {
-      const heading = doc.createElement("div");
-      heading.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltipTitle;
-      heading.textContent = name;
-      tooltip.appendChild(heading);
-    }
-    if (formula) {
-      const body = doc.createElement("div");
-      body.className = DETAILS_DEPENDENCY_CLASS_NAMES.tooltipBody;
-      appendFormulaOperator(body, "=");
-      renderFormulaTokens(body, formula);
-      tooltip.appendChild(body);
-    }
-    tooltip.hidden = false;
-    fitTooltipWidth(tooltip);
-    positionTooltip(tooltip, event);
-  }
-
-  function hideTooltip() {
-    const tooltip = doc.getElementById(TOOLTIP_ELEMENT_ID);
-    if (tooltip) tooltip.hidden = true;
   }
 
   function openRelated(entry, options = {}) {
@@ -495,21 +393,36 @@ export function createDetailsDependenciesView({
     canOpenGraph: isProjectInstanceHost,
     onOpenEntry: (entry) => openRelated(entry, { openMethod: true }),
     onOpenGraph: openDependencyGraph,
-    showTooltip,
-    moveTooltip: (event) => positionTooltip(doc.getElementById(TOOLTIP_ELEMENT_ID), event),
-    hideTooltip,
     documentRef: doc,
     windowRef: win,
   });
-  const mapState = { formula: "", precedents: [], dependents: [] };
+  const mapState = { formula: "", precedents: [], dependents: [], inputs: [] };
   const withFormula = (entries) => normalizeDependencyEntries(entries)
     .map((entry) => ({ ...entry, formula: entryFormula(entry) }));
+  const entryKeys = (entry) => [entry.datasetName, entry.datasetTypeName].map(normalizeDependencyText);
+  // Every name an input slot has held since the graph was last read. The
+  // graph is the saved one, so a precedent that was an input and has since
+  // been replaced must not stay on the map beside its replacement.
+  let inputKeysSinceGraph = new Set();
+
+  function slotEntries(slot) {
+    return withFormula(slot.values || []).map((entry) => {
+      const keys = entryKeys(entry);
+      const saved = mapState.precedents.find((item) => entryKeys(item).some((key) => keys.includes(key)));
+      return saved ? { ...saved, datasetName: entry.datasetName } : entry;
+    });
+  }
 
   function paintMap(changes) {
     Object.assign(mapState, changes);
+    const inputs = mapState.inputs.map((slot) => ({ slot, values: slotEntries(slot) }));
+    for (const { values } of inputs) {
+      for (const entry of values) for (const key of entryKeys(entry)) inputKeysSinceGraph.add(key);
+    }
     map?.render({
       self: { name: getSelfName(), formula: mapState.formula, methodType: getSelfMethodType() },
-      precedents: mapState.precedents,
+      inputs,
+      precedents: mapState.precedents.filter((entry) => !entryKeys(entry).some((key) => inputKeysSinceGraph.has(key))),
       dependents: mapState.dependents,
     });
   }
@@ -535,6 +448,7 @@ export function createDetailsDependenciesView({
     },
 
     renderPrecedents(entries = []) {
+      inputKeysSinceGraph = new Set();
       paintMap({ precedents: withFormula(entries) });
       return mapState.precedents;
     },
@@ -544,7 +458,19 @@ export function createDetailsDependenciesView({
       return mapState.dependents;
     },
 
+    /**
+     * Hands the map the method's input slots, so they are chosen on the map.
+     * Each slot is { key, label, values, multiple, max, disabled, pick, remove }:
+     * `values` the dataset names chosen now, `pick(anchor, { index })` opens
+     * the page's picker, and `remove(index)`, when given, drops one value.
+     * Call it again whenever a value changes.
+     */
+    renderInputs(slots = []) {
+      paintMap({ inputs: Array.isArray(slots) ? slots : [] });
+    },
+
     clear() {
+      inputKeysSinceGraph = new Set();
       const box = resolveElement(formulaBox);
       if (box) {
         box.replaceChildren();
@@ -552,8 +478,6 @@ export function createDetailsDependenciesView({
       }
       paintMap({ formula: "", precedents: [], dependents: [] });
     },
-
-    hideTooltip,
   };
 }
 
@@ -607,6 +531,10 @@ export function createDetailsDependenciesController({
     clear() {
       sequence += 1;
       view.clear();
+    },
+
+    setInputs(slots) {
+      view.renderInputs(slots);
     },
 
     async refresh() {

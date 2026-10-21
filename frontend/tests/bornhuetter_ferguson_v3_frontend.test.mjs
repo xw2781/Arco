@@ -217,7 +217,7 @@ test("BF dependency clear restores through aggregate load and save uses aggregat
   const clear = functionSlice(
     mainSource,
     "async function clearDependencySourcePreview",
-    "function renderPriorSourceList",
+    "function renderInputSlots",
   );
   const save = functionSlice(
     mainSource,

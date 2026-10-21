@@ -1,5 +1,5 @@
 /*
- * DFM Details - the Dependencies map.
+ * DFM Details - the Data Flow map.
  *
  * A leaf module on purpose. `dfm_details.js` already imports `dfm_persistence.js`,
  * and the persistence layer is what knows when the output identity is resolved,
@@ -10,10 +10,11 @@ import {
   getResolvedProjectName,
   getResolvedReservingClass,
 } from "/ui/method_pages/dfm/dfm_state.js";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 
 let controller = null;
 let outputDatasetName = "";
+let pickInputTriangle = () => {};
 
 function postStatus(message) {
   const text = String(message ?? "").trim();
@@ -43,11 +44,12 @@ function getController() {
 }
 
 /**
- * Repaints the Details Dependencies map for the dataset this DFM
+ * Repaints the Details Data Flow map for the dataset this DFM
  * publishes. Call it whenever the output identity is resolved: on load, and
  * after a save, which rewrites the graph on both sides.
  */
 export function refreshDfmDetailsDependencies(outputDataset) {
+  syncDfmDetailsInputs();
   const name = String(outputDataset ?? "").trim();
   if (name) outputDatasetName = name;
   if (!outputDatasetName) {
@@ -60,4 +62,24 @@ export function refreshDfmDetailsDependencies(outputDataset) {
 export function clearDfmDetailsDependencies() {
   outputDatasetName = "";
   getController().clear();
+}
+
+/**
+ * The Input Triangle is chosen on the map. `dfm_details.js` owns the picker
+ * and hands it over here, since this module cannot import it.
+ */
+export function setDfmInputTrianglePicker(pick) {
+  pickInputTriangle = pick;
+  syncDfmDetailsInputs();
+}
+
+/** Repaints the Input Triangle box from the value the page holds. */
+export function syncDfmDetailsInputs() {
+  const name = String(document.getElementById("triInput")?.value || "").trim();
+  getController().setInputs([{
+    key: "input_triangle",
+    label: "Input Triangle",
+    values: name ? [name] : [],
+    pick: (anchor) => pickInputTriangle(anchor),
+  }]);
 }

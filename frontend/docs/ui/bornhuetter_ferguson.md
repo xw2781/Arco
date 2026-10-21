@@ -15,7 +15,6 @@ Detected `fetch(...)` targets in key JS files:
 Detected `arcrho:*` message types in key JS files:
 - `arcrho:bf-tab-changed`
 - `arcrho:dataset-dirty`
-- `arcrho:project-instance-open-dependent-dataset`
 - `arcrho:project-instance-refresh-datasets`
 - `arcrho:status`
 <!-- AUTO-GEN:END -->
@@ -37,9 +36,9 @@ Detected `arcrho:*` message types in key JS files:
 - The Method table fills the remaining page height below its toolbar, matching Result Selection, with a balanced bottom inset and scrolling inside the table frame. The same flexible layout applies when the Method tab is popped out.
 - Closing a dirty BF window from its titlebar, Cancel button, or close shortcut opens the shared page-local confirmation used by Dataset, DFM, and Result Selection. Yes sends the confirmed discard to Project Instance and closes the window in the same action; Cancel, Escape, clicking the backdrop, or closing the box returns to the dirty BF page, which remains inert while the modal is open.
 - Origin Length uses a narrow 70px custom dropdown with the numeric period options `12`, `6`, `3`, and `1`; its menu layers above the adjacent source panel.
-- The Details tab is three sections in the shared order: identity - Name, Output Type, Project, Segment - then the datasets the method is built from - Latest, Development Pattern, Prior Vector, followed by the Dependencies map - then Origin Length at the shared short field width. One light rule separates each from the one before it, and the sections carry no headings. `Segment` is this page's label for the reserving-class path. Its contents take their label and field look from the shared Details primitive `details_form_layout.css`, which the page stylesheet must not restate; see the Frontend Behavior Contract. The `Project` row is host-fixed and hidden outside a Workflow step, so the tab opens on Name.
-- The source fields are labeled `Latest`, `Development Pattern`, and `Prior Vector`; their persisted method fields remain `latest_dataset`, `dfm_dataset`, and `prior_datasets`.
-- Selected Prior Vector entries use a full-width 30px stacked row with the standard outer frame and pale-blue hover/focus treatment. The Prior Vector picker height grows in 30px increments, with a separate `+ Add datasets` row after the entries. The inline SVG close control appears when its row is hovered or receives keyboard focus; clicking an entry opens its dataset through the Project Instance related-dataset route, while clicking the close control removes it. Dropping a dragged entry outside the Prior Vector box or choosing Delete from its right-click context menu also removes it.
+- The Details tab is three sections in the shared order: identity - Name, Output Type, Project, Segment - then the Data Flow map, where the datasets the method is built from - Latest, Development Pattern, Prior Vector - are chosen - then Origin Length at the shared short field width. One light rule separates each from the one before it, and the sections carry no headings. `Segment` is this page's label for the reserving-class path. Its contents take their label and field look from the shared Details primitive `details_form_layout.css`, which the page stylesheet must not restate; see the Frontend Behavior Contract. The `Project` row is host-fixed and hidden outside a Workflow step, so the tab opens on Name.
+- The source inputs are labeled `Latest`, `Development Pattern`, and `Prior Vector` on their map boxes; their persisted method fields remain `latest_dataset`, `dfm_dataset`, and `prior_datasets`.
+- Each Prior Vector is its own precedent box on the Data Flow map with an x that removes it, followed by a dashed `+ Add Prior Vector` box. Latest and Development Pattern each show one box with a `...` button that opens the picker, or a dashed `Choose` box while empty. Clicking a box opens its dataset through the Project Instance related-dataset route.
 - Loads a saved BF through `/bornhuetter-ferguson/load`, which reads only `methods/BF@<Name>.json` and the output sidecar in parallel. The saved method snapshot hydrates Details, Method, and Chart; the same aggregate response hydrates Notes and Audit without generic sidecar graph enrichment.
 - Saves through `/bornhuetter-ferguson/save`, which publishes `methods/BF@<Name>.json`, the native `datasets/<Name>@<OriginLength>.csv`, any supported coarser CSV variants, and the output sidecar as one server-owned transaction with the sidecar written last.
 - The output sidecar keeps `source_kind: "bornhuetter_ferguson"`, `method_type: "Bornhuetter Ferguson"`, Notes, Audit, status, and dependency graph fields. Audit renders newest first with the shared Dataset/BF/RS/DFM table and is not part of BF dirty-state tracking; the method JSON keeps only an empty structural `audit_log_tab` group.
@@ -80,6 +79,6 @@ Detected `arcrho:*` message types in key JS files:
 ## Known Risks
 <!-- MANUAL:BEGIN -->
 - BF output depends on source vector/triangle period alignment; mismatched source periods can produce blank or misaligned rows.
-- The persisted method label must remain `Bornhuetter Ferguson` so Project Instance and Dependencies map boxes route to the BF page.
+- The persisted method label must remain `Bornhuetter Ferguson` so Project Instance and Data Flow map boxes route to the BF page.
 - Out-of-band source-file edits bypass the managed dependency event and require an ArcRho save or explicit repair before a BF can be refreshed automatically.
 <!-- MANUAL:END -->

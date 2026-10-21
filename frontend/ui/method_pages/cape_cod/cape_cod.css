@@ -194,31 +194,6 @@ body {
   cursor: default;
   opacity: 0.55;
 }
-/* The source rows are Details rows now, so the picker takes the field column and
-   its trailing note or Type control follows it inside the same cell. */
-.ccSourceField {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-.ccSourceField > .ccFieldControl {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 520px;
-}
-.ccSourceTypeNote {
-  color: var(--cc-muted);
-  white-space: nowrap;
-  padding-left: 4px;
-}
-.ccSourceTypeControl {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  padding-left: 4px;
-}
 .ccPriorModeDropdown {
   position: relative;
   width: 150px;
@@ -361,7 +336,7 @@ body {
   z-index: 80;
   width: 100%;
   display: none;
-  /* Reset inherited nowrap (e.g. from .ccSourceTypeControl) so options stack. */
+  /* Reset any inherited nowrap so options stack. */
   white-space: normal;
   padding: 3px;
   border: 1px solid #cbd5e1;
@@ -882,7 +857,6 @@ table.ccUltimatesTable {
 @media (max-width: 900px) {
   .ccShell { min-width: 0; }
   .ccFieldGrid { grid-template-columns: var(--ar-details-label-width) minmax(0, 1fr); }
-  .ccSourceField { flex-wrap: wrap; }
   .ccToolControls { flex-wrap: wrap; }
   .ccChartHeader { align-items: flex-start; flex-direction: column; }
   .ccChartLegend { flex-wrap: wrap; justify-content: flex-start; }

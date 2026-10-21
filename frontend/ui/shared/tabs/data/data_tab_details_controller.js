@@ -3,7 +3,7 @@
 import {
   createDetailsDependenciesView,
   normalizeDependencyEntries,
-} from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+} from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 
 export function registerDataTabDetailsController(runtime) {
   const {
@@ -26,7 +26,7 @@ export function registerDataTabDetailsController(runtime) {
     getDatasetAuditLog()?.render(entries);
   }
 
-  // The formula field and the Dependencies map are the shared Details surface
+  // The formula field and the Data Flow map are the shared Details surface
   // every method page also shows, so this controller only supplies the
   // Data-tab context it needs and delegates the rendering.
   let dependenciesView = null;
@@ -76,10 +76,6 @@ export function registerDataTabDetailsController(runtime) {
 
   function renderDatasetDependents(entries = []) {
     return getDependenciesView().renderDependents(entries);
-  }
-
-  function hideDependentFormulaTooltip() {
-    getDependenciesView().hideTooltip();
   }
 
   function getDatasetInitialTab() {
@@ -200,7 +196,6 @@ export function registerDataTabDetailsController(runtime) {
     renderDatasetAuditLog,
     normalizeDatasetDependencyEntries,
     renderDetailFormula,
-    hideDependentFormulaTooltip,
     renderDatasetDependents,
     renderDatasetPrecedents,
     getDatasetInitialTab,

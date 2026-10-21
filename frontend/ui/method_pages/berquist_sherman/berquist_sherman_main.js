@@ -10,8 +10,8 @@ import {
   updateTabbedPageSaveControls,
 } from "/ui/shared/tabbed_page/tabbed_page.js?v=20260913a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
-import { syncDetailsLabelWidth, syncDetailsSections } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -79,16 +79,16 @@ const inst = text(params.get("inst")) || `bs_${Date.now()}`;
 
 const ROLE_DEFINITIONS = Object.freeze({
   sr: Object.freeze([
-    { key: "paid_claims", label: "Paid Claims", format: "Triangle", inputId: "bsSrPaidInput" },
-    { key: "closed_claim_numbers", label: "Closed Claim Counts", format: "Triangle", inputId: "bsSrClosedInput" },
-    { key: "ultimate_claim_numbers", label: "Ultimate Claim Counts", format: "Vector", inputId: "bsSrUltimateInput" },
+    { key: "paid_claims", label: "Paid Claims", format: "Triangle" },
+    { key: "closed_claim_numbers", label: "Closed Claim Counts", format: "Triangle" },
+    { key: "ultimate_claim_numbers", label: "Ultimate Claim Counts", format: "Vector" },
   ]),
   // ResQ lists the CRA sources as Paid, Incurred, Reported, Closed.
   cra: Object.freeze([
-    { key: "paid_claims", label: "Paid Claims", format: "Triangle", inputId: "bsCraPaidInput" },
-    { key: "incurred_claims", label: "Incurred Claims", format: "Triangle", inputId: "bsCraIncurredInput" },
-    { key: "reported_claim_numbers", label: "Reported Claim Counts", format: "Triangle", inputId: "bsCraReportedInput" },
-    { key: "closed_claim_numbers", label: "Closed Claim Counts", format: "Triangle", inputId: "bsCraClosedInput" },
+    { key: "paid_claims", label: "Paid Claims", format: "Triangle" },
+    { key: "incurred_claims", label: "Incurred Claims", format: "Triangle" },
+    { key: "reported_claim_numbers", label: "Reported Claim Counts", format: "Triangle" },
+    { key: "closed_claim_numbers", label: "Closed Claim Counts", format: "Triangle" },
   ]),
 });
 
@@ -277,8 +277,6 @@ const els = {
   decimalPlacesInput: document.getElementById("bsDecimalPlacesInput"),
   decimalPlacesUp: document.getElementById("bsDecimalPlacesUp"),
   decimalPlacesDown: document.getElementById("bsDecimalPlacesDown"),
-  srInputs: document.getElementById("bsSrInputs"),
-  craInputs: document.getElementById("bsCraInputs"),
   viewButtons: document.getElementById("bsViewButtons"),
   methodCaption: document.getElementById("bsMethodCaption"),
   methodCaptionText: document.getElementById("bsMethodCaptionText"),
@@ -2362,11 +2360,14 @@ async function clearDependencySourcePreview(message = {}) {
   return true;
 }
 
+// The variant's source datasets are chosen on the Details Data Flow map.
 function syncSourceInputs() {
-  for (const role of roleDefinitions()) {
-    const input = document.getElementById(role.inputId);
-    if (input) input.value = text(state.sourceNames[role.key]);
-  }
+  getDetailsDependencies().setInputs(roleDefinitions().map((role) => ({
+    key: role.key,
+    label: role.label,
+    values: [text(state.sourceNames[role.key])].filter(Boolean),
+    pick: (anchor) => openPicker(role.key, anchor),
+  })));
 }
 
 async function openPicker(roleKey, anchorElement) {
@@ -3087,11 +3088,6 @@ async function init() {
     els.originLengthInput.value = String(ANNUAL_PERIOD_LENGTH);
     els.developmentLengthInput.value = String(ANNUAL_PERIOD_LENGTH);
   });
-  els.srInputs.hidden = variant !== "sr";
-  els.craInputs.hidden = variant !== "cra";
-  // The section divider is a `+` rule, so the hidden source section has to be
-  // resolved before the tab paints or the visible one keeps its leading rule.
-  syncDetailsSections("#bsDetailsPage");
   const initialTriangle = text(params.get("input_triangle"));
   if (initialTriangle) state.sourceNames.paid_claims = initialTriangle;
   syncSourceInputs();

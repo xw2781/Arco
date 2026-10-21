@@ -248,12 +248,10 @@ body {
   color: var(--ar-details-readonly-color, #000);
 }
 .dfmFormField .projectTreeBtn,
-.dfmFormField .pathTreeBtn,
-.dfmFormField .datasetTreeBtn {
+.dfmFormField .pathTreeBtn {
   border-radius: var(--tabbed-page-control-radius, 4px);
 }
 .dfmFormField .projectSelectWrap,
-.dfmFormField .datasetSelectWrap,
 .dfmFormField .dfmMethodNameWrap,
 .dfmFormField .dfmOutputVectorWrap {
   width: 100%;
@@ -263,13 +261,11 @@ body {
 #projectSelect,
 #dfmMethodName,
 #pathInput,
-#triInput,
 #dfmOutputVector {
   width: 100%;
   max-width: 100%;
 }
 #projectSelect,
-#triInput,
 #dfmOutputVector {
   width: 100%;
 }

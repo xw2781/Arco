@@ -1,5 +1,5 @@
 import { attachArcrhoTooltip, ensureArcrhoTooltipStyles } from "/ui/shared/components/tooltip/tooltip.js?v=20260715a";
-import { DFM_GUIDE } from "./dfm_guide_content.js?v=20261020a";
+import { DFM_GUIDE } from "./dfm_guide_content.js?v=20261021a";
 
 export function initDfmGuide() {
   const toggle = document.getElementById("dfmGuideToggle");

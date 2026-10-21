@@ -62,10 +62,10 @@ const DETAILS_HOSTS = [
 ];
 const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 
-test("every Details tab draws one Dependencies map through the shared owner", async () => {
+test("every Details tab draws one Data Flow map through the shared owner", async () => {
   for (const [scriptPath, markupPath, prefix, methodType] of DETAILS_HOSTS) {
     const source = await readFile(new URL(scriptPath, import.meta.url), "utf8");
-    assert.match(source, /shared\/tabs\/details\/details_dependencies\.js\?v=20261020b/u, scriptPath);
+    assert.match(source, /shared\/tabs\/details\/details_dependencies\.js\?v=20261021c/u, scriptPath);
     assert.match(source, new RegExp(`dependencyMap: "${prefix}DependencyMap"`, "u"), scriptPath);
     if (methodType) {
       assert.match(source, new RegExp(`getSelfMethodType: \\(\\) => ${escapeRe(methodType)}`, "u"), scriptPath);
@@ -77,14 +77,16 @@ test("every Details tab draws one Dependencies map through the shared owner", as
 
     const markup = await readFile(new URL(markupPath, import.meta.url), "utf8");
     assert.match(markup, new RegExp(`id="${prefix}DependencyMap" class="arDetailsDepMap"`, "u"), markupPath);
+    // The row reads as the flow of data through this output, not only links.
+    assert.match(markup, />Data Flow : <\/label>/u, markupPath);
     assert.doesNotMatch(markup, /arDetailsChipBox|arDetailsChipList|PrecedentsList|DependentsList/u, markupPath);
     if (markupPath.endsWith(".html")) {
       assert.match(markup, /\/ui\/shared\/styles\/dependency_families\.css\?v=\d{8}[a-z]/u, markupPath);
-      assert.match(markup, /\/ui\/shared\/tabs\/details\/details_dependencies\.css\?v=20261020c/u, markupPath);
+      assert.match(markup, /\/ui\/shared\/tabs\/details\/details_dependencies\.css\?v=20261021f/u, markupPath);
     }
   }
   // The shared module owns the map and the open-graph request; no chip code is left.
-  assert.match(dependenciesSource, /from "\.\/details_dependency_map\.js\?v=20261020b"/u);
+  assert.match(dependenciesSource, /from "\.\/details_dependency_map\.js\?v=20261021c"/u);
   assert.doesNotMatch(dependenciesSource, /buildChip|renderChipList|arDetailsChipBox/u);
   assert.doesNotMatch(dependenciesCss, /\.arDetailsChip\b|\.arDetailsChipBox|\.arDetailsChipList|\.arDetailsCalculatedIcon/u);
 });
@@ -173,5 +175,31 @@ test("the dependency map labels a box the way the full graph labels its node", a
   assert.equal(
     dependencyMapEdgePath({ right: 10, top: 0, height: 20 }, { left: 50, top: 40, height: 20 }),
     "M10 10C30 10,30 50,50 50",
+  );
+});
+
+test("the map shares its width by name length, with caps that leave room empty on the right", async () => {
+  const { dependencyMapLayout } = await import("../ui/shared/tabs/details/details_dependency_map.js");
+  // Short names in a roomy map: the arrows reach their cap and the boxes share the rest.
+  assert.deepEqual(
+    dependencyMapLayout({ stageWidth: 1296, naturalWidths: [200, 200, 200], columnMin: 0 }),
+    { gap: 160, columns: [325, 325, 325] },
+  );
+  // A very wide map caps the boxes too; what is left stays empty on the right.
+  assert.deepEqual(
+    dependencyMapLayout({ stageWidth: 3000, naturalWidths: [200, 200, 200], columnMin: 0 }),
+    { gap: 160, columns: [360, 360, 360] },
+  );
+  // A name wider than the box cap still shows in full when the map has room,
+  // and a column narrower than the floor counts at the floor.
+  assert.deepEqual(
+    dependencyMapLayout({ stageWidth: 1600, naturalWidths: [500, 200, 0], columnMin: 210 }),
+    { gap: 160, columns: [500, 330, 330] },
+  );
+  // Names that do not fit keep the arrows at their floor and leave the
+  // column widths to the stylesheet.
+  assert.deepEqual(
+    dependencyMapLayout({ stageWidth: 900, naturalWidths: [500, 500, 500], columnMin: 0 }),
+    { gap: 48, columns: null },
   );
 });

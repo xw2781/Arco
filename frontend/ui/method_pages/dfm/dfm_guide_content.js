@@ -4,8 +4,8 @@ export const DFM_GUIDE = {
     ["#dfmMethodName, #dfmOutputVector", "Method Identity", "Name the method and choose its output type.", [
       "Name identifies this method.", "Output Type classifies its ultimate vector.", "Use the picker to choose a type.",
     ]],
-    ["#triInput, #dfmDependencyMap", "Inputs And Dependencies", "Check the triangle and related datasets.", [
-      "Input Triangle supplies observed data.", "Precedents feed this method; dependents use its output.", "Click a box in the map to open it.",
+    ["#dfmDependencyMap", "Data Flow", "Choose the triangle and check related datasets.", [
+      "Input Triangle supplies observed data; use ... on its box to change it.", "Precedents feed this method; dependents use its output.", "Click a box in the map to open it.",
     ]],
     ["#originLenSelect, #devLenSelect, #decimalPlaces", "Periods And Precision", "Choose period lengths and factor precision.", [
       "Origin Length groups origin periods.", "Development Length sets development intervals.", "Decimal Places sets factor precision.",

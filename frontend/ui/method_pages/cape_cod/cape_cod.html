@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
 <link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261021f">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/spreadsheet_table.css?v=20260927c">
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/table_colors_window.css?v=20261003a">
@@ -52,42 +52,25 @@
 
                 <div class="arDetailsSection">
                   <div class="ccFieldGrid arDetailsGrid">
-                    <label class="ccLabel arDetailsLabel" for="ccLatestInput">Latest : </label>
-                    <div class="arDetailsField ccSourceField">
-                      <div class="ccFieldControl withPicker">
-                        <input class="ccInput arDetailsControl" id="ccLatestInput" type="text" readonly>
-                        <button class="ccIconButton" id="ccLatestBtn" type="button" title="Select latest triangle" aria-label="Select latest triangle">...</button>
-                      </div>
-                      <span class="ccSourceTypeNote">Type : Triangle</span>
-                    </div>
-                    <label class="ccLabel arDetailsLabel" for="ccExposureInput">Exposure : </label>
-                    <div class="arDetailsField ccSourceField">
-                      <div class="ccFieldControl withPicker">
-                        <input class="ccInput arDetailsControl" id="ccExposureInput" type="text" readonly>
-                        <button class="ccIconButton" id="ccExposureBtn" type="button" title="Select exposure vector" aria-label="Select exposure vector">...</button>
-                      </div>
-                    </div>
-                    <label class="ccLabel arDetailsLabel" for="ccPriorUltimateInput">Prior Ultimate : </label>
-                    <div class="arDetailsField ccSourceField">
-                      <div class="ccFieldControl withPicker">
-                        <input class="ccInput arDetailsControl" id="ccPriorUltimateInput" type="text" readonly>
-                        <button class="ccIconButton" id="ccPriorUltimateBtn" type="button" title="Select prior ultimate vector" aria-label="Select prior ultimate vector">...</button>
-                      </div>
-                      <span class="ccSourceTypeControl">
-                        <label class="ccToolControlLabel" for="ccPriorModeButton">Type : </label>
-                        <div class="ccPriorModeDropdown" id="ccPriorModeDropdown">
-                          <button class="ccDropdownButton" id="ccPriorModeButton" type="button" aria-haspopup="listbox" aria-controls="ccPriorModeMenu" aria-expanded="false" aria-label="Prior ultimate mode">
-                            <span id="ccPriorModeLabel">Latest / Ultimates</span>
-                            <span class="ccDropdownCaret" aria-hidden="true"></span>
-                          </button>
-                          <div class="ccDropdownMenu" id="ccPriorModeMenu" role="listbox" aria-label="Prior ultimate mode">
-                            <button class="ccDropdownOption" type="button" role="option" data-value="latest_ultimates" aria-selected="true">Latest / Ultimates</button>
-                            <button class="ccDropdownOption" type="button" role="option" data-value="pattern" aria-selected="false">Pattern</button>
-                          </div>
+                    <!-- Latest, Exposure and Prior Ultimate are chosen on the
+                         Data Flow map; these hold the chosen names. -->
+                    <input id="ccLatestInput" type="hidden">
+                    <input id="ccExposureInput" type="hidden">
+                    <input id="ccPriorUltimateInput" type="hidden">
+                    <label class="ccLabel arDetailsLabel" for="ccPriorModeButton">Prior Ultimate Type : </label>
+                    <div class="arDetailsField">
+                      <div class="ccPriorModeDropdown" id="ccPriorModeDropdown">
+                        <button class="ccDropdownButton" id="ccPriorModeButton" type="button" aria-haspopup="listbox" aria-controls="ccPriorModeMenu" aria-expanded="false" aria-label="Prior ultimate mode">
+                          <span id="ccPriorModeLabel">Latest / Ultimates</span>
+                          <span class="ccDropdownCaret" aria-hidden="true"></span>
+                        </button>
+                        <div class="ccDropdownMenu" id="ccPriorModeMenu" role="listbox" aria-label="Prior ultimate mode">
+                          <button class="ccDropdownOption" type="button" role="option" data-value="latest_ultimates" aria-selected="true">Latest / Ultimates</button>
+                          <button class="ccDropdownOption" type="button" role="option" data-value="pattern" aria-selected="false">Pattern</button>
                         </div>
-                      </span>
+                      </div>
                     </div>
-                    <label class="arDetailsLabel" id="ccDependenciesLabel">Dependencies : </label>
+                    <label class="arDetailsLabel" id="ccDependenciesLabel">Data Flow : </label>
                     <div class="arDetailsField">
                       <div id="ccDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="ccDependenciesLabel" aria-live="polite"></div>
                     </div>

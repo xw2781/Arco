@@ -191,7 +191,6 @@
           els.originLengthInput,
           els.originLengthButton,
           ...(els.ratioBasisInputs || []),
-          els.ratioBasisAddButton,
           els.showRatiosPctInput,
           els.statisticDecimalsInput,
           els.methodStatisticDecimalsInput,
@@ -208,6 +207,7 @@
         for (const control of controls) {
           if (control) control.disabled = blocked;
         }
+        renderRatioBasisInputs();
         syncHistoryControls();
       }
 
@@ -821,101 +821,18 @@
         };
       }
 
-      function renderRatioBasisPills(names = getRatioBasisNames()) {
-        const list = els.ratioBasisList;
-        if (!list) return;
-        list.replaceChildren();
-
-        names.forEach((name, index) => {
-          const token = document.createElement("span");
-          token.className = "rsRatioBasisToken";
-          token.setAttribute("role", "listitem");
-          token.setAttribute("draggable", "true");
-          token.dataset.ratioBasisIndex = String(index);
-
-          const openButton = document.createElement("button");
-          openButton.className = "rsRatioBasisOpen";
-          openButton.type = "button";
-          openButton.dataset.ratioBasisOpenIndex = String(index);
-          openButton.setAttribute("aria-label", `Open dataset ${name}`);
-
-          const label = document.createElement("span");
-          label.className = "rsRatioBasisTokenLabel";
-          label.textContent = name;
-          openButton.appendChild(label);
-          token.appendChild(openButton);
-
-          const removeButton = document.createElement("button");
-          removeButton.className = "rsRatioBasisRemove";
-          removeButton.type = "button";
-          removeButton.dataset.ratioBasisRemoveIndex = String(index);
-          removeButton.setAttribute("aria-label", `Remove dataset ${name}`);
-          removeButton.innerHTML = "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M18 6L6 18\"></path></svg>";
-          token.appendChild(removeButton);
-          list.appendChild(token);
-        });
-
-        if (els.ratioBasisAddButton) {
-          const atLimit = names.length >= MAX_RATIO_BASIS_COUNT;
-          els.ratioBasisAddButton.disabled = atLimit;
-          els.ratioBasisAddButton.hidden = atLimit;
-        }
-      }
-
-      function closeRatioBasisContextMenu() {
-        if (!els.ratioBasisContextMenu) return;
-        els.ratioBasisContextMenu.classList.remove("open");
-        els.ratioBasisContextMenu.setAttribute("aria-hidden", "true");
-        delete els.ratioBasisContextMenu.dataset.ratioBasisIndex;
-      }
-
-      function openRatioBasisContextMenu(event, index) {
-        const names = getRatioBasisNames();
-        if (!els.ratioBasisContextMenu || !names[index]) return;
-        event.preventDefault();
-        event.stopPropagation();
-        closeCellContextMenu();
-        closeSourceContextMenu();
-        els.ratioBasisContextMenu.dataset.ratioBasisIndex = String(index);
-        els.ratioBasisContextMenu.classList.add("open");
-        els.ratioBasisContextMenu.setAttribute("aria-hidden", "false");
-        positionContextMenu(els.ratioBasisContextMenu, event.clientX, event.clientY);
-      }
-
-      function resetRatioBasisDragState() {
-        state.ratioBasisDragIndex = null;
-        els.ratioBasisPicker?.classList.remove("rsRatioBasisDragActive", "rsRatioBasisDragOutside");
-        els.ratioBasisList?.querySelector(".rsRatioBasisDragging")?.classList.remove("rsRatioBasisDragging");
-      }
-
-      async function openRatioBasisDataset(index) {
-        const name = getRatioBasisNames()[index];
-        if (!name) return;
-        await ensureDatasetCatalogLoaded();
-        const record = cachedRows.find((row) => norm(row?.name) === norm(name)) || null;
-        const requestId = `rs_open_ratio_basis_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const onMessage = (event) => {
-          const msg = event.data || {};
-          if (msg.type !== "arcrho:automation-command-result" || msg.requestId !== requestId) return;
-          window.removeEventListener("message", onMessage);
-          if (msg.ok === false) postStatus(`Open ratio basis dataset failed: ${msg.error || "Unknown error."}`, "error");
-        };
-        window.addEventListener("message", onMessage);
-        window.setTimeout(() => window.removeEventListener("message", onMessage), 10000);
-        try {
-          window.parent?.postMessage({
-            type: "arcrho:automation-open-dataset",
-            requestId,
-            args: {
-              datasetName: name,
-              datasetTypeName: text(record?.datasetTypeName || record?.datasetType || name),
-              methodType: text(record?.methodType),
-            },
-          }, "*");
-        } catch (err) {
-          window.removeEventListener("message", onMessage);
-          postStatus(`Open ratio basis dataset failed: ${err?.message || err}`, "error");
-        }
+      // Ratio Basis is chosen on the Details Data Flow map.
+      function renderRatioBasisInputs(names = getRatioBasisNames()) {
+        ctx.setDetailsInputs?.([{
+          key: "ratio_basis",
+          label: "Ratio Basis",
+          multiple: true,
+          max: MAX_RATIO_BASIS_COUNT,
+          disabled: !!state.loadBlocked,
+          values: names,
+          pick: (anchor) => openRatioBasisDatasetPicker(anchor),
+          remove: (index) => removeRatioBasisAt(index),
+        }]);
       }
 
       function removeRatioBasisAt(index) {
@@ -937,7 +854,7 @@
         const names = getRatioBasisNames();
         const active = matchRatioBasisName(state.activeRatioBasisName, names) || names[0] || "";
         state.activeRatioBasisName = active;
-        renderRatioBasisPills(names);
+        renderRatioBasisInputs(names);
         if (!menu) return active;
         const previous = getDropdownValue(menu);
         menu.replaceChildren();
@@ -1278,7 +1195,6 @@
             }
             closeCellContextMenu();
             closeSourceContextMenu();
-            closeRatioBasisContextMenu();
             return;
           }
           // A text field keeps its own typing undo; everywhere else Ctrl+Z and
@@ -1363,67 +1279,6 @@
             });
           });
         });
-        els.ratioBasisAddButton?.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          void openRatioBasisDatasetPicker();
-        });
-        els.ratioBasisList?.addEventListener("click", (event) => {
-          const removeButton = event.target.closest?.("button[data-ratio-basis-remove-index]");
-          if (removeButton) {
-            event.preventDefault();
-            event.stopPropagation();
-            removeRatioBasisAt(Number.parseInt(removeButton.dataset.ratioBasisRemoveIndex || "", 10));
-            return;
-          }
-          const button = event.target.closest?.("button[data-ratio-basis-open-index]");
-          if (!button) return;
-          event.preventDefault();
-          event.stopPropagation();
-          void openRatioBasisDataset(Number.parseInt(button.dataset.ratioBasisOpenIndex || "", 10))
-            .catch((err) => postStatus(`Ratio Basis open failed: ${err?.message || err}`, "error"));
-        });
-        els.ratioBasisList?.addEventListener("contextmenu", (event) => {
-          const token = event.target.closest?.("[data-ratio-basis-index]");
-          if (!token) return;
-          openRatioBasisContextMenu(event, Number.parseInt(token.dataset.ratioBasisIndex || "", 10));
-        });
-        els.ratioBasisList?.addEventListener("dragstart", (event) => {
-          const token = event.target.closest?.("[data-ratio-basis-index]");
-          const index = Number.parseInt(token?.dataset.ratioBasisIndex || "", 10);
-          const names = getRatioBasisNames();
-          if (!token || !Number.isInteger(index) || !names[index]) return;
-          closeRatioBasisContextMenu();
-          state.ratioBasisDragIndex = index;
-          token.classList.add("rsRatioBasisDragging");
-          els.ratioBasisPicker?.classList.add("rsRatioBasisDragActive");
-          if (event.dataTransfer) {
-            event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("text/plain", names[index]);
-          }
-        });
-        document.addEventListener("dragover", (event) => {
-          if (!Number.isInteger(state.ratioBasisDragIndex)) return;
-          event.preventDefault();
-          const insidePicker = event.target.closest?.(".rsRatioBasisPicker");
-          els.ratioBasisPicker?.classList.toggle("rsRatioBasisDragOutside", !insidePicker);
-          if (event.dataTransfer) event.dataTransfer.dropEffect = insidePicker ? "none" : "move";
-        });
-        document.addEventListener("drop", (event) => {
-          if (!Number.isInteger(state.ratioBasisDragIndex)) return;
-          event.preventDefault();
-          const index = state.ratioBasisDragIndex;
-          const insidePicker = event.target.closest?.(".rsRatioBasisPicker");
-          resetRatioBasisDragState();
-          if (!insidePicker) removeRatioBasisAt(index);
-        });
-        document.addEventListener("dragend", resetRatioBasisDragState);
-        els.ratioBasisContextMenu?.addEventListener("click", (event) => {
-          if (!event.target.closest?.('[data-rs-ratio-basis-action="delete"]')) return;
-          const index = Number.parseInt(els.ratioBasisContextMenu.dataset.ratioBasisIndex || "", 10);
-          closeRatioBasisContextMenu();
-          removeRatioBasisAt(index);
-        });
         wireDropdown(els.activeRatioBasisDropdown, els.activeRatioBasisButton, els.activeRatioBasisMenu, (value) => {
           state.activeRatioBasisName = text(value);
           syncRatioBasisSelector();
@@ -1432,8 +1287,6 @@
         });
         document.addEventListener("mousedown", (event) => {
           const target = event.target;
-          if (els.ratioBasisContextMenu?.contains?.(target)) return;
-          closeRatioBasisContextMenu();
           if (target instanceof Node && (
             els.weightDisplayDropdown?.contains?.(target)
             || els.originLengthDropdown?.contains?.(target)
@@ -1697,7 +1550,7 @@
         setRatioBasisNames,
         matchRatioBasisName,
         normalizeRatioBasisDetails,
-        renderRatioBasisPills,
+        renderRatioBasisInputs,
         syncRatioBasisSelector,
         getActiveRatioBasisName,
         getDetails,

@@ -144,7 +144,7 @@ test("method JSON and shared Data-tab links retain the canonical B&S method iden
   // The routing that turns a persisted method_type into a B&S contract now lives
   // in the shared Details dependency surface, which every method page uses too.
   assert.match(detailsDependenciesSource, /getBerquistShermanContract\(text\)\?\.methodType/u);
-  // A Dependencies map box is labelled the way the full graph labels its node,
+  // A Data Flow map box is labelled the way the full graph labels its node,
   // which reads the B&S display label from the contract.
   assert.match(detailsDependenciesSource, /from "\.\/details_dependency_map\.js\?v=\d{8}[a-z]"/u);
   assert.equal(dependencyMapNodeKind({ methodType: "B&S Settlement Rate Adjustment" }).label, "Berquist Sherman SR");

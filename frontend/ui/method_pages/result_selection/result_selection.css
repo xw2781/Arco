@@ -219,23 +219,6 @@ body {
 }
 .rsButton:hover:not(:disabled) { background: #e2e8f0; }
 .rsButton:disabled { opacity: 0.55; cursor: default; }
-/* Ratio Basis is a tall multi-line field, so only its label opts out of the
-   grid's centred alignment. */
-.rsDetailsGrid .rsBasisLabel {
-  align-self: start;
-  padding-top: 8px;
-}
-.rsRatioBasisPicker {
-  display: block;
-  min-height: 30px;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  outline: 1px solid #cfcfcf;
-  border-radius: var(--tabbed-page-control-radius, 4px);
-  background: #fff;
-  box-sizing: border-box;
-}
 #rsDetailsPage .rsDropdownButton {
   color: var(--ar-details-control-color, #000);
   font-size: var(--ar-details-control-font-size, 12px);
@@ -245,143 +228,6 @@ body {
 #rsDetailsPage select:disabled,
 #rsDetailsPage button:disabled {
   color: var(--ar-details-readonly-color, #000);
-}
-.rsRatioBasisPicker.rsRatioBasisDragActive {
-  outline: 1px dashed #8aa8ff;
-}
-.rsRatioBasisPicker.rsRatioBasisDragOutside {
-  outline-color: #e7a1ad;
-  color: #be123c;
-  background: #fff8f9;
-}
-.rsRatioBasisPicker:focus-within {
-  outline-color: #8aa8ff;
-  box-shadow: 0 0 0 2px rgba(138, 168, 255, 0.2);
-}
-.rsRatioBasisList {
-  display: block;
-}
-.rsRatioBasisToken {
-  display: flex;
-  min-width: 0;
-  height: 30px;
-  min-height: 30px;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: var(--tabbed-page-control-radius, 4px);
-  background: transparent;
-  color: var(--ar-details-control-color, #000);
-  font-size: 12px;
-  line-height: 30px;
-  white-space: nowrap;
-  cursor: grab;
-  box-sizing: border-box;
-  transition: background-color 120ms ease, border-color 120ms ease;
-}
-.rsRatioBasisToken.rsRatioBasisDragging {
-  opacity: 0.48;
-  border-style: dashed;
-}
-.rsRatioBasisToken:hover,
-.rsRatioBasisToken:focus-within {
-  border-color: #d8e1ec;
-  background: #f6f9ff;
-}
-.rsRatioBasisTokenLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rsRatioBasisOpen {
-  display: inline-flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  align-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: inherit;
-  cursor: grab;
-}
-.rsRatioBasisOpen:focus { outline: none; }
-.rsRatioBasisRemove {
-  display: inline-flex;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--tabbed-page-control-radius, 4px);
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  visibility: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: visibility 0s linear 120ms, opacity 120ms ease, background-color 120ms ease, color 120ms ease;
-}
-.rsRatioBasisToken:hover .rsRatioBasisRemove,
-.rsRatioBasisToken:focus-within .rsRatioBasisRemove {
-  visibility: visible;
-  pointer-events: auto;
-  opacity: 1;
-  transition-delay: 0s;
-}
-.rsRatioBasisRemove svg {
-  display: block;
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-}
-.rsRatioBasisRemove:hover,
-.rsRatioBasisRemove:focus-visible {
-  outline: none;
-  background: #fff1f2;
-  color: #be123c;
-}
-.rsRatioBasisAdd {
-  appearance: none;
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  height: 30px;
-  min-height: 30px;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: var(--tabbed-page-control-radius, 4px);
-  background: transparent;
-  color: #94a3b8;
-  font: 12px var(--rs-font);
-  cursor: pointer;
-  box-sizing: border-box;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-.rsRatioBasisAdd[hidden] {
-  display: none;
-}
-.rsRatioBasisAdd:hover:not(:disabled),
-.rsRatioBasisAdd:focus:not(:disabled) {
-  outline: none;
-  border-color: #d8e1ec;
-  background: #eaf2ff;
-  color: #2b6df6;
-}
-.rsRatioBasisAdd:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 .rsMethodToolbar {
   display: flex;
@@ -1062,13 +908,6 @@ body {
 .rsCellContextMenu button:hover {
   background: #eaf2ff;
   color: #0d6efd;
-}
-.rsRatioBasisContextMenu { width: 120px; }
-.rsRatioBasisContextMenu button:hover,
-.rsRatioBasisContextMenu button:focus-visible {
-  outline: none;
-  background: #fff1f2;
-  color: #be123c;
 }
 .rsSaveBar {
   flex: 0 0 38px;

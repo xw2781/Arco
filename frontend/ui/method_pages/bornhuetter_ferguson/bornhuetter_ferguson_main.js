@@ -14,7 +14,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -75,7 +75,6 @@ const state = {
   latestValues: [],
   dfmUltimateValues: [],
   priorSources: [],
-  priorDragIndex: null,
   selectedPriorValues: [],
   percentDevelopedValues: [],
   newUltimateValues: [],
@@ -143,11 +142,7 @@ const els = {
   originLengthLabel: document.getElementById("bfOriginLengthLabel"),
   originLengthMenu: document.getElementById("bfOriginLengthMenu"),
   latestInput: document.getElementById("bfLatestInput"),
-  latestBtn: document.getElementById("bfLatestBtn"),
   dfmInput: document.getElementById("bfDfmInput"),
-  dfmBtn: document.getElementById("bfDfmBtn"),
-  priorList: document.getElementById("bfPriorList"),
-  priorContextMenu: document.getElementById("bfPriorContextMenu"),
   showWeightsInput: document.getElementById("bfShowWeightsInput"),
   weightDisplayDropdown: document.getElementById("bfWeightDisplayDropdown"),
   weightDisplayButton: document.getElementById("bfWeightDisplayButton"),
@@ -366,6 +361,7 @@ function syncTitles() {
   document.title = title;
   if (els.title) els.title.textContent = title;
   if (els.subtitle) els.subtitle.textContent = [state.project, state.reservingClass].filter(Boolean).join(" / ");
+  renderInputSlots();
 }
 
 function displayNumber(value, decimals = 0) {
@@ -661,91 +657,44 @@ async function clearDependencySourcePreview(message = {}) {
   return reloadPersistedBornhuetterFerguson({ preserveOwnedState: isDirty });
 }
 
-function renderPriorSourceList() {
-  if (!els.priorList) return;
-  const sources = state.priorSources.length
-    ? state.priorSources.map((source, sourceIndex) => `
-    <span class="bfPriorToken" role="listitem" draggable="true" data-prior-token-index="${sourceIndex}">
-      <button class="bfPriorOpen" type="button" data-prior-open-index="${sourceIndex}" aria-label="Open dataset ${escapeHtml(source.name)}">
-        <span class="bfPriorTokenLabel">${escapeHtml(source.name)}</span>
-      </button>
-      <button class="bfPriorRemove" type="button" data-prior-remove-index="${sourceIndex}" aria-label="Remove dataset ${escapeHtml(source.name)}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
-      </button>
-    </span>`).join("")
-    : "";
-  els.priorList.innerHTML = `${sources}
-    <span class="bfPriorAddSlot" role="listitem">
-      <button class="bfPriorAdd" id="bfPriorAddBtn" type="button" data-prior-add title="Add prior vector" aria-label="Add prior vector">
-        + Add datasets
-      </button>
-    </span>`;
-}
-
-function openPriorDataset(sourceIndex) {
-  const source = state.priorSources[sourceIndex];
-  const datasetName = text(source?.name);
-  if (!datasetName) return;
-  if (window.parent === window) {
-    postStatus("Prior datasets open from a Project Instance window.", "warn");
-    return;
-  }
-  const record = cachedRecordByName(datasetName);
-  try {
-    window.parent?.postMessage({
-      type: "arcrho:project-instance-open-dependent-dataset",
-      inst,
-      datasetName,
-      datasetTypeName: text(record?.datasetType) || datasetName,
-      methodType: text(record?.methodType),
-      openMethod: false,
-      projectName: state.project,
-      reservingClass: state.reservingClass,
-    }, "*");
-    postStatus(`Opening dataset: ${datasetName}`);
-  } catch {
-    postStatus(`Could not open dataset: ${datasetName}`, "error");
-  }
-}
-
-function closePriorContextMenu() {
-  if (!els.priorContextMenu) return;
-  els.priorContextMenu.classList.remove("open");
-  els.priorContextMenu.setAttribute("aria-hidden", "true");
-  delete els.priorContextMenu.dataset.priorIndex;
-}
-
-function openPriorContextMenu(event, sourceIndex) {
-  if (!els.priorContextMenu || !state.priorSources[sourceIndex]) return;
-  event.preventDefault();
-  event.stopPropagation();
-  closeMethodCellContextMenu();
-  els.priorContextMenu.dataset.priorIndex = String(sourceIndex);
-  els.priorContextMenu.classList.add("open");
-  els.priorContextMenu.setAttribute("aria-hidden", "false");
-  const rect = els.priorContextMenu.getBoundingClientRect();
-  els.priorContextMenu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - rect.width - 8))}px`;
-  els.priorContextMenu.style.top = `${Math.max(8, Math.min(event.clientY, window.innerHeight - rect.height - 8))}px`;
-}
-
-function resetPriorDragState() {
-  state.priorDragIndex = null;
-  els.priorList?.classList.remove("bfPriorDragActive", "bfPriorDragOutside");
-  els.priorList?.querySelector(".bfPriorDragging")?.classList.remove("bfPriorDragging");
+// The inputs are chosen on the Details Data Flow map.
+function renderInputSlots() {
+  getDetailsDependencies().setInputs([
+    {
+      key: "latest",
+      label: "Latest",
+      values: [text(els.latestInput?.value)].filter(Boolean),
+      pick: (anchor) => openPicker("latest", anchor),
+    },
+    {
+      key: "dfm",
+      label: "Development Pattern",
+      values: [text(els.dfmInput?.value)].filter(Boolean),
+      pick: (anchor) => openPicker("dfm", anchor),
+    },
+    {
+      key: "prior",
+      label: "Prior Vector",
+      multiple: true,
+      values: state.priorSources.map((source) => source.name),
+      pick: (anchor) => openPicker("prior", anchor),
+      remove: (index) => removePriorSource(index),
+    },
+  ]);
 }
 
 function addPriorSource(name) {
   const clean = text(name);
   if (!clean || state.priorSources.some((source) => norm(source.name) === norm(clean))) return false;
   state.priorSources.push({ name: clean, values: [], weights: normalizePriorWeights([], rowCount(), 1) });
-  renderPriorSourceList();
+  renderInputSlots();
   return true;
 }
 
 async function removePriorSource(sourceIndex) {
   if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= state.priorSources.length) return;
   state.priorSources.splice(sourceIndex, 1);
-  renderPriorSourceList();
+  renderInputSlots();
   await refreshCalculations({ mark: false }).catch((err) => postStatus(`Prior refresh failed: ${String(err?.message || err)}`, "error"));
   markDirty();
 }
@@ -1371,7 +1320,7 @@ async function applyPayload(payload) {
   state.methodLastModified = text(metadata.last_modified) || state.methodLastModified;
   syncTitles();
   syncFormattingControls();
-  renderPriorSourceList();
+  renderInputSlots();
   renderMethodGrid();
   renderBfChart();
 }
@@ -1483,7 +1432,7 @@ function restoreLocalOwnedState(local, persisted) {
   syncOriginLengthControl();
   syncTitles();
   syncFormattingControls();
-  renderPriorSourceList();
+  renderInputSlots();
   calculateOutputs();
   renderMethodGrid();
 }
@@ -1864,70 +1813,6 @@ function wireInputs() {
     });
   }
   els.outputTypeBtn?.addEventListener("click", () => openPicker("output", els.outputTypeBtn));
-  els.latestBtn?.addEventListener("click", () => openPicker("latest", els.latestBtn));
-  els.dfmBtn?.addEventListener("click", () => openPicker("dfm", els.dfmBtn));
-  els.priorList?.addEventListener("click", (event) => {
-    const addButton = event.target.closest("button[data-prior-add]");
-    if (addButton) {
-      void openPicker("prior", addButton);
-      return;
-    }
-    const removeButton = event.target.closest("button[data-prior-remove-index]");
-    if (removeButton) {
-      event.preventDefault();
-      event.stopPropagation();
-      void removePriorSource(Number.parseInt(removeButton.dataset.priorRemoveIndex || "", 10));
-      return;
-    }
-    const openButton = event.target.closest("button[data-prior-open-index]");
-    if (openButton) openPriorDataset(Number.parseInt(openButton.dataset.priorOpenIndex || "", 10));
-  });
-  els.priorList?.addEventListener("contextmenu", (event) => {
-    const token = event.target.closest("[data-prior-token-index]");
-    if (!token) return;
-    openPriorContextMenu(event, Number.parseInt(token.dataset.priorTokenIndex || "", 10));
-  });
-  els.priorList?.addEventListener("dragstart", (event) => {
-    const token = event.target.closest("[data-prior-token-index]");
-    const sourceIndex = Number.parseInt(token?.dataset.priorTokenIndex || "", 10);
-    if (!token || !Number.isInteger(sourceIndex) || !state.priorSources[sourceIndex]) return;
-    closePriorContextMenu();
-    state.priorDragIndex = sourceIndex;
-    token.classList.add("bfPriorDragging");
-    els.priorList.classList.add("bfPriorDragActive");
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", state.priorSources[sourceIndex].name);
-    }
-  });
-  document.addEventListener("dragover", (event) => {
-    if (!Number.isInteger(state.priorDragIndex)) return;
-    event.preventDefault();
-    const insideList = event.target.closest?.("#bfPriorList");
-    els.priorList?.classList.toggle("bfPriorDragOutside", !insideList);
-    if (event.dataTransfer) event.dataTransfer.dropEffect = insideList ? "none" : "move";
-  });
-  document.addEventListener("drop", (event) => {
-    if (!Number.isInteger(state.priorDragIndex)) return;
-    event.preventDefault();
-    const sourceIndex = state.priorDragIndex;
-    const insideList = event.target.closest?.("#bfPriorList");
-    resetPriorDragState();
-    if (!insideList) void removePriorSource(sourceIndex);
-  });
-  document.addEventListener("dragend", resetPriorDragState);
-  els.priorContextMenu?.addEventListener("click", (event) => {
-    if (!event.target.closest('button[data-bf-prior-action="delete"]')) return;
-    const sourceIndex = Number.parseInt(els.priorContextMenu.dataset.priorIndex || "", 10);
-    closePriorContextMenu();
-    if (Number.isInteger(sourceIndex)) void removePriorSource(sourceIndex);
-  });
-  document.addEventListener("mousedown", (event) => {
-    if (els.priorContextMenu?.classList.contains("open") && !event.target.closest("#bfPriorContextMenu")) closePriorContextMenu();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closePriorContextMenu();
-  });
   els.showWeightsInput?.addEventListener("change", () => {
     state.showWeights = !!els.showWeightsInput.checked;
     if (!state.showWeights) closeWeightDisplayDropdown();
@@ -2006,7 +1891,7 @@ function wireInputs() {
   els.methodDecimalsDown?.addEventListener("click", () => setStatisticDecimals(state.statisticDecimalPlaces - 1));
   syncFormattingControls();
   syncOriginLengthControl();
-  renderPriorSourceList();
+  renderInputSlots();
   els.saveBtn?.addEventListener("click", async () => {
     try {
       const saved = await saveBornhuetterFerguson();

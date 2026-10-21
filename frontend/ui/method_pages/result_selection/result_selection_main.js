@@ -17,7 +17,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { createPageCloseConfirm } from "/ui/shared/components/close_confirm/close_confirm.js";
 import { showMethodSaveReviewWarning } from "/ui/shared/components/message_box/method_save_review_warning.js?v=20260925a";
 import { showPageMessageBox } from "/ui/shared/components/message_box/message_box.js?v=20260925a";
@@ -129,7 +129,6 @@ const state = {
   methodHighlight: null,
   methodHighlights: [],
   methodHighlightDragging: false,
-  ratioBasisDragIndex: null,
   resultsHighlight: null,
   resultsHighlightDragging: false,
   weightEditSession: null,
@@ -180,10 +179,6 @@ const els = {
     document.getElementById("rsRatioBasisInput2"),
     document.getElementById("rsRatioBasisInput3"),
   ],
-  ratioBasisList: document.getElementById("rsRatioBasisList"),
-  ratioBasisAddButton: document.getElementById("rsRatioBasisAddBtn"),
-  ratioBasisPicker: document.querySelector(".rsRatioBasisPicker"),
-  ratioBasisContextMenu: document.getElementById("rsRatioBasisContextMenu"),
   showRatiosPctInput: document.getElementById("rsShowRatiosPctInput"),
   statisticDecimalsInput: document.getElementById("rsStatisticDecimalsInput"),
   methodStatisticDecimalsInput: document.getElementById("rsMethodStatisticDecimalsInput"),
@@ -466,6 +461,8 @@ const detailsDependencies = createDetailsDependenciesController({
   setStatus: (message) => ctx.postStatus(message),
 });
 ctx.refreshDetailsDependencies = () => detailsDependencies.refresh().catch(() => null);
+ctx.setDetailsInputs = (slots) => detailsDependencies.setInputs(slots);
+ctx.renderRatioBasisInputs();
 
 // The window is held blank until the opening tab is rendered; see
 // ui/shared/tabbed_page/initial_tab_paint.js.

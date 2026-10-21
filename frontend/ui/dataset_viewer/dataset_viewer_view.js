@@ -77,7 +77,7 @@ export function mountDatasetViewer(container) {
           </div>
 
           <div class="dsDetailLabel arDetailsLabel">
-            <label id="dsDependenciesTitle">Dependencies : </label>
+            <label id="dsDependenciesTitle">Data Flow : </label>
           </div>
           <div class="dsDetailInput arDetailsField">
             <div id="dsDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="dsDependenciesTitle" aria-live="polite"></div>

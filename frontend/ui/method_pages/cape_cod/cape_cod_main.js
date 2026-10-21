@@ -14,7 +14,7 @@ import {
 import { wireTabPopoutWindows } from "/ui/shared/tabbed_page/tab_popout_window.js?v=20260722a";
 import { mountNotesTab } from "/ui/shared/tabs/notes/notes_tab.js?v=20260911b";
 import { syncDetailsLabelWidth } from "/ui/shared/tabs/details/details_form_layout.js?v=20260820b";
-import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261020b";
+import { createDetailsDependenciesController } from "/ui/shared/tabs/details/details_dependencies.js?v=20261021c";
 import { applyHostFixedDetailsFields } from "/ui/shared/tabs/details/details_host_fields.js?v=20260820b";
 import { createAuditLogView } from "/ui/shared/tabs/audit_log/audit_log_view.js?v=20260714c";
 import {
@@ -182,11 +182,8 @@ const els = {
   originLengthLabel: document.getElementById("ccOriginLengthLabel"),
   originLengthMenu: document.getElementById("ccOriginLengthMenu"),
   latestInput: document.getElementById("ccLatestInput"),
-  latestBtn: document.getElementById("ccLatestBtn"),
   exposureInput: document.getElementById("ccExposureInput"),
-  exposureBtn: document.getElementById("ccExposureBtn"),
   priorUltimateInput: document.getElementById("ccPriorUltimateInput"),
-  priorUltimateBtn: document.getElementById("ccPriorUltimateBtn"),
   priorModeDropdown: document.getElementById("ccPriorModeDropdown"),
   priorModeButton: document.getElementById("ccPriorModeButton"),
   priorModeLabel: document.getElementById("ccPriorModeLabel"),
@@ -421,6 +418,22 @@ function syncTitles() {
   const details = getDetails();
   const title = details.name ? `${details.name} - ${CC_METHOD_TYPE}` : CC_METHOD_TYPE;
   document.title = title;
+  renderInputSlots();
+}
+
+// The inputs are chosen on the Details Data Flow map.
+function renderInputSlots() {
+  const slot = (key, label, input) => ({
+    key,
+    label,
+    values: [text(input?.value)].filter(Boolean),
+    pick: (anchor) => openPicker(key, anchor),
+  });
+  getDetailsDependencies().setInputs([
+    slot("latest", "Latest", els.latestInput),
+    slot("exposure", "Exposure", els.exposureInput),
+    slot("prior_ultimate", "Prior Ultimate", els.priorUltimateInput),
+  ]);
 }
 
 function displayNumber(value, decimals = 0) {
@@ -2024,9 +2037,6 @@ function wireInputs() {
     });
   }
   els.outputTypeBtn?.addEventListener("click", () => openPicker("output", els.outputTypeBtn));
-  els.latestBtn?.addEventListener("click", () => openPicker("latest", els.latestBtn));
-  els.exposureBtn?.addEventListener("click", () => openPicker("exposure", els.exposureBtn));
-  els.priorUltimateBtn?.addEventListener("click", () => openPicker("prior_ultimate", els.priorUltimateBtn));
   els.priorModeButton?.addEventListener("click", () => {
     const open = !els.priorModeDropdown?.classList.contains("open");
     closeScalingDropdown();

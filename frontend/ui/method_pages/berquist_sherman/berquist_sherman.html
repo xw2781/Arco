@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/ui/shared/tabbed_page/tabbed_page.css?v=20260824d">
   <link rel="stylesheet" href="/ui/shared/tabs/details/details_form_layout.css?v=20260820b">
 <link rel="stylesheet" href="/ui/shared/styles/dependency_families.css?v=20261020a">
-<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261020c">
+<link rel="stylesheet" href="/ui/shared/tabs/details/details_dependencies.css?v=20261021f">
   <link rel="stylesheet" href="/ui/shared/tabs/notes/notes_tab.css?v=20260911a">
   <link rel="stylesheet" href="/ui/shared/tabs/links/links_tab.css?v=20260901b">
   <link rel="stylesheet" href="/ui/shared/tabs/audit_log/audit_log.css?v=20260714a">
@@ -29,8 +29,9 @@
       <div class="bsPageHost">
         <section class="bsPage arDetailsRoot" id="bsDetailsPage" data-page="details" role="tabpanel">
           <div class="bsDetailsStack">
-            <!-- Identity, then the source triangles of the selected variant, then
-                 the shape and precision of the output, then its number format.
+            <!-- Identity, then the Data Flow map where the selected variant's
+                 source datasets are chosen, then the shape and precision of the
+                 output, then its number format.
                  Name is the first row and Output Type the second, as on every
                  Details tab. -->
             <section class="bsPanel arDetailsSection">
@@ -61,61 +62,10 @@
               </div>
             </section>
 
-            <section class="bsPanel arDetailsSection" id="bsSrInputs">
-              <div class="bsPanelBody">
-                <div class="bsFieldGrid arDetailsGrid">
-                  <label class="bsLabel arDetailsLabel" for="bsSrPaidInput">Paid Claims : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsSrPaidInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="paid_claims" aria-label="Select paid claims">...</button>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" for="bsSrClosedInput">Closed Claim Counts : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsSrClosedInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="closed_claim_numbers" aria-label="Select closed claim counts">...</button>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" for="bsSrUltimateInput">Ultimate Claim Counts : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsSrUltimateInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="ultimate_claim_numbers" aria-label="Select ultimate claim counts">...</button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Source order follows the ResQ CRA Details tab: Paid, Incurred,
-                 Reported, Closed. -->
-            <section class="bsPanel arDetailsSection" id="bsCraInputs" hidden>
-              <div class="bsPanelBody">
-                <div class="bsFieldGrid arDetailsGrid">
-                  <label class="bsLabel arDetailsLabel" for="bsCraPaidInput">Paid Claims : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsCraPaidInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="paid_claims" aria-label="Select paid claims">...</button>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" for="bsCraIncurredInput">Incurred Claims : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsCraIncurredInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="incurred_claims" aria-label="Select incurred claims">...</button>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" for="bsCraReportedInput">Reported Claim Counts : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsCraReportedInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="reported_claim_numbers" aria-label="Select reported claim counts">...</button>
-                  </div>
-                  <label class="bsLabel arDetailsLabel" for="bsCraClosedInput">Closed Claim Counts : </label>
-                  <div class="bsFieldControl arDetailsField withPicker">
-                    <input class="bsInput arDetailsControl" id="bsCraClosedInput" type="text" readonly>
-                    <button class="bsIconButton" type="button" data-picker-role="closed_claim_numbers" aria-label="Select closed claim counts">...</button>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <section class="bsPanel arDetailsSection">
               <div class="bsPanelBody">
                 <div class="bsFieldGrid arDetailsGrid">
-                  <label class="bsLabel arDetailsLabel" id="bsDependenciesLabel">Dependencies : </label>
+                  <label class="bsLabel arDetailsLabel" id="bsDependenciesLabel">Data Flow : </label>
                   <div class="arDetailsField">
                     <div id="bsDependencyMap" class="arDetailsDepMap" role="group" aria-labelledby="bsDependenciesLabel" aria-live="polite"></div>
                   </div>
