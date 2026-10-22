@@ -5,14 +5,21 @@ const { spawn } = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { sleep, withTimeout } = require("./host_support");
+const { sleep, withTimeout, getElectronLogPath, formatErrorForLog } = require("./host_support");
 
 const SHA256_RE = /\b[a-fA-F0-9]{64}\b/;
-const GITHUB_API_ROOT = "https://api.github.com";
 const MANDATORY_MARKER_RE = /\bmandatory\s*:\s*true\b/i;
-// Wide enough that a user who skipped a long run of releases still gets every
-// note in between; only the winning version costs a checksum round trip.
+// HANDOFF: the release-list scan below still uses these until the update feed
+// reader replaces it; see frontend/docs/plans/update_reliability_handoff.md.
+const GITHUB_API_ROOT = "https://api.github.com";
 const MAX_RELEASES_SCANNED = 30;
+// The publisher's release channel file owns the repository and the update feed
+// names; packaging copies it into the app's resources folder.
+const RELEASE_CHANNEL_FILE = "release_channel.json";
+const SOURCE_RELEASE_CHANNEL_PATH = path.resolve(__dirname, "..", "build", "release", RELEASE_CHANNEL_FILE);
+const UPDATE_LOG_FILE = "update.log";
+// A download that delivers nothing for this long is treated as dropped and resumed.
+const DOWNLOAD_STALL_TIMEOUT_MS = 30000;
 const USER_SECTION_HEADING_RE = /^##\s+user-facing changes\s*$/i;
 const SECTION_HEADING_RE = /^##\s+/;
 const HEADING_RE = /^(#{1,6})\s+(.*)$/;
@@ -40,12 +47,22 @@ let getMainWindow = () => null;
 let updateHost = null;
 let fetchImpl = typeof fetch === "function" ? fetch : null;
 let spawnImpl = spawn;
-let UPDATE_GITHUB_REPO = "xw2781/ArcRho";
+let UPDATE_GITHUB_REPO = "";
+let UPDATE_FEED_URL = "";
 let UPDATE_GITHUB_TOKEN = "";
-let UPDATE_CHECK_TIMEOUT_MS = 3000;
+let UPDATE_CHECK_TIMEOUT_MS = 15000;
 let UPDATE_INSTALLER_NAME_RE = /$^/;
 let DEV_UPDATE_CHECK_ENABLED = false;
 let PRODUCT_LABEL = "Arco";
+// Waits before each new download attempt; one attempt more than entries in all.
+let downloadRetryDelaysMs = [2000, 5000, 10000];
+
+function readReleaseChannel() {
+  const channelPath = app.isPackaged
+    ? path.join(process.resourcesPath, RELEASE_CHANNEL_FILE)
+    : SOURCE_RELEASE_CHANNEL_PATH;
+  return JSON.parse(fs.readFileSync(channelPath, "utf8"));
+}
 
 function initUpdateChecker({
   appMode,
@@ -53,14 +70,20 @@ function initUpdateChecker({
   updateHost: injectedHost,
   fetchImpl: injectedFetch,
   spawnImpl: injectedSpawn,
+  downloadRetryDelaysMs: injectedRetryDelays,
 } = {}) {
   getMainWindow = typeof getWin === "function" ? getWin : () => null;
   updateHost = injectedHost && typeof injectedHost === "object" ? injectedHost : null;
   if (typeof injectedFetch === "function") fetchImpl = injectedFetch;
   spawnImpl = typeof injectedSpawn === "function" ? injectedSpawn : spawn;
+  downloadRetryDelaysMs = Array.isArray(injectedRetryDelays) ? injectedRetryDelays : [2000, 5000, 10000];
+  PRODUCT_LABEL = appMode === "arcode" ? "Arcode" : "Arco";
+  const channel = readReleaseChannel();
   UPDATE_GITHUB_REPO = (
     appMode === "arcode" ? process.env.ARCODE_UPDATE_GITHUB_REPO : process.env.ARCRHO_UPDATE_GITHUB_REPO
-  ) || "xw2781/ArcRho";
+  ) || channel.githubRepo;
+  UPDATE_FEED_URL = `https://github.com/${UPDATE_GITHUB_REPO}/releases/download/${channel.updateFeedTag}/`
+    + String(channel.updateFeedAsset).replace("{product}", PRODUCT_LABEL);
   UPDATE_GITHUB_TOKEN = (
     appMode === "arcode" ? process.env.ARCODE_UPDATE_GITHUB_TOKEN : process.env.ARCRHO_UPDATE_GITHUB_TOKEN
   ) || "";
@@ -68,11 +91,10 @@ function initUpdateChecker({
     1000,
     parseInt(
       (appMode === "arcode" ? process.env.ARCODE_UPDATE_CHECK_TIMEOUT_MS : process.env.ARCRHO_UPDATE_CHECK_TIMEOUT_MS)
-        || "3000",
+        || "15000",
       10
-    ) || 3000
+    ) || 15000
   );
-  PRODUCT_LABEL = appMode === "arcode" ? "Arcode" : "Arco";
   UPDATE_INSTALLER_NAME_RE = appMode === "arcode"
     ? /^Arcode-Setup-(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)\.exe$/i
     : /^Arco-Setup-(\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)\.exe$/i;

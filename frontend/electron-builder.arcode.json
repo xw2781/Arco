@@ -30,6 +30,10 @@
     {
       "from": "node-portable",
       "to": "node-portable"
+    },
+    {
+      "from": "build/release/release_channel.json",
+      "to": "release_channel.json"
     }
   ],
   "win": {

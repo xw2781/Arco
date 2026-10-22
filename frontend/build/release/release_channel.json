@@ -1,4 +1,6 @@
 {
-  "githubRepo": "xw2781/ArcRho",
-  "tagFormat": "{product}-v{version}"
+  "githubRepo": "xw2781/Arco",
+  "tagFormat": "{product}-v{version}",
+  "updateFeedTag": "update-feed",
+  "updateFeedAsset": "{product}-update.json"
 }

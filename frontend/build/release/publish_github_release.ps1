@@ -133,3 +133,6 @@ if ($fullNotesAsset) { $temporaryFiles += $fullNotesAsset }
 Remove-Item -LiteralPath $temporaryFiles -Force -ErrorAction SilentlyContinue
 
 Write-Host "Published $ProductName $version to https://github.com/$Repo/releases/tag/$tag"
+
+# Installed apps find this release through the update feed, not the release list.
+& (Join-Path $PSScriptRoot "publish_update_manifest.ps1") -ProductName $ProductName -Repo $Repo -ReleaseChannelFile $channelPath
