@@ -225,10 +225,11 @@ Do not run build tooling directly from the mapped repository. The one-click work
 A successful build reports exit code `0` and produces:
 
 - `%ARCRHO_LOCAL_BUILD_ROOT%\frontend\dist\Arco-Setup-<version>.exe`
-- A GitHub Release tagged `Arco-v<version>` with `Arco-Setup-<version>.exe` and `Arco-Setup-<version>.exe.sha256` attached — this is what the packaged app's update checker reads, and the history the next build's version number is derived from.
+- A GitHub Release tagged `Arco-v<version>` with `Arco-Setup-<version>.exe` and `Arco-Setup-<version>.exe.sha256` attached — the history the next build's version number is derived from.
+- `Arco-update.json` rewritten on the `update-feed` prerelease by `publish_update_manifest.ps1` — the only file the packaged app's update checker reads.
 - `E:\ArcRho Server\packages\arcrho_api-latest.whl`, unless `PYTHON_API_PACKAGE_DIR` overrides that destination.
 
-The tag name and target repository come from `frontend\build\release\release_channel.json`, which both `publish_github_release.ps1` and `version_manager.py` read. Change the tag shape there rather than in either script.
+The tag name, target repository, and update feed names come from `frontend\build\release\release_channel.json`, which `publish_github_release.ps1`, `publish_update_manifest.ps1`, `version_manager.py`, and the installed app read. Change them there rather than in any script.
 
 ZIP-creation and application-build logs from both PCs are written directly to the shared handoff folder, separated by Windows computer name:
 

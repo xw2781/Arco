@@ -26,7 +26,7 @@ removed long ago.
 | --- | --- |
 | [`docs/`](docs) | The two release runbooks. Read one of these before your first build. |
 | [`installer/`](installer) | NSIS installer sources and the Windows progress observer: `installer.nsh`, `arcode_installer.nsh`, `installer_progress_helper.cs`, `patch_nsis_installer_progress.js`, plus the two PowerShell helpers the installer runs on the user's machine. |
-| [`release/`](release) | Versioning and publication: `version_manager.py`, `release_notes.py`, `release_channel.json`, `publish_github_release.ps1`, `publish_update_feed.ps1`, `sync_published_release.py`, `request_release_sync.ps1`, plus `release_manager_ui.html`, the single self-contained document `release_manager.py` serves. |
+| [`release/`](release) | Versioning and publication: `version_manager.py`, `release_notes.py`, `release_channel.json`, `publish_github_release.ps1`, `publish_update_manifest.ps1`, `publish_update_feed.ps1`, `sync_published_release.py`, `request_release_sync.ps1`, plus `release_manager_ui.html`, the single self-contained document `release_manager.py` serves. |
 | [`transport/`](transport) | Moving source to a build PC: the ZIP creator, both workspace preparers, the build-share deployer, and the console-log wrapper. Only the two-PC workflow needs these. |
 | [`arcbot_runtime/`](arcbot_runtime) | Refresh and validate the bundled ArcBot/Codex payload under `node-portable`. |
 | [`helpers/`](helpers) | Small build-time generators: `convert_icon.js`, `build_python_api_wheel.js`. |
@@ -50,8 +50,13 @@ in the build. Leave them where they are unless you can run a full packaging buil
   frontend root from their own location (`Path(__file__).parents[2]`,
   `path.resolve(__dirname, "..", "..")`, `Join-Path $scriptDir "..\..\.."`). Moving one a
   level deeper without fixing its anchor resolves silently to the wrong directory.
-- **`release_channel.json` owns the GitHub repository and tag shape.** Both
-  `publish_github_release.ps1` and `version_manager.py` read it; change the tag there.
+- **`release_channel.json` owns the GitHub repository, tag shape, and update feed names.**
+  `publish_github_release.ps1`, `publish_update_manifest.ps1`, `version_manager.py`, and the
+  installed app (it is packaged as an extra resource) read it; change them there.
+- **Every publish rebuilds the update feed.** `publish_github_release.ps1` ends by running
+  `publish_update_manifest.ps1`, which writes `<Product>-update.json` from the published
+  releases to the `update-feed` prerelease. Installed apps read only that file, so a release
+  published without it is invisible to them; run the script by hand to repair the feed.
 - **`release_workflow.py` owns pending local release records, publication validation,
   Python API wheel publication, GitHub history, and revocation.** The GUI and
   `build_app_from_local_repo.bat` call it instead of duplicating those rules.

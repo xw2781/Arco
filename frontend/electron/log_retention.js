@@ -49,8 +49,61 @@ function pruneAgedLogFiles(directory, { suffixes = LOG_FILE_SUFFIXES, days = LOG
   return removed;
 }
 
+// Every host log line starts with an ISO timestamp; a short window keeps a date
+// mentioned later in a message from counting as the line's own.
+const DATE_PATTERN = /\d{4}-\d{2}-\d{2}/;
+const DATE_SEARCH_WINDOW = 64;
+
+function localDateText(timestampMs) {
+  const date = new Date(timestampMs);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+// Drops the leading lines of a log appended under a fixed name that predate the
+// cutoff and returns how many went. A line with no date near its start (a
+// stack trace) shares the fate of the dated line above it, and a log with no
+// dated line at all is left alone.
+function trimAgedLogLines(filePath, { days = LOG_RETENTION_DAYS, now = null } = {}) {
+  const cutoff = localDateText((now === null ? Date.now() : now) - days * 86400000);
+  let text = "";
+  try {
+    text = fs.readFileSync(filePath, "utf8");
+  } catch {
+    return 0;
+  }
+  const lines = text.match(/[^\n]*\n|[^\n]+$/g) || [];
+  let keepFrom = null;
+  let datedLineSeen = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].slice(0, DATE_SEARCH_WINDOW).match(DATE_PATTERN);
+    if (!match) continue;
+    datedLineSeen = true;
+    if (match[0] >= cutoff) {
+      keepFrom = index;
+      break;
+    }
+  }
+  if (!datedLineSeen) return 0;
+  if (keepFrom === null) keepFrom = lines.length;
+  if (keepFrom === 0) return 0;
+
+  const temporary = `${filePath}.trim`;
+  try {
+    fs.writeFileSync(temporary, lines.slice(keepFrom).join(""), "utf8");
+    fs.renameSync(temporary, filePath);
+  } catch {
+    try {
+      fs.unlinkSync(temporary);
+    } catch {}
+    return 0;
+  }
+  return keepFrom;
+}
+
 module.exports = {
   LOG_RETENTION_DAYS,
   LOG_FILE_SUFFIXES,
   pruneAgedLogFiles,
+  trimAgedLogLines,
 };

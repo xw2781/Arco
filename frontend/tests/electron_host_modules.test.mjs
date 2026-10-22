@@ -64,20 +64,36 @@ test("update_checker initializes and reports development mode for unpackaged app
   assert.deepEqual(result, { status: "development" });
 });
 
-function releaseFixture({ assets, body = "" }) {
-  return [{ draft: false, prerelease: false, published_at: "2026-08-01T00:00:00Z", body, assets }];
+// The release channel file owns the feed location, so the stubs match its asset
+// name rather than restating the repository.
+const FEED_URL_RE = /\/releases\/download\/update-feed\/Arco-update\.json$/;
+const isFeedUrl = (url) => FEED_URL_RE.test(String(url));
+
+function feedEntry(version, body = "", publishedAt = "2026-08-01T00:00:00Z") {
+  return { version, publishedAt, body };
 }
 
-test("update_checker reports up to date when no release asset beats the current version", async () => {
+function feedFixture(releases, sha256 = "a".repeat(64)) {
+  const [latest] = releases;
+  return {
+    product: "Arco",
+    version: latest.version,
+    installer: `Arco-Setup-${latest.version}.exe`,
+    url: `https://dl.example/Arco-Setup-${latest.version}.exe`,
+    sha256,
+    releases,
+  };
+}
+
+function feedResponse(manifest) {
+  return { ok: true, status: 200, json: async () => manifest };
+}
+
+test("update_checker reports up to date when the feed's version does not beat the current one", async () => {
   process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK = "1";
   const fetchStub = async (url) => {
-    assert.match(url, /\/releases\?/);
-    return {
-      ok: true,
-      json: async () => releaseFixture({
-        assets: [{ name: "Arco-Setup-0.0.1.exe", browser_download_url: "https://dl.example/Arco-Setup-0.0.1.exe" }],
-      }),
-    };
+    assert.ok(isFeedUrl(url), `the check reads only the update feed, got ${url}`);
+    return feedResponse(feedFixture([feedEntry("0.0.1")]));
   };
   updateChecker.initUpdateChecker({ appMode: "arcrho", getMainWindow: () => null, fetchImpl: fetchStub });
   const result = await updateChecker.checkForUpdate({ showNoUpdate: false });
@@ -85,24 +101,16 @@ test("update_checker reports up to date when no release asset beats the current 
   assert.deepEqual(result, { status: "none" });
 });
 
-test("update_checker reports missing-checksum when a newer asset has no .sha256 sibling", async () => {
+test("update_checker reports the update location unavailable when the feed request fails", async () => {
   process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK = "1";
-  const fetchStub = async (url) => {
-    if (String(url).includes("/releases?")) {
-      return {
-        ok: true,
-        json: async () => releaseFixture({
-          assets: [{ name: "Arco-Setup-0.0.2.exe", browser_download_url: "https://dl.example/Arco-Setup-0.0.2.exe" }],
-        }),
-      };
-    }
-    throw new Error(`Unexpected fetch URL in test: ${url}`);
-  };
+  const fetchStub = async () => ({ ok: false, status: 404 });
   updateChecker.initUpdateChecker({ appMode: "arcrho", getMainWindow: () => null, fetchImpl: fetchStub });
-  const result = await updateChecker.checkForUpdate({ showNoUpdate: true });
+  const result = await updateChecker.checkForUpdate({ showNoUpdate: false });
   delete process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK;
-  assert.equal(result.status, "missing-checksum");
-  assert.equal(result.version, "0.0.2");
+  assert.deepEqual(result, { status: "unavailable" });
+
+  const log = fs.readFileSync(path.join(path.dirname(hostSupport.getElectronLogPath()), "update.log"), "utf8");
+  assert.match(log, /Check failed after \d+ ms\n.*status 404/, "a failed check is written to update.log");
 });
 
 test("update_checker shows only user-facing release notes as plain text", async () => {
@@ -131,20 +139,8 @@ test("update_checker shows only user-facing release notes as plain text", async 
   ].join("\n");
 
   const fetchStub = async (url) => {
-    const target = String(url);
-    if (target.includes("/releases?")) {
-      return {
-        ok: true,
-        json: async () => releaseFixture({
-          body,
-          assets: [
-            { name: "Arco-Setup-0.0.2.exe", browser_download_url: "https://dl.example/Arco-Setup-0.0.2.exe" },
-            { name: "Arco-Setup-0.0.2.exe.sha256", browser_download_url: "https://dl.example/Arco-Setup-0.0.2.exe.sha256" },
-          ],
-        }),
-      };
-    }
-    return { ok: true, text: async () => `${"a".repeat(64)}  Arco-Setup-0.0.2.exe` };
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.2", body)]));
+    throw new Error(`Unexpected fetch URL in test: ${url}`);
   };
 
   let detail = "";
@@ -188,20 +184,8 @@ test("update_checker downloads a newer release with progress events and rejects 
 
   const fetchStub = async (url) => {
     const target = String(url);
-    if (target.includes("/releases?")) {
-      return {
-        ok: true,
-        json: async () => releaseFixture({
-          body: "Release notes\nmandatory: true",
-          assets: [
-            { name: "Arco-Setup-0.0.2.exe", browser_download_url: "https://dl.example/Arco-Setup-0.0.2.exe" },
-            { name: "Arco-Setup-0.0.2.exe.sha256", browser_download_url: "https://dl.example/Arco-Setup-0.0.2.exe.sha256" },
-          ],
-        }),
-      };
-    }
-    if (target.endsWith(".sha256")) {
-      return { ok: true, text: async () => `${wrongSha256}  Arco-Setup-0.0.2.exe` };
+    if (isFeedUrl(target)) {
+      return feedResponse(feedFixture([feedEntry("0.0.2", "Release notes\nmandatory: true")], wrongSha256));
     }
     if (target.endsWith(".exe")) {
       return {
@@ -284,22 +268,6 @@ function rendererWindow({ onUpdatePayload = () => {}, choice = null } = {}) {
   };
 }
 
-function releaseWithInstaller(version, body, publishedAt = "2026-08-01T00:00:00Z") {
-  return {
-    draft: false,
-    prerelease: false,
-    published_at: publishedAt,
-    body,
-    assets: [
-      { name: `Arco-Setup-${version}.exe`, browser_download_url: `https://dl.example/Arco-Setup-${version}.exe` },
-      {
-        name: `Arco-Setup-${version}.exe.sha256`,
-        browser_download_url: `https://dl.example/Arco-Setup-${version}.exe.sha256`,
-      },
-    ],
-  };
-}
-
 function skippedReleaseFixture() {
   const notes = (version, extra = "") => [
     `# Release ${version}`,
@@ -319,26 +287,26 @@ function skippedReleaseFixture() {
     "",
   ].filter((line) => line !== "").join("\n");
 
-  return [
-    releaseWithInstaller("0.0.4", notes("0.0.4")),
-    releaseWithInstaller("0.0.3", notes("0.0.3")),
-    releaseWithInstaller("0.0.2", `${notes("0.0.2")}\nmandatory: true`),
-    releaseWithInstaller("0.0.1", notes("0.0.1")),
-  ];
+  return feedFixture([
+    feedEntry("0.0.4", notes("0.0.4")),
+    feedEntry("0.0.3", notes("0.0.3")),
+    feedEntry("0.0.2", `${notes("0.0.2")}\nmandatory: true`),
+    feedEntry("0.0.1", notes("0.0.1")),
+  ], "b".repeat(64));
 }
 
 async function runSkippedVersionCheck(win) {
-  const sha256 = "b".repeat(64);
   const fetchStub = async (url) => {
-    const target = String(url);
-    if (target.includes("/releases?")) {
-      return { ok: true, json: async () => skippedReleaseFixture() };
-    }
-    if (target.endsWith(".sha256")) return { ok: true, text: async () => `${sha256}  installer` };
-    throw new Error(`Unexpected fetch URL in test: ${target}`);
+    if (isFeedUrl(url)) return feedResponse(skippedReleaseFixture());
+    throw new Error(`Unexpected fetch URL in test: ${url}`);
   };
   process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK = "1";
-  updateChecker.initUpdateChecker({ appMode: "arcrho", getMainWindow: () => win, fetchImpl: fetchStub });
+  updateChecker.initUpdateChecker({
+    appMode: "arcrho",
+    getMainWindow: () => win,
+    fetchImpl: fetchStub,
+    downloadRetryDelaysMs: [],
+  });
   try {
     return await updateChecker.checkForUpdate({ showNoUpdate: false });
   } finally {
@@ -471,21 +439,10 @@ test("update_checker retries a busy installer launch and records the cleanup mar
   }
 
   const fetchStub = async (url) => {
-    const target = String(url);
-    if (target.includes("/releases?")) {
-      return {
-        ok: true,
-        json: async () => releaseFixture({
-          assets: [
-            { name: "Arco-Setup-0.0.4.exe", browser_download_url: "https://dl.example/Arco-Setup-0.0.4.exe" },
-            { name: "Arco-Setup-0.0.4.exe.sha256", browser_download_url: "https://dl.example/Arco-Setup-0.0.4.exe.sha256" },
-          ],
-        }),
-      };
-    }
-    if (target.endsWith(".sha256")) return { ok: true, text: async () => `${sha256}  Arco-Setup-0.0.4.exe` };
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.4")], sha256));
     return {
       ok: true,
+      status: 200,
       headers: { get: (name) => (name === "content-length" ? String(installerContent.length) : null) },
       body: bodyChunks(),
     };
@@ -552,6 +509,198 @@ test("update_checker retries a busy installer launch and records the cleanup mar
 
   assert.equal((await updateChecker.cleanupCompletedUpdateInstaller()).status, "removed");
   assert.ok(!fs.existsSync(installerPath));
+});
+
+function launchingSpawnStub() {
+  return () => {
+    const child = new EventEmitter();
+    child.unref = () => {};
+    setImmediate(() => child.emit("spawn"));
+    return child;
+  };
+}
+
+const acceptingUpdateHost = () => ({
+  begin: () => {},
+  progress: () => {},
+  cancel: () => {},
+  shutdown: async () => {},
+  exit: () => {},
+});
+
+async function runAcceptedUpdate(fetchStub, options = {}) {
+  const originalShowMessageBox = electronStub.dialog.showMessageBox;
+  const dialogs = [];
+  electronStub.dialog.showMessageBox = async (winOrOptions, maybeOptions) => {
+    const dialogOptions = maybeOptions || winOrOptions || {};
+    dialogs.push(dialogOptions);
+    return (dialogOptions.buttons || []).includes("Update now") ? { response: 0 } : { response: 1 };
+  };
+  process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK = "1";
+  const fakeWin = { isDestroyed: () => false, webContents: { send: () => {}, executeJavaScript: async () => true } };
+  updateChecker.initUpdateChecker({
+    appMode: "arcrho",
+    getMainWindow: () => fakeWin,
+    updateHost: acceptingUpdateHost(),
+    fetchImpl: fetchStub,
+    spawnImpl: launchingSpawnStub(),
+    ...options,
+  });
+  try {
+    return { result: await updateChecker.checkForUpdate({ showNoUpdate: false }), dialogs };
+  } finally {
+    delete process.env.ARCRHO_ENABLE_DEV_UPDATE_CHECK;
+    electronStub.dialog.showMessageBox = originalShowMessageBox;
+    updateChecker.initUpdateChecker({ appMode: "arcrho", getMainWindow: () => null });
+  }
+}
+
+const readUpdateLog = () =>
+  fs.readFileSync(path.join(path.dirname(hostSupport.getElectronLogPath()), "update.log"), "utf8");
+
+test("update_checker resumes a dropped download from the bytes already received", async () => {
+  const installerContent = Buffer.from("resumable-installer-bytes-for-test");
+  const sha256 = crypto.createHash("sha256").update(installerContent).digest("hex");
+  const downloadRequests = [];
+
+  const fetchStub = async (url, options = {}) => {
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.5")], sha256));
+    const range = options.headers?.Range || "";
+    downloadRequests.push(range);
+    if (!range) {
+      async function* droppedBody() {
+        yield installerContent.subarray(0, 12);
+        throw new Error("socket hang up");
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (name) => (name === "content-length" ? String(installerContent.length) : null) },
+        body: droppedBody(),
+      };
+    }
+    const offset = Number(range.match(/^bytes=(\d+)-$/)[1]);
+    async function* restBody() {
+      yield installerContent.subarray(offset);
+    }
+    return {
+      ok: true,
+      status: 206,
+      headers: { get: (name) => (name === "content-length" ? String(installerContent.length - offset) : null) },
+      body: restBody(),
+    };
+  };
+
+  const { result } = await runAcceptedUpdate(fetchStub, { downloadRetryDelaysMs: [1] });
+
+  assert.deepEqual(result, { status: "launching", version: "0.0.5" });
+  assert.deepEqual(downloadRequests, ["", "bytes=12-"], "the second request asks only for the missing bytes");
+  const installerPath = path.join(downloadsDir, "Arco-Setup-0.0.5.exe");
+  assert.deepEqual(fs.readFileSync(installerPath), installerContent);
+  assert.match(readUpdateLog(), /Download attempt 1 failed at byte 12; retrying in 1 ms/);
+  assert.equal((await updateChecker.cleanupCompletedUpdateInstaller()).status, "removed");
+});
+
+test("update_checker keeps a failed download's bytes and resumes them on the next update", async () => {
+  const installerContent = Buffer.from("installer-resumed-across-updates");
+  const sha256 = crypto.createHash("sha256").update(installerContent).digest("hex");
+  const partPath = path.join(downloadsDir, "Arco-Setup-0.0.9.exe.part");
+  const downloadRequests = [];
+  let connectionDrops = true;
+
+  const fetchStub = async (url, options = {}) => {
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.9")], sha256));
+    const range = options.headers?.Range || "";
+    downloadRequests.push(range);
+    const offset = range ? Number(range.match(/^bytes=(\d+)-$/)[1]) : 0;
+    async function* body() {
+      yield installerContent.subarray(offset, connectionDrops ? 9 : undefined);
+      if (connectionDrops) throw new Error("socket hang up");
+    }
+    return {
+      ok: true,
+      status: offset ? 206 : 200,
+      headers: { get: () => String(installerContent.length - offset) },
+      body: body(),
+    };
+  };
+
+  const first = await runAcceptedUpdate(fetchStub, { downloadRetryDelaysMs: [] });
+  assert.equal(first.result.status, "download-failed");
+  assert.equal(fs.statSync(partPath).size, 9, "the bytes already received survive a failed update");
+
+  connectionDrops = false;
+  const second = await runAcceptedUpdate(fetchStub, { downloadRetryDelaysMs: [] });
+  assert.deepEqual(second.result, { status: "launching", version: "0.0.9" });
+  assert.deepEqual(downloadRequests, ["", "bytes=9-"], "the next update asks only for the missing bytes");
+  assert.deepEqual(fs.readFileSync(path.join(downloadsDir, "Arco-Setup-0.0.9.exe")), installerContent);
+  assert.ok(!fs.existsSync(partPath));
+  assert.equal((await updateChecker.cleanupCompletedUpdateInstaller()).status, "removed");
+});
+
+test("update_checker installs a matching installer already in Downloads without downloading it", async () => {
+  const installerContent = Buffer.from("installer-already-downloaded");
+  const sha256 = crypto.createHash("sha256").update(installerContent).digest("hex");
+  const installerPath = path.join(downloadsDir, "Arco-Setup-0.0.7.exe");
+  fs.writeFileSync(installerPath, installerContent);
+
+  const fetchStub = async (url) => {
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.7")], sha256));
+    throw new Error(`a verified installer must not be downloaded again: ${url}`);
+  };
+  const { result } = await runAcceptedUpdate(fetchStub);
+
+  assert.deepEqual(result, { status: "launching", version: "0.0.7" });
+  assert.match(readUpdateLog(), /Found .*Arco-Setup-0\.0\.7\.exe; checksum matches, skipping the download/);
+  const marker = JSON.parse(fs.readFileSync(path.join(userDataDir, "pending_update_cleanup.json"), "utf8"));
+  assert.equal(marker.installerPath, installerPath);
+  assert.equal((await updateChecker.cleanupCompletedUpdateInstaller()).status, "removed");
+});
+
+test("update_checker keeps a different file under the installer's name and downloads beside it", async () => {
+  const installerContent = Buffer.from("the-published-installer");
+  const sha256 = crypto.createHash("sha256").update(installerContent).digest("hex");
+  const otherPath = path.join(downloadsDir, "Arco-Setup-0.0.8.exe");
+  fs.writeFileSync(otherPath, "not the published installer");
+
+  const fetchStub = async (url) => {
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.8")], sha256));
+    async function* body() {
+      yield installerContent;
+    }
+    return { ok: true, status: 200, headers: { get: () => String(installerContent.length) }, body: body() };
+  };
+  const { result } = await runAcceptedUpdate(fetchStub);
+
+  assert.deepEqual(result, { status: "launching", version: "0.0.8" });
+  assert.equal(fs.readFileSync(otherPath, "utf8"), "not the published installer");
+  assert.deepEqual(fs.readFileSync(path.join(downloadsDir, "Arco-Setup-0.0.8 (1).exe")), installerContent);
+  assert.equal((await updateChecker.cleanupCompletedUpdateInstaller()).status, "removed");
+  fs.rmSync(otherPath);
+});
+
+test("update_checker gives up on a download that stops sending data", async () => {
+  const fetchStub = async (url, options = {}) => {
+    if (isFeedUrl(url)) return feedResponse(feedFixture([feedEntry("0.0.6")]));
+    // Never yields: the body ends only when the stall timer aborts the request.
+    async function* silentBody() {
+      await new Promise((_, reject) => {
+        options.signal.addEventListener("abort", () => reject(new Error("aborted")));
+      });
+    }
+    return { ok: true, status: 200, headers: { get: () => "100" }, body: silentBody() };
+  };
+
+  const { result, dialogs } = await runAcceptedUpdate(fetchStub, {
+    downloadRetryDelaysMs: [],
+    downloadStallTimeoutMs: 20,
+  });
+
+  assert.deepEqual(result, { status: "download-failed", version: "0.0.6" });
+  const failure = dialogs.find((options) => options.title === "Update could not be downloaded");
+  assert.match(String(failure?.detail), /^No data received for \d+ seconds\.$/);
+  assert.match(readUpdateLog(), /Download failed\n.*No data received/);
+  assert.ok(!fs.existsSync(path.join(downloadsDir, "Arco-Setup-0.0.6.exe.part")));
 });
 
 test("backend_lifecycle initializes, resolves its port, and manages client markers", async () => {

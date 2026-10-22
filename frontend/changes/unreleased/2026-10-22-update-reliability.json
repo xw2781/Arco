@@ -1,0 +1,11 @@
+{
+  "type": "fix",
+  "scope": "update",
+  "audience": "user",
+  "summary": "Updates no longer fail on slow or shared office connections.",
+  "details": [
+    "The update check reads one small file instead of the GitHub release list, so many users behind one office connection no longer use up GitHub's hourly limit, and a slow connection has 15 seconds instead of 3.",
+    "A dropped installer download is retried and picks up where it stopped, and a download that stops sending data gives up after 30 seconds instead of leaving the update window open.",
+    "Every update step is written to update.log in the app's logs folder, so a failed update can be diagnosed."
+  ]
+}

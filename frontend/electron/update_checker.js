@@ -1,4 +1,4 @@
-// GitHub Releases update checking, download-with-progress, update-install prompting, and
+// Update feed checking, download-with-resume, update-install prompting, and
 // post-install installer cleanup for the desktop host.
 const { app, dialog, shell } = require("electron");
 const { spawn } = require("child_process");
@@ -6,17 +6,17 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { sleep, withTimeout, getElectronLogPath, formatErrorForLog } = require("./host_support");
+const { trimAgedLogLines } = require("./log_retention");
 
 const SHA256_RE = /\b[a-fA-F0-9]{64}\b/;
 const MANDATORY_MARKER_RE = /\bmandatory\s*:\s*true\b/i;
-// HANDOFF: the release-list scan below still uses these until the update feed
-// reader replaces it; see frontend/docs/plans/update_reliability_handoff.md.
-const GITHUB_API_ROOT = "https://api.github.com";
-const MAX_RELEASES_SCANNED = 30;
 // The publisher's release channel file owns the repository and the update feed
 // names; packaging copies it into the app's resources folder.
 const RELEASE_CHANNEL_FILE = "release_channel.json";
 const SOURCE_RELEASE_CHANNEL_PATH = path.resolve(__dirname, "..", "build", "release", RELEASE_CHANNEL_FILE);
+// The feed and the installer are release assets, which need no API headers and
+// are not counted against the GitHub API's hourly limit.
+const UPDATE_REQUEST_HEADERS = { "User-Agent": "ArcRho-Updater" };
 const UPDATE_LOG_FILE = "update.log";
 // A download that delivers nothing for this long is treated as dropped and resumed.
 const DOWNLOAD_STALL_TIMEOUT_MS = 30000;
@@ -49,13 +49,28 @@ let fetchImpl = typeof fetch === "function" ? fetch : null;
 let spawnImpl = spawn;
 let UPDATE_GITHUB_REPO = "";
 let UPDATE_FEED_URL = "";
-let UPDATE_GITHUB_TOKEN = "";
 let UPDATE_CHECK_TIMEOUT_MS = 15000;
 let UPDATE_INSTALLER_NAME_RE = /$^/;
 let DEV_UPDATE_CHECK_ENABLED = false;
 let PRODUCT_LABEL = "Arco";
 // Waits before each new download attempt; one attempt more than entries in all.
 let downloadRetryDelaysMs = [2000, 5000, 10000];
+let downloadStallTimeoutMs = DOWNLOAD_STALL_TIMEOUT_MS;
+
+function updateLogPath() {
+  return path.join(path.dirname(getElectronLogPath()), UPDATE_LOG_FILE);
+}
+
+// An installed app shows no console, so every step of an update is also kept
+// in update.log beside the host's own logs, where a failed update can be read.
+function logUpdate(message, err = null) {
+  console.warn(`Arco update: ${message}${err ? `: ${err?.message || err}` : ""}`);
+  try {
+    const lines = [`[${new Date().toISOString()}] ${message}`];
+    if (err) lines.push(formatErrorForLog(err));
+    fs.appendFileSync(updateLogPath(), `${lines.join("\n")}\n`, "utf8");
+  } catch {}
+}
 
 function readReleaseChannel() {
   const channelPath = app.isPackaged
@@ -71,12 +86,16 @@ function initUpdateChecker({
   fetchImpl: injectedFetch,
   spawnImpl: injectedSpawn,
   downloadRetryDelaysMs: injectedRetryDelays,
+  downloadStallTimeoutMs: injectedStallTimeout,
 } = {}) {
   getMainWindow = typeof getWin === "function" ? getWin : () => null;
   updateHost = injectedHost && typeof injectedHost === "object" ? injectedHost : null;
   if (typeof injectedFetch === "function") fetchImpl = injectedFetch;
   spawnImpl = typeof injectedSpawn === "function" ? injectedSpawn : spawn;
   downloadRetryDelaysMs = Array.isArray(injectedRetryDelays) ? injectedRetryDelays : [2000, 5000, 10000];
+  downloadStallTimeoutMs = injectedStallTimeout > 0 ? injectedStallTimeout : DOWNLOAD_STALL_TIMEOUT_MS;
+  // update.log keeps one name across launches, so its age never expires it.
+  trimAgedLogLines(updateLogPath());
   PRODUCT_LABEL = appMode === "arcode" ? "Arcode" : "Arco";
   const channel = readReleaseChannel();
   UPDATE_GITHUB_REPO = (
@@ -84,9 +103,6 @@ function initUpdateChecker({
   ) || channel.githubRepo;
   UPDATE_FEED_URL = `https://github.com/${UPDATE_GITHUB_REPO}/releases/download/${channel.updateFeedTag}/`
     + String(channel.updateFeedAsset).replace("{product}", PRODUCT_LABEL);
-  UPDATE_GITHUB_TOKEN = (
-    appMode === "arcode" ? process.env.ARCODE_UPDATE_GITHUB_TOKEN : process.env.ARCRHO_UPDATE_GITHUB_TOKEN
-  ) || "";
   UPDATE_CHECK_TIMEOUT_MS = Math.max(
     1000,
     parseInt(
@@ -234,135 +250,47 @@ function formatReleaseNotesForDialog(body) {
   return rendered.join("\n").trim();
 }
 
-// `skipped` carries every release newer than the installed build up to and
-// including the winning one, newest first. A user who jumps 1.4.0 -> 1.4.2 has
-// never seen 1.4.1's notes, and the releases list already in hand holds them.
-function createUpdateInfo(candidate, sha256, skipped) {
-  const releases = skipped.map((entry) => ({
-    version: entry.version,
-    publishedAt: String(entry.release?.published_at || "").trim(),
-    body: String(entry.release?.body || "").trim(),
-  }));
-  return {
-    version: candidate.version,
-    currentVersion: app.getVersion(),
-    assetName: candidate.asset.name,
-    downloadUrl: candidate.asset.browser_download_url,
-    sha256,
-    source: "github",
-    releaseNotes: String(candidate.release?.body || "").trim(),
-    releases,
-    // A mandatory marker anywhere in the skipped span still makes this update
-    // mandatory; the version that carried it is one the user never installed.
-    mandatory: releases.some((entry) => MANDATORY_MARKER_RE.test(entry.body)),
-    publishedAt: String(candidate.release?.published_at || "").trim(),
-  };
-}
-
-function createUpdateIssue(status, version, assetName, message, detail = "") {
-  return { status, version, assetName, source: "github", message, detail };
-}
-
 function areInstallerUpdateChecksEnabled() {
   return app.isPackaged || DEV_UPDATE_CHECK_ENABLED;
 }
 
-function githubRequestHeaders(extra = {}) {
-  const headers = {
-    "User-Agent": "ArcRho-Updater",
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    ...extra,
-  };
-  if (UPDATE_GITHUB_TOKEN) headers.Authorization = `Bearer ${UPDATE_GITHUB_TOKEN}`;
-  return headers;
-}
-
-async function fetchReleases() {
+// The feed names the newest installer with its checksum and carries the notes of
+// the newest releases. `releases` keeps every one newer than the installed build,
+// newest first: a user who jumps 1.4.0 -> 1.4.2 has never seen 1.4.1's notes.
+async function findAvailableUpdate() {
   if (typeof fetchImpl !== "function") {
     throw new Error("No fetch implementation is available for the update check.");
   }
-  const url = `${GITHUB_API_ROOT}/repos/${UPDATE_GITHUB_REPO}/releases?per_page=${MAX_RELEASES_SCANNED}`;
-  const response = await fetchImpl(url, { headers: githubRequestHeaders() });
+  const response = await fetchImpl(UPDATE_FEED_URL, { headers: UPDATE_REQUEST_HEADERS });
   if (!response.ok) {
-    throw new Error(`GitHub releases request failed with status ${response.status}`);
+    throw new Error(`Update feed request failed with status ${response.status}`);
   }
-  const releases = await response.json();
-  return Array.isArray(releases) ? releases : [];
-}
+  const manifest = await response.json();
+  const currentVersion = app.getVersion();
+  if (compareVersions(manifest?.version, currentVersion) <= 0) return null;
 
-async function readAssetText(url) {
-  const response = await fetchImpl(url, { headers: githubRequestHeaders({ Accept: "application/octet-stream" }) });
-  if (!response.ok) return "";
-  return String(await response.text());
-}
-
-// Every published release carrying an installer for this product, newest first.
-// No network here: the checksum is fetched only for the version that wins.
-function installerReleaseCandidates(releases) {
-  const candidates = [];
-  const seenVersions = new Set();
-  for (const release of releases) {
-    if (release?.draft || release?.prerelease) continue;
-    const assets = Array.isArray(release?.assets) ? release.assets : [];
-    for (const asset of assets) {
-      const match = String(asset?.name || "").match(UPDATE_INSTALLER_NAME_RE);
-      if (!match) continue;
-      const version = match[1];
-      if (seenVersions.has(version)) continue;
-      seenVersions.add(version);
-      candidates.push({ version, release, asset, assets });
-    }
-  }
-  candidates.sort((left, right) => compareVersions(right.version, left.version));
-  return candidates;
-}
-
-async function findAvailableUpdateFromReleases(releases, options = {}) {
-  const reportIssues = options.reportIssues === true;
-  const newer = installerReleaseCandidates(releases)
-    .filter((candidate) => compareVersions(candidate.version, app.getVersion()) > 0);
-  let issue = null;
-
-  // Highest version first, so the first candidate with a usable checksum wins
-  // and a lower one is only reached when the higher one cannot be installed.
-  for (const candidate of newer) {
-    const checksumName = `${candidate.asset.name}.sha256`;
-    const checksumAsset = candidate.assets.find((entry) => entry?.name === checksumName);
-    if (!checksumAsset) {
-      console.warn(`Arco update asset is missing a SHA-256 checksum asset: ${candidate.asset.name}`);
-      issue = issue || createUpdateIssue(
-        "missing-checksum",
-        candidate.version,
-        candidate.asset.name,
-        "Arco found a newer installer, but it is missing a SHA-256 checksum.",
-        `Add a ${checksumName} asset to the release.`
-      );
-      continue;
-    }
-
-    const sha256 = parseSha256Text(await readAssetText(checksumAsset.browser_download_url));
-    if (!sha256) {
-      console.warn(`Arco update checksum asset could not be read: ${checksumAsset.name}`);
-      issue = issue || createUpdateIssue(
-        "missing-checksum",
-        candidate.version,
-        candidate.asset.name,
-        "Arco found a newer installer, but its SHA-256 checksum could not be read."
-      );
-      continue;
-    }
-
-    const skipped = newer.filter((entry) => compareVersions(entry.version, candidate.version) <= 0);
-    return createUpdateInfo(candidate, sha256, skipped);
-  }
-
-  return reportIssues ? issue : null;
-}
-
-async function findAvailableUpdate(options = {}) {
-  const releases = await fetchReleases();
-  return findAvailableUpdateFromReleases(releases, options);
+  const releases = (Array.isArray(manifest.releases) ? manifest.releases : [])
+    .filter((entry) => compareVersions(entry?.version, currentVersion) > 0)
+    .map((entry) => ({
+      version: String(entry.version),
+      publishedAt: String(entry.publishedAt || "").trim(),
+      body: String(entry.body || "").trim(),
+    }));
+  const latest = releases.find((entry) => entry.version === manifest.version);
+  return {
+    version: String(manifest.version),
+    currentVersion,
+    assetName: String(manifest.installer || ""),
+    downloadUrl: String(manifest.url || ""),
+    sha256: parseSha256Text(manifest.sha256),
+    source: "github",
+    releaseNotes: latest?.body || "",
+    releases,
+    // A mandatory marker anywhere in the skipped span still makes this update
+    // mandatory; the version that carried it is one the user never installed.
+    mandatory: releases.some((entry) => MANDATORY_MARKER_RE.test(entry.body)),
+    publishedAt: latest?.publishedAt || "",
+  };
 }
 
 function calculateFileSha256(filePath) {
@@ -390,19 +318,20 @@ function installerDownloadDir() {
     const downloads = app.getPath("downloads");
     if (downloads) return downloads;
   } catch (err) {
-    console.warn(`Arco could not resolve the Downloads folder: ${err?.message || err}`);
+    logUpdate("Could not resolve the Downloads folder", err);
   }
   return legacyUpdatesDownloadDir();
 }
 
-// The cleanup pass deletes only what ArcRho itself downloaded, so never reuse a
-// name that already exists; an installer the user downloaded by hand keeps it.
+// The cleanup pass deletes the installer it ran, so a download never overwrites
+// an existing name; a file that is not the verified installer keeps it. A free
+// name's .part file is an earlier download of this installer, which is resumed.
 function reserveInstallerPath(destDir, assetName) {
   const ext = path.extname(assetName);
   const base = path.basename(assetName, ext);
   for (let attempt = 0; attempt < MAX_INSTALLER_NAME_ATTEMPTS; attempt += 1) {
     const candidate = path.join(destDir, attempt === 0 ? assetName : `${base} (${attempt})${ext}`);
-    if (!fs.existsSync(candidate) && !fs.existsSync(`${candidate}.part`)) return candidate;
+    if (!fs.existsSync(candidate)) return candidate;
   }
   return path.join(destDir, `${base} (${Date.now()})${ext}`);
 }
@@ -421,7 +350,7 @@ function recordPendingInstallerCleanup(installerPath, version) {
       "utf8"
     );
   } catch (err) {
-    console.warn(`Arco could not record the update installer cleanup marker: ${err?.message || err}`);
+    logUpdate("Could not record the installer cleanup marker", err);
   }
 }
 
@@ -431,7 +360,7 @@ async function deleteInstallerFile(installerPath) {
     return true;
   } catch (err) {
     if (err?.code === "ENOENT") return true;
-    console.warn(`Arco could not delete the update installer ${installerPath}: ${err?.message || err}`);
+    logUpdate(`Could not delete the installer ${installerPath}`, err);
     return false;
   }
 }
@@ -472,6 +401,7 @@ async function cleanupCompletedUpdateInstaller() {
     return { status: "none" };
   }
   if (await deleteInstallerFile(installerPath)) {
+    logUpdate(`Removed the completed installer ${installerPath}`);
     await dropMarker();
     return { status: "removed", installerPath };
   }
@@ -519,46 +449,115 @@ function sendDownloadProgress(payload) {
   }
 }
 
-async function downloadReleaseAsset(updateInfo) {
-  const destDir = installerDownloadDir();
-  await fs.promises.mkdir(destDir, { recursive: true });
-  const destPath = reserveInstallerPath(destDir, updateInfo.assetName);
-  const partPath = `${destPath}.part`;
+async function partFileSize(partPath) {
+  return (await fs.promises.stat(partPath).catch(() => null))?.size || 0;
+}
 
+// One request for the installer's bytes from `offset` on, appended to the .part
+// file. Throws when the connection fails, goes quiet for the stall timeout, or
+// ends short of the length it announced; the next attempt resumes from there.
+async function downloadAttempt(updateInfo, partPath, offset, progress) {
+  const controller = new AbortController();
+  let stalled = false;
+  let stallTimer = null;
+  const armStallTimer = () => {
+    clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      controller.abort();
+    }, downloadStallTimeoutMs);
+  };
+
+  const headers = offset > 0 ? { ...UPDATE_REQUEST_HEADERS, Range: `bytes=${offset}-` } : UPDATE_REQUEST_HEADERS;
+  let writeStream = null;
+  armStallTimer();
   try {
-    const response = await fetchImpl(updateInfo.downloadUrl, { headers: githubRequestHeaders() });
+    const response = await fetchImpl(updateInfo.downloadUrl, { headers, signal: controller.signal });
+    if (response.status === 416) {
+      // The partial file is already as long as the installer, so it cannot be
+      // the start of it; the next attempt starts over.
+      await fs.promises.unlink(partPath).catch(() => {});
+      throw new Error("The partial download could not be resumed.");
+    }
     if (!response.ok || !response.body) {
       throw new Error(`Update download request failed with status ${response.status}`);
     }
-    const totalBytes = Number.parseInt(response.headers.get("content-length") || "", 10) || 0;
-    let receivedBytes = 0;
+    // A server that ignores the range answers 200 with the whole file again.
+    const resumed = offset > 0 && response.status === 206;
+    let receivedBytes = resumed ? offset : 0;
+    const length = Number.parseInt(response.headers.get("content-length") || "", 10) || 0;
+    const totalBytes = length > 0 ? receivedBytes + length : progress.totalBytes;
+    progress.totalBytes = totalBytes;
 
-    sendDownloadProgress({ phase: "start", version: updateInfo.version, receivedBytes: 0, totalBytes });
-    const writeStream = fs.createWriteStream(partPath);
-    try {
-      for await (const chunk of response.body) {
-        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        await new Promise((resolve, reject) => {
-          writeStream.write(buffer, (err) => (err ? reject(err) : resolve()));
-        });
-        receivedBytes += buffer.length;
-        sendDownloadProgress({ phase: "progress", version: updateInfo.version, receivedBytes, totalBytes });
-      }
-    } finally {
-      // "close", not the end() callback: that one fires on "finish", while the
-      // file descriptor is still open, and Windows refuses to start an
-      // executable that another handle is holding.
+    if (!progress.started) {
+      progress.started = true;
+      logUpdate(`Download started: ${totalBytes || "unknown"} bytes`);
+      sendDownloadProgress({ phase: "start", version: updateInfo.version, receivedBytes, totalBytes });
+    }
+    writeStream = fs.createWriteStream(partPath, { flags: resumed ? "a" : "w" });
+    for await (const chunk of response.body) {
+      armStallTimer();
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      await new Promise((resolve, reject) => {
+        writeStream.write(buffer, (err) => (err ? reject(err) : resolve()));
+      });
+      receivedBytes += buffer.length;
+      sendDownloadProgress({ phase: "progress", version: updateInfo.version, receivedBytes, totalBytes });
+    }
+    if (totalBytes > 0 && receivedBytes < totalBytes) {
+      throw new Error(`The download ended after ${receivedBytes} of ${totalBytes} bytes.`);
+    }
+    return receivedBytes;
+  } catch (err) {
+    if (stalled) throw new Error(`No data received for ${Math.round(downloadStallTimeoutMs / 1000)} seconds.`);
+    throw err;
+  } finally {
+    clearTimeout(stallTimer);
+    // "close", not the end() callback: that one fires on "finish", while the
+    // file descriptor is still open, and Windows refuses to start an
+    // executable that another handle is holding.
+    if (writeStream) {
       await new Promise((resolve) => {
         writeStream.on("close", resolve);
         writeStream.end();
       });
     }
+  }
+}
+
+async function downloadReleaseAsset(updateInfo) {
+  const destDir = installerDownloadDir();
+  await fs.promises.mkdir(destDir, { recursive: true });
+  const destPath = reserveInstallerPath(destDir, updateInfo.assetName);
+  const partPath = `${destPath}.part`;
+  const progress = { started: false, totalBytes: 0 };
+
+  // A partial file left by an earlier update that failed, or by an app that was
+  // closed mid-download, is resumed rather than downloaded again.
+  let offset = await partFileSize(partPath);
+  logUpdate(`Downloading ${updateInfo.downloadUrl} to ${destPath}${offset ? ` from byte ${offset}` : ""}`);
+  try {
+    let receivedBytes = 0;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        receivedBytes = await downloadAttempt(updateInfo, partPath, offset, progress);
+        break;
+      } catch (err) {
+        if (attempt >= downloadRetryDelaysMs.length) throw err;
+        offset = await partFileSize(partPath);
+        const delayMs = downloadRetryDelaysMs[attempt];
+        logUpdate(`Download attempt ${attempt + 1} failed at byte ${offset}; retrying in ${delayMs} ms`, err);
+        await sleep(delayMs);
+      }
+    }
 
     await fs.promises.rename(partPath, destPath);
+    logUpdate(`Downloaded ${receivedBytes} bytes`);
     return destPath;
   } catch (err) {
-    // A partial file in the user's Downloads folder is litter nothing else clears.
-    await fs.promises.unlink(partPath).catch(() => {});
+    // The bytes received stay for the next update to resume; the checksum
+    // check still guards the finished file. An empty partial file is litter.
+    if (!(await partFileSize(partPath))) await fs.promises.unlink(partPath).catch(() => {});
     throw err;
   }
 }
@@ -605,7 +604,7 @@ async function launchUpdateInstaller(installerPath) {
     } catch (err) {
       lastError = err;
       if (!TRANSIENT_LAUNCH_ERROR_CODES.has(String(err?.code || ""))) break;
-      console.warn(`Arco update installer launch attempt ${attempt + 1} failed: ${err?.message || err}`);
+      logUpdate(`Installer launch attempt ${attempt + 1} failed`, err);
     }
   }
 
@@ -621,11 +620,12 @@ async function downloadVerifyAndInstall(updateInfo) {
   // the shutdown are shown in a small window of their own, so the user never
   // sits in front of a frozen main window while setup waits for it.
   updateHost?.begin();
-  let installerPath = "";
+  let installerPath = await findExistingInstaller(updateInfo);
+  if (installerPath) return closeAndLaunchInstaller(updateInfo, installerPath);
   try {
     installerPath = await downloadReleaseAsset(updateInfo);
   } catch (err) {
-    console.warn(`Arco update download failed: ${err?.message || err}`);
+    logUpdate("Download failed", err);
     updateHost?.cancel();
     await showMainWindowMessageBox({
       type: "error",
@@ -641,6 +641,7 @@ async function downloadVerifyAndInstall(updateInfo) {
   sendDownloadProgress({ phase: "verifying", version: updateInfo.version });
   const actualSha256 = await calculateFileSha256(installerPath).catch(() => "");
   const verified = actualSha256 && actualSha256 === String(updateInfo.sha256 || "").toLowerCase();
+  logUpdate(`Checksum ${verified ? "verified" : `mismatch: expected ${updateInfo.sha256}, got ${actualSha256 || "none"}`}`);
   if (!verified) {
     await fs.promises.unlink(installerPath).catch(() => {});
     updateHost?.cancel();
@@ -654,7 +655,24 @@ async function downloadVerifyAndInstall(updateInfo) {
     });
     return { status: "verification-failed", version: updateInfo.version };
   }
+  return closeAndLaunchInstaller(updateInfo, installerPath);
+}
 
+// An installer under the published name that already matches the feed's
+// checksum is byte for byte what a download would produce - one left by an
+// earlier update that did not finish, or downloaded by hand - so it is used as
+// it is. Anything else under that name is kept, and the download picks a new one.
+async function findExistingInstaller(updateInfo) {
+  const candidate = path.join(installerDownloadDir(), updateInfo.assetName);
+  if (!fs.existsSync(candidate)) return "";
+  sendDownloadProgress({ phase: "verifying", version: updateInfo.version });
+  const actualSha256 = await calculateFileSha256(candidate).catch(() => "");
+  const matches = actualSha256 && actualSha256 === String(updateInfo.sha256 || "").toLowerCase();
+  logUpdate(`Found ${candidate}; ${matches ? "checksum matches, skipping the download" : "checksum differs, downloading"}`);
+  return matches ? candidate : "";
+}
+
+async function closeAndLaunchInstaller(updateInfo, installerPath) {
   // Setup replaces the files the backend runs from, so the backend has to be
   // gone - not merely asked to stop - before the installer starts. Quitting
   // right after the launch left that shutdown racing the process exit, and an
@@ -665,6 +683,7 @@ async function downloadVerifyAndInstall(updateInfo) {
   try {
     await launchUpdateInstaller(installerPath);
   } catch (err) {
+    logUpdate(`Could not launch ${installerPath}`, err);
     // The installer is downloaded and verified, so name it: running it by hand
     // is all that is left to do, and the app is already closed.
     updateHost?.cancel();
@@ -684,6 +703,7 @@ async function downloadVerifyAndInstall(updateInfo) {
     updateHost?.exit();
     return { status: "launch-failed", version: updateInfo.version, installerPath };
   }
+  logUpdate(`Launched ${installerPath}`);
   recordPendingInstallerCleanup(installerPath, updateInfo.version);
   updateHost?.exit();
   return { status: "launching", version: updateInfo.version };
@@ -723,7 +743,7 @@ async function requestInAppUpdateChoice(win, updateInfo) {
     const choice = String(answer?.choice || "");
     return choice === "update" || choice === "later" ? choice : null;
   } catch (err) {
-    console.warn(`Arco could not show the in-app update dialog: ${err?.message || err}`);
+    logUpdate("Could not show the in-app update dialog", err);
     return null;
   }
 }
@@ -837,21 +857,19 @@ async function checkForUpdate(options = {}) {
   }
 
   let updateInfo = null;
+  const startedAt = Date.now();
+  logUpdate(`Checking ${UPDATE_FEED_URL} (installed ${app.getVersion()})`);
   try {
-    updateInfo = await withTimeout(
-      findAvailableUpdate({ reportIssues: showNoUpdate }),
-      UPDATE_CHECK_TIMEOUT_MS,
-      "Arco update check"
-    );
+    updateInfo = await withTimeout(findAvailableUpdate(), UPDATE_CHECK_TIMEOUT_MS, "Arco update check");
   } catch (err) {
-    console.warn(`Arco update check skipped: ${err?.message || err}`);
+    logUpdate(`Check failed after ${Date.now() - startedAt} ms`, err);
     if (showNoUpdate) {
       await showMainWindowMessageBox({
         type: "info",
         title: "Update location unavailable",
         message: "Arco could not reach the update location.",
         detail: [
-          `Update location: https://github.com/${UPDATE_GITHUB_REPO}/releases`,
+          `Update location: ${UPDATE_FEED_URL}`,
           String(err?.message || err),
         ].join("\n"),
         buttons: ["OK"],
@@ -860,29 +878,7 @@ async function checkForUpdate(options = {}) {
     }
     return { status: "unavailable" };
   }
-
-  if (updateInfo?.status) {
-    if (showNoUpdate) {
-      await showMainWindowMessageBox({
-        type: updateInfo.status === "missing-checksum" ? "warning" : "info",
-        title: "Update installer is not ready",
-        message: updateInfo.message || "Arco found an update, but it cannot be installed yet.",
-        detail: [
-          `Current version: ${app.getVersion()}`,
-          updateInfo.version ? `Available version: ${updateInfo.version}` : "",
-          updateInfo.assetName ? `Installer: ${updateInfo.assetName}` : "",
-          updateInfo.detail || "",
-        ].filter(Boolean).join("\n"),
-        buttons: ["OK"],
-        noLink: true,
-      });
-    }
-    return {
-      status: updateInfo.status,
-      version: updateInfo.version || "",
-      assetName: updateInfo.assetName || "",
-    };
-  }
+  logUpdate(`Check found ${updateInfo ? updateInfo.version : "no newer version"} in ${Date.now() - startedAt} ms`);
 
   if (!updateInfo) {
     if (showNoUpdate) {

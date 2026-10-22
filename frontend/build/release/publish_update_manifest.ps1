@@ -37,7 +37,9 @@ $tagPattern = "^" + [regex]::Escape($tagFormat).Replace("\{product}", [regex]::E
 
 $releasesJson = gh api "repos/$Repo/releases?per_page=100"
 if ($LASTEXITCODE -ne 0) { throw "gh api could not list the releases of $Repo (exit code $LASTEXITCODE)." }
-$releases = @($releasesJson | Out-String | ConvertFrom-Json)
+# Windows PowerShell passes a parsed JSON array down the pipeline as one object,
+# so it is unrolled here into one entry per release.
+$releases = @($releasesJson | Out-String | ConvertFrom-Json | ForEach-Object { $_ })
 
 $entries = foreach ($release in $releases) {
     if ($release.draft -or $release.prerelease) { continue }

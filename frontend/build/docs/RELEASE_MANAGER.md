@@ -82,7 +82,8 @@ same sequence.
 
 To revoke a release, select it, choose **Revoke selected**, and type the displayed version
 again. This permanently deletes the GitHub Release, its assets, and its Git tag through
-`gh release delete --cleanup-tag`. It intentionally leaves repository bookkeeping and
+`gh release delete --cleanup-tag`, then rebuilds the update feed so installed apps stop being
+offered the deleted installer. It intentionally leaves repository bookkeeping and
 release-note history intact: undoing a published release commit or re-opening archived
 fragments can conflict with later releases and must be handled deliberately.
 

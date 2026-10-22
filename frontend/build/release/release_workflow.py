@@ -30,6 +30,7 @@ FRONTEND_ROOT = Path(__file__).resolve().parents[2]
 BUILD_ROOT = FRONTEND_ROOT / "build"
 RELEASE_ROOT = BUILD_ROOT / "release"
 PUBLISH_SCRIPT = RELEASE_ROOT / "publish_github_release.ps1"
+UPDATE_MANIFEST_SCRIPT = RELEASE_ROOT / "publish_update_manifest.ps1"
 SYNC_SCRIPT = RELEASE_ROOT / "sync_published_release.py"
 
 PRODUCTS = ("Arco", "Arcode")
@@ -758,6 +759,25 @@ def revoke_remote_release(
             "--cleanup-tag",
             "--yes",
         ],
+        output=output,
+    )
+
+    # Installed apps find their update through the feed, which would otherwise
+    # keep offering the installer just deleted.
+    if output:
+        output(f"Rebuilding the {product} update feed...")
+    _run_checked(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(UPDATE_MANIFEST_SCRIPT),
+            "-ProductName",
+            product,
+        ],
+        cwd=FRONTEND_ROOT,
         output=output,
     )
 

@@ -10,7 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const { LOG_RETENTION_DAYS, pruneAgedLogFiles } = require("../electron/log_retention.js");
+const { LOG_RETENTION_DAYS, pruneAgedLogFiles, trimAgedLogLines } = require("../electron/log_retention.js");
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CONTRACT_PATH = path.join(HERE, "..", "..", "python-api", "src", "arcrho_log_retention_contract.py");
@@ -73,6 +73,30 @@ test("ArcBot request logs prune by their own suffix", () => {
 
     assert.equal(pruneAgedLogFiles(directory), 0);
     assert.equal(pruneAgedLogFiles(directory, { suffixes: [".json"] }), 1);
+  });
+});
+
+test("trimming drops the aged leading lines of a fixed-name log with their stack traces", () => {
+  withTempDirectory((directory) => {
+    const filePath = path.join(directory, "update.log");
+    const old = new Date(Date.now() - 40 * DAY_MS).toISOString();
+    const fresh = new Date(Date.now() - DAY_MS).toISOString();
+    writeFileSync(filePath, `[${old}] old failure\nError: boom\n    at stack\n[${fresh}] fresh line\n`, "utf8");
+
+    assert.equal(trimAgedLogLines(filePath), 3);
+    assert.equal(readFileSync(filePath, "utf8"), `[${fresh}] fresh line\n`);
+    assert.equal(trimAgedLogLines(filePath), 0);
+  });
+});
+
+test("trimming leaves a log with no dated line, and a missing log, alone", () => {
+  withTempDirectory((directory) => {
+    const filePath = path.join(directory, "update.log");
+    writeFileSync(filePath, "no date here\n", "utf8");
+
+    assert.equal(trimAgedLogLines(filePath), 0);
+    assert.equal(readFileSync(filePath, "utf8"), "no date here\n");
+    assert.equal(trimAgedLogLines(path.join(directory, "absent.log")), 0);
   });
 });
 

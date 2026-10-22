@@ -151,8 +151,11 @@ It does not create a GitHub Release, shared Python API wheel, or release-bookkee
 
 A successful publish additionally produces a GitHub Release tagged `Arco-v<version>` with
 the installer and `.sha256` attached, the matching shared Python API wheel for ArcRho, and the
-optional local bookkeeping commit. The tag name and target repository come from
-`release_channel.json`; do not duplicate them in a script or GUI setting.
+optional local bookkeeping commit. The publish then rebuilds the update feed
+(`publish_update_manifest.ps1`), the `<Product>-update.json` asset on the `update-feed`
+prerelease that installed apps read to find this version. The tag name, target repository,
+and feed names come from `release_channel.json`; do not duplicate them in a script or GUI
+setting.
 
 ## When Something Fails
 

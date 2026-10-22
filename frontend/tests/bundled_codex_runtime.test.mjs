@@ -340,9 +340,12 @@ test("release tag naming and the GitHub repository have one owner", () => {
   assert.equal(typeof channel.githubRepo, "string");
   assert.ok(channel.githubRepo.includes("/"), "githubRepo must be owner/name");
   assert.ok(channel.tagFormat.includes("{product}") && channel.tagFormat.includes("{version}"));
+  assert.equal(typeof channel.updateFeedTag, "string");
+  assert.ok(channel.updateFeedAsset.includes("{product}"), "each product reads its own update feed");
 
   const publishScript = readText("../build/release/publish_github_release.ps1");
   assert.match(publishScript, /release_channel\.json/u);
+  assert.match(publishScript, /publish_update_manifest\.ps1/u, "every publish must rebuild the update feed");
   assert.ok(
     !/\$tag = "\$ProductName-v\$version"/u.test(publishScript),
     "the release tag must come from the release channel definition, not a literal",

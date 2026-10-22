@@ -230,7 +230,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         bookkeeping.assert_called_once()
         self.assertEqual(manifest["status"], "built")
 
-    def test_revoke_uses_cleanup_tag_after_history_confirmation(self) -> None:
+    def test_revoke_uses_cleanup_tag_then_rebuilds_the_update_feed(self) -> None:
         commands: list[list[str]] = []
         record = {
             "product": "Arco",
@@ -248,10 +248,12 @@ class ReleaseWorkflowTests(unittest.TestCase):
         ):
             release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
 
-        self.assertEqual(len(commands), 1)
+        self.assertEqual(len(commands), 2)
         self.assertIn("--cleanup-tag", commands[0])
         self.assertIn("--yes", commands[0])
         self.assertIn("Arco-v1.2.13", commands[0])
+        self.assertIn(str(release_workflow.UPDATE_MANIFEST_SCRIPT), commands[1])
+        self.assertEqual(commands[1][-2:], ["-ProductName", "Arco"])
 
 
 if __name__ == "__main__":
