@@ -98,7 +98,7 @@
 - [Excel link reads go through the Gateway first](excel-link-reads-gateway-first.md) — 2026-09-18 user rule: workbook reads for the link check/refresh/retarget run on the
 - [Write tool unescapes control chars](write-tool-unescapes-control-chars.md) - a \u001f in Write/Edit lands as the literal byte; repair with a Python chr(92) rewrite
 - [Concise UI message copy](concise-ui-message-copy.md) — dialogs say only what the buttons and the linked list do not; two lines at most
-- [Update asset name strands old clients](update-asset-name-strands-old-clients.md) — the updater matches the installer file name; a rename needs an old-name copy plus its
+- [Update feed and old-client asset names](update-asset-name-strands-old-clients.md) — new clients read update-feed/Arco-update.json; <=2.0.0 clients match the installer name; a rename needs an old-name copy plus its
 - [Calculated walk reads stale sibling views](calculated-walk-reads-stale-sibling-views.md) — 2026-09-21: `_candidate_csvs` takes an unvalidated `@<period>` sibling of an Engine/input
 - [BF/CC formula change needs republish](bf-cc-formula-change-needs-republish.md) — 2026-09-21: changing how BF/CC derive their calculated columns makes every stored method
 - [Desktop input control works](desktop-input-control-works.md) — for GUI verification use tools/agent_screen_control (click/drag with -Window guard, agent
