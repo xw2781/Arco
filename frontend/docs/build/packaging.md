@@ -3,6 +3,7 @@
 ## Purpose
 <!-- MANUAL:BEGIN -->
 Document Electron + Python packaging inputs and scripts.
+The app-server PyInstaller spec collects every `app_server` submodule so published macros can import services outside the app's direct import graph. The frontend and canonical Python API source roots are available during collection.
 <!-- MANUAL:END -->
 
 ## Entry Points

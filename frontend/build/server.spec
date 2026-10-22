@@ -8,8 +8,9 @@ build_dir = Path(SPECPATH)
 repo_root = build_dir.parent
 monorepo_root = repo_root.parent
 python_api_src = monorepo_root / 'python-api' / 'src'
-if str(python_api_src) not in sys.path:
-    sys.path.insert(0, str(python_api_src))
+for import_root in (python_api_src, repo_root):
+    if str(import_root) not in sys.path:
+        sys.path.insert(0, str(import_root))
 
 # Collect served frontend assets and app-server data files.
 static_files = []
@@ -66,7 +67,8 @@ a = Analysis(
         'app_server',
         'app_server.main',
         'app',
-    ] + collect_submodules('arcrho_api') + collect_submodules('sqlfluff'),
+    # Macros import app_server.services modules the app's own import graph may not reach.
+    ] + collect_submodules('app_server') + collect_submodules('arcrho_api') + collect_submodules('sqlfluff'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

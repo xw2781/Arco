@@ -1,0 +1,6 @@
+{
+  "type": "fix",
+  "scope": "build",
+  "audience": "user",
+  "summary": "Include app-server services needed by macros in the packaged app."
+}
