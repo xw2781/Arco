@@ -1176,12 +1176,16 @@ def _triangle_shape_masked(
     origin_length: int,
     development_length: int,
 ) -> List[List[bool]]:
-    """Drop from ``mask`` every cell past the project's calendar diagonal.
+    """Give a hand-entered triangle exactly the cells of the project's diagonal.
 
     A hand-entered triangle has the cells :func:`triangle_grid_shape` gives it,
     whatever its file happens to hold: a figure written past the diagonal --
     by a window that laid the grid out on a rule of its own -- is neither shown
-    nor editable, and the next save writes that cell blank.
+    nor editable, and the next save writes that cell blank. A cell on the
+    diagonal the file leaves blank is still a cell: a project copied forward
+    to a later Development End Date reads a file saved at the earlier one, and
+    its newest diagonal must stay editable and linkable until the next save
+    fills it.
     """
     try:
         _, _, shape = _empty_dataset_geometry_from_general_settings(
@@ -1192,8 +1196,8 @@ def _triangle_shape_masked(
     rows, columns = shape.shape
     return [
         [
-            bool(cell) and r < rows and c < columns and bool(shape[r, c])
-            for c, cell in enumerate(row)
+            r < rows and c < columns and bool(shape[r, c])
+            for c in range(len(row))
         ]
         for r, row in enumerate(mask)
     ]

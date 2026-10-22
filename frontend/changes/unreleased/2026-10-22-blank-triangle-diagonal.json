@@ -1,0 +1,6 @@
+{
+  "type": "fix",
+  "scope": "dataset",
+  "audience": "user",
+  "summary": "Keep blank hand-entered triangle cells editable and linkable when the project's development end date advances."
+}

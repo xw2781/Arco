@@ -164,6 +164,17 @@ class HandEnteredLoadMaskTests(unittest.TestCase):
         # what the grid, the totals, and the save all read.
         self.assertEqual(payload["values"][1][1], 130.0)
 
+    def test_a_blank_cell_on_the_diagonal_stays_a_cell(self) -> None:
+        # A file saved while the project was valued a period earlier has no
+        # figure on the newest diagonal; those cells still belong to the grid.
+        pd.DataFrame([[100.0, None], [None, None]]).to_csv(
+            self.csv_path, header=False, index=False
+        )
+
+        payload = self._load()
+
+        self.assertEqual(payload["mask"], [[True, True], [True, False]])
+
     def test_a_generated_dataset_keeps_the_mask_its_file_gives_it(self) -> None:
         self.sidecar["source_kind"] = "engine"
 

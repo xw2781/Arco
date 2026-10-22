@@ -6,6 +6,7 @@ Formula dataset reads share `/dataset/internal_links/resolve` for bracket refere
 - Dataset-cell formula validation delegates to `arcrho_api.dataset_link_contract`. Numeric function formulas (including constant-only expressions) retain the existing `formula_links` and target-cell layout on save and load. The same evaluator handles Engine refresh: IF/IFERROR select per-cell results, aggregates omit blanks, and unhandled calculation errors reject the result instead of persisting partial values. Browser grammar metadata is generated from this canonical owner and evaluation parity is tested across Python and JavaScript.
 
 Dataset retrieval domain for in-memory dataset instances.
+Hand-entered triangle cells inside the project's calendar diagonal remain editable and linkable even when the saved CSV leaves them blank, including after the Development End Date advances. Cells past that diagonal remain excluded.
 Also handles reserving-class dataset file discovery and sidecar metadata, including the only persisted dataset/method Notes field.
 See [`server-components/docs/dataset-scenarios.md`](../../../../server-components/docs/dataset-scenarios.md) for the source-kind scenario matrix, editability rules, and cache rebuild behavior.
 <!-- MANUAL:END -->
