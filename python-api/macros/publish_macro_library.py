@@ -21,8 +21,11 @@ bundle on client PCs that do not have the ArcRho development checkout.
 
 Run by deployers only; the library folder should be read-only for users.
 
+``--check`` writes nothing and exits 1 when the library is behind this folder,
+so an agent can confirm a macro or support change reached users.
+
 Usage:
-    python publish_macro_library.py [--library-dir PATH] [--dry-run]
+    python publish_macro_library.py [--library-dir PATH] [--dry-run | --check]
 """
 from __future__ import annotations
 
@@ -198,6 +201,11 @@ def main() -> int:
     )
     parser.add_argument("--dry-run", action="store_true", help="Report actions without writing")
     parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Report actions without writing; exit 1 if anything is unpublished",
+    )
+    parser.add_argument(
         "--only",
         action="append",
         default=None,
@@ -207,6 +215,7 @@ def main() -> int:
     args = parser.parse_args()
 
     library_dir = Path(args.library_dir)
+    dry_run = args.dry_run or args.check
     macros = sorted(
         (p for p in SOURCE_DIR.glob("*.py") if p.name != Path(__file__).name),
         key=lambda p: p.name.lower(),
@@ -234,14 +243,15 @@ def main() -> int:
         print(f"\n{failures} macro(s) failed validation; nothing was published.")
         return 1
 
-    support_changed, support_unchanged = publish_migration_support(library_dir, args.dry_run)
-    support_action = "WOULD PUBLISH" if args.dry_run else "PUBLISH"
+    support_changed, support_unchanged = publish_migration_support(library_dir, dry_run)
+    pending = 1 if support_changed else 0
+    support_action = "WOULD PUBLISH" if dry_run else "PUBLISH"
     print(
         f"{support_action}  ResQ migration support: {support_changed} changed, "
         f"{support_unchanged} unchanged"
     )
 
-    if not args.dry_run:
+    if not dry_run:
         library_dir.mkdir(parents=True, exist_ok=True)
 
     for path in macros:
@@ -254,14 +264,18 @@ def main() -> int:
             if target.read_bytes() == data:
                 print(f"SKIP  {path.name}: library already has v{version}")
                 continue
-            notes.append(archive_replaced_copy(library_dir, target, args.dry_run))
-        if not args.dry_run:
+            notes.append(archive_replaced_copy(library_dir, target, dry_run))
+        pending += 1
+        if not dry_run:
             atomic_write(target, data)
-        action = "WOULD PUBLISH" if args.dry_run else "PUBLISH"
+        action = "WOULD PUBLISH" if dry_run else "PUBLISH"
         suffix = f" ({'; '.join(notes)})" if notes else ""
         print(f"{action}  {path.name} v{version}{suffix}")
 
     print(f"\nLibrary: {library_dir}")
+    if args.check and pending:
+        print(f"{pending} item(s) are not published; run publish_macro_library.py to publish them.")
+        return 1
     return 0
 
 

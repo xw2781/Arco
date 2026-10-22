@@ -125,3 +125,9 @@ macros to the shared library:
 ```text
 python publish_macro_library.py
 ```
+
+`python publish_macro_library.py --check` writes nothing and exits 1 when the
+library or the ResQ migration support release is behind this folder. Run it
+before calling a macro or migration change finished, and first when a user
+reports a macro failure: a fix committed here does nothing until it is
+published.

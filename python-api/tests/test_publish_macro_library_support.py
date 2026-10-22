@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import io
 import json
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 
 _PYTHON_API_ROOT = Path(__file__).resolve().parents[1]
 _PUBLISHER_PATH = _PYTHON_API_ROOT / "macros" / "publish_macro_library.py"
-_TMP_ROOT = Path(__file__).resolve().parent / "logs" / "tmp"
+_TMP_ROOT = _PYTHON_API_ROOT.parent / "test"
 
 
 def _load_publisher():
@@ -78,6 +82,23 @@ class PublishMacroLibrarySupportTests(unittest.TestCase):
             changed, unchanged = publisher.publish_migration_support(library, False)
             self.assertEqual(changed, 0)
             self.assertGreater(unchanged, 0)
+
+    def test_check_fails_on_a_behind_library_without_writing_then_passes_once_published(self):
+        publisher = _load_publisher()
+        _TMP_ROOT.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=_TMP_ROOT) as temp_name:
+            library = Path(temp_name) / "shared" / "macros"
+            library.mkdir(parents=True)
+
+            def run(*flags):
+                argv = ["publish_macro_library.py", "--library-dir", str(library), *flags]
+                with patch.object(sys, "argv", argv), redirect_stdout(io.StringIO()):
+                    return publisher.main()
+
+            self.assertEqual(run("--check"), 1)
+            self.assertEqual([p for p in Path(temp_name).rglob("*") if p.is_file()], [])
+            self.assertEqual(run(), 0)
+            self.assertEqual(run("--check"), 0)
 
 
 if __name__ == "__main__":

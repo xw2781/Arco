@@ -128,6 +128,7 @@ Follow the macro metadata, versioning, release-note, and backup rules in `python
 A macro must stand on its own: it runs against the `arcrho_api` the installed app was built with, so it must never depend on a change made in `python-api/src/arcrho_api` in the same turn. Put the behaviour a macro owns in the macro file, and see "A macro must stand on its own" in `python-api/macros/README.md`.
 When adding or editing a macro, update the file in `python-api/macros` first, then copy all active macro files from that folder to `C:\Users\xwei.PRCINS\Documents\ArcRho\macros`.
 After adding or editing any active macro, also publish the active macros to the official shared macro library (`E:\ArcRho Server\shared\macros`) by running `python publish_macro_library.py` from `python-api/macros`.
+Run `python publish_macro_library.py --check` from `python-api/macros` before reporting any task that touched `python-api/macros` or `python-api/migration` as finished, and at the start of any task investigating a macro failure. It writes nothing and exits 1 when the library is behind the repo; publish then, or tell the user what is unpublished and why.
 
 ## Python Runtime Preference
 Always prefer Python 3.10 for this repository. When validating Python code, running scripts, installing dependencies, or creating virtual environments, use a Python 3.10 interpreter unless the user explicitly asks for another version or a toolchain requires a different runtime.
