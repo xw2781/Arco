@@ -373,10 +373,10 @@
   <script>
     // Apply app-frame styling from the host Windows version check.
     (async () => {
-      if (window.ADAHost?.isWindows11) {
-        const isWin11 = await window.ADAHost.isWindows11();
-        document.body.classList.toggle('win11-frame', !!isWin11);
-        document.body.classList.toggle('win10-borders', !isWin11);
+      if (window.ADAHost?.windowsFrameStyle) {
+        const frame = await window.ADAHost.windowsFrameStyle();
+        document.body.classList.toggle('win11-frame', frame === 'win11');
+        document.body.classList.toggle('win10-borders', frame === 'win10');
       }
       if (window.ADAHost?.getAppInfo) {
         try {
