@@ -31,23 +31,17 @@ window.ArcRhoZoomBridge?.wirePageZoomBridge({
 
 
 async function applyHostFrameCornerStyle() {
-  let isWin11 = false;
-  try {
-    isWin11 = !!window.parent?.document?.body?.classList?.contains("win11-frame");
-  } catch {
-    isWin11 = false;
-  }
-
-  if (!isWin11 && typeof window.ADAHost?.isWindows11 === "function") {
+  let frame = "";
+  if (typeof window.ADAHost?.windowsFrameStyle === "function") {
     try {
-      isWin11 = !!(await window.ADAHost.isWindows11());
+      frame = await window.ADAHost.windowsFrameStyle();
     } catch {
-      isWin11 = false;
+      frame = "";
     }
   }
 
-  document.body.classList.toggle("win11-frame", isWin11);
-  document.body.classList.toggle("win10-borders", !isWin11);
+  document.body.classList.toggle("win11-frame", frame === "win11");
+  document.body.classList.toggle("win10-borders", frame === "win10");
 }
 
 
