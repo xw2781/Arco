@@ -11,7 +11,7 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -1122,6 +1122,35 @@ def valuation_months(project_name: str) -> int:
     """
     origin_start_month, _, development_end_month = _general_settings_month_bounds(project_name)
     return development_end_month - origin_start_month + 1
+
+
+def rollup_valuation_months(
+    project_name: str,
+    rows: Sequence[Sequence[Any]],
+    source_development_length: Any,
+    *,
+    calendar: bool = False,
+) -> int:
+    """The valuation a roll-up of this stored triangle is anchored on.
+
+    Normally the project's, from :func:`valuation_months`. A hand-entered
+    triangle kept from an earlier valuation (a project rolled forward a month)
+    is narrower or wider than the project's grid; its cells are then read by
+    position, so its newest stored diagonal is the newest diagonal of the
+    view and the month shift is ignored.
+    """
+
+    months = valuation_months(project_name)
+    try:
+        development = int(source_development_length)
+    except (TypeError, ValueError):
+        return months
+    width = max((len(row) for row in rows or []), default=0)
+    if calendar or development <= 0 or not width:
+        return months
+    if width == (months - 1) // development + 1:
+        return months
+    return width * development
 
 
 def _empty_dataset_geometry_from_general_settings(
@@ -2276,7 +2305,9 @@ def _display_view_of_stored_values(
             "source_development_length": stored_development,
             "target_origin_length": display_origin,
             "target_development_length": display_development,
-            "valuation_months": valuation_months(project_name),
+            "valuation_months": rollup_valuation_months(
+                project_name, values, stored_development, calendar=calendar
+            ),
             "cumulative": cumulative,
             "calendar": calendar,
         },

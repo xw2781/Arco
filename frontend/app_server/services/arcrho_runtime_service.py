@@ -1053,12 +1053,19 @@ def _derive_triangle_cache(candidate: Dict[str, Any], pairs: list, target_path: 
     from app_server.services import dataset_service
 
     # The view is valued on the project's Development End Date, like every
-    # triangle created at the requested shape would be.
-    valuation = dataset_service.valuation_months(_pair_value(pairs, "ProjectName"))
+    # triangle created at the requested shape would be; a hand-entered one
+    # kept from an earlier valuation is read by cell position instead.
+    project_name = _pair_value(pairs, "ProjectName")
     df = read_dataset_csv(source_path, dtype="float64", keep_default_na=True)
-    values = rollup_triangle(
-        df.to_numpy().tolist(), valuation_months=valuation, **arguments
-    )
+    rows = df.to_numpy().tolist()
+    payload = candidate.get("payload")
+    if isinstance(payload, dict) and _clean_cache_text(payload.get("source_kind")).lower() == "input":
+        valuation = dataset_service.rollup_valuation_months(
+            project_name, rows, source_dev, calendar=bool(arguments["calendar"])
+        )
+    else:
+        valuation = dataset_service.valuation_months(project_name)
+    values = rollup_triangle(rows, valuation_months=valuation, **arguments)
     target_rows = len(values)
     target_cols = len(values[0])
     derived = {
@@ -1071,7 +1078,6 @@ def _derive_triangle_cache(candidate: Dict[str, Any], pairs: list, target_path: 
         "target_cols": target_cols,
     }
 
-    payload = candidate.get("payload")
     if isinstance(payload, dict) and _clean_cache_text(payload.get("source_kind")).lower() == "input":
         # A hand-entered triangle is the only copy of figures nobody can
         # produce again, so a coarser view of it is never written anywhere:

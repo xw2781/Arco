@@ -122,15 +122,22 @@ def rollup_rows(
     """Aggregate a hand-entered dataset's own rows to the coarser lengths.
 
     The view is valued on the project's Development End Date, like every
-    dataset of the project is.
+    dataset of the project is; a triangle kept from an earlier valuation is
+    read by cell position instead.
     """
 
     from app_server.services import dataset_service
 
+    arguments = rollup_arguments(sidecar, origin_length, development_length)
     return triangle_rollup.rollup_triangle(
         rows,
-        valuation_months=dataset_service.valuation_months(project_name),
-        **rollup_arguments(sidecar, origin_length, development_length),
+        valuation_months=dataset_service.rollup_valuation_months(
+            project_name,
+            rows,
+            arguments["source_development_length"],
+            calendar=arguments["calendar"],
+        ),
+        **arguments,
     )
 
 
