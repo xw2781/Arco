@@ -654,11 +654,20 @@ def eval_triangle_formula(triangles: dict[str, pd.DataFrame],
     # allow 'D = A/B*1000' or just 'A/B*1000'
     rhs = formula.split('=', 1)[-1].strip()
 
+    # Source columns may carry spaces ("Earned Premium"), which Python cannot
+    # read as names; swap each one, longest first, for a plain placeholder.
+    names = {}
+    for i, name in enumerate(sorted(triangles, key=len, reverse=True)):
+        placeholder = f"__arcrho_col_{i}__"
+        pattern = rf'"{re.escape(name)}"|(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])'
+        rhs = re.sub(pattern, placeholder, rhs)
+        names[placeholder] = triangles[name]
+
     # safety: no builtins; variables come from triangles dict
     env = {"__builtins__": {}}
 
     # element-wise eval; pandas aligns on index & columns automatically
-    result = eval(rhs, env, triangles)
+    result = eval(rhs, env, names)
 
     if div0_to_zero:
         result = result.replace([np.inf, -np.inf], np.nan).fillna(0)
