@@ -1,6 +1,6 @@
 ---
 name: triangle-rollup-valuation-anchor
-description: "A coarser view of a stored triangle counts development periods back from the project's Development End Date (ResQ's 8m/20m/32m labels), so rollup_triangle needs valuation_months and service tests with a fake project must patch get_general_settings_path"
+description: "A coarser view counts development periods back from the Development End Date, except a hand-entered triangle kept from an earlier valuation, read by position (2026-10-26) (ResQ's 8m/20m/32m labels), so rollup_triangle needs valuation_months and service tests with a fake project must patch get_general_settings_path"
 metadata: 
   node_type: memory
   type: project
@@ -13,3 +13,5 @@ Fixed 2026-09-06: a ResQ-imported triangle stored at 12/1 and shown at 12/12 (NJ
 **Why:** the stored CSV holds no figure at 12, 24, ... months in an August-valued project, and ResQ reshapes a stored 12/1 triangle to any display length by counting back from the evaluation date; the import already writes both display and stored lengths, the display arithmetic was the only gap.
 
 **How to apply:** every caller of `rollup_triangle` / `precedent_cache_service.rollup_rows(project_name, ...)` needs the project's General Settings, so a service test that rolls up under a fake project must write a `general_settings.json` and patch `config.get_general_settings_path` (see `frontend/tests/test_manual_dataset_rollup_view.py`); a 24-month fixture valued on a period boundary keeps the old expectations. Related: [[origin-length-is-not-row-count]], [[arcrho-dataset-types-win-over-resq]].
+
+**Positional exception (user rule, 2026-10-26):** a hand-entered triangle carried into a project valued a month later (Sep project holding Aug-valued 116-column adjusted triangles) is read by cell position, not by label. `dataset_service.rollup_valuation_months` anchors on the stored width (`width * stored_dev`) whenever it differs from the project grid's width; otherwise the project valuation is unchanged. Used by `rollup_rows`, the dataset-window roll-up handle, and the ArcRhoTri input roll-up. Scatter (writing at a coarse view) still uses the project valuation, so an edit re-stores the triangle at the current valuation.

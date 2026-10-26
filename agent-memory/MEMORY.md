@@ -75,7 +75,7 @@
 - [ResQ DFM Curves COM API](resq-dfm-curves-com-api.md) — the Ratios-tab tail is CustomAverages(i).TailFactor, CurveValues(col,0) is a tail
 - [ResQ COM probe: never call members blindly](resq-com-probe-dont-call-blindly.md) — a dir()-driven probe invoked Select/Refresh members and mutated the method; read only named
 - [Refresh problem diagnosis logs](refresh-problem-diagnosis-logs.md) — a rules save shows only its first problem; the full per-class list is in
-- [Triangle roll-up valuation anchor](triangle-rollup-valuation-anchor.md) — 2026-09-06: a coarser view counts development periods back from the Development End Date
+- [Triangle roll-up valuation anchor](triangle-rollup-valuation-anchor.md) — 2026-09-06: a coarser view counts development periods back from the Development End Date; a hand-entered triangle from an earlier valuation is read by position (2026-10-26)
 - [Dataset window two open paths](dataset-window-two-open-paths.md) — the PI open uses the /dataset/cache/load response as the sidecar while the run path reloads
 - [Engine stored lengths are source granularity](engine-stored-lengths-are-source-granularity.md) — an engine sidecar's stored_* pair is the source-table granularity, not its CSV shape; every
 - [Stored at must ask the file](stored-at-must-ask-the-file.md) — "is this dataset still empty?" asks the file, not the grid; asking the grid discarded a
