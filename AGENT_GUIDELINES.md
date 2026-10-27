@@ -112,6 +112,9 @@ Every log file any ArcRho component writes is kept for 30 days and no longer. No
 | [GUI Verification](agent-instructions/gui-verification.md) | `GUI verification`, `GUI test`, `verify in the GUI`, `click`, `double-click`, `drag`, `screenshot`, `mouse`, `desktop`, `Arco window`, `ResQ window`, `ResQ GUI`, `Excel window`, `Remote Desktop` |
 | [ResQ API Reference Material](agent-instructions/resq-api-reference.md) | `ResQ COM`, `ResQ API`, `ResQ scripting`, `ResQ help manual`, `ResQToolBox`, `ResQ object hierarchy`, `ResQ migration`, `reserve review notebook`, `ConnectByName`, `GetDFMMethod`, `AddMethod` |
 
+## UI Text
+Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
+
 ## Bug Fix Verification and Cleanup
 Before changing code for a bug fix, review the relevant code and verify that its current logic can explain the bug or unexpected behavior reported by the user. If the reported behavior cannot be traced to the code, or if any material detail is uncertain, stop and ask the user for more details or clarification until the issue is clear. Do not make assumptions or guesses when deciding on code changes.
 When fixing a bug, remove clearly obsolete code in the touched area. Ask before broader cleanup or cleanup with behavior risk.
