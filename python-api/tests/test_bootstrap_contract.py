@@ -161,6 +161,29 @@ def test_varying_scale_tail_falls_back_to_lower_of_previous_two(fixture):
     assert scale[10] == pytest.approx(min(scale[7], scale[8]))
 
 
+def test_zero_cells_are_observations_not_blanks(fixture):
+    """An origin with zero losses, or zeros before its first loss, keeps every cell."""
+
+    case = _case(fixture, "odp_single_scale")
+    rows = deepcopy(case["observed_triangle"])
+    rows[0] = [0.0] * len(rows[0])
+    rows[1][:2] = [0.0, 0.0]
+    triangle = observed_triangle(rows + [[None]])
+    assert [len(row) for row in triangle[:-1]] == [len(row) for row in rows]
+    assert triangle[-1] == []
+
+    fit = fit_dfm_projection(triangle[:-1], case["selected_ratios"], case["total_development_periods"])
+    assert fit.fitted_cumulative[0] == [0.0] * case["total_development_periods"]
+    residuals = calculate_residuals(fit, model_type=case["model_type"])
+    assert all(value is None for value in residuals.unscaled[0])
+    assert residuals.unscaled[1][0] is not None
+
+    options = BootstrapSimulationOptions(simulation_count=200, random_seed=7)
+    run = simulate_bootstrap(fit, residuals, options)
+    assert all(reserve[0] == 0.0 for reserve in run.reserves)
+    assert all(math.isfinite(total) for total in run.totals)
+
+
 def test_mack_model_is_rejected_until_implemented(fixture):
     case = _case(fixture, "odp_single_scale")
     with pytest.raises(BootstrapCalculationError, match="Mack"):

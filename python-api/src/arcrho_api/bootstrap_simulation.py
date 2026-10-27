@@ -84,16 +84,16 @@ def _row_values(row: Any) -> list[float | None]:
 def observed_triangle(values: Any) -> list[list[float]]:
     """Return a ragged cumulative triangle, trimming trailing blank cells.
 
-    ResQ reports absent triangle cells as ``0.0`` through ``TriangleValues`` and
-    Arco stores them as ``null``; both mean "no observation", and a row stops
-    at its first absent cell.
+    Arco stores an absent cell as ``null``, and a row stops at its first one.
+    A ``0.0`` is an observation: an old origin can hold zero cumulative losses
+    for years, and ResQ bootstraps such a triangle with every cell in place.
     """
 
     triangle: list[list[float]] = []
     for row in values if isinstance(values, (list, tuple)) else []:
         cells: list[float] = []
         for item in _row_values(row):
-            if item is None or item == 0.0:
+            if item is None:
                 break
             cells.append(item)
         triangle.append(cells)
