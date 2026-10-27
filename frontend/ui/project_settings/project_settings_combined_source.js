@@ -393,11 +393,11 @@ export function validateCombinedState(state) {
 
 export const KEY_CONVERT_YYYYMM = "yyyymm";
 
-/** The import window's pages: Combine sits between Source and Datasets only with two or more tables. */
+/** The import window's pages: Combine sits between Source and Field Mapping only with two or more tables. */
 export function importSteps(state) {
   return state.tables.length >= 2
-    ? ["settings", "combine", "datasets", "classes", "confirm"]
-    : ["settings", "datasets", "classes", "confirm"];
+    ? ["settings", "combine", "mapping", "datasets", "classes", "confirm"]
+    : ["settings", "mapping", "datasets", "classes", "confirm"];
 }
 
 /**
@@ -1869,6 +1869,27 @@ export function createCombinedSourceFeature(deps = {}) {
     /** How many tables the list holds. */
     tableCount() {
       return state.tables.length;
+    },
+    /**
+     * The columns the import will write: `{ ok, columns, error }`. One table
+     * answers its own columns; several answer the combined table's, from the
+     * last preview of these settings or a fresh one.
+     */
+    async importColumns() {
+      if (state.tables.length === 1) {
+        if (!Array.isArray(state.tables[0].columns)) await describeInto(state.tables[0].id);
+        const table = state.tables[0];
+        return Array.isArray(table?.columns)
+          ? { ok: true, columns: table.columns.slice(), error: "" }
+          : { ok: false, columns: [], error: table?.readError || "Could not read the table." };
+      }
+      if (preview?.data && !preview.loading && preview.block === currentBlock()) {
+        return { ok: true, columns: preview.data.columns.map(String), error: "" };
+      }
+      const result = await onPreview(previewRequestBody(getProjectName(), state));
+      return result?.ok
+        ? { ok: true, columns: (result.columns || []).map(String), error: "" }
+        : { ok: false, columns: [], error: String(result?.error || "Could not preview the combined table.") };
     },
     /** Save the combined settings as the project's source; answers the source settings. */
     async save() {

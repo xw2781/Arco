@@ -11,11 +11,11 @@
  *   - shared table column sizing              -> project_settings_table_columns.js
  */
 import { AuditLogStore } from "/ui/project_settings/project_settings_audit.js?v=20260901dup1";
-import { createFieldMappingFeature } from "/ui/project_settings/project_settings_field_mapping.js?v=20260927smb18";
-import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20261013group1";
+import { createFieldMappingFeature } from "/ui/project_settings/project_settings_field_mapping.js?v=20261027map1";
+import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20261027map1";
 import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20261013group1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261013group1";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261027map1";
 import { createSourceImport } from "/ui/project_settings/project_settings_source_import.js?v=20261013group1";
 import {
   applyProjectSettingsTablePreferences,
@@ -27,17 +27,17 @@ import {
   saveProjectSettingsCollapsedGroups,
   saveProjectSettingsTableColumnWidths,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261013group1";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261027map1";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261013group1";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261013group1";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261013group1";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261013group1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261027map1";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261027map1";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261027map1";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261027map1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
-import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261004lock1";
+import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261027map1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
 import { createSourceRefreshFeature } from "/ui/project_settings/project_settings_source_refresh.js?v=20260927smb18";
 import { loadProjectUserPreferences } from "/ui/shared/services/project_user_preferences.js?v=20260816a";
@@ -80,8 +80,8 @@ const confirmOk = document.getElementById("confirmOk");
 const confirmCancel = document.getElementById("confirmCancel");
 const confirmBox = document.getElementById("confirmBox");
 const fieldMappingBody = document.getElementById("fieldMappingBody");
-const fieldMappingStatus = document.getElementById("fieldMappingStatus");
-const saveFieldMappingBtn = document.getElementById("saveFieldMappingBtn");
+const fieldMappingStatus = document.getElementById("sdMappingStatus");
+const fieldMappingMissing = document.getElementById("fieldMappingMissing");
 const datasetTypesBody = document.getElementById("datasetTypesBody");
 const datasetTypesStatus = document.getElementById("datasetTypesStatus");
 const datasetTypesRowContextMenu = document.getElementById("datasetTypesRowContextMenu");
@@ -160,7 +160,6 @@ let contextMenuProject = null; // Project for context menu actions
 let contextMenuFolder = null;  // Folder node for context menu (create subfolder)
 let activeProjectSettingsRibbon = "summary";
 let tableSummaryLoadSeq = 0;
-let currentFieldNames = [];
 
 // ============ Shared helpers ============
 function setStatus(msg) {
@@ -395,6 +394,16 @@ const sourceDataFeature = createSourceDataFeature({
   onImportData: (...args) => sourceImport.importSourceData(...args),
   onLoadImportScope: () => loadImportScopeOptions(),
   onSourceFileStatus: () => loadSourceFileStatus(),
+  onMappingOpen: async (columns) => {
+    await fieldMappingFeature?.ensureFieldMappingLoaded(selectedProject?.name);
+    // Only dataset types without a formula can be mapped, so the list must be current.
+    await datasetTypesFeature?.ensureDatasetTypesLoaded(selectedProject?.name);
+    fieldMappingFeature?.renderFieldMappingTable(columns, selectedProject?.name);
+  },
+  onMappingValidate: () => fieldMappingFeature?.validateFieldMapping(selectedProject?.name) || "",
+  onMappingSave: () => fieldMappingFeature.saveFieldMapping(selectedProject),
+  onMappingDiscard: () => fieldMappingFeature?.ensureFieldMappingLoaded(selectedProject?.name, { force: true }),
+  mappingHasChanges: () => !!fieldMappingFeature?.hasUnsavedFieldMappingChanges(selectedProject?.name),
   fetchImpl: fetch.bind(window),
   getSelectedProject: () => selectedProject,
   // Admin-editable defaults stay owned by the shared table preference JSON.
@@ -517,12 +526,9 @@ datasetTypesFeature = createDatasetTypesFeature({
   fetchImpl: fetch.bind(window),
   setStatus,
   loadAuditLog,
-  getSelectedProject: () => selectedProject,
-  getCurrentFieldNames: () => currentFieldNames,
   ensureFieldMappingLoaded: (...args) => fieldMappingFeature?.ensureFieldMappingLoaded(...args),
   findDatasetTypeOwnerInFieldMapping: (...args) => fieldMappingFeature?.findDatasetTypeOwner(...args) || "",
   getMappedDatasetTypeNamesInFieldMapping: (...args) => fieldMappingFeature?.getMappedDatasetTypeNames(...args) || [],
-  renderFieldMappingTable: (...args) => fieldMappingFeature?.renderFieldMappingTable(...args),
   hideContextMenu,
   hideFolderContextMenu,
   hideTreeContextMenu,
@@ -551,13 +557,12 @@ datasetTypesFeature = createDatasetTypesFeature({
 fieldMappingFeature = createFieldMappingFeature({
   fieldMappingBody,
   fieldMappingStatus,
-  saveFieldMappingBtn,
+  fieldMappingMissing,
   initTableColumnResizing,
   normalizeProjectKey,
   fetchImpl: fetch.bind(window),
   setStatus,
   getDatasetTypeNamesForProject: (...args) => datasetTypesFeature?.getDatasetTypeNamesForProject(...args) || [],
-  getCurrentFieldNames: () => currentFieldNames,
   loadAuditLog,
   syncDatasetTypesSources: (...args) => syncDatasetTypeSourcesAfterFieldMappingSave(...args),
 });
@@ -686,15 +691,10 @@ function clearProjectDetailPanels(project) {
   detailTitle.textContent = String(project?.name || "");
   detailForm.innerHTML = "";
   detailForm.style.display = "none";
-  currentFieldNames = [];
 
   datasetTypesFeature?.closeDatasetTypeEditor();
   sourceDataFeature.resetForProjectChange();
 
-  fieldMappingFeature?.renderFieldMappingLoading();
-  fieldMappingFeature?.setFieldMappingStatus("");
-  // The previous project's unsaved edits must not leave Save actionable here.
-  fieldMappingFeature?.updateSaveFieldMappingButton(project?.name);
   reservingClassTypesFeature?.renderReservingClassTypesLoading();
   reservingClassTypesFeature?.setReservingClassTypesStatus("");
   datasetTypesFeature?.renderDatasetTypesLoading();
@@ -1142,9 +1142,6 @@ async function loadTableSummary(projectName = "", options = {}) {
     const existingGeneralSettings = await generalSettingsFeature.ensureLoaded(projectName, { applyToInputs: false });
     if (isStale()) return true;
     applyStoredPeriodsToInputs(existingGeneralSettings);
-    currentFieldNames = [];
-    fieldMappingFeature?.renderFieldMappingEmpty("No source table is configured for this project.");
-    fieldMappingFeature?.setFieldMappingStatus("");
     if (forceReservingClassTypesReload) {
       await reservingClassTypesFeature?.loadReservingClassTypes(projectName, { force: true });
     }
@@ -1152,8 +1149,6 @@ async function loadTableSummary(projectName = "", options = {}) {
   }
 
   sourceDataFeature.showLoading();
-  // The field list arrives with this summary, so both tabs stay busy together.
-  fieldMappingFeature?.renderFieldMappingLoading();
 
   try {
     if (forceRefresh && projectName) {
@@ -1189,9 +1184,6 @@ async function loadTableSummary(projectName = "", options = {}) {
       await loadSourceTableState(projectName);
       if (isStale()) return true;
     }
-    currentFieldNames = Array.isArray(data.columns)
-      ? data.columns.map(col => String(col?.name || "").trim()).filter(Boolean)
-      : [];
     const existingGeneralSettings = await generalSettingsFeature.ensureLoaded(projectName, { applyToInputs: false });
     if (isStale()) return true;
     // Source Data reads each column's date role off the summary payload. This
@@ -1228,8 +1220,6 @@ async function loadTableSummary(projectName = "", options = {}) {
       force: forceRefresh || forceFieldMappingReload,
     });
     if (isStale()) return true;
-    fieldMappingFeature?.renderFieldMappingTable(currentFieldNames, projectName);
-    fieldMappingFeature?.setFieldMappingStatus("");
     if (forceReservingClassTypesReload) {
       await reservingClassTypesFeature?.loadReservingClassTypes(projectName, { force: true });
     }
@@ -1241,9 +1231,6 @@ async function loadTableSummary(projectName = "", options = {}) {
     const existingGeneralSettings = await generalSettingsFeature.ensureLoaded(projectName, { applyToInputs: false });
     if (isStale()) return true;
     applyStoredPeriodsToInputs(existingGeneralSettings);
-    currentFieldNames = [];
-    fieldMappingFeature?.renderFieldMappingEmpty("Unable to load fields from Table Summary.");
-    fieldMappingFeature?.setFieldMappingStatus(err.message || "Unable to load table summary.", true);
     return false;
   }
 }
@@ -1317,14 +1304,6 @@ document.addEventListener("mouseup", () => {
 openProjectFolderBtn?.addEventListener("click", async () => {
   if (!selectedProject) return;
   await openProjectFolderInExplorer(selectedProject);
-});
-
-saveFieldMappingBtn?.addEventListener("click", () => {
-  if (!selectedProject) {
-    fieldMappingFeature?.setFieldMappingStatus("Select a project first.", true);
-    return;
-  }
-  fieldMappingFeature?.saveFieldMapping(selectedProject);
 });
 
 // ============ Custom Prompt Dialog ============
@@ -1643,7 +1622,6 @@ document.addEventListener("keydown", (e) => {
 
   const panelMap = {
     "summary": document.getElementById("ribbonSummary"),
-    "field-mapping": document.getElementById("ribbonFieldMapping"),
     "reserving-class-types": document.getElementById("ribbonReservingClassTypes"),
     "dataset-types": document.getElementById("ribbonDatasetTypes"),
     "data-processing": document.getElementById("ribbonDataProcessing"),

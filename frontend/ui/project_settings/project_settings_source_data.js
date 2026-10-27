@@ -30,7 +30,7 @@ import {
 import {
   combinedSourceSummary,
   createCombinedSourceFeature,
-} from "./project_settings_combined_source.js?v=20261013group1";
+} from "./project_settings_combined_source.js?v=20261027map1";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -307,6 +307,12 @@ export function createSourceDataFeature(deps = {}) {
     // The dataset types and reserving class types the Import Scope step offers.
     onLoadImportScope = async () => ({ ok: false, error: "Not available." }),
     onSourceFileStatus = async () => null,
+    // The Field Mapping step: show the import's columns, check, save or drop edits.
+    onMappingOpen = async () => {},
+    onMappingValidate = () => "",
+    onMappingSave = async () => ({ ok: true, saved: false, error: "" }),
+    onMappingDiscard = async () => {},
+    mappingHasChanges = () => false,
     // Reaches the combined-source routes; see project_settings_combined_source.js.
     fetchImpl = null,
     getSelectedProject = () => null,
@@ -362,6 +368,8 @@ export function createSourceDataFeature(deps = {}) {
     importBackBtn: el("sdImportBackBtn"),
     sourcePanelTitle: el("summaryImportWindowTitle"),
     settingsStep: el("summaryImportWindow")?.querySelector(".sd-import-body:not(.sd-import-scope)"),
+    mappingStep: el("sdImportMapping"),
+    mappingStatus: el("sdMappingStatus"),
     scopeStep: el("sdImportScope"),
     confirmStep: el("sdImportConfirm"),
     confirmList: el("sdConfirmList"),
@@ -405,8 +413,7 @@ export function createSourceDataFeature(deps = {}) {
   let sourceBusy = false;
   // Method chosen inside the panel; only an import commits it to the project.
   let panelMethod = SOURCE_TYPE_CSV;
-  // Which page of the Import Settings window is showing: the settings, or the
-  // Import Scope step that follows them.
+  // Which page of the Import Settings window is showing; see PANEL_STEP_TITLES.
   let panelStep = "settings";
   // What the Import Scope step offers and what is ticked. Selections are keyed
   // by lower-cased name (datasets) and by `level\name` (reserving class types).
@@ -1645,12 +1652,14 @@ export function createSourceDataFeature(deps = {}) {
   function setSourceStatus(text, tone = "") {
     // The Combine page has its own status line.
     if (panelStep === "combine") return combinedSource.setCombineStatus(text, tone);
-    if (!dom.mssqlStatus) return;
+    // The Field Mapping page reports on its own line, which keeps its height.
+    const line = panelStep === "mapping" ? dom.mappingStatus : dom.mssqlStatus;
+    if (!line) return;
     const value = String(text || "").trim();
-    dom.mssqlStatus.textContent = value;
-    dom.mssqlStatus.classList.toggle("error", tone === "error");
-    dom.mssqlStatus.classList.toggle("ok", tone === "ok");
-    dom.mssqlStatus.hidden = !value;
+    line.textContent = value;
+    line.classList.toggle("error", tone === "error");
+    line.classList.toggle("ok", tone === "ok");
+    line.hidden = panelStep !== "mapping" && !value;
   }
 
   function setSourceBusy(busy) {
@@ -1757,6 +1766,8 @@ export function createSourceDataFeature(deps = {}) {
     dom.sourcePanel.classList.remove("show");
     dom.importSettingsBtn?.setAttribute("aria-expanded", "false");
     showPanelStep("settings");
+    // Closing the window drops unsaved mapping edits.
+    onMappingDiscard();
     if (restoreFocus) dom.importSettingsBtn?.focus();
   }
 
@@ -1792,13 +1803,15 @@ export function createSourceDataFeature(deps = {}) {
 
   /**
    * The window's pages, in order: settings, Combine (only with two or more
-   * tables; the combined module owns that page), then the two scope pages.
+   * tables; the combined module owns that page), Field Mapping, then the two
+   * scope pages.
    * The two scope pages share one body: it shows the pane named by its
    * `data-page`, so each list gets the whole window to itself.
    */
   const PANEL_STEP_TITLES = {
     settings: "Import Settings",
     combine: "Combine Tables",
+    mapping: "Field Mapping",
     datasets: "Import Scope: Datasets",
     classes: "Import Scope: Reserving Class Types",
     confirm: "Confirm Import",
@@ -1810,6 +1823,7 @@ export function createSourceDataFeature(deps = {}) {
     const onScope = panelStep === "datasets" || panelStep === "classes";
     if (dom.settingsStep) dom.settingsStep.hidden = panelStep !== "settings";
     combinedSource.showCombine(panelStep === "combine");
+    if (dom.mappingStep) dom.mappingStep.hidden = panelStep !== "mapping";
     if (dom.scopeStep) {
       dom.scopeStep.hidden = !onScope;
       if (onScope) dom.scopeStep.dataset.page = panelStep;
@@ -1839,7 +1853,13 @@ export function createSourceDataFeature(deps = {}) {
       return;
     }
     if (panelStep === "settings" || panelStep === "combine") {
-      goToScopeStep();
+      goToMappingStep();
+      return;
+    }
+    if (panelStep === "mapping") {
+      const problem = onMappingValidate();
+      if (problem) setSourceStatus(problem, "error");
+      else goToScopeStep();
       return;
     }
     if (panelStep === "datasets" && !datasetScopeProblem()) {
@@ -1901,6 +1921,7 @@ export function createSourceDataFeature(deps = {}) {
       confirmRow("Import Method", "CSV File");
       confirmRow("Source File", settings.csvPath);
     }
+    confirmRow("Field Mapping", mappingHasChanges() ? "Changed" : "Unchanged");
     const datasets = describeChoice(
       scopeState.datasetTypes.length,
       scopeState.datasetTypes
@@ -2244,7 +2265,31 @@ export function createSourceDataFeature(deps = {}) {
     return { datasetTypes, reservingClassTypes };
   }
 
-  /** Check the settings, then offer what the refresh should cover. */
+  /** Check the settings, then map the columns the import will write. */
+  async function goToMappingStep() {
+    const settings = validateImportSettings();
+    if (!settings.ok) {
+      setSourceStatus(settings.error, "error");
+      return;
+    }
+    setSourceBusy(true);
+    setSourceStatus("Reading the source columns...");
+    try {
+      const result = await combinedSource.importColumns();
+      if (!result.ok) {
+        setSourceStatus(result.error, "error");
+        return;
+      }
+      setSourceStatus("");
+      await onMappingOpen(result.columns);
+      showPanelStep("mapping");
+      setSourceStatus("");
+    } finally {
+      setSourceBusy(false);
+    }
+  }
+
+  /** Offer what the refresh should cover. */
   async function goToScopeStep() {
     const settings = validateImportSettings();
     if (!settings.ok) {
@@ -2463,6 +2508,12 @@ export function createSourceDataFeature(deps = {}) {
         setSourceStatus("Could not save the import settings.", "error");
         return;
       }
+      // The import reads the mapping, so it is saved first.
+      const mapping = await onMappingSave();
+      if (!mapping.ok) {
+        setSourceStatus(`Saved the import settings, but not the field mapping: ${mapping.error}`, "error");
+        return;
+      }
       setBodyVisible(true);
       setSummaryLoading(
         true,
@@ -2505,9 +2556,13 @@ export function createSourceDataFeature(deps = {}) {
         : await onProfileSave(settings.method, settings.profile, settings.csvPath);
       // The source is saved first; the scope then goes to the same project record.
       const scopeSaved = saved && await onScopeSave(readScopeSelection());
-      if (scopeSaved) setSourceStatus("Saved the import settings and scope. Nothing was imported.", "ok");
-      else if (!saved) setSourceStatus("Could not save the import settings.", "error");
-      else setSourceStatus("Saved the import settings, but not the scope.", "error");
+      const mapping = scopeSaved ? await onMappingSave() : null;
+      if (!saved) setSourceStatus("Could not save the import settings.", "error");
+      else if (!scopeSaved) setSourceStatus("Saved the import settings, but not the scope.", "error");
+      else if (!mapping.ok) setSourceStatus(`Saved the import settings, but not the field mapping: ${mapping.error}`, "error");
+      else if (mapping.saved) {
+        setSourceStatus("Saved. Nothing was imported; the new field mapping takes effect at the next import.", "ok");
+      } else setSourceStatus("Saved the import settings and scope. Nothing was imported.", "ok");
     } finally {
       setSourceBusy(false);
     }

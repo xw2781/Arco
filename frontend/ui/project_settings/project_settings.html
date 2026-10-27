@@ -6,20 +6,20 @@
   <script src="/ui/shared/services/color_theme.js?v=20260923c"></script>
   <title>Project Explorer</title>
   <link rel="stylesheet" href="/ui/shared/styles/scrollbars.css?v=20260516a"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_skeleton.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_summary.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_combined_source.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_skeleton.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_summary.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_combined_source.css?v=20261027map1"/>
   <link rel="stylesheet" href="/ui/shared/components/spreadsheet/numeric_stepper.css?v=20260808fieldmap1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_field_mapping.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_dataset_types.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_reserving_class_types.css?v=20261013group1"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_data_processing_rules.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_field_mapping.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_dataset_types.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_reserving_class_types.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_data_processing_rules.css?v=20261027map1"/>
   <link rel="stylesheet" href="/ui/shared/components/table_group_row/table_group_row.css?v=20261013a"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/light.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/dark.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/revolutionary.css?v=20260923c"/>
-  <link rel="stylesheet" href="/ui/project_settings/project_settings_scrollbars.css?v=20261013group1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_scrollbars.css?v=20261027map1"/>
 </head>
 <body class="project-settings-page">
   <div class="main" style="height: 100%;">
@@ -53,25 +53,6 @@
                 </svg>
               </div>
               <div class="ribbon-label">Source<br>Data</div>
-            </div>
-            <div class="ribbon-item" data-ribbon="field-mapping">
-              <div class="ribbon-icon">
-                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <!-- Field mapping: left grid → arrow → right grid -->
-                  <!-- Left mini table -->
-                  <rect x="2" y="7" width="10" height="18" rx="1.5"/>
-                  <line x1="2" y1="13" x2="12" y2="13"/>
-                  <line x1="2" y1="19" x2="12" y2="19"/>
-                  <!-- Right mini table -->
-                  <rect x="20" y="7" width="10" height="18" rx="1.5"/>
-                  <line x1="20" y1="13" x2="30" y2="13"/>
-                  <line x1="20" y1="19" x2="30" y2="19"/>
-                  <!-- Arrow -->
-                  <line x1="13" y1="16" x2="19" y2="16"/>
-                  <polyline points="17,13.5 19.5,16 17,18.5"/>
-                </svg>
-              </div>
-              <div class="ribbon-label">Field<br>Mapping</div>
             </div>
             <div class="ribbon-item" data-ribbon="reserving-class-types">
               <div class="ribbon-icon">
@@ -280,43 +261,6 @@
                     </span>
                   </div>
                   <div id="summaryStats"></div>
-                </div>
-              </div>
-            </div>
-            <div class="ribbon-panel" id="ribbonFieldMapping">
-              <div class="field-mapping-panel">
-                <header class="ps-panel-head">
-                  <div class="ps-panel-heading">
-                    <div class="summary-header">Field Mapping</div>
-                    <div class="field-mapping-help">Select significance for each field. New dataset types can be created in "Dataset Types" Page.</div>
-                  </div>
-                  <div class="field-mapping-toolbar ps-panel-actions">
-                    <button id="saveFieldMappingBtn" type="button" disabled>Save Field Mapping</button>
-                  </div>
-                </header>
-                <div class="field-mapping-status" id="fieldMappingStatus"></div>
-                <div class="field-mapping-grid">
-                  <table class="field-mapping-table" id="fieldMappingTable">
-                    <colgroup>
-                      <col style="width: 260px;">
-                      <col style="width: 220px;">
-                      <col style="width: 360px;">
-                      <col style="width: 120px;">
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th>Field Name</th>
-                        <th>Significances</th>
-                        <th>Dataset Type</th>
-                        <th>Level</th>
-                      </tr>
-                    </thead>
-                    <tbody id="fieldMappingBody">
-                      <tr>
-                        <td colspan="4" class="field-mapping-empty">Select a project with an imported source table to load fields.</td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>
@@ -710,6 +654,31 @@
       <div class="sd-source-status" id="sdMssqlStatus" hidden></div>
     </div>
 
+    <!-- Field Mapping: what each column the import writes means. -->
+    <div class="sd-import-body sd-import-mapping" id="sdImportMapping" data-step="mapping" hidden>
+      <p class="sd-source-note">Choose what each source column holds. New dataset types are added on the Dataset Types page.</p>
+      <p class="sd-source-note fm-missing" id="fieldMappingMissing" hidden></p>
+      <div class="field-mapping-grid">
+        <table class="field-mapping-table" id="fieldMappingTable">
+          <colgroup>
+            <col style="width: 30%;">
+            <col style="width: 22%;">
+            <col style="width: 33%;">
+            <col style="width: 15%;">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Field Name</th>
+              <th>Significances</th>
+              <th>Dataset Type</th>
+              <th>Level</th>
+            </tr>
+          </thead>
+          <tbody id="fieldMappingBody"></tbody>
+        </table>
+      </div>
+      <div class="sd-source-status sd-scope-status" id="sdMappingStatus"></div>
+    </div>
     <!-- Steps 2 and 3: which datasets, then which reserving classes, the import refreshes.
          One body holds both pages; the step logic shows the pane for the current page. -->
     <div class="sd-import-body sd-import-scope" id="sdImportScope" data-step="scope" data-page="datasets" hidden>
@@ -957,6 +926,6 @@
     </div>
   </div>
 
-<script type="module" src="/ui/project_settings/project_settings.js?v=20261013group1"></script>
+<script type="module" src="/ui/project_settings/project_settings.js?v=20261027map1"></script>
 </body>
 </html>

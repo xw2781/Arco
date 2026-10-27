@@ -1,19 +1,23 @@
-import {
-  clearTableSkeletonRows,
-  renderTableSkeletonRows,
-} from "./project_settings_skeleton.js?v=20260821pstree1";
+import { clearTableSkeletonRows } from "./project_settings_skeleton.js?v=20260821pstree1";
 
+/**
+ * Field Mapping - the Field Mapping step of the Import Settings window.
+ *
+ * The step lists the columns the chosen source will import, so a renamed or
+ * new column is mapped before the import runs. Mapped columns the source no
+ * longer has are named above the table and unmapped by the next save. The
+ * window saves the mapping with its settings, with or without importing.
+ */
 export function createFieldMappingFeature(deps = {}) {
   const {
     fieldMappingBody = null,
     fieldMappingStatus = null,
-    saveFieldMappingBtn = null,
+    fieldMappingMissing = null,
     initTableColumnResizing = () => {},
     normalizeProjectKey = (name) => String(name || "").trim().toLowerCase(),
     fetchImpl = fetch,
     setStatus = () => {},
     getDatasetTypeNamesForProject = () => [],
-    getCurrentFieldNames = () => [],
     loadAuditLog = async () => {},
     syncDatasetTypesSources = async () => ({ ok: true }),
   } = deps;
@@ -29,8 +33,9 @@ export function createFieldMappingFeature(deps = {}) {
   const DATASET_TYPE_NA = "-- N/A --";
   const fieldMappingByProject = new Map();
   const savedFieldMappingByProject = new Map();
-  const savingFieldMappingProjects = new Set();
   const loadedFieldMappingByProject = new Set();
+  // The columns the step shows: what the chosen source will import.
+  let currentFieldNames = [];
   let fieldMappingDatasetTypeDropdown = null;
   let fieldMappingDatasetTypeDropdownList = null;
   let fieldMappingDatasetTypeDropdownInput = null;
@@ -52,18 +57,6 @@ export function createFieldMappingFeature(deps = {}) {
     if (!fieldMappingStatus) return;
     fieldMappingStatus.textContent = msg || "";
     fieldMappingStatus.classList.toggle("error", !!isError);
-  }
-
-  /**
-   * Flowing placeholder rows while the fields are read.
-   *
-   * The field list arrives with the table summary, so this frame stays up for
-   * as long as Source Data's own busy frame does.
-   */
-  function renderFieldMappingLoading() {
-    if (!fieldMappingBody) return;
-    closeFieldMappingDatasetTypeDropdown();
-    renderTableSkeletonRows(fieldMappingBody, { columns: 4 });
   }
 
   function renderFieldMappingEmpty(message) {
@@ -102,28 +95,47 @@ export function createFieldMappingFeature(deps = {}) {
     );
   }
 
+  /** Saved mapped columns the shown source does not have: [{ fieldName, significance, datasetType, level }]. */
+  function getMissingMappedFields(projectName) {
+    const key = normalizeProjectKey(projectName);
+    const saved = savedFieldMappingByProject.get(key) || new Map();
+    const shown = new Set(currentFieldNames);
+    const missing = [];
+    for (const [fieldName, row] of saved.entries()) {
+      if (shown.has(fieldName) || row.significance === "Not Used") continue;
+      missing.push({ fieldName, ...row });
+    }
+    return missing;
+  }
+
+  /** A shown column that differs from its saved row, or a saved mapped column the source lost. */
   function hasUnsavedFieldMappingChanges(projectName) {
     const key = normalizeProjectKey(projectName);
-    if (!key) return false;
+    if (!key || !currentFieldNames.length) return false;
     const current = getProjectFieldMappingState(projectName);
     const saved = savedFieldMappingByProject.get(key) || new Map();
-    const fieldNames = Array.isArray(getCurrentFieldNames()) ? getCurrentFieldNames() : [];
-    return fieldNames.some((fieldName) => !fieldMappingRowsMatch(
+    return getMissingMappedFields(projectName).length > 0 || currentFieldNames.some((fieldName) => !fieldMappingRowsMatch(
       normalizeFieldMappingRow(current.get(fieldName)),
       normalizeFieldMappingRow(saved.get(fieldName)),
     ));
   }
 
-  function updateSaveFieldMappingButton(projectName) {
-    if (!saveFieldMappingBtn) return;
-    const key = normalizeProjectKey(projectName);
-    const isSaving = !!key && savingFieldMappingProjects.has(key);
-    const hasChanges = hasUnsavedFieldMappingChanges(projectName);
-    saveFieldMappingBtn.disabled = isSaving || !hasChanges;
-    saveFieldMappingBtn.setAttribute(
-      "aria-label",
-      isSaving ? "Saving Field Mapping" : hasChanges ? "Save Field Mapping" : "No Field Mapping changes to save",
-    );
+  function describeMappedRole(row) {
+    if (row.significance === "Dataset") return row.datasetType || "Dataset";
+    if (row.significance === "Reserving Class") return `Reserving Class, Level ${row.level}`;
+    return row.significance;
+  }
+
+  /** Name the mapped columns the source lost; the next save unmaps them. */
+  function renderMissingMappedFields(projectName) {
+    if (!fieldMappingMissing) return;
+    const missing = getMissingMappedFields(projectName);
+    fieldMappingMissing.hidden = !missing.length;
+    fieldMappingMissing.textContent = missing.length
+      ? `Not in this source, so saving unmaps them: ${missing
+        .map((row) => `${row.fieldName} (${describeMappedRole(row)})`)
+        .join(", ")}.`
+      : "";
   }
 
   function captureSavedFieldMapping(projectName, rows) {
@@ -453,24 +465,32 @@ export function createFieldMappingFeature(deps = {}) {
       // ignore load errors; user can still edit/save
     }
     loadedFieldMappingByProject.add(key);
-    updateSaveFieldMappingButton(projectName);
   }
 
+  /**
+   * Show the columns the chosen source will import. Rows for columns it no
+   * longer has leave the editable state, so their dataset types are free to
+   * map onto the new columns; a column that comes back picks up its saved row.
+   */
   function renderFieldMappingTable(fieldNames, projectName) {
     if (!fieldMappingBody) return;
     closeFieldMappingDatasetTypeDropdown();
-    if (!projectName) {
-      renderFieldMappingEmpty("Select a project to edit field mapping.");
-      updateSaveFieldMappingButton(projectName);
-      return;
+    setFieldMappingStatus("");
+    currentFieldNames = Array.isArray(fieldNames) ? fieldNames.map(String) : [];
+    const state = getProjectFieldMappingState(projectName);
+    const saved = savedFieldMappingByProject.get(normalizeProjectKey(projectName)) || new Map();
+    for (const fieldName of [...state.keys()]) {
+      if (!currentFieldNames.includes(fieldName)) state.delete(fieldName);
     }
-    if (!Array.isArray(fieldNames) || fieldNames.length === 0) {
-      renderFieldMappingEmpty("No fields found. Load Table Summary first.");
-      updateSaveFieldMappingButton(projectName);
+    for (const fieldName of currentFieldNames) {
+      if (!state.has(fieldName) && saved.has(fieldName)) state.set(fieldName, { ...saved.get(fieldName) });
+    }
+    renderMissingMappedFields(projectName);
+    if (!currentFieldNames.length) {
+      renderFieldMappingEmpty("The source has no columns.");
       return;
     }
 
-    const state = getProjectFieldMappingState(projectName);
     const datasetTypeOptions = getDatasetTypeNamesForProject(projectName, { formulaEmptyOnly: true });
     const datasetTypeOptionIndex = buildDatasetTypeOptionIndex(datasetTypeOptions);
     clearTableSkeletonRows(fieldMappingBody);
@@ -597,7 +617,6 @@ export function createFieldMappingFeature(deps = {}) {
         }
         lastSignificanceValue = significanceValue;
         upsertFieldMappingRow(projectName, fieldName, significanceValue, levelInput.value, datasetTypeInput.value);
-        updateSaveFieldMappingButton(projectName);
       };
 
       const commitSignificanceInput = () => {
@@ -747,7 +766,6 @@ export function createFieldMappingFeature(deps = {}) {
       persistRowState();
     }
     initTableColumnResizing("fieldMappingTable", [90, 100, 120, 70]);
-    updateSaveFieldMappingButton(projectName);
   }
 
   function collectFieldMappingRows(projectName, fieldNames) {
@@ -814,25 +832,27 @@ export function createFieldMappingFeature(deps = {}) {
     return rows;
   }
 
-  async function saveFieldMapping(project) {
-    if (!project || !project.name) return;
-    if (!hasUnsavedFieldMappingChanges(project.name)) {
-      updateSaveFieldMappingButton(project.name);
-      return;
+  /** The first problem that would stop a save, or "" when the mapping can be saved. */
+  function validateFieldMapping(projectName) {
+    try {
+      collectFieldMappingRows(projectName, currentFieldNames);
+      return "";
+    } catch (err) {
+      return err.message || "The field mapping is not valid.";
     }
-    const currentFieldNames = Array.isArray(getCurrentFieldNames()) ? getCurrentFieldNames() : [];
-    if (!currentFieldNames.length) {
-      setFieldMappingStatus("No table fields available to save.", true);
-      return;
-    }
+  }
 
-    const key = normalizeProjectKey(project.name);
-    savingFieldMappingProjects.add(key);
-    updateSaveFieldMappingButton(project.name);
+  /**
+   * Save the mapping for the shown columns when it changed: `{ ok, saved, error }`.
+   *
+   * The Import Settings window calls this after saving the source and before
+   * importing, so the import reads the new mapping.
+   */
+  async function saveFieldMapping(project) {
+    if (!project || !project.name) return { ok: false, saved: false, error: "Select a project first." };
+    if (!hasUnsavedFieldMappingChanges(project.name)) return { ok: true, saved: false, error: "" };
     try {
       const rows = collectFieldMappingRows(project.name, currentFieldNames);
-      setFieldMappingStatus("Saving field mapping...");
-
       const res = await fetchImpl("/field_mapping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -854,68 +874,35 @@ export function createFieldMappingFeature(deps = {}) {
         }
         throw new Error(detail || `HTTP ${res.status}`);
       }
+      await res.json();
+      captureSavedFieldMapping(project.name, rows);
+      renderMissingMappedFields(project.name);
 
-      const out = await res.json();
-      const refreshedPath = String(out?.reserving_class_values_path || "").trim();
-      const missingCols = Array.isArray(out?.missing_columns) ? out.missing_columns : [];
-      let saveMsg = "";
-      let saveMsgIsError = false;
-      if (missingCols.length > 0) {
-        const sample = missingCols.slice(0, 6).join(", ");
-        const suffix = missingCols.length > 6 ? "..." : "";
-        saveMsg = `Saved field mapping. Reserving class values refreshed with missing CSV columns: ${sample}${suffix}`;
-        saveMsgIsError = true;
-      } else if (refreshedPath) {
-        saveMsg = `Saved field mapping and refreshed reserving class values: ${refreshedPath}`;
-      } else {
-        saveMsg = `Saved field mapping to ${out.path}`;
-      }
-
-      let datasetTypeSyncOk = true;
-      let datasetTypeSyncMsg = "";
+      let syncError = "";
       try {
         const syncOut = await syncDatasetTypesSources(project.name);
-        if (syncOut && syncOut.ok === false) {
-          datasetTypeSyncOk = false;
-          datasetTypeSyncMsg = String(syncOut.message || "").trim();
-        }
+        if (syncOut && syncOut.ok === false) syncError = String(syncOut.message || "").trim() || "Dataset Type sources were not synced.";
       } catch (syncErr) {
-        datasetTypeSyncOk = false;
-        datasetTypeSyncMsg = String(syncErr?.message || syncErr || "").trim();
+        syncError = String(syncErr?.message || syncErr || "").trim() || "Dataset Type sources were not synced.";
       }
-
-      const syncSuffix = datasetTypeSyncOk
-        ? " Dataset Type sources synced."
-        : ` Dataset Type source sync failed.${datasetTypeSyncMsg ? ` ${datasetTypeSyncMsg}` : ""}`;
-      const finalMsg = `${saveMsg}${syncSuffix}`;
-      const finalIsError = saveMsgIsError || !datasetTypeSyncOk;
-      setFieldMappingStatus(finalMsg, finalIsError);
-      if (datasetTypeSyncOk) {
-        setStatus(`Saved field mapping and synced dataset type sources: ${project.name}`);
-      } else {
-        setStatus(`Saved field mapping, but dataset type source sync failed: ${project.name}`);
-      }
-
+      setStatus(syncError
+        ? `Saved field mapping, but dataset type source sync failed: ${project.name}`
+        : `Saved field mapping and synced dataset type sources: ${project.name}`);
       await loadAuditLog(project.name, true);
-      captureSavedFieldMapping(project.name, rows);
+      return { ok: !syncError, saved: true, error: syncError };
     } catch (err) {
-      setFieldMappingStatus(err.message || "Save failed.", true);
       setStatus(`Field mapping save error: ${err.message}`);
-    } finally {
-      savingFieldMappingProjects.delete(key);
-      updateSaveFieldMappingButton(project.name);
+      return { ok: false, saved: false, error: err.message || "The field mapping was not saved." };
     }
   }
 
   return {
     setFieldMappingStatus,
-    renderFieldMappingEmpty,
-    renderFieldMappingLoading,
-    updateSaveFieldMappingButton,
     ensureFieldMappingLoaded,
     findDatasetTypeOwner,
     getMappedDatasetTypeNames,
     renderFieldMappingTable,
+    validateFieldMapping,
     saveFieldMapping,
     hasUnsavedFieldMappingChanges,
   };

@@ -39,12 +39,9 @@ export function createDatasetTypesFeature(deps = {}) {
     fetchImpl = fetch,
     setStatus = () => {},
     loadAuditLog = async () => {},
-    getSelectedProject = () => null,
-    getCurrentFieldNames = () => [],
     ensureFieldMappingLoaded = async () => {},
     findDatasetTypeOwnerInFieldMapping = () => "",
     getMappedDatasetTypeNamesInFieldMapping = () => [],
-    renderFieldMappingTable = () => {},
     hideContextMenu = () => {},
     hideFolderContextMenu = () => {},
     hideTreeContextMenu = () => {},
@@ -1552,16 +1549,6 @@ export function createDatasetTypesFeature(deps = {}) {
     const loadedOk = await ensureDatasetTypesLoaded(projectName);
     if (requestSeq !== datasetTypesLoadSeq) return;
     renderDatasetTypesTable(projectName);
-    const selectedProject = getSelectedProject();
-    const currentFieldNames = getCurrentFieldNames();
-    if (
-      selectedProject &&
-      normalizeProjectKey(selectedProject.name) === normalizeProjectKey(projectName) &&
-      Array.isArray(currentFieldNames) &&
-      currentFieldNames.length > 0
-    ) {
-      renderFieldMappingTable(currentFieldNames, projectName);
-    }
     if (loadedOk) setDatasetTypesStatus("");
   }
 
@@ -2208,17 +2195,6 @@ export function createDatasetTypesFeature(deps = {}) {
       state.renames = new Map();
       clearInvalidFormulaSet(name);
       renderDatasetTypesTable(name);
-
-      const selectedProject = getSelectedProject();
-      const currentFieldNames = getCurrentFieldNames();
-      if (
-        selectedProject &&
-        normalizeProjectKey(selectedProject.name) === normalizeProjectKey(name) &&
-        Array.isArray(currentFieldNames) &&
-        currentFieldNames.length > 0
-      ) {
-        renderFieldMappingTable(currentFieldNames, name);
-      }
 
       scheduleDatasetTypesAutoSave(name);
 

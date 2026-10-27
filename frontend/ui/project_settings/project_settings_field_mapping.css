@@ -106,7 +106,8 @@
 }
 .fm-dataset-type-dropdown {
   position: fixed;
-  z-index: 3300;
+  /* Above the Import Settings window the table sits in. */
+  z-index: 9480;
   min-width: 220px;
   max-width: 460px;
   max-height: 280px;

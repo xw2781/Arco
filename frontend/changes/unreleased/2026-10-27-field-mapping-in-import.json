@@ -1,0 +1,11 @@
+{
+  "type": "improvement",
+  "scope": "project settings",
+  "audience": "user",
+  "summary": "Field mapping is now a step of the Import Settings window, so renamed or new source columns are mapped before the import runs.",
+  "details": [
+    "Mapped columns the source no longer has are listed on the step and unmapped when you save.",
+    "Save Settings keeps a mapping change without importing; it takes effect at the next import.",
+    "The Field Mapping tab has been removed."
+  ]
+}

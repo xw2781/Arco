@@ -1155,7 +1155,18 @@ test("Import Data is preceded by an Import Scope step that narrows the refresh",
   assert.match(moduleSource, /panelStep = combinedSource\.steps\(\)\.includes\(step\) \? step : "settings";/);
   assert.match(moduleSource, /datasets: "Import Scope: Datasets"/);
   assert.match(moduleSource, /classes: "Import Scope: Reserving Class Types"/);
-  assert.match(moduleSource, /if \(panelStep === "settings" \|\| panelStep === "combine"\) \{\s*goToScopeStep\(\);/);
+  // Field Mapping comes before the scope: Next reads the import's columns, then checks the mapping.
+  assert.match(moduleSource, /if \(panelStep === "settings" \|\| panelStep === "combine"\) \{\s*goToMappingStep\(\);/);
+  assert.match(moduleSource, /const result = await combinedSource\.importColumns\(\);/);
+  assert.match(moduleSource, /if \(panelStep === "mapping"\) \{\s*const problem = onMappingValidate\(\);/);
+  assert.match(moduleSource, /mapping: "Field Mapping"/);
+  // Both Save Settings and Import Data save a changed mapping, the import only after it.
+  assert.equal((moduleSource.match(/await onMappingSave\(\)/g) || []).length, 2);
+  assert.ok(
+    moduleSource.indexOf("const mapping = await onMappingSave();") < moduleSource.indexOf("const result = await onImportData(method, scope);"),
+    "Import Data must save the mapping before importing",
+  );
+  assert.match(moduleSource, /the new field mapping takes effect at the next import/);
   assert.match(moduleSource, /if \(panelStep === "datasets" && !datasetScopeProblem\(\)\) \{\s*showPanelStep\("classes"\)/);
   // A last Confirm page summarises the settings; Import Data runs from it.
   assert.match(moduleSource, /importDataBtn\.hidden = panelStep !== "confirm"/);

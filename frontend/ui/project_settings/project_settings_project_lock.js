@@ -14,10 +14,10 @@ import {
 
 // Buttons on this page that write project data when clicked.
 const GUARDED_BUTTON_IDS = [
-  "saveFieldMappingBtn",
   "dtEditorSaveBtn",
   "rctEditorSaveBtn",
   "dprEditorSaveBtn",
+  "sdImportSaveBtn",
   "sdImportDataBtn",
   "detailRenameBtn",
 ];

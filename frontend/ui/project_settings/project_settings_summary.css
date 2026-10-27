@@ -1155,6 +1155,12 @@
 }
 .sd-scope-status { min-height: 16px; }
 
+/* Field Mapping step: the grid takes the body's height and scrolls itself. */
+.sd-import-mapping { gap: 8px; }
+.sd-import-mapping .field-mapping-grid { min-height: 0; }
+.sd-import-mapping .fm-missing { color: var(--ar-color-danger, #be123c); }
+.sd-import-mapping .fm-missing[hidden] { display: none; }
+
 /* Final step: label / value rows summarising the import. */
 .sd-import-confirm { gap: 10px; }
 .sd-confirm-list {

@@ -129,13 +129,18 @@ test("boundary-month parsing and General Settings I/O have one home", () => {
   assert.match(coordinator, /generalSettingsFeature\.bindEditor\(project\)/);
 });
 
-test("Field Mapping Save reflects only unsaved table changes", () => {
+test("Field Mapping is a step of the Import Settings window, not a tab", () => {
+  // The table lives in the import window; the tab and its Save button are gone.
+  assert.match(html, /<div class="sd-import-body sd-import-mapping" id="sdImportMapping" data-step="mapping" hidden>[\s\S]*id="fieldMappingBody"/);
+  assert.doesNotMatch(html, /data-ribbon="field-mapping"|id="ribbonFieldMapping"|id="saveFieldMappingBtn"/);
+  assert.doesNotMatch(coordinator, /ribbonFieldMapping|saveFieldMappingBtn/);
+  // The window saves only a changed mapping, and a saved column the source lost counts as a change.
   assert.match(fieldMapping, /const savedFieldMappingByProject = new Map\(\);/);
-  assert.match(fieldMapping, /function hasUnsavedFieldMappingChanges\(projectName\)/);
-  assert.match(fieldMapping, /saveFieldMappingBtn\.disabled = isSaving \|\| !hasChanges;/);
+  assert.match(fieldMapping, /return getMissingMappedFields\(projectName\)\.length > 0 \|\| currentFieldNames\.some/);
+  assert.match(fieldMapping, /if \(!hasUnsavedFieldMappingChanges\(project\.name\)\) return \{ ok: true, saved: false, error: "" \};/);
   assert.match(fieldMapping, /captureSavedFieldMapping\(project\.name, rows\);/);
-  assert.match(html, /id="saveFieldMappingBtn" type="button" disabled/);
-  assert.match(fieldMappingCss, /\.field-mapping-toolbar button:disabled[\s\S]*background: #f4f7fa;/);
+  // Closing the window drops unsaved edits by re-reading the saved mapping.
+  assert.match(coordinator, /onMappingDiscard: \(\) => fieldMappingFeature\?\.ensureFieldMappingLoaded\(selectedProject\?\.name, \{ force: true \}\)/);
 });
 
 test("Field Mapping Level uses the shared stepper without wheel edits", () => {

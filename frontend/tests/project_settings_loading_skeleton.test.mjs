@@ -22,7 +22,6 @@ const projectSettingsHtml = await read("../ui/project_settings/project_settings.
 const projectSettingsJs = await read("../ui/project_settings/project_settings.js");
 const projectSettingsCss = await read("../ui/project_settings/project_settings.css");
 const skeletonCss = await read("../ui/project_settings/project_settings_skeleton.css");
-const fieldMappingJs = await read("../ui/project_settings/project_settings_field_mapping.js");
 const reservingClassTypesJs = await read(
   "../ui/project_settings/project_settings_reserving_class_types.js",
 );
@@ -125,7 +124,6 @@ test("the skeleton column count falls back from header to colgroup to caller", (
 
 test("every Project Settings tab shows the shared skeleton while it loads", () => {
   const owners = [
-    ["field mapping", fieldMappingJs, "function renderFieldMappingLoading()"],
     ["reserving class types", reservingClassTypesJs, "function renderReservingClassTypesLoading()"],
     ["dataset types", datasetTypesJs, "function renderDatasetTypesLoading()"],
     ["data processing rules", dataProcessingRulesJs, "function renderLoading()"],
@@ -144,14 +142,13 @@ test("every Project Settings tab shows the shared skeleton while it loads", () =
     );
   }
 
-  // Selecting a project puts all six tabs into the same busy state, so none of
+  // Selecting a project puts every tab into the same busy state, so none of
   // them is left showing a plain "Loading ..." row.
   const clearBlock = projectSettingsJs
     .split("function clearProjectDetailPanels(project) {")[1]
     .split("\nasync function selectProject(")[0];
   for (const call of [
     "sourceDataFeature.resetForProjectChange()",
-    "fieldMappingFeature?.renderFieldMappingLoading()",
     "reservingClassTypesFeature?.renderReservingClassTypesLoading()",
     "datasetTypesFeature?.renderDatasetTypesLoading()",
     "dataProcessingRulesFeature?.renderRulesLoading()",
@@ -160,13 +157,6 @@ test("every Project Settings tab shows the shared skeleton while it loads", () =
     assert.ok(clearBlock.includes(call), `clearProjectDetailPanels is missing ${call}`);
   }
   assert.doesNotMatch(clearBlock, /renderEmpty\("Loading|Empty\("Loading/);
-
-  // Field Mapping reads its fields off the table summary, so a same-project
-  // reload has to restart its frame with Source Data's.
-  const summaryBlock = projectSettingsJs
-    .split("sourceDataFeature.showLoading();")[1]
-    .split("try {")[0];
-  assert.ok(summaryBlock.includes("fieldMappingFeature?.renderFieldMappingLoading()"));
 });
 
 test("the skeleton stylesheet owns the flowing fill for the whole page", () => {
