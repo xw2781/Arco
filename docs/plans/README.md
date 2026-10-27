@@ -19,6 +19,7 @@ index is a summary of those lines, not a second source of truth.
 | [hosted_save_http_transport.md](hosted_save_http_transport.md) | Implemented for every hosted-save kind; TLS, traffic limits, and retiring the SMB path remain. |
 | [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md) | Phase 1 reads and Phase 2 engine calculations implemented; the bounded-server foundation, SSE, and small writes remain. |
 | [local_runtime_log_retention_plan.md](local_runtime_log_retention_plan.md) | Audit complete (2026-08-09); remediation not started. |
+| [arco_mcp_server.md](arco_mcp_server.md) | Design proposed 2026-10-23: one tool layer in `python-api`, served by the Gateway at `/mcp` and as a local stdio server, with scopes checked on the server; 8 steps, none started. |
 
 ## Completed
 
