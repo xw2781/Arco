@@ -114,3 +114,4 @@
 - [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme only and short bullet points, not prose
 - [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button; scope feature button rules under the page id and screenshot both themes
 - [Source column names with spaces](source-column-names-with-spaces.md) — 2026-10-26: Engine accepts spaced columns; a rename touches mapping, dataset_types Source, and rule source_measure
+- [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding an empty vector in the base class, not by editing formulas
