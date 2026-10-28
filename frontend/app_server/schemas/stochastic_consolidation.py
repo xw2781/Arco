@@ -14,6 +14,9 @@ class StochasticConsolidationIdentityRequest(BaseModel):
 class StochasticConsolidationClassRequest(BaseModel):
     project_name: str = Field(..., min_length=1)
     reserving_class: str = Field(..., min_length=1)
+    # The project to list bootstraps from, when a segment is taken from
+    # another project; blank lists the consolidation's own project.
+    source_project_name: str = ""
 
 
 class StochasticConsolidationRunRequest(BaseModel):

@@ -65,8 +65,14 @@ export function consolidateStochasticConsolidation({ project_name, reserving_cla
   }, options);
 }
 
+/* source_project_name lists the bootstraps of another project, for a segment
+   taken from there; blank lists the consolidation's own project. */
 export function listStochasticConsolidationCandidates(identity = {}, options = {}) {
-  return requestJson("/stochastic-consolidation/segments/candidates", classBody(identity), options);
+  const source = text(identity.source_project_name);
+  return requestJson("/stochastic-consolidation/segments/candidates", {
+    ...classBody(identity),
+    ...(source ? { source_project_name: source } : {}),
+  }, options);
 }
 
 export function planStochasticConsolidationSave(input = {}, options = {}) {

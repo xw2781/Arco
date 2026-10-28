@@ -65,7 +65,7 @@ import {
   listStochasticConsolidationCandidates,
   loadStochasticConsolidation,
   saveStochasticConsolidation,
-} from "/ui/method_pages/stochastic_consolidation/stochastic_consolidation_method_api.js?v=20260923a";
+} from "/ui/method_pages/stochastic_consolidation/stochastic_consolidation_method_api.js?v=20261028a";
 import {
   SCON_CORRELATION_OPTIONS,
   SCON_DEPENDENCY_OPTIONS,
@@ -93,8 +93,9 @@ import {
   setTargetCorrelation,
   storedAdjustedMatrix,
   usedCorrelationMatrix,
-} from "/ui/method_pages/stochastic_consolidation/stochastic_consolidation_page_model.js?v=20260924a";
+} from "/ui/method_pages/stochastic_consolidation/stochastic_consolidation_page_model.js?v=20261028a";
 import { bootTableColors } from "/ui/shared/components/spreadsheet/table_colors.js?v=20260927b";
+import { loadProjectValidValueList } from "/ui/shared/services/valid_value_lists.js";
 
 // The user's table colours, shared by every method page.
 bootTableColors();
@@ -115,8 +116,10 @@ const state = {
   needsReview: false,
   // What the page knows about each included bootstrap (load, run, picker).
   segmentInfo: new Map(),
-  candidates: null,
-  candidatesPromise: null,
+  // The picker's bootstraps, by the project they are listed from ("" for the
+  // consolidation's own), each a list or the request still in flight.
+  candidates: new Map(),
+  candidatesPromises: new Map(),
   selectedSegment: -1,
   // The run on screen: the settings it was made from (null when the stored
   // run does not describe the stored settings), whether a segment changed
@@ -524,6 +527,15 @@ function renderDetails() {
    Segments
 --------------------------------------------------------------------------- */
 
+// A segment from another project names that project beside its class.
+function segmentClassText(row) {
+  return row.projectName ? `${row.shortLabel} (${row.projectName})` : row.shortLabel;
+}
+
+function segmentClassTitle(row) {
+  return row.projectName ? `${row.projectName}: ${row.reservingClass}` : row.reservingClass;
+}
+
 function issueMarkup(row) {
   const issues = row.issues.map((issue) => `<span class="sconIssue${
     issue.kind === "missing" || issue.kind === "duplicate" ? " isError" : ""}">${escapeHtml(issue.text)}</span>`);
@@ -535,12 +547,12 @@ function renderSegments() {
   const rows = currentSegmentRows();
   if (state.selectedSegment >= rows.length) state.selectedSegment = rows.length - 1;
   if (!rows.length) {
-    els.segmentsBody.innerHTML = `<tr><td class="sconEmptyRow" colspan="9">No segments yet. Add Segment lists the bootstraps in the project's other reserving classes.</td></tr>`;
+    els.segmentsBody.innerHTML = `<tr><td class="sconEmptyRow" colspan="9">No segments yet. Add Segment lists the bootstraps in the project's other reserving classes, or in another project.</td></tr>`;
   } else {
     els.segmentsBody.innerHTML = rows.map((row) => `<tr data-segment-row="${row.index}"${
       row.index === state.selectedSegment ? " class=\"isSelected\" aria-selected=\"true\"" : ""}>
       <td class="sconIndexCell">${row.index + 1}</td>
-      <td class="sconCell sconTextCell" data-full-class="${escapeHtml(row.reservingClass)}">${escapeHtml(row.shortLabel)}</td>
+      <td class="sconCell sconTextCell" data-full-class="${escapeHtml(segmentClassTitle(row))}">${escapeHtml(segmentClassText(row))}</td>
       <td class="sconCell sconEntryCell sconMethodCell">
         <button class="sconCellDropdown" type="button" data-method-row="${row.index}" aria-haspopup="listbox" aria-expanded="false"
           aria-label="${escapeHtml(`Method for ${row.shortLabel}`)}">
@@ -600,22 +612,41 @@ function removeSelectedSegment() {
   applySegmentOrder(order.map((i) => state.settings.segments[i]), order, Math.min(index, order.length - 1));
 }
 
-async function loadCandidates() {
-  if (state.candidates) return state.candidates;
-  if (!state.candidatesPromise) {
-    state.candidatesPromise = listStochasticConsolidationCandidates({
+function allCandidates() {
+  return Array.from(state.candidates.values()).flat();
+}
+
+// sourceProject "" lists the consolidation's own project.
+async function loadCandidates(sourceProject = "") {
+  const source = norm(sourceProject) === norm(state.project) ? "" : text(sourceProject);
+  const cacheKey = norm(source);
+  if (state.candidates.has(cacheKey)) return state.candidates.get(cacheKey);
+  if (!state.candidatesPromises.has(cacheKey)) {
+    state.candidatesPromises.set(cacheKey, listStochasticConsolidationCandidates({
       project_name: state.project,
       reserving_class: state.reservingClass,
+      source_project_name: source,
     }).then((result) => {
-      state.candidates = Array.isArray(result?.candidates) ? result.candidates : [];
-      state.segmentInfo = segmentInfoMap(state.candidates, Array.from(state.segmentInfo.values()));
-      return state.candidates;
-    }).catch((err) => {
-      state.candidatesPromise = null;
-      throw err;
-    });
+      const rows = Array.isArray(result?.candidates) ? result.candidates : [];
+      state.candidates.set(cacheKey, rows);
+      state.segmentInfo = segmentInfoMap(rows, Array.from(state.segmentInfo.values()));
+      return rows;
+    }).finally(() => {
+      state.candidatesPromises.delete(cacheKey);
+    }));
   }
-  return state.candidatesPromise;
+  return state.candidatesPromises.get(cacheKey);
+}
+
+function addSegment(row) {
+  const segments = [...state.settings.segments, {
+    projectName: text(row.project_name),
+    reservingClass: text(row.reserving_class),
+    methodName: text(row.method_name),
+    factor: 1,
+  }];
+  const order = [...state.settings.segments.map((_, index) => index), -1];
+  applySegmentOrder(segments, order, segments.length - 1);
 }
 
 function candidateMeta(row) {
@@ -626,6 +657,20 @@ function candidateMeta(row) {
   ].filter(Boolean).join(" · ");
 }
 
+const OTHER_PROJECT_OPTION = "\u0000other-project";
+
+function candidateOptions(candidates) {
+  return availableCandidates(candidates, state.settings).map((row) => ({
+    value: segmentKey(row),
+    label: `${segmentShortLabel(row)} · ${text(row.method_name)}`,
+    meta: candidateMeta(row),
+    title: text(row.project_name) ? `${text(row.project_name)}: ${text(row.reserving_class)}` : text(row.reserving_class),
+    row,
+  }));
+}
+
+// The add menu lists the project's own bootstraps, then offers another
+// project, whose bootstraps open in the same menu once one is chosen.
 async function openAddSegmentMenu() {
   let candidates;
   try {
@@ -634,35 +679,60 @@ async function openAddSegmentMenu() {
     postStatus(`Could not list the project's bootstraps: ${String(err?.message || err)}`, "error");
     return;
   }
-  const options = availableCandidates(candidates, state.settings).map((row) => ({
-    value: segmentKey(row),
-    label: `${segmentShortLabel(row)} · ${text(row.method_name)}`,
-    meta: candidateMeta(row),
-    title: text(row.reserving_class),
-    row,
-  }));
-  openMenu(els.addSegmentBtn, options, "", (_value, option) => {
-    const row = option.row;
-    const segments = [...state.settings.segments, {
-      reservingClass: text(row.reserving_class),
-      methodName: text(row.method_name),
-      factor: 1,
-    }];
-    const order = [...state.settings.segments.map((_, index) => index), -1];
-    applySegmentOrder(segments, order, segments.length - 1);
-  }, { emptyText: candidates.length ? "Every bootstrap in the project is already included." : "No bootstraps in the project's other reserving classes." });
+  const options = [
+    ...candidateOptions(candidates),
+    { value: OTHER_PROJECT_OPTION, label: "From another project…" },
+  ];
+  openMenu(els.addSegmentBtn, options, "", (value, option) => {
+    if (value === OTHER_PROJECT_OPTION) {
+      void openProjectMenu();
+      return;
+    }
+    addSegment(option.row);
+  });
+}
+
+async function openProjectMenu() {
+  let projects;
+  try {
+    projects = await loadProjectValidValueList();
+  } catch (err) {
+    postStatus(`Could not list the projects: ${String(err?.message || err)}`, "error");
+    return;
+  }
+  const options = projects
+    .filter((name) => norm(name) !== norm(state.project))
+    .map((name) => ({ value: name, label: name }));
+  openMenu(els.addSegmentBtn, options, "", (project) => {
+    void openProjectCandidatesMenu(project);
+  }, { emptyText: "No other projects." });
+}
+
+async function openProjectCandidatesMenu(project) {
+  let candidates;
+  try {
+    candidates = await loadCandidates(project);
+  } catch (err) {
+    postStatus(`Could not list the bootstraps in ${project}: ${String(err?.message || err)}`, "error");
+    return;
+  }
+  openMenu(els.addSegmentBtn, candidateOptions(candidates), "", (_value, option) => addSegment(option.row), {
+    emptyText: candidates.length
+      ? `Every bootstrap in ${project} is already included.`
+      : `No bootstraps in ${project}.`,
+  });
 }
 
 async function openMethodMenu(button, rowIndex) {
+  const segment = state.settings.segments[rowIndex];
+  if (!segment) return;
   let candidates;
   try {
-    candidates = await loadCandidates();
+    candidates = await loadCandidates(segment.projectName);
   } catch (err) {
     postStatus(`Could not list the project's bootstraps: ${String(err?.message || err)}`, "error");
     return;
   }
-  const segment = state.settings.segments[rowIndex];
-  if (!segment) return;
   const classKey = norm(segment.reservingClass);
   const taken = new Set(state.settings.segments.filter((_, i) => i !== rowIndex).map(segmentKey));
   const options = candidates
@@ -905,7 +975,7 @@ function renderBreakdown() {
     return;
   }
   const rowMarkup = (row) => `<tr>
-    <td class="sconCell sconTextCell" data-full-class="${escapeHtml(row.reservingClass)}">${escapeHtml(row.shortLabel)}</td>
+    <td class="sconCell sconTextCell" data-full-class="${escapeHtml(segmentClassTitle(row))}">${escapeHtml(segmentClassText(row))}</td>
     <td class="sconCell sconTextCell">${escapeHtml(row.methodName)}</td>
     <td class="sconCell" data-copy-value="${copyValue(row.factor)}">${formatNumber(row.factor, 2)}</td>
     <td class="sconCell" data-copy-value="${copyValue(row.mean)}">${formatNumber(row.mean)}</td>
@@ -1075,7 +1145,7 @@ function applyLoaded(result) {
   state.settings = readConsolidationSettings(method);
   state.ownedRevision = text(result?.owned_revision);
   state.derivedRevision = text(result?.derived_revision);
-  state.segmentInfo = segmentInfoMap(state.candidates, result?.segments);
+  state.segmentInfo = segmentInfoMap(allCandidates(), result?.segments);
   const runState = text(result?.run_state);
   state.runSnapshot = runState === "up_to_date" || runState === "segment_changed"
     ? runInputSnapshot(state.settings)
@@ -1148,7 +1218,7 @@ async function consolidateFromUser() {
     // The run's finest ladder comes with it and serves every finer interval
     // until the next run.
     state.finerLadder = result.finer_ladder ? { run: runKey(state.method), scaled: result.finer_ladder.scaled } : null;
-    state.segmentInfo = segmentInfoMap(state.candidates, Array.from(state.segmentInfo.values()), result?.segments);
+    state.segmentInfo = segmentInfoMap(allCandidates(), Array.from(state.segmentInfo.values()), result?.segments);
     state.runSnapshot = runInputSnapshot(settings);
     state.segmentChanged = false;
     state.runUnsaved = true;

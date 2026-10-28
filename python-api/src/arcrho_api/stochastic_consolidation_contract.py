@@ -120,7 +120,17 @@ def _choice(value: Any, allowed: tuple[str, ...], default: str) -> str:
 
 
 def _segment_label(segment: Mapping[str, Any]) -> str:
-    return f"{_clean(segment.get('reserving_class'))} / {_clean(segment.get('method_name'))}"
+    label = f"{_clean(segment.get('reserving_class'))} / {_clean(segment.get('method_name'))}"
+    project = _clean(segment.get("project_name"))
+    return f"{project}: {label}" if project else label
+
+
+def _segment_identity(segment: Mapping[str, Any]) -> tuple[str, str, str]:
+    return (
+        _key(segment.get("project_name")),
+        _key(segment.get("reserving_class")),
+        _key(segment.get("method_name")),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -129,14 +139,37 @@ def _segment_label(segment: Mapping[str, Any]) -> str:
 
 
 def _normalize_segment(raw: Any) -> dict[str, Any]:
+    """One included bootstrap.
+
+    ``project_name`` names the project the bootstrap lives in and is written
+    only when it is not the consolidation's own project, so a same-project
+    segment keeps its original shape.
+    """
+
     source = dict(raw) if isinstance(raw, Mapping) else {}
     factor = _number(source.get("factor"))
+    project = _clean(source.get("project_name"))
     return {
+        **({"project_name": project} if project else {}),
         "reserving_class": _clean(source.get("reserving_class")),
         "method_name": _clean(source.get("method_name")),
         "factor": 1 if factor is None else factor,
         "bootstrap_revision": _clean(source.get("bootstrap_revision")),
     }
+
+
+def _output_origin_labels(origins: list[str], raw: Any) -> list[str]:
+    """The origins the output vector publishes: the latest ones of the run.
+
+    A run whose segments all live in the host project publishes every origin.
+    One that takes a longer history from another project publishes only the
+    host project's origins, because the host's datasets have only those rows.
+    """
+
+    labels = _labels(raw)
+    if labels and len(labels) <= len(origins) and origins[len(origins) - len(labels):] == labels:
+        return labels
+    return list(origins)
 
 
 def _target_matrix(raw: Any, size: int) -> list[list[float | int | None]]:
@@ -279,6 +312,7 @@ def normalize_stochastic_consolidation_method(
         "results_tab": {
             "input_revision": _clean(results_source.get("input_revision")),
             "origin_labels": origins,
+            "output_origin_labels": _output_origin_labels(origins, results_source.get("output_origin_labels")),
             "latest_values": _fit(_numbers(results_source.get("latest_values")), row_count, None),
             "simulation_summary": _normalize_summary(results_source.get("simulation_summary")),
             "consolidation_ultimate": _fit(
@@ -313,13 +347,13 @@ def _validate_complete(payload: Mapping[str, Any]) -> None:
         )
     if not segments:
         raise StochasticConsolidationContractError("Stochastic Consolidation needs at least one included bootstrap.")
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
     for index, segment in enumerate(segments, start=1):
         if not segment["reserving_class"] or not segment["method_name"]:
             raise StochasticConsolidationContractError(
                 f"Stochastic Consolidation segment {index} needs a reserving class and a method."
             )
-        identity = (_key(segment["reserving_class"]), _key(segment["method_name"]))
+        identity = _segment_identity(segment)
         if identity in seen:
             raise StochasticConsolidationContractError(
                 f"Stochastic Consolidation includes {_segment_label(segment)} more than once."
@@ -351,7 +385,11 @@ def owned_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "details_tab": {key: details.get(key) for key in _OWNED_DETAILS},
         "segments_tab": [
-            {key: segment.get(key) for key in ("reserving_class", "method_name", "factor")}
+            {
+                key: segment.get(key)
+                for key in ("project_name", "reserving_class", "method_name", "factor")
+                if key in segment
+            }
             for segment in segments
         ],
         "correlation_tab": {key: deepcopy(correlation.get(key)) for key in _OWNED_CORRELATION},
@@ -394,15 +432,25 @@ def derived_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def publication_projection(payload: Mapping[str, Any]) -> dict[str, Any]:
     details = _tab(payload, "details_tab")
-    results = _tab(payload, "results_tab")
+    labels, values = _published_output(_tab(payload, "results_tab"))
     return {
         "dataset_name": details.get("name", ""),
         "dataset_type": details.get("output_type", ""),
         "dataset_category": details.get("dataset_category", ""),
         "origin_length": details.get("origin_length", 12),
-        "origin_labels": deepcopy(results.get("origin_labels") or []),
-        "consolidation_ultimate": deepcopy(results.get("consolidation_ultimate") or []),
+        "origin_labels": labels,
+        "consolidation_ultimate": values,
     }
+
+
+def _published_output(results: Mapping[str, Any]) -> tuple[list[Any], list[Any]]:
+    """The output vector's origins and values: the run's last ``output_origin_labels`` rows."""
+
+    origins = list(results.get("origin_labels") or [])
+    labels = list(results.get("output_origin_labels") or origins)
+    values = list(results.get("consolidation_ultimate") or [])
+    start = max(0, len(values) - len(labels)) if len(labels) < len(origins) else 0
+    return deepcopy(labels), deepcopy(values[start:])
 
 
 def method_revisions(payload: Mapping[str, Any]) -> dict[str, str]:
@@ -524,6 +572,11 @@ def _consolidated(
     refreshed_at = _timestamp(timestamp)
     method = normalize_stochastic_consolidation_method(payload, require_complete=True, timestamp=refreshed_at)
     bootstraps = _segment_inputs_checked(method, segment_inputs)
+    host_origins = [
+        list(bootstrap["details_tab"]["dfm_snapshot"].get("origin_labels") or [])
+        for segment, bootstrap in zip(method["segments_tab"]["segments"], bootstraps)
+        if not segment.get("project_name")
+    ]
     details = method["details_tab"]
     correlation = method["correlation_tab"]
     segments = method["segments_tab"]["segments"]
@@ -553,6 +606,9 @@ def _consolidated(
     results = method["results_tab"]
     results["input_revision"] = run_input_revision(method)
     results["origin_labels"] = list(combined["origin_labels"])
+    results["output_origin_labels"] = (
+        max(host_origins, key=len) if host_origins else list(combined["origin_labels"])
+    )
     results["latest_values"] = latest
     results["simulation_summary"] = summary
     results["consolidation_ultimate"] = [
@@ -588,6 +644,7 @@ def stale_segments(
         else:
             continue
         stale.append({
+            "project_name": segment.get("project_name", ""),
             "reserving_class": segment["reserving_class"],
             "method_name": segment["method_name"],
             "reason": reason,
@@ -610,16 +667,11 @@ def apply_owned_patch(
 
     method["details_tab"].update(owned["details_tab"])
     consumed = {
-        (_key(segment["reserving_class"]), _key(segment["method_name"])): segment["bootstrap_revision"]
+        _segment_identity(segment): segment["bootstrap_revision"]
         for segment in method["segments_tab"]["segments"]
     }
     method["segments_tab"]["segments"] = [
-        {
-            **segment,
-            "bootstrap_revision": consumed.get(
-                (_key(segment["reserving_class"]), _key(segment["method_name"])), ""
-            ),
-        }
+        {**segment, "bootstrap_revision": consumed.get(_segment_identity(segment), "")}
         for segment in owned["segments_tab"]
     ]
     method["correlation_tab"].update(owned["correlation_tab"])
@@ -638,8 +690,9 @@ def stochastic_consolidation_precedents(
     """The included bootstraps as dependency entries, in segment order.
 
     A bootstrap in another reserving class carries that class in the entry's
-    reserved ``reserving_class`` field; one in the consolidation's own class
-    stays a plain same-class entry.
+    reserved ``reserving_class`` field, and one in another project also its
+    ``project``; one in the consolidation's own class stays a plain same-class
+    entry.
     """
 
     host = _key(reserving_class)
@@ -647,8 +700,11 @@ def stochastic_consolidation_precedents(
     for segment in _tab(payload, "segments_tab").get("segments") or []:
         entry = {"dataset_name": _clean(segment.get("method_name")), "method_type": BST_METHOD_TYPE}
         segment_class = _clean(segment.get("reserving_class"))
-        if segment_class and _key(segment_class) != host:
+        project = _clean(segment.get("project_name"))
+        if segment_class and (project or _key(segment_class) != host):
             entry["reserving_class"] = segment_class
+        if project:
+            entry["project"] = project
         entries.append(entry)
     return dependency_entries(entries)
 
@@ -662,12 +718,13 @@ def stochastic_consolidation_output_variants(
     details = method["details_tab"]
     results = method["results_tab"]
     base_length = _integer(details.get("origin_length"), 12, minimum=1)
-    values = _numbers(results.get("consolidation_ultimate"))
+    labels, published = _published_output(results)
+    values = _numbers(published)
     variants = {base_length: values}
     for target_length in (3, 6, 12):
         if target_length <= base_length or target_length % base_length:
             continue
-        aggregate = aggregate_vector_values(values, results["origin_labels"], base_length, target_length)
+        aggregate = aggregate_vector_values(values, labels, base_length, target_length)
         if aggregate:
             variants[target_length] = aggregate
     return variants
@@ -733,7 +790,7 @@ def build_stochastic_consolidation_output_sidecar(
         "decimal_places": _integer(prior.get("decimal_places"), 0, minimum=0, maximum=8),
         "csv_file": _clean(csv_file),
         "notes": sidecar_notes,
-        "origin_labels": deepcopy(results["origin_labels"]),
+        "origin_labels": _published_output(results)[0],
         "development_labels": ["Ultimate"],
         "precedents": stochastic_consolidation_precedents(method, reserving_class=reserving_class),
         "dependents": dependency_entries(prior.get("dependents") if dependents is None else dependents),

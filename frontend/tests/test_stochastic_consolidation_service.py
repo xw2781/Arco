@@ -64,6 +64,7 @@ router = sys.modules["app_server.api.stochastic_consolidation_router"]
 
 RESQ_FIXTURE_PATH = REPO_ROOT / "python-api" / "tests" / "fixtures" / "resq_bootstrap_f72a.json"
 PROJECT = "Project"
+OTHER_PROJECT = "Project Oil"
 GROUP = "PA\\All States\\Direct Group"
 HOST = f"{GROUP}\\Total"
 CLASS_A = f"{GROUP}\\BI Total"
@@ -84,6 +85,8 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
         root = Path(self.temp.name)
         self.data = root / "data"
         self.data.mkdir()
+        self.other_data = root / "other" / "data"
+        self.other_data.mkdir(parents=True)
         settings = root / "general_settings.json"
         settings.write_text(
             '{"origin_start_date":"201501","origin_end_date":"202412","development_end_date":"202412"}',
@@ -91,7 +94,7 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
         )
         self.patchers = [
             IsolatedPropagationWorkspace(),
-            mock.patch.object(config, "get_project_data_dir", return_value=str(self.data)),
+            mock.patch.object(config, "get_project_data_dir", side_effect=self._project_data_dir),
             mock.patch.object(config, "get_general_settings_path", return_value=str(settings)),
             mock.patch.object(calculated_dataset_service, "_dataset_type_rows", return_value=[]),
             mock.patch.object(calculated_dataset_service, "_existing_dataset_keys", return_value=set()),
@@ -117,12 +120,15 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
 
     # -- fixtures ---------------------------------------------------------
 
+    def _project_data_dir(self, project_name: str) -> str:
+        return str(self.other_data if project_name == OTHER_PROJECT else self.data)
+
     def _write_json(self, path: Path, payload: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(persisted_json_text(payload), encoding="utf-8", newline="\n")
 
-    def _method_file(self, reserving_class: str, method_type: str, name: str) -> Path:
-        return Path(dataset_sidecar_status_service.method_json_path(PROJECT, reserving_class, method_type, name))
+    def _method_file(self, reserving_class: str, method_type: str, name: str, project: str = PROJECT) -> Path:
+        return Path(dataset_sidecar_status_service.method_json_path(project, reserving_class, method_type, name))
 
     def _dfm(self, scale: float) -> dict:
         triangle = [
@@ -167,9 +173,10 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
         )
 
     def write_bootstrap(self, reserving_class: str, *, seed: int, scale: float = 1.0,
-                        name: str = BOOTSTRAP_NAME, simulations: int = SIMULATIONS) -> dict:
+                        name: str = BOOTSTRAP_NAME, simulations: int = SIMULATIONS,
+                        project: str = PROJECT) -> dict:
         dfm = self._dfm(scale)
-        self._write_json(self._method_file(reserving_class, "DFM", DFM_NAME), dfm)
+        self._write_json(self._method_file(reserving_class, "DFM", DFM_NAME, project), dfm)
         targets = [
             (target + latest) * scale
             for target, latest in zip(
@@ -208,7 +215,7 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
             target_snapshot={"name": "Target", "origin_labels": self.origin_labels, "values": targets},
             timestamp=STAMP,
         )
-        self._write_json(self._method_file(reserving_class, "Bootstrap", name), method)
+        self._write_json(self._method_file(reserving_class, "Bootstrap", name, project), method)
         return method
 
     def consolidation(self, **details) -> dict:
@@ -306,7 +313,7 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
         loaded = service.load_stochastic_consolidation_method(PROJECT, HOST, CONSOLIDATION_NAME)
         self.assertEqual(
             loaded["stale_segments"],
-            [{"reserving_class": CLASS_B, "method_name": BOOTSTRAP_NAME, "status": "changed"}],
+            [{"project_name": "", "reserving_class": CLASS_B, "method_name": BOOTSTRAP_NAME, "status": "changed"}],
         )
         self.assertEqual(loaded["run_state"], service.STATE_SEGMENT_CHANGED)
 
@@ -394,6 +401,47 @@ class StochasticConsolidationServiceTests(unittest.TestCase):
         self.assertIsNotNone(first["mean"])
         self.assertAlmostEqual(first["cv"], first["standard_error"] / first["mean"])
 
+    def test_a_segment_is_read_from_the_project_it_names(self) -> None:
+        self.write_bootstrap(CLASS_B, seed=33, scale=0.4, project=OTHER_PROJECT)
+        payload = self.consolidation()
+        payload["segments_tab"]["segments"][1]["project_name"] = OTHER_PROJECT
+
+        response = service.consolidate_stochastic_consolidation_method(PROJECT, HOST, payload)
+        local = service.consolidate_stochastic_consolidation_method(PROJECT, HOST, self.consolidation())
+        self.assertEqual([row["project_name"] for row in response["segments"]], ["", OTHER_PROJECT])
+        self.assertEqual(response["segments"][1]["random_seed"], 33)
+        self.assertNotEqual(
+            response["method"]["results_tab"]["consolidation_ultimate"],
+            local["method"]["results_tab"]["consolidation_ultimate"],
+        )
+
+        saved = self.save(payload)
+        self.assertEqual(saved["sidecar"]["precedents"][1]["project"], OTHER_PROJECT)
+        loaded = service.load_stochastic_consolidation_method(PROJECT, HOST, CONSOLIDATION_NAME)
+        self.assertEqual(loaded["run_state"], service.STATE_UP_TO_DATE)
+
+        Path(self._method_file(CLASS_B, "Bootstrap", BOOTSTRAP_NAME, OTHER_PROJECT)).unlink()
+        loaded = service.load_stochastic_consolidation_method(PROJECT, HOST, CONSOLIDATION_NAME)
+        self.assertEqual(
+            loaded["stale_segments"],
+            [{"project_name": OTHER_PROJECT, "reserving_class": CLASS_B, "method_name": BOOTSTRAP_NAME,
+              "status": "missing"}],
+        )
+
+    def test_candidates_from_another_project_list_every_class_there(self) -> None:
+        self.write_bootstrap(HOST, seed=5, name="Oil Bootstrap", project=OTHER_PROJECT)
+
+        response = service.list_stochastic_consolidation_candidates(PROJECT, HOST, OTHER_PROJECT)
+
+        self.assertEqual(
+            [(row["project_name"], row["reserving_class"], row["method_name"]) for row in response["candidates"]],
+            [(OTHER_PROJECT, HOST, "Oil Bootstrap")],
+        )
+        self.assertEqual(response["candidates"][0]["base_triangle_type"], BASE_TYPE)
+        # Naming the host project is the same as naming none.
+        own = service.list_stochastic_consolidation_candidates(PROJECT, HOST, PROJECT)
+        self.assertEqual({row["project_name"] for row in own["candidates"]}, {""})
+
     def test_save_propagation_roots_name_the_output(self) -> None:
         self.assertEqual(
             service.save_propagation_roots(PROJECT, HOST, self.consolidation()),
@@ -427,8 +475,9 @@ class TransportTests(unittest.TestCase):
             # A contract argument the service does not take breaks the read
             # only on the Gateway, never locally.
             parameters = inspect.signature(getattr(service, function)).parameters
-            self.assertEqual(set(spec.required), set(parameters))
-            self.assertEqual(spec.optional, ())
+            self.assertEqual(set(spec.required) | set(spec.optional), set(parameters))
+            for name in spec.optional:
+                self.assertIsNot(parameters[name].default, inspect.Parameter.empty)
 
     def test_the_save_is_registered_and_can_report_its_roots(self) -> None:
         self.assertEqual(
@@ -461,7 +510,7 @@ class TransportTests(unittest.TestCase):
             )
         load.assert_called_once_with("Demo", "Total", "M")
         run.assert_called_once_with("Demo", "Total", {"json_format": SCON_JSON_FORMAT, "details_tab": {"name": "M"}})
-        candidates.assert_called_once_with("Demo", "Total")
+        candidates.assert_called_once_with("Demo", "Total", "")
         self.assertEqual([kind for kind, _ in capture.calls], list(self.READS))
         # The stored results never travel with a run request.
         self.assertNotIn("results_tab", capture.calls[1][1]["method"])

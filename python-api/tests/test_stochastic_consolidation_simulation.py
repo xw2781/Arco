@@ -423,8 +423,39 @@ def test_a_segment_with_a_different_simulation_count_is_refused():
 def test_segments_with_different_origins_are_refused():
     segments = _synthetic_segments(100)
     segments[2]["origin_labels"] = ["a", "b", "c"]
-    with pytest.raises(StochasticConsolidationError, match="Segment 3 has different origin periods"):
+    with pytest.raises(StochasticConsolidationError, match="Segment 3's origin periods"):
         consolidate_simulations(segments, ConsolidationOptions(simulation_count=100, random_seed=1))
+
+
+def test_a_shorter_segment_lines_up_at_the_latest_origin():
+    """HO's ten years join Oil's full history: the short segment is zero in its missing years."""
+
+    count = 100
+    long_history = _synthetic_segments(count, origins=5, seed=3)[0]
+    short = _synthetic_segments(count, origins=2, seed=5)[1]
+    short["origin_labels"] = ["2023", "2024"]
+    long_history["origin_labels"] = [str(2020 + w) for w in range(5)]
+    options = ConsolidationOptions(simulation_count=count, random_seed=11, correlation_option="independent")
+    combined = consolidate_simulations([long_history, short], options)
+
+    assert combined["origin_labels"] == ["2020", "2021", "2022", "2023", "2024"]
+    assert combined["origin_offsets"] == [0, 3]
+    long_at = {rank: s for s, rank in enumerate(long_history["scaled"]["total_ranks"])}
+    short_at = {rank: s for s, rank in enumerate(short["scaled"]["total_ranks"])}
+    for s in range(count):
+        a = long_history["scaled"]["reserves"][long_at[combined["ranks"][0][s]]]
+        b = short["scaled"]["reserves"][short_at[combined["ranks"][1][s]]]
+        assert combined["reserves"][s] == pytest.approx(a[:3] + [a[3] + b[0], a[4] + b[1]])
+    assert combined["latest_values"] == pytest.approx([1000.0, 2000.0, 3000.0, 5000.0, 7000.0])
+
+
+def test_a_shorter_segment_must_hold_the_latest_origins():
+    segments = _synthetic_segments(10, origins=3)[:2]
+    segments[1]["origin_labels"] = ["2020", "2021"]
+    segments[1]["scaled"]["reserves"] = [row[:2] for row in segments[1]["scaled"]["reserves"]]
+    segments[1]["latest_values"] = segments[1]["latest_values"][:2]
+    with pytest.raises(StochasticConsolidationError, match="are not the latest origins"):
+        consolidate_simulations(segments, ConsolidationOptions(simulation_count=10, random_seed=1))
 
 
 def test_a_correlation_outside_minus_one_to_one_is_refused():

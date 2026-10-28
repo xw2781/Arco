@@ -70,10 +70,19 @@ export function optionLabel(options, value) {
   return options.find((option) => option.value === value)?.label || text(value);
 }
 
-/* The identity a segment is matched by: its reserving class and method name,
-   compared the way the server compares them. */
+/* The project a segment is taken from; blank for the consolidation's own. */
+export function segmentProject(segment) {
+  return text(segment?.projectName ?? segment?.project_name);
+}
+
+/* The identity a segment is matched by: its project, reserving class and
+   method name, compared the way the server compares them. */
 export function segmentKey(segment) {
-  return `${key(segment?.reservingClass ?? segment?.reserving_class)}\u0001${key(segment?.methodName ?? segment?.method_name)}`;
+  return [
+    key(segmentProject(segment)),
+    key(segment?.reservingClass ?? segment?.reserving_class),
+    key(segment?.methodName ?? segment?.method_name),
+  ].join("\u0001");
 }
 
 /* The last level of a reserving-class path, which is what tells the segments
@@ -206,6 +215,7 @@ export function readConsolidationSettings(method = {}) {
   const correlation = tab(method, "correlation_tab");
   const rawSegments = Array.isArray(tab(method, "segments_tab").segments) ? tab(method, "segments_tab").segments : [];
   const segments = rawSegments.map((segment) => ({
+    projectName: text(segment?.project_name),
     reservingClass: text(segment?.reserving_class),
     methodName: text(segment?.method_name),
     factor: numberOrNull(segment?.factor) ?? 1,
@@ -255,6 +265,7 @@ export function applyConsolidationSettings(method, settings) {
       .map((segment) => [segmentKey(segment), text(segment?.bootstrap_revision)]),
   );
   const segments = (s.segments || []).map((segment) => ({
+    ...(segmentProject(segment) ? { project_name: segmentProject(segment) } : {}),
     reserving_class: text(segment.reservingClass),
     method_name: text(segment.methodName),
     factor: numberOrNull(segment.factor) ?? 1,
@@ -357,6 +368,7 @@ export function segmentRows(settings, infoByKey, { hasRun = false } = {}) {
     const note = hasRun && STATUS_NOTES[status] ? STATUS_NOTES[status] : "";
     return {
       index,
+      projectName: segmentProject(segment),
       reservingClass: segment.reservingClass,
       methodName: segment.methodName,
       shortLabel: segmentShortLabel(segment),
@@ -432,6 +444,7 @@ export function segmentBreakdown(method) {
   const rows = figures.map((figure, index) => {
     const segment = segments[index] || {};
     return {
+      projectName: segmentProject(segment),
       reservingClass: text(segment.reserving_class),
       methodName: text(segment.method_name),
       shortLabel: segmentShortLabel(segment),

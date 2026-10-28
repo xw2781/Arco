@@ -1,0 +1,11 @@
+{
+  "type": "feature",
+  "scope": "stochastic consolidation",
+  "audience": "user",
+  "summary": "A Stochastic Consolidation can now include a bootstrap from another project, so Homeowners can combine the regular and Oil projects in one method.",
+  "details": [
+    "Add Segment offers From another project, which lists that project's bootstraps.",
+    "Segments with fewer accident years line up at the latest year and count as zero in the earlier ones, so a ten-year segment can join a full-history one.",
+    "The results and total keep every year; the output vector carries only the consolidation's own project's years."
+  ]
+}

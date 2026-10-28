@@ -21,7 +21,10 @@ consolidates"):
    chi-square per simulation shared by every method.
 4. Consolidated simulation ``s`` takes, from each segment ``c``, the simulation
    whose total-reserve rank is ``ranks[c][s]``, multiplies its reserves by the
-   segment's factor, and adds them origin by origin.
+   segment's factor, and adds them origin by origin.  Segments with fewer
+   origins line up at the latest one and count as zero in the rest; ResQ
+   refuses them, and Arco allows them so a ten-year line can join a full-history
+   one.
 
 "0% correlated" and "As it comes" both use the identity matrix; "100%
 correlated" is the all-ones matrix through the repair in rule 2.
@@ -360,27 +363,23 @@ def consolidate_simulations(
         raise StochasticConsolidationError(f"Expected {size} factors, got {len(factors)}.")
 
     blocks = [_segment_block(segment, basis) for segment in segments]
-    origin_count = None
-    labels = None
-    for index, (segment, block) in enumerate(zip(segments, blocks), start=1):
-        reserves = block["reserves"]
-        if len(reserves) != count:
+    for index, block in enumerate(blocks, start=1):
+        if len(block["reserves"]) != count:
             raise StochasticConsolidationError(
-                f"Segment {index} has {len(reserves)} simulations; the consolidation runs {count}."
+                f"Segment {index} has {len(block['reserves'])} simulations; the consolidation runs {count}."
             )
-        width = len(reserves[0]) if reserves else 0
-        if origin_count is None:
-            origin_count = width
-        elif width != origin_count:
-            raise StochasticConsolidationError(
-                f"Segment {index} has {width} origin periods; segment 1 has {origin_count}."
-            )
-        segment_labels = segment.get("origin_labels") if isinstance(segment, Mapping) else None
-        if segment_labels:
-            if labels is None:
-                labels = list(segment_labels)
-            elif list(segment_labels) != labels:
-                raise StochasticConsolidationError(f"Segment {index} has different origin periods from segment 1.")
+    labels, offsets = _aligned_origins(segments, blocks)
+    origin_count = len(labels) if labels is not None else None
+    if labels is None:
+        for index, block in enumerate(blocks, start=1):
+            width = len(block["reserves"][0]) if block["reserves"] else 0
+            if origin_count is None:
+                origin_count = width
+            elif width != origin_count:
+                raise StochasticConsolidationError(
+                    f"Segment {index} has {width} origin periods; segment 1 has {origin_count}."
+                )
+        offsets = [0] * size
 
     target = target_correlation_matrix(options.correlation_option, size, options.target_correlations)
     adjusted = adjusted_correlation_matrix(target)
@@ -405,12 +404,13 @@ def consolidate_simulations(
         for simulation, rank in enumerate(segment_ranks):
             simulation_at_rank[int(rank)] = simulation
         factor = factors[c]
+        offset = offsets[c]
         contribution = []
         for s in range(count):
             row = reserves[simulation_at_rank[used_ranks[c][s]]]
             target_row = consolidated[s]
-            for w in range(width):
-                target_row[w] += factor * row[w]
+            for w, value in enumerate(row):
+                target_row[offset + w] += factor * value
             contribution.append(factor * math.fsum(row))
         contributions.append(contribution)
 
@@ -430,15 +430,62 @@ def consolidate_simulations(
         "totals": totals,
         "total_ranks": total_reserve_ranks(totals),
         "segment_totals": contributions,
-        "latest_values": _combined_latest(segments, factors, width),
+        "origin_offsets": offsets,
+        "latest_values": _combined_latest(segments, factors, width, offsets),
     }
 
 
-def _combined_latest(segments: Sequence[Mapping[str, Any]], factors: Sequence[float], width: int) -> list[float] | None:
+def _aligned_origins(
+    segments: Sequence[Mapping[str, Any]], blocks: Sequence[Mapping[str, Any]]
+) -> tuple[list[str] | None, list[int]]:
+    """The consolidation's origins and where each segment's first origin sits in them.
+
+    Segments valued at the same date end at the same origin, so they line up
+    at their latest one: the segment with the most origins sets the axis, and
+    a shorter one must be its last origins (HO's ten years inside Oil's
+    thirty-nine).  A segment counts as zero in every origin it does not have.
+    Segments that carry no labels give ``None`` and must share one width.
+    """
+
+    labelled = [
+        [str(label) for label in segment.get("origin_labels") or []] if isinstance(segment, Mapping) else []
+        for segment in segments
+    ]
+    if not all(labelled):
+        return None, []
+    for index, (labels, block) in enumerate(zip(labelled, blocks), start=1):
+        width = len(block["reserves"][0]) if block["reserves"] else len(labels)
+        if width != len(labels):
+            raise StochasticConsolidationError(
+                f"Segment {index} has {width} origin periods but {len(labels)} origin labels."
+            )
+    axis = max(labelled, key=len)
+    offsets = []
+    for index, labels in enumerate(labelled, start=1):
+        offset = len(axis) - len(labels)
+        if axis[offset:] != labels:
+            raise StochasticConsolidationError(
+                f"Segment {index}'s origin periods ({labels[0]} to {labels[-1]}) are not the latest "
+                f"origins of the consolidation ({axis[0]} to {axis[-1]})."
+            )
+        offsets.append(offset)
+    return list(axis), offsets
+
+
+def _combined_latest(
+    segments: Sequence[Mapping[str, Any]], factors: Sequence[float], width: int, offsets: Sequence[int]
+) -> list[float] | None:
     latest = [segment.get("latest_values") for segment in segments]
-    if not width or any(not values or len(values) != width for values in latest):
+    if not width or any(not values or offset + len(values) != width for values, offset in zip(latest, offsets)):
         return None
-    return [math.fsum(f * float(values[w] or 0.0) for f, values in zip(factors, latest)) for w in range(width)]
+    return [
+        math.fsum(
+            f * float(values[w - offset] or 0.0)
+            for f, values, offset in zip(factors, latest, offsets)
+            if w >= offset
+        )
+        for w in range(width)
+    ]
 
 
 def _standalone(values: Sequence[float]) -> tuple[float, float]:

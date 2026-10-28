@@ -153,8 +153,9 @@ WORKSPACE_READ_KINDS: dict[str, WorkspaceReadKind] = {
     ),
     # A Stochastic Consolidation's segments are bootstraps in other reserving
     # classes. The load checks each one's freshness, the run re-simulates each
-    # one, and the picker scans every class of the project, so all three are
-    # hosted where those files are local disk. The run writes nothing; Save
+    # one, and the picker scans every class of the project (or of the other
+    # project a segment is taken from), so all three are hosted where those
+    # files are local disk. The run writes nothing; Save
     # publishes the same run.
     "stochastic_consolidation_load": WorkspaceReadKind(
         "stochastic_consolidation_service",
@@ -170,6 +171,7 @@ WORKSPACE_READ_KINDS: dict[str, WorkspaceReadKind] = {
         "stochastic_consolidation_service",
         "list_stochastic_consolidation_candidates",
         ("project_name", "reserving_class"),
+        ("source_project_name",),
     ),
     # B&S keeps its method JSON on the host API rather than an app-server save
     # path, so this read exists to pair that file with the output sidecar in one

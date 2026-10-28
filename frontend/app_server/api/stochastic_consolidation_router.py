@@ -70,10 +70,12 @@ def list_stochastic_consolidation_candidates(req: StochasticConsolidationClassRe
         {
             "project_name": req.project_name,
             "reserving_class": req.reserving_class,
+            **({"source_project_name": req.source_project_name} if req.source_project_name else {}),
         },
         local=lambda: stochastic_consolidation_service.list_stochastic_consolidation_candidates(
             req.project_name,
             req.reserving_class,
+            req.source_project_name,
         ),
     )
 

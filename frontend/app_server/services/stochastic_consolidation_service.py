@@ -2,10 +2,11 @@
 
 A Stochastic Consolidation combines the simulated reserves of several Bootstrap
 methods ("segments") into one total distribution.  Its segments live in other
-reserving classes, named by class path and method name, so this service reads
-each segment's Bootstrap method JSON (and the input type of the DFM that
-bootstrap re-fits) from its own class.  It never reads the host class's
-datasets.
+reserving classes, named by class path and method name, and a segment that
+names a project lives in that project instead of the consolidation's own.  So
+this service reads each segment's Bootstrap method JSON (and the input type of
+the DFM that bootstrap re-fits) from its own project and class.  It never reads
+the host class's datasets.
 
 Cross-class propagation is deferred: saving a bootstrap does not refresh the
 consolidations that include it.  Instead the load compares the revision each
@@ -39,6 +40,7 @@ from arcrho_api.stochastic_consolidation_contract import (
     consolidate_stochastic_method_with_ladder,
     method_revisions,
     normalize_stochastic_consolidation_method,
+    publication_projection,
     run_input_revision,
     stale_segments,
     stochastic_consolidation_output_variants,
@@ -169,8 +171,23 @@ def _identity(payload: Mapping[str, Any]) -> Tuple[str, str]:
     return method_name, method_name
 
 
-def _label(reserving_class: Any, method_name: Any) -> str:
-    return f"{_clean(reserving_class)} / {_clean(method_name)}"
+def _label(reserving_class: Any, method_name: Any, project_name: Any = "") -> str:
+    label = f"{_clean(reserving_class)} / {_clean(method_name)}"
+    return f"{_clean(project_name)}: {label}" if _clean(project_name) else label
+
+
+def _segment_project(project_name: str, segment: Mapping[str, Any]) -> str:
+    """The project a segment's bootstrap lives in: its own, or the consolidation's."""
+
+    return _clean(segment.get("project_name")) or project_name
+
+
+def _segment_key(segment: Mapping[str, Any]) -> Tuple[str, str, str]:
+    return (
+        _key(segment.get("project_name")),
+        _key(segment.get("reserving_class")),
+        _key(segment.get("method_name")),
+    )
 
 
 def _revision_response(payload: Mapping[str, Any]) -> Dict[str, str]:
@@ -227,7 +244,7 @@ def _read_segments(project_name: str, method: Mapping[str, Any]) -> List[Dict[st
     futures = [
         _READ_EXECUTOR.submit(
             _read_bootstrap,
-            project_name,
+            _segment_project(project_name, segment),
             _clean(segment.get("reserving_class")),
             _clean(segment.get("method_name")),
         )
@@ -285,9 +302,7 @@ def _segment_rows(method: Mapping[str, Any], reads: List[Dict[str, Any]]) -> Lis
     """One row per included segment: its freshness, its figures, and any problem."""
 
     stale = _contract_call(stale_segments, method, [read.get("bootstrap") for read in reads])
-    stale_by_identity = {
-        (_key(item["reserving_class"]), _key(item["method_name"])): item["reason"] for item in stale
-    }
+    stale_by_identity = {_segment_key(item): item["reason"] for item in stale}
     base_type = _key(_details(method).get("base_triangle_type"))
     rows: List[Dict[str, Any]] = []
     first_count: int | None = None
@@ -307,12 +322,12 @@ def _segment_rows(method: Mapping[str, Any], reads: List[Dict[str, Any]]) -> Lis
             segment_base = _key(read.get("base_triangle_type"))
             if base_type and segment_base and segment_base != base_type:
                 problems.append(PROBLEM_BASE_TYPE)
-        identity = (_key(segment.get("reserving_class")), _key(segment.get("method_name")))
         rows.append({
+            "project_name": _clean(segment.get("project_name")),
             "reserving_class": _clean(segment.get("reserving_class")),
             "method_name": _clean(segment.get("method_name")),
             "factor": segment.get("factor"),
-            "status": stale_by_identity.get(identity, SEGMENT_CURRENT),
+            "status": stale_by_identity.get(_segment_key(segment), SEGMENT_CURRENT),
             "base_triangle_type": _clean(read.get("base_triangle_type")),
             **statistics,
             "problems": problems,
@@ -341,7 +356,8 @@ def _segment_inputs(project_name: str, method: Mapping[str, Any], reads: List[Di
             reason = _clean(read.get("error"))
             raise HTTPException(
                 404,
-                f"Included bootstrap not found: {_label(segment.get('reserving_class'), segment.get('method_name'))}"
+                "Included bootstrap not found: "
+                f"{_label(segment.get('reserving_class'), segment.get('method_name'), segment.get('project_name'))}"
                 + (f" ({reason})" if reason else "."),
             )
         inputs.append({
@@ -470,7 +486,7 @@ def _publish(
 
 def _precedent_identities(entries: Any) -> set[Tuple[str, str]]:
     return {
-        (_key(entry.get("dataset_name")), _key(entry.get("reserving_class")))
+        (_key(entry.get("dataset_name")), _key(entry.get("reserving_class")), _key(entry.get("project")))
         for entry in entries or []
         if isinstance(entry, Mapping)
     }
@@ -498,7 +514,7 @@ def _validate_pair(
         raise HTTPException(409, "Stochastic Consolidation output sidecar must identify a Vector dataset.")
     if precedent_cache_service.source_period(sidecar) != int(_details(method).get("origin_length") or 0):
         raise HTTPException(409, "Stochastic Consolidation method and output sidecar origin lengths do not match.")
-    method_origins = [str(item) for item in _results_tab(method).get("origin_labels", [])]
+    method_origins = [str(item) for item in publication_projection(method).get("origin_labels", [])]
     sidecar_origins = (
         [str(item) for item in sidecar.get("origin_labels", [])]
         if isinstance(sidecar.get("origin_labels"), list)
@@ -536,7 +552,7 @@ def _method_response(
         "sidecar": _sidecar_response(sidecar, exists=bool(sidecar)),
         "segments": rows,
         "stale_segments": [
-            {key: row[key] for key in ("reserving_class", "method_name", "status")}
+            {key: row[key] for key in ("project_name", "reserving_class", "method_name", "status")}
             for row in rows
             if row.get("status") != SEGMENT_CURRENT
         ],
@@ -621,15 +637,27 @@ def consolidate_stochastic_consolidation_method(
 def list_stochastic_consolidation_candidates(
     project_name: str,
     reserving_class: str,
+    source_project_name: str = "",
 ) -> Dict[str, Any]:
-    """Every Bootstrap in the project's other reserving classes, for the segment picker."""
+    """Every Bootstrap the segment picker offers.
+
+    By default those in the project's other reserving classes.  With
+    ``source_project_name`` naming another project, every Bootstrap in that
+    project, each row carrying the project it comes from.
+    """
 
     project, reserving = _required(project_name, reserving_class)
+    source = _clean(source_project_name)
+    if _key(source) == _key(project):
+        source = ""
+    scanned = source or project
     try:
-        data_dir = config.get_project_data_dir(project)
+        data_dir = config.get_project_data_dir(scanned)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
-    host = _key(reserving)
+    if source and not os.path.isdir(data_dir):
+        raise HTTPException(404, f"Project not found: {source}")
+    host = "" if source else _key(reserving)
     classes: List[str] = []
     if os.path.isdir(data_dir):
         classes = [
@@ -640,7 +668,7 @@ def list_stochastic_consolidation_candidates(
     classes = [name for name in classes if _key(name) != host]
 
     def _class_bootstraps(class_name: str) -> List[Tuple[str, str]]:
-        methods_dir = config.get_project_method_data_dir(project, class_name)
+        methods_dir = config.get_project_method_data_dir(scanned, class_name)
         try:
             entries = list(os.scandir(methods_dir))
         except OSError:
@@ -672,8 +700,9 @@ def list_stochastic_consolidation_candidates(
         name = _clean(_details(payload).get("name"))
         if not name:
             return None
-        read = _read_bootstrap(project, class_name, name)
+        read = _read_bootstrap(scanned, class_name, name)
         return {
+            "project_name": source,
             "reserving_class": class_name,
             "method_name": name,
             "output_type": _clean(_details(payload).get("output_type")),
@@ -689,6 +718,7 @@ def list_stochastic_consolidation_candidates(
         "ok": True,
         "project_name": project,
         "reserving_class": reserving,
+        "source_project_name": source,
         "candidates": candidates,
     }
 

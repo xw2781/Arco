@@ -303,6 +303,57 @@ def test_output_sidecar_links_each_segment_across_classes(consolidated):
     assert len(local["precedents"]) == 5
 
 
+def test_a_segment_from_another_project_is_named_and_linked_by_its_project(reference, bootstraps, consolidated):
+    payload = _consolidation(reference)
+    payload["segments_tab"]["segments"][2]["project_name"] = "NJ_Annual_Prod_2026 Q3-Aug Oil"
+    method = consolidate_stochastic_method(payload, _inputs(bootstraps), timestamp=STAMP)
+    segments = method["segments_tab"]["segments"]
+
+    # Only the other project's segment carries a project, so a same-project
+    # consolidation keeps the shape (and revisions) it always had.
+    assert ["project_name" in segment for segment in segments] == [False, False, True, False, False]
+    assert method["method_metadata"]["owned_revision"] != consolidated["method_metadata"]["owned_revision"]
+    assert method["results_tab"]["output_origin_labels"] == method["results_tab"]["origin_labels"]
+    assert method["results_tab"]["simulation_summary"] == consolidated["results_tab"]["simulation_summary"]
+
+    sidecar = build_stochastic_consolidation_output_sidecar(
+        method, project_name="NJ_Annual_Prod_2026 Q3-Aug", reserving_class=HOST, csv_file="x.csv", timestamp=STAMP
+    )
+    assert sidecar["precedents"][2] == {
+        "dataset_name": segments[2]["method_name"],
+        "method_type": "Bootstrap",
+        "reserving_class": segments[2]["reserving_class"],
+        "project": "NJ_Annual_Prod_2026 Q3-Aug Oil",
+    }
+
+    stale = stale_segments(method, [*bootstraps[:2], None, *bootstraps[3:]])
+    assert [(s["project_name"], s["reason"]) for s in stale] == [("NJ_Annual_Prod_2026 Q3-Aug Oil", "missing")]
+
+    # The same class and method in two projects are two segments.
+    twice = deepcopy(payload)
+    twice["segments_tab"]["segments"].append({**twice["segments_tab"]["segments"][2], "project_name": ""})
+    twice["correlation_tab"]["target_correlations"] = []
+    normalize_stochastic_consolidation_method(twice, timestamp=STAMP)
+
+
+def test_the_output_vector_publishes_only_the_host_projects_origins(consolidated):
+    method = deepcopy(consolidated)
+    results = method["results_tab"]
+    origins = results["origin_labels"]
+    results["output_origin_labels"] = origins[-3:]
+    method = normalize_stochastic_consolidation_method(method, timestamp=STAMP)
+    ultimate = method["results_tab"]["consolidation_ultimate"]
+
+    assert stochastic_consolidation_output_variants(method) == {12: ultimate[-3:]}
+    sidecar = build_stochastic_consolidation_output_sidecar(
+        method, project_name="P", reserving_class=HOST, csv_file="x.csv", timestamp=STAMP
+    )
+    assert sidecar["origin_labels"] == origins[-3:]
+    # Labels that are not the run's latest origins fall back to every origin.
+    method["results_tab"]["output_origin_labels"] = origins[:3]
+    assert normalize_stochastic_consolidation_method(method)["results_tab"]["output_origin_labels"] == origins
+
+
 def test_dependency_entries_keep_same_named_links_in_different_classes():
     entries = dependency_entries([
         {"dataset_name": "F 72 A", "reserving_class": "A"},

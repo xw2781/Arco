@@ -145,6 +145,24 @@ test("a segment keeps its consumed bootstrap revision only while it names the sa
   assert.equal(saved.correlation_tab.target_correlations.length, 2);
 });
 
+test("a segment from another project keeps its project and is a different segment", () => {
+  const method = sampleMethod();
+  method.segments_tab.segments[2].project_name = "NJ_Annual_Prod_2026 Q3-Aug Oil";
+  const settings = readConsolidationSettings(method);
+  assert.equal(settings.segments[2].projectName, "NJ_Annual_Prod_2026 Q3-Aug Oil");
+  assert.equal(settings.segments[0].projectName, "");
+  // Written back unchanged: only the other project's segment names a project.
+  assert.deepEqual(applyConsolidationSettings(method, settings), method);
+
+  const local = { reserving_class: `${BASE}\\PD+UMPD`, method_name: "F 72 A" };
+  const elsewhere = { ...local, project_name: "NJ_Annual_Prod_2026 Q3-Aug Oil" };
+  assert.deepEqual(availableCandidates([local, elsewhere], settings), [local]);
+  const rows = segmentRows(settings, segmentInfoMap([{ ...elsewhere, simulation_count: 10, has_run: true }]));
+  assert.equal(rows[2].projectName, "NJ_Annual_Prod_2026 Q3-Aug Oil");
+  assert.equal(rows[2].simulationCount, 10);
+  assert.equal(rows[0].simulationCount, null);
+});
+
 test("editing a cell above the diagonal mirrors it below, and the diagonal stays 1", () => {
   const matrix = squareTargetMatrix([[1, 0.2, 0.3], [9, 1, 0.4], [9, 9, 1]], 3);
   assert.deepEqual(matrix, [[1, 0.2, 0.3], [0.2, 1, 0.4], [0.3, 0.4, 1]], "the upper triangle is authoritative");
