@@ -89,6 +89,10 @@ Public Sub RefreshWorkbookSnapshots(Optional ByVal activeSheetOnly As Boolean = 
     CommitDatasetRefresh
     completed = True
     message = "Refreshed at " & Format$(Now, "hh:nn:ss") & ". Save the workbook to share these values."
+    If DatasetRefreshSkipped().Count > 0 Then
+        message = message & " Skipped " & DatasetRefreshSkipped().Count & " dataset(s) not found in Arco; first: " & _
+            DatasetRefreshSkipped().Items()(0)
+    End If
 Finish:
     If started Then
         EndDatasetRefresh

@@ -3,6 +3,11 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.2.3 - 2026-10-28
+
+- Refresh Workbook skips formulas that point to a dataset Arco does not have,
+  refreshes the rest, and reports how many were skipped.
+
 ## 4.2.2 - 2026-09-30
 
 - Entering an Arco formula keeps the cache data sheet out of view while saving its results.

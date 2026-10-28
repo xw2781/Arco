@@ -1,10 +1,12 @@
 Option Private Module
 Option Explicit
 
+Private Const DATASET_NOT_FOUND_TEXT As String = "(dataset not found)"
 Private refreshBook As Workbook
 Private refreshSheet As Worksheet
 Private refreshResults As Object
 Private refreshFailure As String
+Private refreshSkipped As Object
 Private committing As Boolean
 Private refreshTarget As Range
 Private missingOnly As Boolean
@@ -20,6 +22,7 @@ Public Sub BeginDatasetRefresh(ByVal book As Workbook, Optional ByVal sheet As W
     Set refreshTarget = target
     Set refreshResults = CreateObject("Scripting.Dictionary")
     refreshFailure = ""
+    Set refreshSkipped = CreateObject("Scripting.Dictionary")
     committing = False
     missingOnly = onlyMissing
     fetchAllowed = Not onlyMissing
@@ -51,6 +54,10 @@ End Function
 
 Public Function DatasetRefreshError() As String
     DatasetRefreshError = refreshFailure
+End Function
+
+Public Function DatasetRefreshSkipped() As Object
+    Set DatasetRefreshSkipped = refreshSkipped
 End Function
 
 Public Function DatasetRefreshRunning() As Boolean
@@ -87,7 +94,7 @@ Public Function DatasetRefreshInScope(ByVal book As Workbook) As Boolean
 End Function
 
 Public Function RefreshDataset(ByVal funcArgs As String, ByVal requestKey As String) As Variant
-    Dim values As Variant, csvText As String, message As String
+    Dim values As Variant, csvText As String, message As String, unavailable As Boolean
     On Error GoTo Failed
     If refreshResults.Exists(requestKey) Then
         datasetHitCount = datasetHitCount + 1
@@ -114,8 +121,12 @@ Public Function RefreshDataset(ByVal funcArgs As String, ByVal requestKey As Str
         RefreshDataset = "(" & refreshFailure & ")"
         Exit Function
     End If
+    If refreshSkipped.Exists(requestKey) Then
+        RefreshDataset = DATASET_NOT_FOUND_TEXT
+        Exit Function
+    End If
     datasetFetchCount = datasetFetchCount + 1
-    If GatewayDatasetCsv(funcArgs, csvText, message) Then
+    If GatewayDatasetCsv(funcArgs, csvText, message, unavailable) Then
         values = DataArrayFromText(csvText)
         If IsArray(values) Then
             refreshResults(requestKey) = values
@@ -123,6 +134,12 @@ Public Function RefreshDataset(ByVal funcArgs As String, ByVal requestKey As Str
             Exit Function
         End If
         message = "Arco Server answered without a data array."
+    End If
+    ' A dataset Arco has no data for fails only its own formulas; the rest refresh.
+    If unavailable Then
+        refreshSkipped(requestKey) = message
+        RefreshDataset = DATASET_NOT_FOUND_TEXT
+        Exit Function
     End If
     refreshFailure = message
     RefreshDataset = "(" & message & ")"

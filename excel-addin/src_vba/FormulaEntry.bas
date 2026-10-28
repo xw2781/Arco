@@ -45,6 +45,10 @@ Public Sub LoadEnteredFormulas(ByVal target As Range)
         CommitDatasetRefresh
         message = "New formula data loaded. Save the workbook to share these values."
     End If
+    If DatasetRefreshSkipped().Count > 0 Then
+        message = "Skipped " & DatasetRefreshSkipped().Count & " dataset(s) not found in Arco; first: " & _
+            DatasetRefreshSkipped().Items()(0) & " " & message
+    End If
 Finish:
     If started Then EndDatasetRefresh
     disable_ufLoading = oldLoading

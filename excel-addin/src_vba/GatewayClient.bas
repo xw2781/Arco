@@ -219,13 +219,15 @@ End Function
 ' server derives the dataset's location, the acting user and the shape itself.
 ' Answers True with the CSV text, or False with the reason to show the user.
 Public Function GatewayDatasetCsv(ByVal funcArgs As String, _
-                                  ByRef outText As String, ByRef outMessage As String) As Boolean
+                                  ByRef outText As String, ByRef outMessage As String, _
+                                  Optional ByRef outUnavailable As Boolean) As Boolean
     Dim replyStatus As Long
     Dim replyText As String
     Dim reply As Object
 
     outText = ""
     outMessage = ""
+    outUnavailable = False
     If Not GatewayPost(GATEWAY_ENGINE_CALCULATION_PATH, _
                        DatasetCalculationBody(funcArgs), _
                        DATASET_HTTP_TIMEOUT_SECONDS, replyStatus, replyText) Then
@@ -244,6 +246,7 @@ Public Function GatewayDatasetCsv(ByVal funcArgs As String, _
     End If
     If Not ReplyIsOk(reply) Then
         outMessage = ReplyMessage(reply, replyText)
+        If reply.Exists("status") Then outUnavailable = (CStr(reply("status")) = "published_dataset_unavailable")
         Exit Function
     End If
     If Not reply.Exists(GATEWAY_CSV_FIELD) Then
