@@ -3,6 +3,11 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.2.4 - 2026-10-28
+
+- Cells skipped by Refresh Workbook because their dataset is not in Arco keep
+  showing "(dataset not found)" after the refresh finishes.
+
 ## 4.2.3 - 2026-10-28
 
 - Refresh Workbook skips formulas that point to a dataset Arco does not have,

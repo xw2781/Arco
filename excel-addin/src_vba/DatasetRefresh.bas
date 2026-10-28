@@ -60,6 +60,18 @@ Public Function DatasetRefreshSkipped() As Object
     Set DatasetRefreshSkipped = refreshSkipped
 End Function
 
+' Outside a refresh, a cell whose dataset the last refresh did not find keeps
+' saying so instead of asking for another refresh.
+Public Function DatasetNotFoundText(ByVal requestKey As String) As String
+    If notFoundKeys.Exists(requestKey) Then DatasetNotFoundText = DATASET_NOT_FOUND_TEXT
+End Function
+
+Private Function notFoundKeys() As Object
+    Static keys As Object
+    If keys Is Nothing Then Set keys = CreateObject("Scripting.Dictionary")
+    Set notFoundKeys = keys
+End Function
+
 Public Function DatasetRefreshRunning() As Boolean
     DatasetRefreshRunning = Not refreshBook Is Nothing
 End Function
@@ -130,6 +142,7 @@ Public Function RefreshDataset(ByVal funcArgs As String, ByVal requestKey As Str
         values = DataArrayFromText(csvText)
         If IsArray(values) Then
             refreshResults(requestKey) = values
+            If notFoundKeys.Exists(requestKey) Then notFoundKeys.Remove requestKey
             RefreshDataset = values
             Exit Function
         End If
@@ -138,6 +151,7 @@ Public Function RefreshDataset(ByVal funcArgs As String, ByVal requestKey As Str
     ' A dataset Arco has no data for fails only its own formulas; the rest refresh.
     If unavailable Then
         refreshSkipped(requestKey) = message
+        notFoundKeys(requestKey) = True
         RefreshDataset = DATASET_NOT_FOUND_TEXT
         Exit Function
     End If

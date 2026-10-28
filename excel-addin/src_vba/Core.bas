@@ -2,7 +2,7 @@
 Option Private Module
 Option Explicit
 
-Public Const ARCRHO_VERSION As String = "4.2.3"
+Public Const ARCRHO_VERSION As String = "4.2.4"
 
 ' The workbook sheet that carries the default project name. A workbook set up
 ' by an earlier version, or by ResQ itself, holds the ResQ spelling instead.
@@ -108,7 +108,8 @@ Public Function GetDataset(funcArgs As String) As Variant
         datasetHitCount = datasetHitCount + 1
         GetDataset = values
     Else
-        GetDataset = SNAPSHOT_REFRESH_REQUIRED
+        GetDataset = DatasetNotFoundText(requestKey)
+        If Len(GetDataset) = 0 Then GetDataset = SNAPSHOT_REFRESH_REQUIRED
     End If
     Exit Function
 Failed:
