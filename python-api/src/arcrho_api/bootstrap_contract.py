@@ -315,7 +315,9 @@ def _fit_and_residuals(snapshot: Mapping[str, Any], model_type: str):
         snapshot["selected_ratios"],
         snapshot["total_development_periods"],
     )
-    residuals = calculate_residuals(fit, model_type=model_type)
+    residuals = calculate_residuals(
+        fit, model_type=model_type, excluded_ratios=snapshot.get("excluded_ratios") or []
+    )
     return fit, residuals
 
 

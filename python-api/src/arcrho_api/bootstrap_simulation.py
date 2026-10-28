@@ -233,6 +233,7 @@ def calculate_residuals(
     *,
     model_type: str = "odp_single_scale",
     excluded_data_cells: Sequence[Sequence[Any]] | None = None,
+    excluded_ratios: Sequence[Sequence[Any]] | None = None,
 ) -> BootstrapResiduals:
     """Return every ResQ residual type plus the scale parameters behind them.
 
@@ -251,6 +252,14 @@ def calculate_residuals(
     that are missing.  Those cells are neither residuals nor data points, and a
     simulation substitutes their fitted value.  It is not the DFM's link-ratio
     exclusion grid, which belongs to :class:`BootstrapRefitRules` instead.
+
+    ResQ also leaves a cell out, as neither residual nor data point, when its
+    cumulative or the cumulative before it is zero, or when the DFM excludes the
+    link ratio into it (``excluded_ratios[w][c - 1]``).  The parameter count then
+    covers only origins with a non-zero fitted level and development periods
+    that keep a data point.  Both were pinned cell by cell against ResQ's
+    ``HPPREF\\HO+DF\\NJ\\OIL`` bootstrap (780 cells, 524 residuals, scale
+    15.689308) on 2026-10-27.
     """
 
     if model_type not in BST_MODEL_TYPES:
@@ -270,8 +279,13 @@ def calculate_residuals(
     column_cells = [0] * periods
     for w in range(origins):
         row = fit.observed_incremental[w]
+        cumulative = fit.observed_cumulative[w]
         for c in range(len(row)):
-            if _is_excluded(excluded_data_cells, w, c):
+            if (
+                _is_excluded(excluded_data_cells, w, c)
+                or cumulative[c] == 0.0
+                or (c > 0 and (cumulative[c - 1] == 0.0 or _is_excluded(excluded_ratios, w, c - 1)))
+            ):
                 excluded[w][c] = True
                 continue
             data_point_count += 1
@@ -285,7 +299,8 @@ def calculate_residuals(
                 continue
             unscaled[w][c] = difference / math.sqrt(abs(fitted))
 
-    parameter_count = origins + observed_columns - 1
+    fitted_origins = sum(1 for cells in fit.fitted_cumulative if any(cells))
+    parameter_count = fitted_origins + sum(1 for cells in column_cells[:observed_columns] if cells) - 1
     degrees_of_freedom = data_point_count - parameter_count
     if degrees_of_freedom <= 0:
         raise BootstrapCalculationError(

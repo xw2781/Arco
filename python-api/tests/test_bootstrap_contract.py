@@ -175,13 +175,32 @@ def test_zero_cells_are_observations_not_blanks(fixture):
     fit = fit_dfm_projection(triangle[:-1], case["selected_ratios"], case["total_development_periods"])
     assert fit.fitted_cumulative[0] == [0.0] * case["total_development_periods"]
     residuals = calculate_residuals(fit, model_type=case["model_type"])
-    assert all(value is None for value in residuals.unscaled[0])
-    assert residuals.unscaled[1][0] is not None
+    # As in ResQ: no residual where the cumulative, or the one before it, is zero.
+    assert all(residuals.excluded[0][: len(rows[0])])
+    assert residuals.excluded[1][:3] == [True, True, True]
+    assert residuals.unscaled[1][3] is not None
+    # The zero origin has no fitted level, and the last period, observed only in
+    # that origin, keeps no data point: neither carries a parameter.
+    assert residuals.parameter_count == (len(rows) - 1) + (len(rows[0]) - 1) - 1
+    assert residuals.data_point_count == sum(len(row) for row in rows) - len(rows[0]) - 3
 
     options = BootstrapSimulationOptions(simulation_count=200, random_seed=7)
     run = simulate_bootstrap(fit, residuals, options)
     assert all(reserve[0] == 0.0 for reserve in run.reserves)
     assert all(math.isfinite(total) for total in run.totals)
+
+
+def test_an_excluded_link_ratio_drops_the_cell_it_leads_into(fixture):
+    case = _case(fixture, "odp_single_scale")
+    fit = _fit_for(case)
+    plain = calculate_residuals(fit, model_type=case["model_type"])
+    excluded = [[False] * 10 for _ in range(10)]
+    excluded[2][4] = True
+    residuals = calculate_residuals(fit, model_type=case["model_type"], excluded_ratios=excluded)
+    assert residuals.excluded[2][5] and residuals.unscaled[2][5] is None
+    assert not residuals.excluded[2][4]
+    assert residuals.data_point_count == plain.data_point_count - 1
+    assert residuals.parameter_count == plain.parameter_count
 
 
 def test_mack_model_is_rejected_until_implemented(fixture):
