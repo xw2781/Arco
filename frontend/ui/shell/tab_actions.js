@@ -1,3 +1,4 @@
+import { confirmDiscardClose } from "/ui/shared/components/close_confirm/close_confirm.js";
 import { shell } from "./shell_context.js?v=20260510a";
 import { isFloatingTab } from "./floating_tabs.js?v=20260510a";
 import {
@@ -140,8 +141,9 @@ export function closeTab(id, skipConfirm = false) {
     } catch {}
   }
   if (!skipConfirm && tab.isDirty) {
-    const confirmed = confirm("This tab has unsaved changes. Are you sure you want to close it?");
-    if (!confirmed) return;
+    void confirmDiscardClose({ message: "Unsaved changes in this tab will be lost." })
+      .then((confirmed) => { if (confirmed) closeTab(id, true); });
+    return;
   }
   const wasActive = shell.state.activeId === id;
   cleanupDfmRatioHistory(tab);
@@ -591,14 +593,16 @@ function removeTabById(id) {
   shell.state.tabs.splice(idx, 1);
 }
 
-export function closeTabsExcept(keepIds) {
+export function closeTabsExcept(keepIds, skipConfirm = false) {
   const keep = new Set(keepIds || []);
   keep.add("home");
   const toRemove = shell.state.tabs.filter(t => !keep.has(t.id));
   const dirtyTabs = toRemove.filter(t => t.isDirty);
-  if (dirtyTabs.length > 0) {
-    const confirmed = confirm(`${dirtyTabs.length} tab(s) have unsaved changes. Are you sure you want to close them?`);
-    if (!confirmed) return;
+  if (!skipConfirm && dirtyTabs.length > 0) {
+    const count = dirtyTabs.length;
+    void confirmDiscardClose({ message: `Unsaved changes in ${count} ${count === 1 ? "tab" : "tabs"} will be lost.` })
+      .then((confirmed) => { if (confirmed) closeTabsExcept(keepIds, true); });
+    return;
   }
   toRemove.forEach(t => removeTabById(t.id));
   if (!keep.has(shell.state.activeId)) shell.state.activeId = keepIds && keepIds.length ? keepIds[0] : "home";

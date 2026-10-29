@@ -1,3 +1,5 @@
+import { confirmDiscardClose } from "/ui/shared/components/close_confirm/close_confirm.js";
+
 export function installProjectInstanceHiddenTabs(ctx) {
   const { api, els, projectName, state } = ctx;
   const { DATASET_WINDOW_DOCK_ANIMATION_MS, DATASET_WINDOW_RESTORE_ANIMATION_MS, HIDDEN_TABS_HOVER_CLOSE_MS, HIDDEN_TABS_OVERFLOW_COUNT } = ctx.constants;
@@ -355,11 +357,10 @@ function closeHiddenWindow(id) {
   const item = hiddenWindows.get(id);
   if (!item?.frame) return;
   const title = item.title || item.frame.dataset.windowTitle || "dataset window";
-  closeDatasetWindow(item.frame, { status: false });
-  setStatus(`Closed ${title}`);
+  if (closeDatasetWindow(item.frame, { status: false })) setStatus(`Closed ${title}`);
 }
 
-function closeAllHiddenWindows() {
+async function closeAllHiddenWindows() {
   const ids = Array.from(hiddenWindows.keys());
   const count = ids.length;
   if (!count) return;
@@ -368,7 +369,9 @@ function closeAllHiddenWindows() {
     return total + (frame?.dataset?.dirty === "1" ? 1 : 0);
   }, 0);
   if (dirtyCount) {
-    const ok = window.confirm(`${dirtyCount} hidden DFM ${dirtyCount === 1 ? "window has" : "windows have"} unsaved changes. Close anyway?`);
+    const ok = await confirmDiscardClose({
+      message: `Unsaved changes in ${dirtyCount} hidden ${dirtyCount === 1 ? "window" : "windows"} will be lost.`,
+    });
     if (!ok) return;
   }
   for (const id of Array.from(hiddenWindows.keys())) {

@@ -13,10 +13,10 @@ function ensureStyles(doc) {
 function closeCopy(reason) {
   const isClose = reason === "close";
   return {
-    title: isClose ? "Cancel and close?" : "Cancel changes?",
-    message: isClose
-      ? "Unsaved changes will be discarded and the window will close."
-      : "Unsaved changes will be discarded.",
+    title: isClose ? "Close without saving?" : "Discard changes?",
+    message: "Unsaved changes will be lost.",
+    confirmLabel: isClose ? "Close" : "Discard",
+    cancelLabel: "Keep editing",
   };
 }
 
@@ -39,8 +39,8 @@ export function createPageCloseConfirm({ documentRef = document } = {}) {
       <div class="pageCloseConfirmTitle" id="${id}Title"></div>
       <div class="pageCloseConfirmMessage" id="${id}Message"></div>
       <div class="pageCloseConfirmActions">
-        <button class="pageCloseConfirmButton primary" type="button" data-close-confirm-value="yes">Yes</button>
-        <button class="pageCloseConfirmButton secondary" type="button" data-close-confirm-value="cancel">No</button>
+        <button class="pageCloseConfirmButton primary" type="button" data-close-confirm-value="yes">Close</button>
+        <button class="pageCloseConfirmButton secondary" type="button" data-close-confirm-value="cancel">Keep editing</button>
       </div>
     </div>
   `;
@@ -122,11 +122,13 @@ export function createPageCloseConfirm({ documentRef = document } = {}) {
   overlay.addEventListener("wheel", (event) => event.preventDefault(), { passive: false });
   doc.addEventListener("keydown", handleKeydown, true);
 
-  function confirm({ reason = "close", title = "", message = "" } = {}) {
+  function confirm({ reason = "close", title = "", message = "", confirmLabel = "", cancelLabel = "" } = {}) {
     if (pending) return pending.promise;
     const copy = closeCopy(reason);
     titleEl.textContent = String(title || copy.title);
     messageEl.textContent = String(message || copy.message);
+    yesButton.textContent = String(confirmLabel || copy.confirmLabel);
+    cancelButton.textContent = String(cancelLabel || copy.cancelLabel);
     returnFocus = doc.activeElement;
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
@@ -152,4 +154,16 @@ export function createPageCloseConfirm({ documentRef = document } = {}) {
     get isOpen() { return !!pending; },
     elements: { overlay, yesButton, cancelButton },
   };
+}
+
+// One dialog per document for hosts that close things from several places (tabs, windows, quit).
+let sharedConfirm = null;
+let sharedConfirmDoc = null;
+
+export function confirmDiscardClose(options = {}) {
+  if (!sharedConfirm || sharedConfirmDoc !== document || !sharedConfirm.elements.overlay.isConnected) {
+    sharedConfirm = createPageCloseConfirm({ documentRef: document });
+    sharedConfirmDoc = document;
+  }
+  return sharedConfirm.confirm(options);
 }

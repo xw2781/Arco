@@ -3,6 +3,7 @@ import {
   normalizeBerquistShermanVariant,
 } from "/ui/shared/dataset/berquist_sherman_contract.js";
 import { resolveWindowTab } from "/ui/shared/tabs/window_tab_catalog.js?v=20260903a";
+import { confirmDiscardClose } from "/ui/shared/components/close_confirm/close_confirm.js";
 
 export function installProjectInstanceWindows(ctx) {
   const { api, els, projectName, state } = ctx;
@@ -460,7 +461,8 @@ function focusProjectInstancePage() {
   notifyProjectInstanceStateChanged();
 }
 
-function closeDatasetWindow(frame, { status = true, skipChildCloseRequest = false } = {}) {
+// A dirty window asks first; the close finishes after the answer, so this returns false until then.
+function closeDatasetWindow(frame, { status = true, skipChildCloseRequest = false, skipDirtyConfirm = false } = {}) {
   if (!frame?.isConnected) return false;
   const iframe = getWindowIframe(frame);
   if (!skipChildCloseRequest && iframe?.contentWindow) {
@@ -469,10 +471,12 @@ function closeDatasetWindow(frame, { status = true, skipChildCloseRequest = fals
       if (typeof requestClose === "function" && requestClose() === true) return false;
     } catch {}
   }
-  if (frame.dataset.dirty === "1") {
-    const titleForPrompt = frame.dataset.windowDatasetName || frame.dataset.windowTitle || "Dataset window";
-    const ok = window.confirm(`${titleForPrompt} has unsaved changes. Close it anyway?`);
-    if (!ok) return false;
+  if (!skipDirtyConfirm && frame.dataset.dirty === "1") {
+    const titleForPrompt = frame.dataset.windowDatasetName || frame.dataset.windowTitle || "this window";
+    void confirmDiscardClose({ message: `Unsaved changes in ${titleForPrompt} will be lost.` }).then((ok) => {
+      if (ok) closeDatasetWindow(frame, { status, skipChildCloseRequest: true, skipDirtyConfirm: true });
+    });
+    return false;
   }
   const title = frame.dataset.windowDatasetName || frame.dataset.windowTitle || frame.getAttribute("aria-label") || "dataset window";
   hiddenWindows.delete(frame.dataset.windowId || "");

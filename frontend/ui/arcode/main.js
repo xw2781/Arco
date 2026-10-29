@@ -7,6 +7,7 @@ import {
 import { createFileIconResolver } from "/ui/shared/file-icons/fileIconResolver.js?v=20260722a";
 import { closeAllCascadeSubmenus, initCascadeMenus } from "/ui/shared/components/cascade_menu/cascade_menu.js?v=20260817a";
 import { createDatabaseConnectionsDialog } from "/ui/arcode/database-connections/dialog.js?v=20260818a";
+import { confirmDiscardClose } from "/ui/shared/components/close_confirm/close_confirm.js";
 
 const UI_VERSION_PARAM = new URLSearchParams(window.location.search).get("v") || String(Date.now());
 const initialOpenPath = new URLSearchParams(window.location.search).get("path") || "";
@@ -1709,13 +1710,15 @@ function openCodeTab(options = {}) {
   return tab;
 }
 
-function closeTab(id, skipConfirm = false) {
-  const index = state.tabs.findIndex((tab) => tab.id === id);
+async function closeTab(id, skipConfirm = false) {
+  let index = state.tabs.findIndex((tab) => tab.id === id);
   if (index < 0) return;
   const tab = state.tabs[index];
   if (!skipConfirm && tab.dirty) {
-    const confirmed = window.confirm(`${tabTitle(tab)} has unsaved changes. Close it anyway?`);
+    const confirmed = await confirmDiscardClose({ message: `Unsaved changes in ${tabTitle(tab)} will be lost.` });
     if (!confirmed) return;
+    index = state.tabs.indexOf(tab);
+    if (index < 0) return;
   }
   tab.iframe?.remove();
   state.tabs.splice(index, 1);
@@ -1977,22 +1980,22 @@ function updateMenuState() {
   renderRecentFilesMenu();
 }
 
-function closeTabsExcept(keepId) {
+async function closeTabsExcept(keepId) {
   const keep = state.tabs.find((tab) => tab.id === keepId) || null;
   const closing = state.tabs.filter((tab) => tab.id !== keepId);
   const dirty = closing.filter((tab) => tab.dirty);
   if (dirty.length) {
-    const confirmed = window.confirm(`${dirty.length} file${dirty.length === 1 ? " has" : "s have"} unsaved changes. Close anyway?`);
+    const confirmed = await confirmDiscardClose({ message: `Unsaved changes in ${dirty.length} ${dirty.length === 1 ? "file" : "files"} will be lost.` });
     if (!confirmed) return;
   }
-  for (const tab of closing) closeTab(tab.id, true);
+  for (const tab of closing) await closeTab(tab.id, true);
   if (keep) setActiveTab(keep.id);
 }
 
-function closeAllTabs() {
+async function closeAllTabs() {
   const dirty = state.tabs.filter((tab) => tab.dirty);
   if (dirty.length) {
-    const confirmed = window.confirm(`${dirty.length} file${dirty.length === 1 ? " has" : "s have"} unsaved changes. Close anyway?`);
+    const confirmed = await confirmDiscardClose({ message: `Unsaved changes in ${dirty.length} ${dirty.length === 1 ? "file" : "files"} will be lost.` });
     if (!confirmed) return;
   }
   for (const tab of [...state.tabs]) closeTab(tab.id, true);
@@ -2096,7 +2099,7 @@ function toggleCreateMenu(forceOpen) {
 }
 // The open tabs are saved with the settings, so the restarted app opens them again.
 async function restartArcode() {
-  if (!confirmWindowClose()) {
+  if (!(await confirmWindowClose())) {
     updateStatus("Restart canceled.");
     return;
   }
@@ -2128,7 +2131,7 @@ async function runShellAction(action, detail = {}) {
   if (action === "save-as") return sendScriptingCommand("arcode:scripting-save-as");
   if (action === "close-tab") return activeTab() ? closeTab(state.activeId) : undefined;
   if (action === "quit") {
-    if (confirmWindowClose()) window.ADAHost?.closeWindow?.();
+    void confirmWindowClose().then((ok) => { if (ok) window.ADAHost?.closeWindow?.(); });
     return;
   }
   if (action === "restart-app") return restartArcode();
@@ -2160,7 +2163,7 @@ async function runShellAction(action, detail = {}) {
       updateStatus("Clear Cache & Reload requires the desktop app host.");
       return;
     }
-    if (!confirmWindowClose()) {
+    if (!(await confirmWindowClose())) {
       updateStatus("Clear Cache & Reload canceled.");
       return;
     }
@@ -2273,7 +2276,7 @@ function initHotkeys() {
     if (event.ctrlKey && event.shiftKey && key === "r") { event.preventDefault(); reloadActiveTab({ hard: true }); return; }
     if (event.ctrlKey && event.shiftKey && key === "l") { event.preventDefault(); sendScriptingCommand("arcode:scripting-toggle-line-numbers"); return; }
     if (event.ctrlKey && event.shiftKey && key === "e") { event.preventDefault(); sendScriptingCommand("arcode:scripting-toggle-exec-time"); return; }
-    if (event.ctrlKey && key === "q") { event.preventDefault(); if (confirmWindowClose()) window.ADAHost?.closeWindow?.(); }
+    if (event.ctrlKey && key === "q") { event.preventDefault(); void confirmWindowClose().then((ok) => { if (ok) window.ADAHost?.closeWindow?.(); }); }
   }, { capture: true });
   window.addEventListener("wheel", (event) => {
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
@@ -2449,11 +2452,14 @@ function initAppFrameStyle() {
     .catch(() => {});
 }
 
-function confirmWindowClose() {
+async function confirmWindowClose() {
   const dirty = state.tabs.filter((tab) => tab.dirty);
   if (!dirty.length) return true;
   const label = dirty.length === 1 ? tabTitle(dirty[0]) : `${dirty.length} files`;
-  return window.confirm(`${label} have unsaved changes. Close Arcode anyway?`);
+  return confirmDiscardClose({
+    title: "Close Arcode without saving?",
+    message: `Unsaved changes in ${label} will be lost.`,
+  });
 }
 
 function initShellApi() {
