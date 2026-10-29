@@ -42,6 +42,17 @@ class AuditLogPolicyTests(unittest.TestCase):
         ])
         self.assertEqual([item["action"] for item in log], ["Insert", "Auto Refresh", "Update", "Imported"])
 
+    def test_automatic_entries_on_different_days_are_each_kept(self) -> None:
+        log = normalize_audit_log([
+            {"event_date": "2026-09-24T19:06:54Z", "action": "Auto Refresh", "user": "Engine"},
+            {"event_date": "2026-09-24T20:00:00Z", "action": "Auto Refresh", "user": "Engine"},
+            {"event_date": "2026-10-28T19:03:33Z", "action": "Auto Refresh", "user": "Engine"},
+        ])
+        self.assertEqual(
+            [item["event_date"] for item in log],
+            ["2026-09-24T20:00:00Z", "2026-10-28T19:03:33Z"],
+        )
+
     def test_consecutive_automatic_entries_collapse_to_the_most_recent(self) -> None:
         log = normalize_audit_log([
             _entry(1, "Update"),

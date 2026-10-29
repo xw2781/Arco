@@ -418,8 +418,8 @@ def _normalize_dataset_audit_log(value: Any) -> List[Dict[str, str]]:
 
     Every action is kept -- including the Engine's ``Auto Refresh`` entries,
     which an earlier version of this normalizer silently discarded on every
-    dataset save -- with consecutive automatic entries collapsed and the cap
-    applied.
+    dataset save -- with same-day consecutive automatic entries collapsed and
+    the cap applied.
     """
 
     return normalize_audit_log(value)

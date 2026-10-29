@@ -26,10 +26,11 @@ from .bootstrap_contract import BST_JSON_FORMAT
 from .bornhuetter_ferguson_contract import BF_JSON_FORMAT
 from .cape_cod_contract import CC_JSON_FORMAT
 from .io import persisted_json_text
+from .sidecar_audit_contract import latest_audit_entry
 from .stochastic_consolidation_contract import SCON_JSON_FORMAT, SCON_METHOD_TYPE
 
 
-DATASET_INDEX_VERSION = 23
+DATASET_INDEX_VERSION = 24
 INDEX_FILE_NAME = "index.json"
 DATASET_DIR_NAME = "datasets"
 METHOD_DIR_NAME = "methods"
@@ -646,6 +647,9 @@ def _metadata_row(
         data_format = _clean_text(metadata.get("data_format"))
         formula = _clean_text(metadata.get("formula"))
         user = _first_text(metadata, _USER_KEYS)
+        # The table names the last person's write, not a background refresh.
+        person_write = latest_audit_entry(metadata, skip_automatic=True)
+        user = person_write.get("user") or user
         for key, value in (
             ("dataset_type", dataset_type),
             ("dataset_category", category),
@@ -685,7 +689,7 @@ def _metadata_row(
         if "status" in metadata:
             row["status"] = _normalize_status(metadata.get("status"))
 
-        modified_text = _first_text(metadata, _MODIFIED_KEYS)
+        modified_text = person_write.get("at") or _first_text(metadata, _MODIFIED_KEYS)
         modified, modified_timestamp = _canonical_datetime(modified_text)
         if modified:
             row["last_modified"] = modified
@@ -968,7 +972,10 @@ def build_dataset_index_payload(
             metadata_path = dataset_sidecar_path_for_cached_csv(file_stat.path)
             metadata = payloads.get(_path_key(metadata_path), {})
             metadata = metadata if isinstance(metadata, Mapping) else {}
-            metadata_is_sidecar = bool(metadata)
+            if not metadata:
+                # A data file with no sidecar is a runtime cache, not a dataset.
+                continue
+            metadata_is_sidecar = True
         else:
             metadata = payloads.get(_path_key(file_stat.path), {})
             metadata = metadata if isinstance(metadata, Mapping) else {}

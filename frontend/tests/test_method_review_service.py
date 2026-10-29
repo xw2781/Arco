@@ -53,6 +53,17 @@ class MethodReviewTests(unittest.TestCase):
                 with self.subTest(files=changed_files):
                     self.assertEqual(refreshed_status({"status": 0}, changed_files), 2)
 
+    def test_floating_point_noise_is_not_a_change_but_a_real_difference_is(self):
+        with tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT) as folder:
+            method_path = str(Path(folder) / "method.json")
+            csv_path = str(Path(folder) / "output@12.csv")
+            Path(method_path).write_text(json.dumps({"values": [55690.69753793477, 0.0]}), encoding="utf-8")
+            Path(csv_path).write_text("55690.69753793477\n", encoding="utf-8")
+            noisy = {method_path: json.dumps({"values": [55690.69753793479, 0.0]}), csv_path: "55690.69753793479\n"}
+            self.assertEqual(refreshed_status({"status": 0}, noisy), 0)
+            moved = {**noisy, method_path: json.dumps({"values": [55690.70753793479, 0.0]})}
+            self.assertEqual(refreshed_status({"status": 0}, moved), 2)
+
     def test_walk_collects_only_the_outputs_that_turn_from_ok_to_needs_review(self):
         with tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT) as folder:
             csv_path = str(Path(folder) / "output@12.csv")

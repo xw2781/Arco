@@ -195,7 +195,7 @@ class ArcRhoApiTests(unittest.TestCase):
         self.assertEqual(index["reserving_class"], r"Auto\PP")
         self.assertEqual(
             [row["name"] for row in index["files"]],
-            ["input", "Paid DFM", "Paid Loss", "ultimate"],
+            ["Paid DFM", "Paid Loss"],
         )
         dfm_row = next(row for row in index["files"] if row["name"] == "Paid DFM")
         self.assertEqual(dfm_row["dataset_type"], "Paid Ultimate")

@@ -39,8 +39,8 @@ _PRIOR = {
     "show_subtotal": False,
     "audit_log": [
         {"event_date": "2026-08-01T00:00:00Z", "action": "Insert", "change_info": "", "user": "Dana"},
-        {"event_date": "2026-08-02T00:00:00Z", "action": "Auto Refresh", "change_info": "", "user": "Engine"},
         {"event_date": "2026-08-03T00:00:00Z", "action": "Auto Refresh", "change_info": "", "user": "Engine"},
+        {"event_date": "2026-08-03T06:00:00Z", "action": "Auto Refresh", "change_info": "", "user": "Engine"},
     ],
 }
 
@@ -203,13 +203,13 @@ class CrossWriterSidecarCoreTests(unittest.TestCase):
         self.assertEqual(sidecar[SIDECAR_STORED_DEVELOPMENT_FIELD], 3)
 
     def test_every_producer_appends_under_the_one_audit_policy(self) -> None:
-        # The prior log carries two consecutive automatic entries; each writer
+        # The prior log carries two same-day automatic entries; each writer
         # keeps the history, collapses the run, and appends its own record.
         for name, build in PRODUCERS.items():
             with self.subTest(producer=name):
                 log = build()["audit_log"]
                 self.assertEqual([item["action"] for item in log], ["Insert", "Auto Refresh", "Update"])
-                self.assertEqual(log[1]["event_date"], "2026-08-03T00:00:00Z")
+                self.assertEqual(log[1]["event_date"], "2026-08-03T06:00:00Z")
                 self.assertEqual(log[-1]["user"], "tester")
 
     def test_a_method_writer_without_an_audit_entry_still_normalizes_the_log(self) -> None:

@@ -17,8 +17,9 @@ as literals at every producer and consumer.
 
 There is one policy for every log, and it lives here so no writer can keep a
 private one: every action is kept, a run of consecutive automatic entries
-collapses to its most recent member (a propagation walk that republishes the
-same output ten times is one fact, not ten), and the log is capped at
+on one calendar day collapses to its most recent member (a propagation walk
+that republishes the same output ten times is one fact, not ten, while a
+refresh on a later day stays a separate record), and the log is capped at
 :data:`DATASET_AUDIT_LOG_MAX_ENTRIES` records for a dataset and
 :data:`PROJECT_AUDIT_LOG_MAX_ENTRIES` for a project, oldest dropped first.
 """
@@ -103,7 +104,8 @@ def normalize_audit_log(
     """Apply the one audit policy to a stored log.
 
     Every usable entry is kept whatever its action; consecutive automatic
-    entries collapse to the most recent one; the newest ``max_entries`` remain.
+    entries on the same calendar day collapse to the most recent one; the
+    newest ``max_entries`` remain.
     """
 
     kept: list[dict[str, str]] = []
@@ -111,7 +113,12 @@ def normalize_audit_log(
         entry = normalize_audit_entry(raw)
         if entry is None:
             continue
-        if kept and is_automatic_audit_action(entry["action"]) and is_automatic_audit_action(kept[-1]["action"]):
+        if (
+            kept
+            and is_automatic_audit_action(entry["action"])
+            and is_automatic_audit_action(kept[-1]["action"])
+            and entry["event_date"][:10] == kept[-1]["event_date"][:10]
+        ):
             kept[-1] = entry
             continue
         kept.append(entry)
@@ -163,11 +170,16 @@ def is_automatic_audit_action(value: Any) -> bool:
     return normalize_audit_action(value) in AUTOMATIC_AUDIT_ACTIONS
 
 
-def latest_audit_entry(payload: Mapping[str, Any] | None) -> dict[str, str]:
+def latest_audit_entry(
+    payload: Mapping[str, Any] | None,
+    *,
+    skip_automatic: bool = False,
+) -> dict[str, str]:
     """Project the last usable ``audit_log`` entry of a sidecar payload.
 
     Entries are appended in write order, so the last one that names an action
-    describes the write that produced the file as it stands.
+    describes the write that produced the file as it stands. ``skip_automatic``
+    passes over ``Auto Refresh`` entries to find the last write a person made.
     """
 
     entries = (payload or {}).get("audit_log")
@@ -177,7 +189,7 @@ def latest_audit_entry(payload: Mapping[str, Any] | None) -> dict[str, str]:
         if not isinstance(raw, Mapping):
             continue
         action = normalize_audit_action(raw.get("action") or raw.get("Action"))
-        if not action:
+        if not action or (skip_automatic and is_automatic_audit_action(action)):
             continue
         return {
             "action": action,

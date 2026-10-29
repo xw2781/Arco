@@ -5,6 +5,7 @@ import contextvars
 import csv
 import io
 import json
+import math
 from contextlib import contextmanager
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -17,6 +18,10 @@ _AUDIT_FIELDS = {
     "created_at", "created_by", "updated_at", "modified_by", "last_modified",
     "data_refreshed", "audit_log",
 }
+
+# A refresh that recomputes the same figures can land a few ulps away; that is
+# not a change a person needs to review.
+_NUMBER_TOLERANCE = 1e-9
 
 # The method outputs one dependent walk turned from OK to Needs Review, in
 # publication order. The outermost ``recalculate_dependents`` opens the
@@ -53,6 +58,18 @@ def review_content(value: Any) -> Any:
     if isinstance(value, list):
         return [review_content(item) for item in value]
     return value
+
+
+def _equivalent(left: Any, right: Any) -> bool:
+    """Equality that lets numbers differ by floating-point noise."""
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(_equivalent(left[key], right[key]) for key in left)
+    if isinstance(left, list) and isinstance(right, list):
+        return len(left) == len(right) and all(_equivalent(a, b) for a, b in zip(left, right))
+    numbers = (int, float, Decimal)
+    if isinstance(left, numbers) and isinstance(right, numbers) and not isinstance(left, bool) and not isinstance(right, bool):
+        return math.isclose(float(left), float(right), rel_tol=_NUMBER_TOLERANCE, abs_tol=_NUMBER_TOLERANCE)
+    return left == right
 
 
 def _csv_content(text: str) -> list:
@@ -96,9 +113,9 @@ def _refreshed_status(previous_sidecar: Mapping[str, Any], files: Mapping[str, s
         except FileNotFoundError:
             return statuses.STATUS_REVIEW_NEEDED
         if path.suffix.lower() == ".json":
-            unchanged = review_content(json.loads(previous)) == review_content(json.loads(proposed))
+            unchanged = _equivalent(review_content(json.loads(previous)), review_content(json.loads(proposed)))
         else:
-            unchanged = _csv_content(previous) == _csv_content(proposed)
+            unchanged = _equivalent(_csv_content(previous), _csv_content(proposed))
         if not unchanged:
             return statuses.STATUS_REVIEW_NEEDED
     return statuses.STATUS_CURRENT
