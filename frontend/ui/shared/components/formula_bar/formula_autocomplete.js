@@ -80,7 +80,8 @@ export function installFormulaAutocomplete(input, { identityProvider = formulaPa
         label.textContent = arg.optional ? `[${arg.name}]` : arg.name; hint.append(label);
       });
       hint.append(")");
-    } else hint.textContent = "Choose a function · Tab or Enter to insert";
+    } else hint.textContent = query.kind === "function" ? "Choose a function · Tab or Enter to insert" : "";
+    hint.hidden = !hint.textContent;
     const filter = query.query?.replace(/^"|"$/g, "").replaceAll('""', '"').toLowerCase() || "";
     if (query.kind === "function") {
       options = FORMULA_CATALOG.filter(item => item.name.toLowerCase().startsWith(filter))

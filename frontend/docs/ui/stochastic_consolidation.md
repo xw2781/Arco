@@ -5,7 +5,7 @@ Stochastic Consolidation method page: combines the simulated reserves of several
 
 ## Entry Points
 <!-- AUTO-GEN:BEGIN frontend.stochastic_consolidation.entry_points -->
-- `ui/method_pages/stochastic_consolidation/stochastic_consolidation.html`: external scripts `/ui/method_pages/stochastic_consolidation/stochastic_consolidation_main.js?v=20261020a`, `/ui/shared/services/color_theme.js?v=20260923c`, `/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d`; inline imports _none_.
+- `ui/method_pages/stochastic_consolidation/stochastic_consolidation.html`: external scripts `/ui/method_pages/stochastic_consolidation/stochastic_consolidation_main.js?v=20261028a`, `/ui/shared/services/color_theme.js?v=20260923c`, `/ui/shared/tabbed_page/initial_tab_paint.js?v=20260824d`; inline imports _none_.
 
 Detected `arcrho:*` message types in key JS files:
 - `arcrho:dataset-dirty`

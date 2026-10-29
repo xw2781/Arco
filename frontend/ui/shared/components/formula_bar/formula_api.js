@@ -16,16 +16,30 @@ export async function formulaRequest(url, options = {}) {
   return payload;
 }
 
-export async function formulaDatasetNames(identity = formulaPageIdentity(), signal) {
+/** Each dataset of a class with its Triangle/Vector format. */
+export async function formulaDatasets(identity = formulaPageIdentity(), signal) {
   if (!identity.project_name || !identity.reserving_class) return [];
   const payload = await formulaRequest(`/datasets/cached?${new URLSearchParams(identity)}`, { signal, cache: "no-store" });
-  return (payload.files || []).map(item => String(item.name || "")).filter(Boolean);
+  return (payload.files || []).map(item => ({ name: String(item.name || ""), format: String(item.data_format || "") })).filter(item => item.name);
+}
+
+export async function formulaDatasetNames(identity = formulaPageIdentity(), signal) {
+  return (await formulaDatasets(identity, signal)).map(item => item.name);
+}
+
+export const formulaProjects = () => loadProjectValidValueList();
+
+export async function formulaReservingClasses(projectName) {
+  if (!projectName) return [];
+  const payload = await formulaRequest(`/reserving_class_paths_with_data?${new URLSearchParams({ project_name: projectName })}`);
+  // Dot folders are import staging areas, not reserving classes.
+  return (payload.reserving_classes || []).map(String).filter(name => !name.startsWith("."));
 }
 
 export async function formulaContextOptions(name, identity) {
   const names = name === "Path"
-    ? []
-    : await loadProjectValidValueList();
+    ? await formulaReservingClasses(identity?.project_name)
+    : await formulaProjects();
   return [{ label: name === "Path" ? "Current RC (empty argument)" : "Current project (empty argument)", value: "" }, ...names.map(value => ({ label: value, value }))];
 }
 

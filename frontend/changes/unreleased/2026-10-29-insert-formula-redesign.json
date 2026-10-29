@@ -1,0 +1,11 @@
+{
+  "type": "improvement",
+  "scope": "formula bar",
+  "audience": "user",
+  "summary": "Insert Formula is redesigned: pick a function, fill a short form with dropdowns, and see the result preview update as you go.",
+  "details": [
+    "Project, reserving class, and dataset are dropdowns, and the dataset list shows only triangles or only vectors to match the function.",
+    "Options are checkboxes and period lengths a fixed list; quoting and default arguments are handled for you.",
+    "The formula text stays editable and keeps the form in step, and fx on a linked cell opens with its call filled in."
+  ]
+}
