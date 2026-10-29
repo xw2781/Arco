@@ -8,7 +8,7 @@ metadata:
   modified: 2026-10-20T18:44:01.653Z
 ---
 
-`frontend/ui/shared/styles/themes/dark.css` has a global rule `:root[data-arcrho-theme="dark"] :is(input, textarea, select, option, button, [contenteditable="true"])` that sets background, border and colour. Its specificity (0,2,1) beats a feature rule like `.dsChartLinkButton` (0,1,0), so in Dark a link-style button grows a filled box and a segmented control loses its "selected" fill — found 2026-10-20 on the Dataset Viewer Chart tab toolbar.
+`frontend/ui/shared/styles/themes/dark.css` has a global rule `:root[data-arcrho-theme="dark"] :is(input, textarea, select, option, button, [contenteditable="true"])` that sets background, border and colour. Its specificity is **(0,3,0)**, not (0,2,1): `:is()` takes its heaviest argument, and `[contenteditable="true"]` counts as a class. It beats a feature rule like `.dsChartLinkButton` (0,1,0), so in Dark a link-style button grows a filled box and a segmented control loses its "selected" fill — found 2026-10-20 on the Dataset Viewer Chart tab toolbar. On 2026-10-29 `dialog.arFormulaHelper button.arFxFunction` (0,2,2) still lost to it; prefixing `:root` (0,3,2) fixed it, and an element-only selector like `footer button` needs a class too.
 
 **Why:** light mode looks right, so the bug only shows when the theme is switched; screenshot both themes.
 

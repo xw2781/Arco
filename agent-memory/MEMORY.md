@@ -112,7 +112,8 @@
 - [Build listener down: local build_exe](build-listener-down-local-build.md) — on the Server PC run build_exe.py with ARCRHO_DEPLOY_ROOT; delete venvs/builds after
 - [Temp files on E:](temp-files-on-e-drive.md) — standing rule since 2026-10-12: all temp files go in repo tmp_data/ on E:, never C: or the session scratchpad
 - [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme only and short bullet points, not prose
-- [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button; scope feature button rules under the page id and screenshot both themes
+- [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button at 0-3-0; prefix feature rules with :root or the page id and screenshot both themes
 - [Source column names with spaces](source-column-names-with-spaces.md) — 2026-10-26: Engine accepts spaced columns; a rename touches mapping, dataset_types Source, and rule source_measure
 - [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding an empty vector in the base class, not by editing formulas
 - [resq-invalid-aggregate-trace](resq-invalid-aggregate-trace.md) — How to trace a red "invalid" ResQ aggregate — compare ReservingClass.Formula…
+- [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a page-wide shield; reopen the project tab
