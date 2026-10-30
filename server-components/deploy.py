@@ -34,6 +34,7 @@ if str(ENGINE_SRC) not in sys.path:
     sys.path.insert(0, str(ENGINE_SRC))
 
 from arcrho_build_components import (  # noqa: E402
+    BUILD_CLONE_MARKER,
     COMPONENTS,
     COMPONENT_KEYS,
     DEPLOY_ROOT,
@@ -41,6 +42,7 @@ from arcrho_build_components import (  # noqa: E402
     build_freshness,
     component_by_key,
     stale_components,
+    workspace_drive_is_local,
 )
 from arcrho_build_request_contract import (  # noqa: E402
     SOURCE_MODE_REF,
@@ -65,6 +67,7 @@ PATCH_MEMBER_NAME = "changes.patch"
 UNTRACKED_PREFIX = "untracked/"
 POLL_SECONDS = 2.0
 DEFAULT_TIMEOUT_SECONDS = 3600.0
+LISTENER_START_TIMEOUT_SECONDS = 90.0
 PAYLOAD_PREVIEW_LIMIT = 12
 
 EXIT_OK = 0
@@ -317,6 +320,38 @@ def _wait_for_result(server_root: Path, request_id: str, timeout_seconds: float)
         time.sleep(POLL_SECONDS)
 
 
+def build_clones(repository_root: Path = REPOSITORY_ROOT) -> list[Path]:
+    """Sibling clones marked as the listener's own, which nobody edits."""
+
+    return sorted(marker.parent.parent for marker in repository_root.parent.glob(f"*/.git/{BUILD_CLONE_MARKER}"))
+
+
+def _start_server_listener(server_root: Path) -> list[dict[str, Any]]:
+    """On the Server PC, start the Build Manager from the build clone and wait for it to listen.
+
+    Started from that clone, the Manager turns listening on by itself (see
+    auto_listen_decision), so the one human step disappears where it is safe to
+    skip. Anywhere else, or with no single marked clone, nothing is started.
+    """
+
+    if not workspace_drive_is_local(server_root):
+        return []
+    clones = build_clones()
+    if len(clones) != 1:
+        print(f"Not starting a listener: expected one clone marked .git/{BUILD_CLONE_MARKER}, found {len(clones)}.")
+        return []
+    launcher = clones[0] / "server-components" / "build_manager.bat"
+    print(f"No listener is running; starting the Build Manager from {clones[0]}.")
+    subprocess.Popen(["cmd", "/c", str(launcher)], cwd=launcher.parent, creationflags=CREATE_NO_WINDOW)
+    deadline = time.monotonic() + LISTENER_START_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        try:
+            return require_live_listener(server_root)
+        except BuildListenerUnavailable:
+            time.sleep(POLL_SECONDS)
+    return []
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="deploy.py",
@@ -361,8 +396,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             listeners = require_live_listener(server_root)
         except BuildListenerUnavailable as exc:
-            print(str(exc), file=sys.stderr)
-            return EXIT_NO_LISTENER
+            listeners = _start_server_listener(server_root)
+            if not listeners:
+                print(str(exc), file=sys.stderr)
+                return EXIT_NO_LISTENER
         listener_names = ", ".join(str(item.get("Server") or "listener") for item in listeners)
         print(f"Listener: {listener_names}")
 

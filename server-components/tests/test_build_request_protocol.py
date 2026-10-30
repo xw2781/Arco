@@ -201,6 +201,39 @@ class ListenerHeartbeatTests(unittest.TestCase):
                 contract.require_live_listener(server_root)
 
 
+class ServerListenerStartTests(unittest.TestCase):
+    """deploy.py starts the Build Manager itself on the Server PC, and nowhere else."""
+
+    def test_only_the_sibling_clone_carrying_the_marker_is_a_build_clone(self) -> None:
+        with _temp_root() as root:
+            repos = Path(root)
+            for name in ("ArcRho", "ArcRho-buildbot", "Other"):
+                (repos / name / ".git").mkdir(parents=True)
+            (repos / "ArcRho-buildbot" / ".git" / deploy.BUILD_CLONE_MARKER).write_text("", encoding="utf-8")
+            self.assertEqual(deploy.build_clones(repos / "ArcRho"), [repos / "ArcRho-buildbot"])
+
+    def test_the_server_pc_starts_the_manager_from_the_build_clone_and_waits(self) -> None:
+        live = [{"Server": "SERVER@xwei"}]
+        with patch.object(deploy, "workspace_drive_is_local", return_value=True), \
+                patch.object(deploy, "build_clones", return_value=[Path("E:/Repos/ArcRho-buildbot")]), \
+                patch.object(deploy.subprocess, "Popen") as popen, \
+                patch.object(deploy.time, "sleep"), \
+                patch.object(deploy, "require_live_listener",
+                             side_effect=[contract.BuildListenerUnavailable("none"), live]):
+            self.assertEqual(deploy._start_server_listener(Path("E:/ArcRho Server")), live)
+        command = popen.call_args.args[0]
+        self.assertEqual(Path(command[-1]), Path("E:/Repos/ArcRho-buildbot/server-components/build_manager.bat"))
+
+    def test_nothing_starts_from_a_client_pc_or_without_one_marked_clone(self) -> None:
+        for local, clones in ((False, [Path("E:/a")]), (True, []), (True, [Path("E:/a"), Path("E:/b")])):
+            with self.subTest(local=local, clones=clones), \
+                    patch.object(deploy, "workspace_drive_is_local", return_value=local), \
+                    patch.object(deploy, "build_clones", return_value=clones), \
+                    patch.object(deploy.subprocess, "Popen") as popen:
+                self.assertEqual(deploy._start_server_listener(Path("E:/ArcRho Server")), [])
+                popen.assert_not_called()
+
+
 class ListenerServicingTests(unittest.TestCase):
     """The listener's queue behaviour, with the build script itself stubbed."""
 
