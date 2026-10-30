@@ -10,28 +10,21 @@ const PROJECT_READ_TOOL = {
   },
 };
 
-// The registry owns method families and request arguments. This policy exposes
+// The agent read list in arcrho_mcp.reads is shared with the Arco MCP server:
 // method loads, dataset loads and the discovery reads, never simulations or
 // mutations. Any project on the server may be read; the open one is the default.
 const PROJECT_READ_SCRIPT = `
 import json, sys
-from arcrho_workspace_read_contract import WORKSPACE_READ_KINDS
+from arcrho_mcp.reads import agent_read_catalog, agent_read_spec
 from arcrho_api.gateway import GatewayClient
 request = json.load(sys.stdin)
 project = request['project']
-allowed = {name: spec for name, spec in WORKSPACE_READ_KINDS.items()
-           if name in ('project_names', 'reserving_class_combinations', 'dataset_index',
-                       'dataset_cache_load', 'dataset_sidecar_load')
-           or (spec.function.startswith('load_') and 'method_name' in spec.required)}
 kind = request['kind']
 if kind == 'catalog':
-    result = {name: {'required': spec.required, 'optional': spec.optional}
-              for name, spec in allowed.items()}
+    result = agent_read_catalog()
 else:
-    if kind not in allowed:
-        raise ValueError('ArcBot exposes method loads, dataset loads and discovery reads only')
+    spec = agent_read_spec(kind)
     arguments = request.get('arguments') or {}
-    spec = allowed[kind]
     names_project = 'project_name' in (*spec.required, *spec.optional)
     if names_project and not arguments.get('project_name'):
         if not project:

@@ -1894,7 +1894,7 @@ def _rs_json_number(value):
         return None
     if isinstance(value, int):
         return value
-    # Carried whole, matching result_selection_service._round_number: the value
+    # Carried whole, matching result_selection_contract.round_number: the value
     # is a ResQ ultimate, and rounding the copy is what made ArcRho's weighted
     # average disagree with ResQ's.
     return 0.0 if number == 0 else number

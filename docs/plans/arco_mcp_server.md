@@ -1,6 +1,6 @@
 # Arco MCP Server
 
-Status: Design proposed 2026-10-23; no step started.
+Status: Design proposed 2026-10-23. MVP of step 2 built 2026-10-30; see [MVP](#mvp-2026-10-30).
 
 ## Goal
 
@@ -110,6 +110,18 @@ The server resolves labels against the method it just loaded, so an agent cannot
 | 8 | Frozen `arco_mcp.exe` published to the shared tools folder, plus a one-page setup guide for agents | Step 2 |
 
 Step 5 is the acceptance test: the study runs a segment end to end with no repository on the agent's machine.
+
+## MVP (2026-10-30)
+
+Step 2, built as [python-api/src/arcrho_mcp](../../python-api/src/arcrho_mcp/README.md) and registered for Claude Code in the repository's `.mcp.json`. Decisions taken for it:
+
+- **Scope:** reads and previews only, over stdio. `compare_methods` is not in it.
+- **Previews calculate in the MCP process.** The DFM preview calls `preview_dfm_method`; the Result Selection preview calls `arcrho_api.result_selection_contract`, which the app server's Result Selection service now imports too. The `dfm_method_preview` read kind waits for the hosted `/mcp` step.
+- **Methods are listed from the class index** (`dataset_index` rows carry the method type), so the `reserving_class_methods` read kind is not needed.
+- **`arco_read` takes a curated list**, `arcrho_mcp/reads.py`, which ArcBot's read tool also imports. This settles the first open decision.
+- **DFM edits are `exclude`, `include` and `select_average` only.** Labels must match exactly; an unknown label or a new average is refused.
+- **The MCP SDK is the optional `mcp` extra (2.x).** `reads.py` and `tools.py` do not import it, so ArcBot and the app wheel stay dependency-free.
+- **Identity:** the server uses the running user's Gateway credential; `ARCRHO_GATEWAY_CONFIG` points it at an agent user's credential instead.
 
 ## Open decisions
 

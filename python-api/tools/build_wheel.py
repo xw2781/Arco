@@ -21,6 +21,7 @@ except ModuleNotFoundError:  # Python 3.10 build runtime.
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
 SRC = ROOT / "src"
+PACKAGES = ("arcrho_api", "arcrho_mcp")
 STANDALONE_MODULES = (
     SRC / "arcrho_project_duplication_contract.py",
     SRC / "arcrho_engine_job_lease.py",
@@ -131,10 +132,10 @@ def build_wheel(out_dir: Path, *, version_override: str | None = None) -> Path:
     wheel_path = out_dir / wheel_name
 
     files: dict[str, bytes] = {}
-    package_root = SRC / "arcrho_api"
-    for path in sorted(package_root.rglob("*")):
-        if path.is_file() and path.suffix in {".py", ".pyi"}:
-            files[path.relative_to(SRC).as_posix()] = path.read_bytes()
+    for package in PACKAGES:
+        for path in sorted((SRC / package).rglob("*")):
+            if path.is_file() and path.suffix in {".py", ".pyi"}:
+                files[path.relative_to(SRC).as_posix()] = path.read_bytes()
     for path in STANDALONE_MODULES:
         if not path.is_file():
             raise FileNotFoundError(f"Required standalone module is missing: {path}")

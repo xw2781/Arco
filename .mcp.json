@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "arco": {
+      "command": "py",
+      "args": ["-3.10", "-m", "arcrho_mcp"],
+      "env": {
+        "PYTHONPATH": "python-api/src"
+      }
+    }
+  }
+}
