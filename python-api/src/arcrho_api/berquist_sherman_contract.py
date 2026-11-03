@@ -26,6 +26,7 @@ from __future__ import annotations
 import math
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+from .period_reshape import fit_by_position, reshape_matrix
 from .dataset_index_contract import (
     BS_CRA_JSON_FORMAT,
     BS_SR_JSON_FORMAT,
@@ -1066,3 +1067,59 @@ __all__ = [
     "output_values_equal",
     "parse_output_csv_text",
 ]
+
+
+# --------------------------------------------------------------------------
+# A move of the project dates
+# --------------------------------------------------------------------------
+
+#: Per-development-column selections and the value a new column starts at.
+_COLUMN_SELECTIONS: dict[str, tuple[tuple[str, Any], ...]] = {
+    BS_SR_VARIANT: (
+        ("selected_proportion_settled", None),
+        ("selected_proportion_is_default", True),
+    ),
+    BS_CRA_VARIANT: (
+        ("inflation_selection", "paid_all"),
+        ("user_inflation", 0.0),
+        ("user_inflation_inputs", ""),
+        ("average_case_reserve_selection", "latest"),
+        ("user_average_case_reserves", 0.0),
+        ("user_average_case_reserves_inputs", ""),
+    ),
+}
+
+
+def reshape_berquist_sherman_periods(
+    method: Mapping[str, Any],
+    origin_labels: Sequence[Any],
+    development_labels: Sequence[Any],
+) -> dict[str, Any]:
+    """Return *method* moved onto new origins and development columns.
+
+    Rows follow their origin label and columns keep their position from the
+    first column (``period_reshape``); a new column starts at the page's
+    default selection, and a new Settlement Rate row or cell starts null,
+    which the calculation reads as its default adjustment. The output triangle
+    is recalculated from the sources by the next refresh.
+    """
+
+    variant = berquist_sherman_method_variant(method)
+    if variant not in BS_SOURCE_ROLES:
+        raise BerquistShermanContractError("Not a Berquist Sherman method.")
+    out = {key: value for key, value in method.items()}
+    tab = dict(method.get("method_tab") or {})
+    old_origins = [str(label) for label in tab.get("origin_labels") or []]
+    origins = [str(label) for label in origin_labels]
+    columns = [str(label) for label in development_labels]
+    for key, fill in _COLUMN_SELECTIONS[variant]:
+        if isinstance(tab.get(key), list):
+            tab[key] = fit_by_position(tab[key], len(columns), fill)
+    if variant == BS_SR_VARIANT and isinstance(tab.get("selected_adjustment"), list):
+        tab["selected_adjustment"] = reshape_matrix(
+            tab["selected_adjustment"], old_origins, origins, len(columns), None
+        )
+    tab["origin_labels"] = origins
+    tab["development_labels"] = columns
+    out["method_tab"] = tab
+    return out

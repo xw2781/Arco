@@ -46,6 +46,7 @@ from .bootstrap_simulation import (
 )
 from .dataset_display_contract import normalize_show_subtotal
 from .dfm_contract import aggregate_vector_values, canonical_number, selected_ratio_values
+from .period_reshape import rows_by_label
 from .revision_contract import fingerprint
 from .sidecar_audit_contract import (
     AUDIT_ACTION_INSERT,
@@ -913,6 +914,7 @@ def recalculate_bootstrap_method(
     )
     details = method["details_tab"]
     results = method["results_tab"]
+    old_origins = _labels(results.get("origin_labels"))
 
     if dfm_snapshot is not None:
         snapshot = _normalize_snapshot(dfm_snapshot)
@@ -930,6 +932,13 @@ def recalculate_bootstrap_method(
     origins = _labels(snapshot.get("origin_labels"))
     results["origin_labels"] = origins
     row_count = len(origins)
+    if old_origins and old_origins != origins:
+        # A move of the project dates: per-origin choices follow their origin
+        # label and a new origin starts at the defaults (period_reshape).
+        results["target_scaling_methods"] = rows_by_label(
+            results["target_scaling_methods"], old_origins, origins, "additive"
+        )
+        results["target_cvs"] = rows_by_label(results["target_cvs"], old_origins, origins, 0)
 
     if target_snapshot is not None:
         labels = _labels(

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Mapping, MutableMapping
+from typing import Any, Mapping, MutableMapping, Sequence
+
+from .period_reshape import rows_by_label
 
 
 def round_number(value: Any) -> float | int | None:
@@ -67,3 +69,26 @@ def recalculate_result_selection(payload: MutableMapping[str, Any]) -> None:
         overrides[index] if overrides[index] is not None else calculated[index]
         for index in range(row_count)
     ]
+
+
+def reshape_result_selection_origins(payload: MutableMapping[str, Any], origin_labels: Sequence[Any]) -> None:
+    """Move a normalized method onto new origins after the project dates move.
+
+    Every per-origin list follows its origin label (``period_reshape``): a kept
+    origin keeps its weights, values and override wherever its row now sits, a
+    dropped origin's entries go, and a new origin starts with weight 0, no
+    values and no override. The ultimates are then recalculated; the next
+    refresh fills the new origins' values from the sources.
+    """
+
+    method = payload["method_tab"]
+    old = [str(label) for label in method.get("origin_labels") or []]
+    new = [str(label) for label in origin_labels]
+    for source in method.get("loaded_datasets") or []:
+        source["values"] = rows_by_label(source.get("values") or [], old, new, None)
+        source["weights"] = rows_by_label(source.get("weights") or [], old, new, 0.0)
+    for basis in method.get("ratio_basis_values") or []:
+        basis["values"] = rows_by_label(basis.get("values") or [], old, new, None)
+    method["ultimate_overrides"] = rows_by_label(method.get("ultimate_overrides") or [], old, new, None)
+    method["origin_labels"] = new
+    recalculate_result_selection(payload)

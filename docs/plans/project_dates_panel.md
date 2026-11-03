@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-2 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-3 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -14,14 +14,14 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A written list of every stored file that depends on the project dates, and how each one reshapes | [x] | 2026-11-03 | 60 min | 5 min | Nothing yet; the plan now lists every kind of saved data the dates shape and how each will follow a change. |
 | 2 | A development method accepts a new set of columns and keeps its selections by position | [x] | 2026-11-03 | 70 min | 6 min | A development method whose triangle gains or loses a column after a date change now follows it and keeps its exclusions, selections and notes, instead of refusing. |
-| 3 | Every other method type reshapes the same way | [ ] | | 80 min | | |
+| 3 | Every other method type reshapes the same way | [x] | 2026-11-03 | 80 min | 9 min | Every other method type, and every hand-entered or imported dataset, now follows a date change with its weights, overrides and choices kept on the right origin; Excel-linked cells stay where they are. |
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [ ] | | 90 min | | |
 | 5 | The app can start the job, report its progress, and preview what it will touch | [ ] | | 60 min | | |
 | 6 | A floating panel changes all three dates together, behind a confirmation | [ ] | | 80 min | | |
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 
-Overall: 2 of 8 steps done. Estimated 540 min, actual so far 11 min.
+Overall: 3 of 8 steps done. Estimated 540 min, actual so far 20 min.
 
 ## How agents work this plan
 
@@ -117,9 +117,21 @@ Actual: code edit 4 min, test/validation 2 min, total 6 min; well under because 
 ### Step 3: Other method types
 Estimate: 80 min
 
+Actual: code edit 6 min, test/validation 3 min, total 9 min; well under because BF, Cape Cod and Bootstrap already reshaped inside their refresh, so only two explicit calls and the dataset rule were new.
+
+Read first: `python-api/src/arcrho_api/period_reshape.py` (step 2's helper), the refresh entry of each contract (`recalculate_bornhuetter_ferguson_method`, `recalculate_cape_cod_method`, `recalculate_bootstrap_method`, `recalculate_result_selection`, `calculate_berquist_sherman_output`), and the link block layout in `dataset_link_contract.py` (around line 684).
+
 Apply step 1's rules to each remaining method type and to hand-entered and imported datasets, reusing the one reshape helper from step 2 (origin by label, development by position) rather than a copy per type (Single Source of Truth). Methods that cannot be reshaped safely, and every reshaped hand-entered or imported dataset, are listed in the job result for review, not skipped silently.
 
 Done when each type has a reshape test, and the BF "stored ultimate matches its source snapshots" check still passes after a reshape.
+
+Done 2026-11-03. Entry points, all in `python-api/src/arcrho_api`:
+- **Reshaped inside their refresh** (the job only feeds new-shape snapshots): Bornhuetter Ferguson weights and Cape Cod trend overrides follow their origin label (new origin weight 1, no override); Bootstrap's per-origin scaling method and CV follow their label when the embedded DFM snapshot's origins change (new origin `additive`, 0); its per-period user scale values stay by position.
+- **Reshaped by an explicit call before the refresh**, because their refresh reads values without labels: `reshape_result_selection_origins(payload, origin_labels)` in `result_selection_contract.py` (normalized payload, in place; new origin weight 0, no values, no override; ultimates recalculated) and `reshape_berquist_sherman_periods(method, origin_labels, development_labels)` in `berquist_sherman_contract.py` (returns a copy; SR adjustments rows by label, every per-column list by position, new columns at the page defaults). The Result Selection output sidecar's origin labels must move with the method, or the load check "method and sidecar origin labels do not match" refuses it.
+- **Hand-entered and imported datasets**: `reshape_input_dataset(sidecar, values, old_origin_labels, new_origin_labels, development_labels=None)` in `period_reshape.py` returns `{"sidecar", "values", "review"}`. The caller passes the true origins under the old and new dates (most sidecars store index labels `1..N`, which stay index labels at the new count). Arco formula and internal link targets shift with their origin and drop with it; Excel-linked cells keep their absolute cell and value (decision 8). `review` always holds "hand-entered or imported", plus "has cell links" and "dropped origins held data" when they apply. Writing the CSV and deleting its `@n` sibling views stays with the job.
+- A method that cannot be reshaped raises its contract error (the DFM's "development-label geometry changed"); the job catches it and lists the method for review.
+
+Tests: `python-api/tests/test_method_period_reshape.py`. Checked read-only against the Fake MA BI Total class: its 6 Result Selections and 4 Bornhuetter Fergusons moved forward one origin and back to identical weights and ultimates.
 
 ### Step 4: The project dates job
 Estimate: 90 min

@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping
 
 from .dataset_display_contract import normalize_show_subtotal
 from .dfm_contract import aggregate_vector_values, canonical_input_number
+from .period_reshape import rows_by_label
 from .revision_contract import fingerprint
 from .sidecar_audit_contract import (
     AUDIT_ACTION_INSERT,
@@ -540,16 +541,15 @@ def recalculate_bornhuetter_ferguson_method(
         new_origins, _ = _snapshot_vector(latest_snapshot, latest=True)
         if not new_origins or any(not label for label in new_origins) or _duplicates(new_origins):
             raise BornhuetterFergusonContractError("BF Latest snapshot requires unique non-empty origins.")
+        # A move of the project dates: weights follow their origin label and a
+        # new origin starts at the default weight of one (period_reshape).
         old_origins = _labels(tab.get("origin_labels"))
-        old_weight_maps = [
-            dict(zip(old_origins, prior.get("weights") or []))
-            for prior in tab.get("prior_datasets", [])
-            if isinstance(prior, Mapping)
-        ]
         tab["origin_labels"] = new_origins
-        for index, prior in enumerate(tab.get("prior_datasets", [])):
-            weights = old_weight_maps[index] if index < len(old_weight_maps) else {}
-            prior["weights"] = [_number(weights.get(label, 1)) for label in new_origins]
+        for prior in tab.get("prior_datasets", []):
+            prior["weights"] = [
+                _number(weight)
+                for weight in rows_by_label(prior.get("weights") or [], old_origins, new_origins, 1)
+            ]
 
     origins = _labels(tab.get("origin_labels"))
     if latest_snapshot is not None:

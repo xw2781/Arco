@@ -21,6 +21,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .dataset_display_contract import normalize_show_subtotal
 from .dfm_contract import aggregate_vector_values, canonical_input_number
+from .period_reshape import rows_by_label
 from .revision_contract import fingerprint
 from .sidecar_audit_contract import (
     AUDIT_ACTION_INSERT,
@@ -751,10 +752,14 @@ def recalculate_cape_cod_method(
         new_origins, _ = _snapshot_vector(latest_snapshot, latest=True)
         if not new_origins or any(not label for label in new_origins) or _duplicates(new_origins):
             raise CapeCodContractError("Cape Cod Latest snapshot requires unique non-empty origins.")
+        # A move of the project dates: overrides follow their origin label and a
+        # new origin starts without one (period_reshape).
         old_origins = _labels(tab.get("origin_labels"))
-        override_map = dict(zip(old_origins, tab.get("trend_factor_overrides") or []))
         tab["origin_labels"] = new_origins
-        tab["trend_factor_overrides"] = [_number(override_map.get(label)) for label in new_origins]
+        tab["trend_factor_overrides"] = [
+            _number(value)
+            for value in rows_by_label(tab.get("trend_factor_overrides") or [], old_origins, new_origins, None)
+        ]
 
     origins = _labels(tab.get("origin_labels"))
     if latest_snapshot is not None:
