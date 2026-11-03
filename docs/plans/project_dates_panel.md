@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-3 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-4 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -15,13 +15,13 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 1 | A written list of every stored file that depends on the project dates, and how each one reshapes | [x] | 2026-11-03 | 60 min | 5 min | Nothing yet; the plan now lists every kind of saved data the dates shape and how each will follow a change. |
 | 2 | A development method accepts a new set of columns and keeps its selections by position | [x] | 2026-11-03 | 70 min | 6 min | A development method whose triangle gains or loses a column after a date change now follows it and keeps its exclusions, selections and notes, instead of refusing. |
 | 3 | Every other method type reshapes the same way | [x] | 2026-11-03 | 80 min | 9 min | Every other method type, and every hand-entered or imported dataset, now follows a date change with its weights, overrides and choices kept on the right origin; Excel-linked cells stay where they are. |
-| 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [ ] | | 90 min | | |
+| 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [x] | 2026-11-03 | 90 min | 60 min | Nothing visible yet; the server can now move a whole project to new dates in one run, and a run that stops part way finishes when started again. |
 | 5 | The app can start the job, report its progress, and preview what it will touch | [ ] | | 60 min | | |
 | 6 | A floating panel changes all three dates together, behind a confirmation | [ ] | | 80 min | | |
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 
-Overall: 3 of 8 steps done. Estimated 540 min, actual so far 20 min.
+Overall: 4 of 8 steps done. Estimated 540 min, actual so far 80 min.
 
 ## How agents work this plan
 
@@ -136,11 +136,21 @@ Tests: `python-api/tests/test_method_period_reshape.py`. Checked read-only again
 ### Step 4: The project dates job
 Estimate: 90 min
 
+Read first (added by step 4): `server-components/src/arcrho_engine/source_table_refresh.py` `_refresh_one_reserving_class`, `data_processing_rules_jobs.py`, and the memory notes adding-a-project-level-engine-job, local-test-root, job-tests-read-live-gateway.
+
 Clone the pattern in [adding-a-project-level-engine-job](../../agent-memory/adding-a-project-level-engine-job.md): a job contract in `python-api/src`, an Engine worker beside `data_processing_rules_jobs.py`, registered in the Engine's dispatcher and both `build_exe.py` hidden-import lists.
 
 The job runs under the project-scope lease, in this order: check the date rules (decision 4), save the dates, regenerate engine datasets for every class, reshape hand-entered and imported datasets and methods per class (step 2 and 3 rules), then one dependent walk per class using the source refresh job's per-class step. Failures leave the job reporting what was done, as the rules save does, and running the same change again resumes it (decision 2). The status carries progress ticks and the per-class results.
 
 Done when the job runs against a copy of the Fake project on the local test root and leaves every quarterly method at the new shape.
+
+Done 2026-11-03. Contract `python-api/src/arcrho_project_dates_job_contract.py` (function `ArcRhoChangeProjectDates`; queue `requests/project_dates/{requests,statuses,pending}`); worker `server-components/src/arcrho_engine/project_dates_jobs.py`, registered in the Engine dispatcher, the offline rescan and both `build_exe.py` lists. The date-to-label rules (`origin_start_months`, `development_ages`, `project_dates_origin_plan`, `project_dates_development_labels`) are in `period_reshape.py`, so step 5's preview reuses them without writing.
+- **Order.** Check the date rule, write a *pending record* (previous dates, classes and datasets done), publish the previous dates in the status, save the dates, clear the header cache, then per class under its lease: reshape hand-entered datasets, Result Selection and Berquist-Sherman methods (the `prepare` hook added to the source refresh's per-class step), regenerate every other engine dataset, and walk from all of them.
+- **Resume (decision 2).** Running the same dates again reads the pending record, skips finished classes and datasets, and never moves a dataset twice; other dates are refused with 409 while it exists. The record goes when every class finishes.
+- **Found while testing.** The dates the Fake project is moved *from* break decision 4 (origins end Dec 2026, development May 2026), so the previous dates are recorded without the rule. A sidecar may label a triangle at its display period while its CSV holds finer stored columns, so the stored width and the labels move separately and the grid is never cut to the labels. 19 ResQ triangles are stored as engine datasets whose type reads no source column; they cannot be regenerated, so they reshape like hand-entered data (decision 1).
+- **Fake run** (dev end 202605 to 202612, in-process on `C:\Arco Server`, 19.5 min): 33 classes, 1,288 engine datasets regenerated, 16 hand-entered datasets and 14 methods reshaped, 380 methods refreshed, 30 items listed for review. 58 of 70 quarterly and 272 of 291 annual DFMs moved; every quarterly BF and Result Selection kept its 40 origins. The 12 quarterly DFMs left behind fail for reasons already present before the change: 52 of 67 BFs in the production Fake project fail their own snapshot check, which blocks the Current Qtr results and the DFMs built on them; mixed origin lengths ([mixed-origin-length-precedents](../../agent-memory/mixed-origin-length-precedents.md)); a NY triangle labelled at 113 monthly ages over 38 quarterly columns; and Penn+CT triangles the Engine cannot build at 3 months. Each is listed by the job.
+
+Actual: code edit 23 min, test/validation 37 min, total 60 min; the Fake run takes 20 minutes and was run three times.
 
 ### Step 5: Start, progress and preview in the app server
 Estimate: 60 min

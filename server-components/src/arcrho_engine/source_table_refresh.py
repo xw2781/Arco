@@ -415,6 +415,7 @@ def _refresh_one_reserving_class(
     *,
     on_dataset: Callable[[str], None],
     dataset_types: list[str] | None = None,
+    prepare: Callable[[], list[str]] | None = None,
 ) -> None:
     """Regenerate one class's engine datasets, then walk its dependents.
 
@@ -422,7 +423,9 @@ def _refresh_one_reserving_class(
     the whole step, so a client save into it is refused with the hold it already
     handles rather than racing the rewrite. ``dataset_types`` limits the
     regeneration to those types; the dependent walk that follows still starts
-    from whatever was regenerated.
+    from whatever was regenerated. ``prepare`` runs under the same lease before
+    anything is regenerated and returns more datasets to walk from (the project
+    dates job reshapes hand-entered datasets and methods there).
     """
 
     from app_server.services import calculated_dataset_service
@@ -439,10 +442,15 @@ def _refresh_one_reserving_class(
 
     heartbeat_stop, heartbeat_thread = start_reserving_class_lease_heartbeat(lease)
     try:
+        prepared = list(prepare() or []) if prepare is not None else []
         regenerated: list[str] = []
+        prepared_keys = {name.casefold() for name in prepared}
         for dataset_name in _engine_dataset_instances(
             project_name, reserving_class, dataset_types
         ):
+            if dataset_name.casefold() in prepared_keys:
+                # Already rewritten by ``prepare``; it is walked from below.
+                continue
             on_dataset(dataset_name)
             try:
                 _regenerate_engine_dataset(
@@ -462,11 +470,16 @@ def _refresh_one_reserving_class(
             regenerated.append(dataset_name)
             result["datasets_regenerated"] += 1
 
-        if not regenerated:
-            # Nothing engine-generated changed here, so there is no root to walk
-            # from. The class still counts as visited.
+        roots = regenerated + [
+            name
+            for name in prepared
+            if name.casefold() not in {item.casefold() for item in regenerated}
+        ]
+        if not roots:
+            # Nothing changed here, so there is no root to walk from. The
+            # class still counts as visited.
             return
-        first, *rest = regenerated
+        first, *rest = roots
         walk = calculated_dataset_service.recalculate_dependents(
             project_name,
             reserving_class,
@@ -481,6 +494,12 @@ def _refresh_one_reserving_class(
             # becomes the job message and every one of them goes to the log,
             # which is where a "reported errors" line used to end the trail.
             reasons = dependent_refresh_failure_reasons(walk)
+            # A caller that lists each declined dependent for review (the
+            # project dates job) keeps every reason, not just the first.
+            if isinstance(result.get("dependent_problems"), list):
+                result["dependent_problems"].extend(
+                    f"{reserving_class}: {reason}" for reason in reasons
+                )
             result["failures"].append(
                 dependent_refresh_failure_message(reserving_class, reasons)
             )

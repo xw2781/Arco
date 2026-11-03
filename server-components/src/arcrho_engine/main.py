@@ -25,6 +25,7 @@ from arcrho_data_processing_rules_job_contract import DATA_PROCESSING_RULES_JOB_
 from arcrho_dataset_types_change_contract import DATASET_TYPES_CHANGE_FUNCTION
 from arcrho_dependent_propagation_contract import DEPENDENT_PROPAGATION_FUNCTION
 from arcrho_engine_save_contract import SAVE_JOB_FUNCTION
+from arcrho_project_dates_job_contract import PROJECT_DATES_JOB_FUNCTION
 from arcrho_project_duplication_contract import PROJECT_DUPLICATION_FUNCTION
 from arcrho_source_refresh_contract import SOURCE_REFRESH_FUNCTION
 from utils import get_config_value, get_project_root, normalize_function_name
@@ -66,6 +67,9 @@ from arcrho_engine.dataset_types_change import (
 )
 from arcrho_engine.dependent_propagation import (
     process_durable_dependent_propagation_request,
+)
+from arcrho_engine.project_dates_jobs import (
+    process_durable_project_dates_request,
 )
 from arcrho_engine.project_duplication import (
     process_durable_project_duplication_request,
@@ -168,6 +172,7 @@ class RequestHandler(FileSystemEventHandler):
         source_refresh_queue_capacity: int = 1,
         dataset_types_change_queue_capacity: int = 1,
         data_processing_rules_queue_capacity: int = 1,
+        project_dates_queue_capacity: int = 1,
     ):
         super().__init__()
         self._processing_lock = Lock()
@@ -215,6 +220,13 @@ class RequestHandler(FileSystemEventHandler):
             thread_name="arcrho-data-processing-rules-worker",
             execute=self._execute_data_processing_rules,
             queue_capacity=data_processing_rules_queue_capacity,
+        )
+        # A project dates change regenerates and reshapes the whole project,
+        # so it gets its own worker like a source refresh does.
+        self._project_dates = _DurableJobDispatcher(
+            thread_name="arcrho-project-dates-worker",
+            execute=self._execute_project_dates,
+            queue_capacity=project_dates_queue_capacity,
         )
 
     @property
@@ -327,6 +339,21 @@ class RequestHandler(FileSystemEventHandler):
         except Exception as exc:
             print(f"(data processing rules job request error: {exc})")
 
+    def _schedule_project_dates(self, file_path, arg) -> bool:
+        return self._project_dates.schedule(
+            self._duplication_key(file_path, arg), file_path, arg
+        )
+
+    def _execute_project_dates(self, file_path, arg) -> None:
+        try:
+            process_durable_project_dates_request(
+                get_project_root(),
+                file_path,
+                arg,
+            )
+        except Exception as exc:
+            print(f"(project dates job request error: {exc})")
+
     def shutdown(self, *, wait: bool = True, timeout: float | None = None) -> bool:
         """Stop accepting durable jobs and optionally wait for active work."""
 
@@ -342,6 +369,7 @@ class RequestHandler(FileSystemEventHandler):
         data_processing_rules_stopped = self._data_processing_rules.shutdown(
             wait=wait, timeout=timeout
         )
+        project_dates_stopped = self._project_dates.shutdown(wait=wait, timeout=timeout)
         return (
             duplication_stopped
             and propagation_stopped
@@ -349,6 +377,7 @@ class RequestHandler(FileSystemEventHandler):
             and source_refresh_stopped
             and dataset_types_change_stopped
             and data_processing_rules_stopped
+            and project_dates_stopped
         )
 
     def _process_event_path(self, event, file_path):
@@ -455,6 +484,12 @@ class RequestHandler(FileSystemEventHandler):
                 self._schedule_data_processing_rules(file_path, arg)
             else:
                 self._execute_data_processing_rules(file_path, arg)
+            return
+        if function_name_raw == PROJECT_DATES_JOB_FUNCTION:
+            if dispatch_duplication:
+                self._schedule_project_dates(file_path, arg)
+            else:
+                self._execute_project_dates(file_path, arg)
             return
         if function_name_raw == SAVE_JOB_FUNCTION:
             # Hosted saves claim by delete inside the executor; scheduling
@@ -649,6 +684,9 @@ def process_existing_requests(
     )
     queued_paths.extend(
         _queued_request_files(request_dir / "data_processing_rules" / "requests")
+    )
+    queued_paths.extend(
+        _queued_request_files(request_dir / "project_dates" / "requests")
     )
     for queued_path in queued_paths:
         if queued_path.suffix.casefold() == ".json":

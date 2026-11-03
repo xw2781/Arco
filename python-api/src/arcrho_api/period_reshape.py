@@ -116,6 +116,7 @@ def reshape_input_dataset(
     old_origin_labels: Sequence[Any],
     new_origin_labels: Sequence[Any],
     development_labels: Sequence[Any] | None = None,
+    column_count: int | None = None,
 ) -> dict[str, Any]:
     """Reshape one hand-entered or imported dataset to new project dates.
 
@@ -125,6 +126,9 @@ def reshape_input_dataset(
     the dates, not from the sidecar. ``values`` is the stored grid, one list per
     row (a vector row is ``[value]``). ``development_labels`` are the new
     stored columns of a triangle; a vector keeps its single column.
+    ``column_count`` is the stored grid's new width when it differs from the
+    label count: a sidecar may label a triangle at its display period while
+    its CSV holds finer columns, and the grid must never be cut to the labels.
 
     Rows follow their origin label and columns keep their position, new cells
     empty (decision 3). Arco formula and internal links move their target rows
@@ -143,7 +147,8 @@ def reshape_input_dataset(
     new_labels = [str(label) for label in new_origin_labels]
     old_columns = list(sidecar.get("development_labels") or [])
     columns = list(development_labels) if development_labels is not None else old_columns
-    column_count = max(1, len(columns))
+    if column_count is None:
+        column_count = max(1, len(columns))
 
     def link_cells(link: Mapping[str, Any], field: str) -> tuple[bool, list[dict[str, Any]]]:
         stored = link["target_cells"]
@@ -220,3 +225,156 @@ def reshape_input_dataset(
     ):
         review.append(REVIEW_DROPPED_DATA)
     return {"sidecar": out, "values": grid, "review": review}
+
+
+# ---------------------------------------------------------------------------
+# Project dates -> period labels
+# ---------------------------------------------------------------------------
+
+_MONTH_NAMES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+#: The origin-label spellings a stored dataset or method uses, by period kind.
+ORIGIN_LABEL_STYLES = ("index", "year", "half", "quarter", "month_name", "month_number")
+
+
+def month_index(yyyymm: Any) -> int:
+    """``year * 12 + month - 1`` of a ``YYYYMM`` project date."""
+
+    text = str(yyyymm if yyyymm is not None else "").strip()
+    if not re.fullmatch(r"\d{6}", text) or not 1 <= int(text[4:]) <= 12:
+        raise ValueError(f"Project date {yyyymm!r} is not a YYYYMM month.")
+    return int(text[:4]) * 12 + int(text[4:]) - 1
+
+
+def origin_start_months(origin_start: Any, origin_end: Any, length: int) -> list[int]:
+    """The first month of every origin period, as the Engine groups them.
+
+    Periods of ``length`` months run from the Origin Start Date; the last one
+    may end after the Origin End Date, exactly like the Engine's header rows.
+    """
+
+    start, end, step = month_index(origin_start), month_index(origin_end), max(1, int(length))
+    return list(range(start, end + 1, step))
+
+
+def development_ages(origin_start: Any, development_end: Any, length: int) -> list[int]:
+    """The development ages, in months, of a stored triangle's columns.
+
+    The newest cell of the first origin is valued on the Development End
+    Date, so the ages count back from there in steps of ``length``; that is
+    the column count a triangle stored at ``length`` holds.
+    """
+
+    valuation = month_index(development_end) - month_index(origin_start) + 1
+    step = max(1, int(length))
+    return sorted(age for age in range(valuation, 0, -step))
+
+
+def format_origin_label(month: int, style: str) -> str:
+    """One origin label for the period starting at ``month`` in ``style``."""
+
+    year, number = divmod(int(month), 12)
+    number += 1
+    if style == "year":
+        return f"{year}"
+    if style == "half":
+        return f"{year} H{(number + 5) // 6}"
+    if style == "quarter":
+        return f"{year} Q{(number + 2) // 3}"
+    if style == "month_name":
+        return f"{_MONTH_NAMES[number - 1]} {year}"
+    if style == "month_number":
+        return f"{year}{number:02d}"
+    raise ValueError(f"Unknown origin label style {style!r}.")
+
+
+def origin_labels_for(months: Sequence[int], style: str) -> list[str]:
+    """Labels for ``months`` in ``style``; ``index`` gives ``1..N``."""
+
+    if style == "index":
+        return [str(index + 1) for index in range(len(months))]
+    return [format_origin_label(month, style) for month in months]
+
+
+def origin_label_style(labels: Sequence[Any], months: Sequence[int]) -> str | None:
+    """The style that spells ``months`` exactly as ``labels``, or ``None``.
+
+    A stored list that no style reproduces from the old dates is not on the
+    project's origin grid, and a caller must not guess where its rows belong.
+    """
+
+    stored = [str(label if label is not None else "").strip() for label in labels]
+    if len(stored) != len(months):
+        return None
+    for style in ORIGIN_LABEL_STYLES:
+        if origin_labels_for(months, style) == stored:
+            return style
+    return None
+
+
+def origin_length_of_style(style: str) -> int | None:
+    """The period length a label style implies (``None`` for index labels)."""
+
+    return {"year": 12, "half": 6, "quarter": 3, "month_name": 1, "month_number": 1}.get(style)
+
+
+def project_dates_origin_plan(
+    labels: Sequence[Any],
+    length: int,
+    previous_dates: Mapping[str, Any],
+    new_dates: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """How a stored list of origin labels at ``length`` moves to new dates.
+
+    Returns ``{"old": [...], "new": [...], "dropped": N}`` where ``old`` and
+    ``new`` are the stored labels under the previous and new dates in the
+    list's own style, matched by true origin, or ``None`` when the stored list
+    is not the previous dates' origin grid at that length (then nothing can
+    say where its rows belong). Index labels match by their true origin too:
+    the true origin of row *i* is the previous Origin Start plus *i* periods.
+    """
+
+    old_months = origin_start_months(
+        previous_dates["origin_start_date"], previous_dates["origin_end_date"], length
+    )
+    new_months = origin_start_months(
+        new_dates["origin_start_date"], new_dates["origin_end_date"], length
+    )
+    style = origin_label_style(labels, old_months)
+    if style is None:
+        return None
+    # Match on a spelling that names the true origin even for index labels.
+    key_style = "month_number" if style == "index" else style
+    old_keys = origin_labels_for(old_months, key_style)
+    new_keys = origin_labels_for(new_months, key_style)
+    kept = set(new_keys)
+    return {
+        "style": style,
+        "old": old_keys,
+        "new": new_keys,
+        "labels": origin_labels_for(new_months, style),
+        "dropped": sum(1 for key in old_keys if key not in kept),
+    }
+
+
+def project_dates_development_labels(
+    labels: Sequence[Any],
+    length: int,
+    previous_dates: Mapping[str, Any],
+    new_dates: Mapping[str, Any],
+) -> list[str] | None:
+    """The new development labels of a stored triangle, or ``None`` to keep them.
+
+    Only a triangle whose columns are the previous dates' ages at ``length``
+    (``"5m"``, ``"17m"``, ...) is moved to the new ages; a triangle kept from
+    another valuation or on calendar periods keeps its columns.
+    """
+
+    old = [f"{age}m" for age in development_ages(
+        previous_dates["origin_start_date"], previous_dates["development_end_date"], length
+    )]
+    if [str(label).strip() for label in labels] != old:
+        return None
+    return [f"{age}m" for age in development_ages(
+        new_dates["origin_start_date"], new_dates["development_end_date"], length
+    )]

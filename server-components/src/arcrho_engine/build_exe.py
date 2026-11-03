@@ -21,6 +21,7 @@ from arcrho_data_processing_rules_job_contract import (
     DATA_PROCESSING_RULES_JOB_SERVICE_MODULES,
 )
 from arcrho_dataset_types_change_contract import DATASET_TYPES_CHANGE_SERVICE_MODULES
+from arcrho_project_dates_job_contract import PROJECT_DATES_JOB_SERVICE_MODULES
 from arcrho_source_refresh_contract import SOURCE_REFRESH_SERVICE_MODULES
 from build_runtime import ensure_python_310_venv, stage_deploy, swap_deploy
 from utils import (
@@ -108,6 +109,7 @@ def _hosted_service_modules():
     modules.update(SOURCE_REFRESH_SERVICE_MODULES)
     modules.update(DATASET_TYPES_CHANGE_SERVICE_MODULES)
     modules.update(DATA_PROCESSING_RULES_JOB_SERVICE_MODULES)
+    modules.update(PROJECT_DATES_JOB_SERVICE_MODULES)
     return sorted(modules)
 
 
@@ -127,6 +129,8 @@ def validate_canonical_runtime_environment():
         "import arcrho_source_refresh_contract; "
         "import arcrho_dataset_types_change_contract; "
         "import arcrho_data_processing_rules_job_contract; "
+        "import arcrho_project_dates_job_contract; "
+        "import arcrho_api.period_reshape; "
         "import arcrho_reserving_class_type_contract; "
         "import arcrho_engine_job_lease"
     )
@@ -142,6 +146,7 @@ def build_exe():
         "arcrho_source_refresh_contract.py",
         "arcrho_dataset_types_change_contract.py",
         "arcrho_data_processing_rules_job_contract.py",
+        "arcrho_project_dates_job_contract.py",
         "arcrho_reserving_class_type_contract.py",
         "arcrho_engine_job_lease.py",
     ):
@@ -173,6 +178,7 @@ def build_exe():
         "--hidden-import", "arcrho_source_refresh_contract",
         "--hidden-import", "arcrho_dataset_types_change_contract",
         "--hidden-import", "arcrho_data_processing_rules_job_contract",
+        "--hidden-import", "arcrho_project_dates_job_contract",
         "--hidden-import", "arcrho_reserving_class_type_contract",
         "--hidden-import", "arcrho_engine_job_lease",
         *[
