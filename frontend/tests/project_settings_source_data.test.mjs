@@ -88,9 +88,9 @@ test("Source Data markup keeps the ids project_settings.js binds", () => {
   const boundIds = [
     "summaryTablePathInput",
     "summaryTablePathReloadBtn",
-    "summaryOriginStartInput",
-    "summaryOriginEndInput",
-    "summaryDevelopmentEndInput",
+    "summaryOriginStartValue",
+    "summaryOriginEndValue",
+    "summaryDevelopmentEndValue",
   ];
   for (const id of boundIds) {
     assert.ok(projectSettingsHtml.includes(`id="${id}"`), `missing #${id} in markup`);
@@ -199,9 +199,6 @@ test("period band uses the requested labels and omits the normal origin span", (
 
 test("date inputs use one shared month/year picker that stays open under the pointer", () => {
   for (const id of [
-    "summaryOriginStartPickerBtn",
-    "summaryOriginEndPickerBtn",
-    "summaryDevelopmentEndPickerBtn",
     "summaryMonthPicker",
     "summaryMonthPickerYear",
     "summaryMonthPickerGrid",
@@ -211,6 +208,10 @@ test("date inputs use one shared month/year picker that stays open under the poi
     assert.ok(projectSettingsHtml.includes(`id="${id}"`), `missing #${id} in markup`);
   }
   for (const retiredId of [
+    // The dates band is display only; its calendar buttons went with step 7.
+    "summaryOriginStartPickerBtn",
+    "summaryOriginEndPickerBtn",
+    "summaryDevelopmentEndPickerBtn",
     "summaryOriginStartUpBtn",
     "summaryOriginStartDownBtn",
     "summaryOriginEndUpBtn",
@@ -242,9 +243,6 @@ test("date inputs use one shared month/year picker that stays open under the poi
   assert.match(moduleSource, /placeFloating\(dom\.monthPicker, activeMonthInput\.getBoundingClientRect\(\), 6\)/);
   assert.doesNotMatch(moduleSource, /placeFloating\(dom\.monthPicker, button\.getBoundingClientRect\(\), 6\)/);
   assert.match(moduleSource, /input\.dispatchEvent\(new Event\("change"/);
-  assert.match(generalSettingsSource, /input\.onchange = \(\) =>/);
-  assert.match(generalSettingsSource, /commitPending = true/);
-  assert.match(generalSettingsSource, /if \(commitPending\)/);
   assert.match(projectSettingsJs, /formatMonth: formatBoundaryYmDisplay/);
   assert.ok(!summaryCss.includes(".sd-month-lane"), "retired stepper lane styles remain");
   const pickerButtonRule = summaryCss.match(/\.sd-month-picker-btn\s*\{([\s\S]*?)\}/)?.[1] || "";
@@ -302,13 +300,13 @@ test("Source Data shows flowing placeholders while the table is copied or read",
   // The flowing fill has one owner, so Source Data and the table tabs match.
   assert.match(moduleSource, /const bar = `\$\{SKELETON_BAR_CLASS\} sd-loading-bar`/);
 
-  // The three period fields and their picker actions stay inert and shimmer
-  // until their values have been resolved from summary + saved settings.
+  // The three period dates shimmer until their values have been resolved from
+  // summary + saved settings; the picker actions stay inert meanwhile.
   for (const binding of ["dom.originStart", "dom.originEnd", "dom.developmentEnd"]) {
     assert.ok(moduleSource.includes(binding), `${binding} is not part of the loading state`);
   }
   assert.match(moduleSource, /\.\.\.dom\.monthPickerButtons, dom\.filter/);
-  assert.match(summaryCss, /\.table-summary\.is-loading \.sd-month input \{[\s\S]*?background-image: var\(--ps-skeleton-fill\);/);
+  assert.match(summaryCss, /\.table-summary\.is-loading \.sd-date \{[\s\S]*?background-image: var\(--ps-skeleton-fill\);/);
   assert.match(skeletonCss, /\.ps-skeleton-bar \{[\s\S]*?animation: ps-skeleton-sweep 1\.15s ease-in-out infinite;/);
   assert.match(skeletonCss, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(summaryCss, /@media \(prefers-reduced-motion: reduce\)/);

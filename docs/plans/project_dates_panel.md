@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 9 session-sized steps (step 9 appended 2026-11-03, runs before step 8); steps 1-6 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 9 session-sized steps (step 9 appended 2026-11-03, runs before step 8); steps 1-7 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -18,11 +18,11 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [x] | 2026-11-03 | 90 min | 60 min | Nothing visible yet; the server can now move a whole project to new dates in one run, and a run that stops part way finishes when started again. |
 | 5 | The app can start the job, report its progress, and preview what it will touch | [x] | 2026-11-03 | 60 min | 8 min | Nothing visible yet; the app can now ask the server what a date change would touch, start it, and follow its progress. |
 | 6 | A floating panel changes all three dates together, behind a confirmation | [x] | 2026-11-03 | 80 min | 70 min | A Project Dates panel changes all three dates at once: it checks them, shows what the change touches and which origins drop out, then runs the change with a progress window and lists what to review. |
-| 7 | The dates on the main page are display only | [ ] | | 40 min | | |
+| 7 | The dates on the main page are display only | [x] | 2026-11-03 | 40 min | 12 min | The dates on the main page can no longer be typed over; clicking anywhere on them, or pressing Enter or Space, opens the Project Dates panel, and they do nothing while the project is locked. |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 | 9 | A start-of-year move finishes cleanly and can be run again | [ ] | | 60 min | | |
 
-Overall: 6 of 9 steps done. Estimated 600 min, actual so far 158 min. Step 9 was appended after step 6 and runs before step 8.
+Overall: 7 of 9 steps done. Estimated 600 min, actual so far 170 min. Step 9 was appended after step 6 and runs before step 8.
 
 ## How agents work this plan
 
@@ -193,6 +193,15 @@ Estimate: 40 min
 Keep the three dates visible on the main page and make them read-only. Remove the per-input save path (`bindEditor`, its keyboard stepping and the immediate save) and the direct date save route's use from the UI, as obsolete code. Make the whole `summaryPeriodsBand` the one way to open the panel: a click anywhere on it opens the panel, it is reachable by keyboard (Enter and Space), and it shows a pointer cursor and a hover state. The calendar buttons beside each date go, since the band replaces them. The band does nothing while no project is selected or the project is locked.
 
 Done when no control on the main page can change a date, a click on any part of the band opens the panel, and the Import Settings window still reads the dates.
+
+Actual: code edit 6 min, test/validation 6 min, total 12 min; well under because the panel already owned all the editing, so the band only needed its inputs turned into text and one entry point.
+
+Done 2026-11-03.
+- **Band.** `#summaryPeriodsBand` is `role="button"` with `tabindex`, `aria-haspopup` and `aria-controls`; the three dates are text spans (`summaryOriginStartValue`, `summaryOriginEndValue`, `summaryDevelopmentEndValue`) and its calendar buttons are gone. The Project Dates feature owns the band's click and Enter/Space and exposes `syncEntryPoint()`, which sets `aria-disabled` and drops it from the tab order with no project or a locked one; the lock feature calls it through a new `onChange` after every lock read, and the coordinator after a project select or clear. Closing the panel returns focus to the band.
+- **Removed.** `bindEditor` (typing, wheel stepping, immediate save), `shiftBoundaryYmCanonical`, the save's `interactive` alert, the band's loading rules for inputs, and both TEMPORARY entry points from step 6. The general settings feature now takes `displays` and has `showDates`.
+- **Kept.** The direct date save is still used once, to seed a new project's dates from its source table (and to re-save them under a renamed project); no person-facing control reaches it.
+- **Styles.** Pointer cursor, hover (a feature-owned `--sd-band-hover-bg`, lifted in Dark because Dark's hover surface sits below the raised band), focus ring, and an inert look. Every Project Settings module and stylesheet now uses `?v=20261103band1`.
+- **Checked** in an Electron mock-up built from the real page markup, modules and stylesheets, both themes: a click on empty band space or on a label, Enter and Space open the panel on the saved dates; locked and no-project bands neither open nor show a pointer. The Import Settings window and the import read the dates from the server, never the band, so nothing there changed. Tests: `frontend/tests/project_settings_dates_band.test.mjs`.
 
 ### Step 8: Tests, deploy, notes
 Estimate: 60 min

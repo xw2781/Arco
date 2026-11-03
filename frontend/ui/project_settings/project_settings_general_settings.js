@@ -3,7 +3,8 @@
  *
  * Owns the canonical year-month parsing used across Project Settings, the
  * per-project General Settings cache, its `/general_settings` reads and
- * writes, and the Source Data period band editor (typing, wheel, picker commits).
+ * writes, and the dates shown on the Source Data period band. The band only
+ * displays them; the Project Dates panel is the one place they change.
  */
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -99,20 +100,6 @@ export function formatBoundaryYmDisplay(value) {
   return `${MONTH_ABBR[month - 1]} ${year}`;
 }
 
-export function shiftBoundaryYmCanonical(value, deltaMonths) {
-  const canonical = normalizeBoundaryYmCanonical(value);
-  if (!canonical) return "";
-  const year = Number(canonical.slice(0, 4));
-  const month = Number(canonical.slice(4, 6));
-  if (!Number.isInteger(year) || !Number.isInteger(month)) return "";
-  const idx = (year * 12) + (month - 1) + Number(deltaMonths || 0);
-  if (!Number.isFinite(idx)) return "";
-  const nextYear = Math.floor(idx / 12);
-  const nextMonth = (idx % 12) + 1;
-  if (nextYear < 1 || nextMonth < 1 || nextMonth > 12) return canonical;
-  return normalizeYmParts(nextYear, nextMonth);
-}
-
 function normalizeGeneralSettingsBool(value, fallback = false) {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value !== 0;
@@ -128,9 +115,9 @@ function normalizeGeneralSettingsBool(value, fallback = false) {
  * @param {Function} deps.normalizeProjectKey
  * @param {Function} deps.readResponseErrorDetail
  * @param {Function} deps.getSelectedProject
- * @param {Function} deps.onInputsChanged  Called after the inputs are rewritten.
+ * @param {Function} deps.onDatesShown  Called after the band's dates are rewritten.
  * @param {Function} deps.fetchImpl
- * @param {object} deps.controls  `{ originStartDate: {input}, ... }`
+ * @param {object} deps.displays  `{ originStartDate: element, ... }`, display only
  */
 export function createGeneralSettingsFeature(deps) {
   const {
@@ -138,15 +125,12 @@ export function createGeneralSettingsFeature(deps) {
     normalizeProjectKey,
     readResponseErrorDetail,
     getSelectedProject,
-    onInputsChanged,
+    onDatesShown,
     fetchImpl,
-    controls,
+    displays = {},
   } = deps;
 
   const generalSettingsByProject = new Map();
-  const controlList = Object.entries(controls || {})
-    .map(([key, control]) => ({ key, ...control }))
-    .filter((control) => !!control.input);
 
   function normalizeValues(values = {}) {
     const projectName = String(values?.projectName ?? values?.project_name ?? "").trim();
@@ -197,39 +181,25 @@ export function createGeneralSettingsFeature(deps) {
     );
   }
 
-  function controlByKey(key) {
-    return controlList.find((control) => control.key === key) || null;
+  /** Show the three period dates on the band from canonical or free-form values. */
+  function showDates(values = {}) {
+    const shown = {
+      originStartDate: values?.originStart,
+      originEndDate: values?.originEnd,
+      developmentEndDate: values?.developmentEnd,
+    };
+    for (const [key, value] of Object.entries(shown)) {
+      if (displays[key]) displays[key].textContent = formatBoundaryYmDisplay(value || "");
+    }
+    onDatesShown?.();
   }
 
-  function inputByKey(key) {
-    return controlByKey(key)?.input || null;
-  }
-
-  /** Rewrite the three period inputs from canonical or free-form values. */
-  function setDerivedDateInputs(values = {}) {
-    const originStartInput = inputByKey("originStartDate");
-    const originEndInput = inputByKey("originEndDate");
-    const developmentEndInput = inputByKey("developmentEndDate");
-    if (originStartInput) originStartInput.value = formatBoundaryYmDisplay(values?.originStart || "");
-    if (originEndInput) originEndInput.value = formatBoundaryYmDisplay(values?.originEnd || "");
-    if (developmentEndInput) developmentEndInput.value = formatBoundaryYmDisplay(values?.developmentEnd || "");
-    onInputsChanged?.();
-  }
-
-  /** Apply a cached/loaded settings record to the inputs. */
+  /** Apply a cached/loaded settings record to the band. */
   function applyValuesToInputs(values) {
-    setDerivedDateInputs({
+    showDates({
       originStart: values.originStartDate,
       originEnd: values.originEndDate,
       developmentEnd: values.developmentEndDate,
-    });
-  }
-
-  function getInputValues() {
-    return normalizeValues({
-      originStartDate: inputByKey("originStartDate")?.value || "",
-      originEndDate: inputByKey("originEndDate")?.value || "",
-      developmentEndDate: inputByKey("developmentEndDate")?.value || "",
     });
   }
 
@@ -272,9 +242,13 @@ export function createGeneralSettingsFeature(deps) {
     return load(name, { applyToInputs });
   }
 
+  /**
+   * Write the dates read off a new project's source table, or re-save them
+   * under a renamed project. A person changes them only through the Project
+   * Dates panel's job.
+   */
   async function save(projectName, values = {}, options = {}) {
     const force = !!options?.force;
-    const interactive = !!options?.interactive;
     const autoGenerated = normalizeGeneralSettingsBool(options?.autoGenerated, false);
     const name = String(projectName || "").trim();
     if (!name) return { ok: false, data: normalizeValues(EMPTY_GENERAL_SETTINGS) };
@@ -303,131 +277,7 @@ export function createGeneralSettingsFeature(deps) {
       return { ok: true, data: saved };
     } catch (err) {
       setStatus(`Failed to save General Settings: ${err.message}`);
-      if (interactive) {
-        alert(`Failed to save General Settings: ${err.message}`);
-      }
       return { ok: false, data: normalized };
-    }
-  }
-
-  /** Wire typing, wheel, and picker change commits for the selected project. */
-  function bindEditor(project) {
-    if (controlList.length === 0 || !project?.name) return;
-
-    let committing = false;
-    let commitPending = false;
-    const commitCurrentValues = async () => {
-      if (committing) {
-        commitPending = true;
-        return;
-      }
-      if (!isStillSelected(project.name)) return;
-      committing = true;
-      try {
-        const values = getInputValues();
-        const cached = getCache(project.name);
-        const changed = !areEqual(
-          { ...cached, autoGenerated: false },
-          { ...values, autoGenerated: false },
-        );
-        if (!changed) return;
-        const out = await save(project.name, values, { autoGenerated: false });
-        if (out.ok) {
-          setCache(project.name, out.data || values);
-        }
-      } finally {
-        committing = false;
-        if (commitPending) {
-          commitPending = false;
-          commitCurrentValues();
-        }
-      }
-    };
-
-    const getDateInputSelectedPart = (input) => {
-      const saved = String(input?.dataset?.selectedPart || "").trim().toLowerCase();
-      if (saved === "month" || saved === "year") return saved;
-      const start = Number(input?.selectionStart);
-      if (Number.isInteger(start) && start >= 4) return "year";
-      return "month";
-    };
-
-    const selectDateInputPart = (input, part) => {
-      if (!input) return;
-      const p = part === "year" ? "year" : "month";
-      input.dataset.selectedPart = p;
-      const canonical = normalizeBoundaryYmCanonical(input.value);
-      if (!canonical) return;
-      const start = p === "year" ? 4 : 0;
-      const end = p === "year" ? 8 : 3;
-      try {
-        input.setSelectionRange(start, end);
-      } catch {
-        // ignore selection failures in non-focus state
-      }
-    };
-
-    const adjustDateInputBySelectedPart = (input, fallbackCanonical, delta) => {
-      const base = normalizeBoundaryYmCanonical(input.value) || normalizeBoundaryYmCanonical(fallbackCanonical);
-      if (!base) return "";
-      const part = getDateInputSelectedPart(input);
-      const monthDelta = part === "year" ? (Number(delta || 0) * 12) : Number(delta || 0);
-      const shifted = shiftBoundaryYmCanonical(base, monthDelta);
-      if (!shifted) return "";
-      input.value = formatBoundaryYmDisplay(shifted);
-      selectDateInputPart(input, part);
-      return shifted;
-    };
-
-    for (const control of controlList) {
-      const input = control.input;
-      const getFallbackCanonical = () => {
-        const cached = getCache(project.name);
-        return normalizeBoundaryYmCanonical(cached?.[control.key] || "");
-      };
-
-      const normalizeInputDisplay = () => {
-        const canonical = normalizeBoundaryYmCanonical(input.value) || getFallbackCanonical();
-        const part = getDateInputSelectedPart(input);
-        input.value = formatBoundaryYmDisplay(canonical);
-        if (canonical) selectDateInputPart(input, part);
-        return canonical;
-      };
-
-      input.disabled = false;
-      input.onfocus = () => {
-        if (!input.value) return;
-        selectDateInputPart(input, getDateInputSelectedPart(input));
-      };
-      input.onclick = () => {
-        setTimeout(() => {
-          const caret = Number(input.selectionStart);
-          const part = Number.isInteger(caret) && caret >= 4 ? "year" : "month";
-          selectDateInputPart(input, part);
-        }, 0);
-      };
-      input.onkeydown = (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          input.blur();
-        }
-      };
-      input.onwheel = (e) => {
-        if (!isStillSelected(project.name)) return;
-        const delta = e.deltaY < 0 ? 1 : -1;
-        const changed = adjustDateInputBySelectedPart(input, getFallbackCanonical(), delta);
-        if (!changed) return;
-        e.preventDefault();
-        commitCurrentValues();
-      };
-      input.onblur = () => {
-        normalizeInputDisplay();
-        commitCurrentValues();
-      };
-      input.onchange = () => {
-        normalizeInputDisplay();
-        commitCurrentValues();
-      };
     }
   }
 
@@ -437,13 +287,12 @@ export function createGeneralSettingsFeature(deps) {
   }
 
   return {
-    bindEditor,
     clearCache,
     ensureLoaded,
     getCache,
     hasValues,
     load,
     save,
-    setDerivedDateInputs,
+    showDates,
   };
 }

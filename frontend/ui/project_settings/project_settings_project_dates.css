@@ -173,9 +173,3 @@
 :root #projectDatesConfirmOverlay .pd-confirm-dropped {
   color: var(--ar-color-warning, #b45309);
 }
-
-/* TEMPORARY until step 7 makes the whole dates band the entry point: the band
-   labels open the panel. */
-#summaryPeriodsBand .sd-key {
-  cursor: pointer;
-}

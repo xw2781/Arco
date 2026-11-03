@@ -126,7 +126,7 @@ test("boundary-month parsing and General Settings I/O have one home", () => {
   }
   assert.doesNotMatch(coordinator, /\/general_settings/);
   assert.match(coordinator, /generalSettingsFeature\.ensureLoaded\(/);
-  assert.match(coordinator, /generalSettingsFeature\.bindEditor\(project\)/);
+  assert.match(coordinator, /generalSettingsFeature\.showDates\(/);
 });
 
 test("Field Mapping is a step of the Import Settings window, not a tab", () => {

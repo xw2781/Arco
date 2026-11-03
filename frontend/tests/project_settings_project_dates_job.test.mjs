@@ -205,13 +205,13 @@ test("the panel is wired into Project Settings and guarded by the project lock",
   }
   // The panel reuses the page's one month picker.
   assert.match(html, /data-month-picker-for="pdDevelopmentEndInput"/);
-  assert.match(html, /project_settings_project_dates\.css\?v=20261027map1/);
-  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261103dates1/);
+  assert.match(html, /project_settings_project_dates\.css\?v=20261103band1/);
+  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261103band1/);
   assert.match(coordinatorSource, /const projectDatesFeature = createProjectDatesFeature\(/);
   assert.match(lockSource, /"pdApplyBtn"/);
   // One version URL per shared module.
-  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261103dates1/);
-  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261103dates1/);
+  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261103band1/);
+  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261103band1/);
   // Drags follow the pointer-capture rule.
   assert.match(featureSource, /setPointerCapture/);
   assert.doesNotMatch(featureSource, /document\.addEventListener\("mousemove"/);

@@ -30,7 +30,7 @@ import {
 import {
   combinedSourceSummary,
   createCombinedSourceFeature,
-} from "./project_settings_combined_source.js?v=20261027map1";
+} from "./project_settings_combined_source.js?v=20261103band1";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;
@@ -389,9 +389,9 @@ export function createSourceDataFeature(deps = {}) {
     message: el("summaryMessage"),
     band: el("summaryPeriodsBand"),
     originSpanNote: el("summaryOriginSpanNote"),
-    originStart: el("summaryOriginStartInput"),
-    originEnd: el("summaryOriginEndInput"),
-    developmentEnd: el("summaryDevelopmentEndInput"),
+    originStart: el("summaryOriginStartValue"),
+    originEnd: el("summaryOriginEndValue"),
+    developmentEnd: el("summaryDevelopmentEndValue"),
     monthPickerButtons: Array.from(document.querySelectorAll(".sd-month-picker-btn")),
     monthPicker: el("summaryMonthPicker"),
     monthPickerYear: el("summaryMonthPickerYear"),
@@ -1006,7 +1006,7 @@ export function createSourceDataFeature(deps = {}) {
     summaryLoading = !!loading;
     dom.root?.classList.toggle("is-loading", summaryLoading);
     dom.root?.setAttribute("aria-busy", String(summaryLoading));
-    [dom.originStart, dom.originEnd, dom.developmentEnd, ...dom.monthPickerButtons, dom.filter]
+    [...dom.monthPickerButtons, dom.filter]
       .forEach((control) => {
         if (control) control.disabled = summaryLoading;
       });
@@ -1031,8 +1031,8 @@ export function createSourceDataFeature(deps = {}) {
 
   function refreshOriginSpanNote() {
     if (!dom.originSpanNote) return;
-    const start = monthIndex(dom.originStart?.value);
-    const end = monthIndex(dom.originEnd?.value);
+    const start = monthIndex(dom.originStart?.textContent);
+    const end = monthIndex(dom.originEnd?.textContent);
     if (start === null || end === null) {
       dom.originSpanNote.textContent = "";
       dom.originSpanNote.classList.remove("error");
@@ -2887,12 +2887,6 @@ export function createSourceDataFeature(deps = {}) {
       showPreview(row, null);
     });
 
-    [dom.originStart, dom.originEnd].forEach((input) => {
-      input?.addEventListener("input", refreshOriginSpanNote);
-      input?.addEventListener("change", refreshOriginSpanNote);
-      input?.addEventListener("blur", refreshOriginSpanNote);
-    });
-
     wireResizers();
   }
 
@@ -2948,8 +2942,8 @@ export function createSourceDataFeature(deps = {}) {
       if (dom.count) dom.count.textContent = "";
       if (dom.stats) dom.stats.innerHTML = "";
       if (dom.filter) dom.filter.value = "";
-      [dom.originStart, dom.originEnd, dom.developmentEnd].forEach((input) => {
-        if (input) input.value = "";
+      [dom.originStart, dom.originEnd, dom.developmentEnd].forEach((date) => {
+        if (date) date.textContent = "";
       });
       refreshOriginSpanNote();
       syncPathDisplay();

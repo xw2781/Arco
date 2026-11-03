@@ -32,7 +32,12 @@ function newRequestId() {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
-export function createProjectLockFeature({ getSelectedProject, fetchImpl = fetch, documentRef = document }) {
+/**
+ * @param {object} deps
+ * @param {Function} deps.getSelectedProject
+ * @param {Function} [deps.onChange] called after the lock state is shown
+ */
+export function createProjectLockFeature({ getSelectedProject, fetchImpl = fetch, documentRef = document, onChange }) {
   const switchEl = documentRef.getElementById("projectLockSwitch");
   const statusEl = documentRef.getElementById("projectLockStatus");
   let state = { projectKey: "", locked: false, message: "" };
@@ -53,6 +58,7 @@ export function createProjectLockFeature({ getSelectedProject, fetchImpl = fetch
     } else {
       statusEl.textContent = "Unlocked. Lock to stop all users from changing methods, datasets and imports.";
     }
+    onChange?.();
   }
 
   async function load(projectName) {

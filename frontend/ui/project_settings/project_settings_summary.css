@@ -339,7 +339,9 @@
 .sd-message.error { color: var(--ar-color-danger, #be123c); }
 .sd-message[hidden] { display: none; }
 
-/* ---------- Periods band ---------- */
+/* ---------- Periods band ----------
+   Display only: the whole band is the button that opens the Project Dates
+   panel, and it goes inert with no project or a locked project. */
 .sd-band {
   flex: 0 0 auto;
   display: flex;
@@ -353,8 +355,29 @@
   background: var(--ar-color-surface-raised, #fbfcfe);
   font-size: 12px;
   color: var(--ar-color-text-subtle, #94a3b8);
+  cursor: pointer;
+  outline: none;
+  transition: background 150ms ease, border-color 150ms ease;
+  --sd-band-hover-bg: var(--ar-color-surface-hover, #f1f5f9);
 }
-/* Each label stays with its inputs; the band wraps only between groups. */
+/* Dark's hover surface sits below the raised band, so the band lifts instead. */
+:root[data-arcrho-theme="dark"] .sd-band {
+  --sd-band-hover-bg: var(--ar-color-border-strong, #3a3f4b);
+}
+.sd-band:hover {
+  border-color: var(--ar-color-border-strong, #cbd5e1);
+  background: var(--sd-band-hover-bg);
+}
+.sd-band:focus-visible {
+  border-color: var(--ar-color-border-focus, #93c5fd);
+  box-shadow: 0 0 0 3px var(--ar-color-focus-ring, rgba(96, 165, 250, 0.16));
+}
+.sd-band[aria-disabled="true"] { cursor: default; }
+.sd-band[aria-disabled="true"]:hover {
+  border-color: var(--ar-color-border, #d8dde3);
+  background: var(--ar-color-surface-raised, #fbfcfe);
+}
+/* Each label stays with its dates; the band wraps only between groups. */
 .sd-band-group {
   display: flex;
   align-items: center;
@@ -366,6 +389,27 @@
 .sd-note { color: var(--ar-color-text-subtle, #94a3b8); white-space: nowrap; }
 .sd-note:empty { display: none; }
 .sd-note.error { color: var(--ar-color-danger, #be123c); }
+.sd-date {
+  min-width: 56px;
+  color: var(--ar-color-text, #1f2937);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sd-date:empty::before {
+  content: "4";
+  color: var(--ar-color-text-subtle, #94a3b8);
+  font-weight: 400;
+}
+.table-summary.is-loading .sd-date {
+  border-radius: 3px;
+  background-color: var(--ps-skeleton-base);
+  background-image: var(--ps-skeleton-fill);
+  background-size: 400% 100%;
+  color: transparent;
+  animation: ps-skeleton-sweep 1.15s ease-in-out infinite;
+}
+.table-summary.is-loading .sd-date:empty::before { color: transparent; }
 
 .sd-month {
   position: relative;
@@ -394,21 +438,6 @@
 .sd-month input:disabled {
   color: var(--ar-color-text-disabled, #9ca3af);
   background: var(--ar-color-surface-muted, #eef2f6);
-}
-.table-summary.is-loading .sd-month input {
-  border-color: var(--ar-color-border, #d8dde3);
-  background-color: var(--ps-skeleton-base);
-  background-image: var(--ps-skeleton-fill);
-  background-size: 400% 100%;
-  color: transparent;
-  caret-color: transparent;
-  -webkit-text-fill-color: transparent;
-  animation: ps-skeleton-sweep 1.15s ease-in-out infinite;
-}
-.table-summary.is-loading .sd-month input::placeholder { color: transparent; }
-.table-summary.is-loading .sd-month-picker-btn {
-  opacity: 0;
-  pointer-events: none;
 }
 .sd-month-picker-btn {
   position: absolute;
@@ -700,7 +729,7 @@
 .sd-loading-row:nth-child(3n) .sd-loading-bar-summary { flex-basis: 154px; width: 154px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .table-summary.is-loading .sd-month input {
+  .table-summary.is-loading .sd-date {
     animation: none;
     background-position: 50% 50%;
   }

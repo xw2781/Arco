@@ -11,11 +11,11 @@
  *   - shared table column sizing              -> project_settings_table_columns.js
  */
 import { AuditLogStore } from "/ui/project_settings/project_settings_audit.js?v=20260901dup1";
-import { createFieldMappingFeature } from "/ui/project_settings/project_settings_field_mapping.js?v=20261027map1";
-import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20261027map1";
+import { createFieldMappingFeature } from "/ui/project_settings/project_settings_field_mapping.js?v=20261103band1";
+import { createDatasetTypesFeature } from "/ui/project_settings/project_settings_dataset_types.js?v=20261103band1";
 import { createReservingClassTypesFeature } from "/ui/project_settings/project_settings_reserving_class_types.js?v=20261013group1";
 import { createDataProcessingRulesFeature } from "/ui/project_settings/project_settings_data_processing_rules.js?v=20260927smb18";
-import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261027map1";
+import { createSourceDataFeature } from "/ui/project_settings/project_settings_source_data.js?v=20261103band1";
 import { createSourceImport } from "/ui/project_settings/project_settings_source_import.js?v=20261013group1";
 import {
   applyProjectSettingsTablePreferences,
@@ -27,20 +27,20 @@ import {
   saveProjectSettingsCollapsedGroups,
   saveProjectSettingsTableColumnWidths,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261103dates1";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261103band1";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261103dates1";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261103dates1";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261103dates1";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261103dates1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261103band1";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261103band1";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261103band1";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261103band1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
-import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261103dates1";
+import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261103band1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
 import { createSourceRefreshFeature } from "/ui/project_settings/project_settings_source_refresh.js?v=20260927smb18";
-import { createProjectDatesFeature } from "/ui/project_settings/project_settings_project_dates.js?v=20261103dates1";
+import { createProjectDatesFeature } from "/ui/project_settings/project_settings_project_dates.js?v=20261103band1";
 import { loadProjectUserPreferences } from "/ui/shared/services/project_user_preferences.js?v=20260816a";
 import "/ui/shared/integrations/zoom_bridge.js?v=20260521a";
 
@@ -64,11 +64,9 @@ const folderContextMenu = document.getElementById("folderContextMenu");
 const treeContextMenu = document.getElementById("treeContextMenu");
 const summaryTablePathInput = document.getElementById("summaryTablePathInput");
 const summaryTablePathReloadBtn = document.getElementById("summaryTablePathReloadBtn");
-const summaryOriginLabel = document.getElementById("summaryOriginLabel");
-const summaryDevelopmentLabel = document.getElementById("summaryDevelopmentLabel");
-const summaryOriginStartInput = document.getElementById("summaryOriginStartInput");
-const summaryOriginEndInput = document.getElementById("summaryOriginEndInput");
-const summaryDevelopmentEndInput = document.getElementById("summaryDevelopmentEndInput");
+const summaryOriginStartValue = document.getElementById("summaryOriginStartValue");
+const summaryOriginEndValue = document.getElementById("summaryOriginEndValue");
+const summaryDevelopmentEndValue = document.getElementById("summaryDevelopmentEndValue");
 const dialogOverlay = document.getElementById("dialogOverlay");
 const dialogTitle = document.getElementById("dialogTitle");
 const dialogInput = document.getElementById("dialogInput");
@@ -429,18 +427,20 @@ const generalSettingsFeature = createGeneralSettingsFeature({
   normalizeProjectKey,
   readResponseErrorDetail,
   getSelectedProject: () => selectedProject,
-  onInputsChanged: () => sourceDataFeature.refreshOriginSpanNote(),
+  onDatesShown: () => sourceDataFeature.refreshOriginSpanNote(),
   fetchImpl: fetch.bind(window),
-  controls: {
-    originStartDate: { input: summaryOriginStartInput },
-    originEndDate: { input: summaryOriginEndInput },
-    developmentEndDate: { input: summaryDevelopmentEndInput },
+  displays: {
+    originStartDate: summaryOriginStartValue,
+    originEndDate: summaryOriginEndValue,
+    developmentEndDate: summaryDevelopmentEndValue,
   },
 });
 
 const projectLockFeature = createProjectLockFeature({
   getSelectedProject: () => selectedProject,
   fetchImpl: fetch.bind(window),
+  // The dates band goes inert while the project is locked.
+  onChange: () => projectDatesFeature.syncEntryPoint(),
 });
 
 const treeViewFeature = createTreeViewFeature({
@@ -482,22 +482,17 @@ const sourceRefreshFeature = createSourceRefreshFeature({
 });
 
 // The Project Dates panel: the one place the three dates change together.
-// `projectDatesFeature.open()` is what the main page's dates band opens.
+// A click, Enter or Space anywhere on the main page's dates band opens it.
 const projectDatesFeature = createProjectDatesFeature({
   fetchImpl: fetch.bind(window),
   setStatus,
   publishShellProgress: (message) => window.parent.postMessage(message, window.location.origin),
   readResponseErrorDetail,
   getSelectedProject: () => selectedProject,
+  isProjectLocked: () => projectLockFeature.isSelectedProjectLocked(),
   loadDates: (projectName) => generalSettingsFeature.load(projectName),
   reloadDates: (projectName) => generalSettingsFeature.load(projectName, { applyToInputs: true }),
 });
-
-// TEMPORARY entry point until step 7 of docs/plans/project_dates_panel.md makes
-// the whole dates band open the panel: a click on a band label opens it.
-for (const label of [summaryOriginLabel, summaryDevelopmentLabel]) {
-  label?.addEventListener("click", () => void projectDatesFeature.open());
-}
 
 /** Re-attach to a refresh this page left running, then show what it produced. */
 async function resumePendingSourceRefresh(projectName) {
@@ -680,6 +675,7 @@ function clearProjectSelection() {
   switchCover.cancel();
   detailEmpty.style.display = "flex";
   detailView.style.display = "none";
+  projectDatesFeature.syncEntryPoint();
 }
 
 function restoreSelectedProjectFromSession() {
@@ -780,7 +776,7 @@ function showProjectDetails(project) {
   detailForm.innerHTML = "";
   detailForm.style.display = "none";
   bindSummaryTablePathEditor(project);
-  generalSettingsFeature.bindEditor(project);
+  projectDatesFeature.syncEntryPoint();
   void projectLockFeature.load(project.name);
 
   // Load the summary of the table this project has imported.
@@ -1124,9 +1120,9 @@ async function clearGeneratedDatasetCsvCachesForProject(projectName) {
   }
 }
 
-/** Apply a stored General Settings record to the period inputs. */
-function applyStoredPeriodsToInputs(values) {
-  generalSettingsFeature.setDerivedDateInputs({
+/** Show a stored General Settings record on the period band. */
+function showStoredPeriods(values) {
+  generalSettingsFeature.showDates({
     originStart: values.originStartDate,
     originEnd: values.originEndDate,
     developmentEnd: values.developmentEndDate,
@@ -1162,7 +1158,7 @@ async function loadTableSummary(projectName = "", options = {}) {
     );
     const existingGeneralSettings = await generalSettingsFeature.ensureLoaded(projectName, { applyToInputs: false });
     if (isStale()) return true;
-    applyStoredPeriodsToInputs(existingGeneralSettings);
+    showStoredPeriods(existingGeneralSettings);
     if (forceReservingClassTypesReload) {
       await reservingClassTypesFeature?.loadReservingClassTypes(projectName, { force: true });
     }
@@ -1217,7 +1213,7 @@ async function loadTableSummary(projectName = "", options = {}) {
       || (forceDerivedDates && !!existingGeneralSettings.autoGenerated)
     );
     if (shouldApplyDerived) {
-      generalSettingsFeature.setDerivedDateInputs(derivedValues);
+      generalSettingsFeature.showDates(derivedValues);
       await generalSettingsFeature.save(
         projectName,
         {
@@ -1231,7 +1227,7 @@ async function loadTableSummary(projectName = "", options = {}) {
         },
       );
     } else {
-      applyStoredPeriodsToInputs(existingGeneralSettings);
+      showStoredPeriods(existingGeneralSettings);
       // A duplicated or renamed project keeps its dates, re-saved under the new name.
       if (existingGeneralSettings.projectNameMismatch) await generalSettingsFeature.save(projectName, existingGeneralSettings, { autoGenerated: existingGeneralSettings.autoGenerated, force: true });
     }
@@ -1251,7 +1247,7 @@ async function loadTableSummary(projectName = "", options = {}) {
     sourceDataFeature.showError(err.message || "Unable to read the source table.");
     const existingGeneralSettings = await generalSettingsFeature.ensureLoaded(projectName, { applyToInputs: false });
     if (isStale()) return true;
-    applyStoredPeriodsToInputs(existingGeneralSettings);
+    showStoredPeriods(existingGeneralSettings);
     return false;
   }
 }

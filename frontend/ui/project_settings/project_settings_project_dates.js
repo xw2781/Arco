@@ -5,11 +5,15 @@
 // confirmation; confirming submits one Engine job that saves the dates and
 // moves the whole project, followed in the shell's progress window. The poll
 // loop, the request id and the sentences live in the sibling job module.
+//
+// The main page's dates band is the panel's one entry point: a click, Enter or
+// Space anywhere on it opens the panel, and it stays inert while no project is
+// selected or the project is locked.
 
 import {
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261103dates1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261103band1";
 import {
   createProjectDatesRequestId,
   describeProjectDatesPreview,
@@ -19,7 +23,7 @@ import {
   projectDatesPreviewUrl,
   validateProjectDates,
   waitForProjectDatesJob,
-} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261103dates1";
+} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261103band1";
 
 const FIELD_KEYS = ["originStartDate", "originEndDate", "developmentEndDate"];
 
@@ -38,6 +42,7 @@ function escapeHtml(value) {
  * @param {Function} deps.publishShellProgress posts one shell progress message
  * @param {Function} deps.readResponseErrorDetail
  * @param {Function} deps.getSelectedProject
+ * @param {Function} [deps.isProjectLocked] true while the selected project is locked
  * @param {Function} deps.loadDates `(projectName) => Promise<{originStartDate, ...}>`
  * @param {Function} deps.reloadDates `(projectName) => Promise` after a change
  * @param {Document} [deps.documentRef]
@@ -48,6 +53,7 @@ export function createProjectDatesFeature({
   publishShellProgress,
   readResponseErrorDetail,
   getSelectedProject,
+  isProjectLocked = () => false,
   loadDates,
   reloadDates,
   documentRef = document,
@@ -56,6 +62,7 @@ export function createProjectDatesFeature({
 }) {
   const el = (id) => documentRef.getElementById(id);
   const dom = {
+    band: el("summaryPeriodsBand"),
     panel: el("projectDatesPanel"),
     header: el("projectDatesPanelHeader"),
     close: el("projectDatesPanelClose"),
@@ -157,12 +164,7 @@ export function createProjectDatesFeature({
     return !!dom.panel?.classList.contains("show");
   }
 
-  /**
-   * Open the panel on the selected project's saved dates.
-   *
-   * Step 7 wires the main page's dates band to this. Returns false when no
-   * project is selected.
-   */
+  /** Open the panel on the selected project's saved dates; false with no project. */
   async function open() {
     const project = getSelectedProject();
     const name = String(project?.name || "").trim();
@@ -203,9 +205,32 @@ export function createProjectDatesFeature({
     if (!dom.panel || !isOpen()) return;
     endDrag();
     hideConfirm(false);
+    // Keyboard focus goes back to the band that opened the panel.
+    const hadFocus = dom.panel.contains(documentRef.activeElement);
     dom.panel.classList.remove("show");
     dom.panel.setAttribute("aria-hidden", "true");
     if (!running) panelProject = "";
+    if (hadFocus && dom.band?.getAttribute("aria-disabled") !== "true") dom.band.focus();
+  }
+
+  /* ---------------- dates band ---------------- */
+
+  function bandCanOpen() {
+    return !!String(getSelectedProject()?.name || "").trim() && !isProjectLocked();
+  }
+
+  /** Reflect whether the band opens the panel: no project or a lock makes it inert. */
+  function syncEntryPoint() {
+    if (!dom.band) return;
+    const enabled = bandCanOpen();
+    dom.band.setAttribute("aria-disabled", String(!enabled));
+    dom.band.tabIndex = enabled ? 0 : -1;
+  }
+
+  function openFromBand() {
+    syncEntryPoint();
+    if (!bandCanOpen()) return;
+    void open();
   }
 
   /* ---------------- confirmation ---------------- */
@@ -396,6 +421,13 @@ export function createProjectDatesFeature({
 
   /* ---------------- wiring ---------------- */
 
+  dom.band?.addEventListener("click", openFromBand);
+  dom.band?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    if (!event.repeat) openFromBand();
+  });
+  syncEntryPoint();
   dom.header?.addEventListener("pointerdown", onHeaderPointerDown);
   dom.header?.addEventListener("pointermove", onHeaderPointerMove);
   dom.header?.addEventListener("pointerup", onHeaderPointerEnd);
@@ -436,5 +468,5 @@ export function createProjectDatesFeature({
     if (dom.confirmBox?.contains(event.target)) event.stopPropagation();
   });
 
-  return { open, close, isOpen, isRunning: () => running };
+  return { open, close, isOpen, isRunning: () => running, syncEntryPoint };
 }
