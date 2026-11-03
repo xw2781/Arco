@@ -192,6 +192,15 @@ WORKSPACE_MUTATION_KINDS: dict[str, WorkspaceMutationKind] = {
         ("expected_revision", "rules"),
         locked_project_arg="project_name",
     ),
+    # Submitting a project dates change publishes two small files into the
+    # Engine's queue, idempotent by the client-owned request id like the
+    # rules save above; the Engine job does the work.
+    "project_dates_change_submit": WorkspaceMutationKind(
+        "project_dates_job_service",
+        "submit_project_dates_job",
+        ("project_name", "request_id", "origin_start_date", "origin_end_date", "development_end_date"),
+        locked_project_arg="project_name",
+    ),
     # The DFM sync dialog publishes a request file the Arco Bridge claims,
     # then waits for the JSON the Bridge exports from ResQ. Both halves are
     # server-local for the Bridge and both cross SMB for a Client PC, where the

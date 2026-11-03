@@ -282,6 +282,20 @@ WORKSPACE_READ_KINDS: dict[str, WorkspaceReadKind] = {
         ("project_name",),
         ("job_id",),
     ),
+    # A project dates change is polled the same way. Its preview reads every
+    # class index and the sidecar of every stored dataset to count what the
+    # change touches, which is local disk only on the server.
+    "project_dates_job_status": WorkspaceReadKind(
+        "project_dates_job_service",
+        "get_project_dates_job_status",
+        ("project_name",),
+        ("job_id",),
+    ),
+    "project_dates_preview": WorkspaceReadKind(
+        "project_dates_job_service",
+        "preview_project_dates_change",
+        ("project_name", "origin_start_date", "origin_end_date", "development_end_date"),
+    ),
     # The DFM and Result Selection sync dialogs compare the local method JSON
     # against the copy the Bridge exported from ResQ. Both files live in the
     # workspace, so from a Client PC rendering the review window costs several

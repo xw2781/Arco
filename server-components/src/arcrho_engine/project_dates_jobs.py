@@ -63,8 +63,9 @@ from arcrho_engine.runtime_log import append_runtime_log
 
 PROJECT_DATES_JOB_LOG_FILENAME = "project_dates_jobs.log"
 
-#: Why a reshaped item is listed, beside ``period_reshape``'s dataset reasons.
-REVIEW_LABELS_OFF_GRID = "origin labels do not match the project dates; not reshaped"
+from arcrho_api.period_reshape import REVIEW_LABELS_OFF_GRID, is_imported_dataset
+
+#: Why a reshaped method is listed, beside ``period_reshape``'s dataset reasons.
 REVIEW_METHOD_RESHAPED = "periods moved to the new dates"
 
 Progress = dict[str, Any]
@@ -191,23 +192,6 @@ def _delete_sibling_views(data_dir: str, dataset_name: str, csv_file: str) -> li
     return removed
 
 
-def is_imported_dataset(sidecar: Mapping[str, Any]) -> bool:
-    """Whether a dataset holds stored values the Engine cannot rebuild.
-
-    Hand-entered and imported datasets (``source_kind`` input), and the
-    triangles a ResQ import stored as engine datasets whose type reads no
-    source column (``source`` ``resq_triangle``): regenerating those fails and
-    keeps the old file, so they are reshaped like a hand-entered dataset
-    (decision 1).
-    """
-
-    source_kind = str(sidecar.get("source_kind") or "").strip().casefold()
-    if source_kind == "input":
-        return True
-    source = str(sidecar.get("source") or "").strip().casefold()
-    return source_kind == "engine" and source.startswith("resq_")
-
-
 def reshape_input_dataset_file(
     project_name: str,
     reserving_class: str,
@@ -227,12 +211,9 @@ def reshape_input_dataset_file(
     from app_server.services import dataset_service
     from arcrho_api.period_reshape import (
         REVIEW_HAND_ENTERED,
-        development_ages,
-        project_dates_development_labels,
-        project_dates_origin_plan,
+        plan_input_dataset_reshape,
         reshape_input_dataset,
     )
-    from arcrho_api.sidecar_core_contract import display_lengths, stored_lengths
 
     sidecar_path = dataset_service._get_dataset_sidecar_path(
         project_name, reserving_class, dataset_name
@@ -242,53 +223,21 @@ def reshape_input_dataset_file(
         return None
     if not is_imported_dataset(sidecar):
         return None
-    is_vector = str(sidecar.get("data_format") or "").strip().casefold() == "vector"
-    stored = stored_lengths(sidecar)
-    shown = display_lengths(sidecar)
-    origin_length = stored[0] or shown[0] or 12
-    development_length = stored[1] or shown[1] or origin_length
-
-    plan = project_dates_origin_plan(
-        sidecar.get("origin_labels") or [], origin_length, previous_dates, dates
-    )
-    if plan is None:
-        return {"changed": False, "review": [REVIEW_HAND_ENTERED, REVIEW_LABELS_OFF_GRID]}
 
     data_dir = config.get_project_dataset_cache_dir(project_name, reserving_class)
     csv_file = os.path.basename(str(sidecar.get("csv_file") or "").strip())
     csv_path = os.path.join(data_dir, csv_file) if csv_file else ""
     values = _read_grid(csv_path) if csv_path and os.path.isfile(csv_path) else []
-    values = values + [[] for _ in range(len(plan["old"]) - len(values))]
-
-    # The stored grid and the sidecar's labels are moved separately: a
-    # sidecar may label a triangle at its display period while its CSV holds
-    # the finer stored columns. A grid exactly as wide as the previous dates'
-    # ages takes the new dates' width; any other width (kept from another
-    # valuation, or the full grid) stays as it is.
     old_width = max((len(row) for row in values), default=0)
-    width = None
-    columns = None
-    old_columns = [str(label) for label in sidecar.get("development_labels") or []]
-    if not is_vector:
-        if old_width == len(development_ages(
-            previous_dates["origin_start_date"], previous_dates["development_end_date"], development_length
-        )):
-            width = len(development_ages(
-                dates["origin_start_date"], dates["development_end_date"], development_length
-            ))
-        else:
-            width = max(old_width, 1)
-        if not sidecar.get("calendar"):
-            for length in dict.fromkeys((development_length, shown[1] or development_length)):
-                columns = project_dates_development_labels(old_columns, length, previous_dates, dates)
-                if columns is not None:
-                    break
-    if (
-        plan["old"] == plan["new"]
-        and (width is None or width == old_width)
-        and (columns is None or columns == old_columns)
-    ):
+    shape = plan_input_dataset_reshape(sidecar, old_width, previous_dates, dates)
+    plan = shape["origins"]
+    if plan is None:
+        return {"changed": False, "review": [REVIEW_HAND_ENTERED, REVIEW_LABELS_OFF_GRID]}
+    if not shape["changed"]:
         return {"changed": False, "review": []}
+    values = values + [[] for _ in range(len(plan["old"]) - len(values))]
+    width = shape["width"]
+    columns = shape["columns"]
 
     reshaped = reshape_input_dataset(
         sidecar, values, plan["old"], plan["new"], columns, column_count=width

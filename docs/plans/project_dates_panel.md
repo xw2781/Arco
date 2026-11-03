@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-4 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-5 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -16,12 +16,12 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 2 | A development method accepts a new set of columns and keeps its selections by position | [x] | 2026-11-03 | 70 min | 6 min | A development method whose triangle gains or loses a column after a date change now follows it and keeps its exclusions, selections and notes, instead of refusing. |
 | 3 | Every other method type reshapes the same way | [x] | 2026-11-03 | 80 min | 9 min | Every other method type, and every hand-entered or imported dataset, now follows a date change with its weights, overrides and choices kept on the right origin; Excel-linked cells stay where they are. |
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [x] | 2026-11-03 | 90 min | 60 min | Nothing visible yet; the server can now move a whole project to new dates in one run, and a run that stops part way finishes when started again. |
-| 5 | The app can start the job, report its progress, and preview what it will touch | [ ] | | 60 min | | |
+| 5 | The app can start the job, report its progress, and preview what it will touch | [x] | 2026-11-03 | 60 min | 8 min | Nothing visible yet; the app can now ask the server what a date change would touch, start it, and follow its progress. |
 | 6 | A floating panel changes all three dates together, behind a confirmation | [ ] | | 80 min | | |
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 
-Overall: 4 of 8 steps done. Estimated 540 min, actual so far 80 min.
+Overall: 5 of 8 steps done. Estimated 540 min, actual so far 88 min.
 
 ## How agents work this plan
 
@@ -155,9 +155,19 @@ Actual: code edit 23 min, test/validation 37 min, total 60 min; the Fake run tak
 ### Step 5: Start, progress and preview in the app server
 Estimate: 60 min
 
+Actual: code edit 5 min, test/validation 3 min, total 8 min; well under because the rules-save job service was a direct template and the job already owned the reshape rule.
+
 Add the job service in `frontend/app_server`, with a submit, a status read and a preview that returns the counts the modal shows without changing anything, including the origins that will be dropped and the hand-entered datasets that will be reshaped. Register them as workspace mutation and read kinds so a Client PC reaches them over the Gateway, with the preflight that refuses while a propagation hold is active. Add a route in the project settings router. No SMB fallback.
 
 Done when each route is covered by a transport-selection test and the preview matches what the job then touches.
+
+Done 2026-11-03. Service `frontend/app_server/services/project_dates_job_service.py`; kinds `project_dates_change_submit` (mutation, refused while the project is locked), `project_dates_job_status` and `project_dates_preview` (reads); the contract is now in the Gateway's hidden-import list.
+- **Routes** (project settings router): `GET /general_settings/dates/preview?project_name&origin_start_date&origin_end_date&development_end_date`, `POST /general_settings/dates/job` (`ProjectDatesChangeRequest`: project_name, the three dates, request_id), `GET /general_settings/dates/job/status?project_name&job_id`. Submit answers `{ok, job_id, status, resumed}`; status is the contract's status plus `found`, `busy`, `busy_reason`. Bad dates 400, other dates while a change is unfinished 409, a queued change or source refresh 423, no Engine 503.
+- **Preview fields**: `dates`, `previous_dates` (the pending record's when a change is unfinished), `unchanged`, `resumed`, `classes`, `engine_datasets`, `calculated_datasets`, `methods`, `imported_datasets`, `imported_reshaped`, `imported[{reserving_class, name, reshaped, off_grid, origins_dropped}]`, `origin_changes[{origin_length, before, after, dropped, added}]` for every origin length the project stores, largest first.
+- **One copy of the rule.** `is_imported_dataset` and the new `plan_input_dataset_reshape` moved to `period_reshape.py`; the Engine job writes that plan and the preview counts it.
+- **Checked read-only on the Fake project** (Development End 202605 to 202612, 0.9 s): 1,288 engine datasets and 16 hand-entered datasets reshaped, the same counts the step-4 run touched. The preview counts 32 classes that hold data; the job walks 33 because it also walks a project data folder with no index.
+
+Tests: `frontend/tests/test_project_dates_job_service.py` (submit, status, preview, the job reshaping exactly what the preview names, route transport).
 
 ### Step 6: The floating panel and confirmation modal
 Estimate: 80 min

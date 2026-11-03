@@ -378,3 +378,89 @@ def project_dates_development_labels(
     return [f"{age}m" for age in development_ages(
         new_dates["origin_start_date"], new_dates["development_end_date"], length
     )]
+
+
+# ---------------------------------------------------------------------------
+# Which stored datasets a date change reshapes, and how
+# ---------------------------------------------------------------------------
+
+#: Why a dataset whose labels are not the previous dates' grid is listed.
+REVIEW_LABELS_OFF_GRID = "origin labels do not match the project dates; not reshaped"
+
+
+def is_imported_dataset(sidecar: Mapping[str, Any]) -> bool:
+    """Whether a dataset holds stored values the Engine cannot rebuild.
+
+    Hand-entered and imported datasets (``source_kind`` input), and the
+    triangles a ResQ import stored as engine datasets whose type reads no
+    source column (``source`` ``resq_triangle``): regenerating those fails and
+    keeps the old file, so they are reshaped like a hand-entered dataset
+    (decision 1). The Engine job and the app server's preview share this one
+    predicate.
+    """
+
+    source_kind = str(sidecar.get("source_kind") or "").strip().casefold()
+    if source_kind == "input":
+        return True
+    source = str(sidecar.get("source") or "").strip().casefold()
+    return source_kind == "engine" and source.startswith("resq_")
+
+
+def plan_input_dataset_reshape(
+    sidecar: Mapping[str, Any],
+    old_width: int,
+    previous_dates: Mapping[str, Any],
+    dates: Mapping[str, Any],
+) -> dict[str, Any]:
+    """How one hand-entered or imported dataset moves to new dates.
+
+    ``old_width`` is the widest row of its stored CSV. Returns ``{"origins",
+    "width", "columns", "changed"}``: ``origins`` is the
+    ``project_dates_origin_plan`` (``None`` when the labels are off the
+    previous grid, and then nothing moves), ``width`` the new stored column
+    count of a triangle (``None`` for a vector), ``columns`` its new
+    development labels (``None`` to keep them). The job writes this plan and
+    the preview counts it, so both answer the same question the same way.
+
+    The stored grid and the labels move separately: a sidecar may label a
+    triangle at its display period while its CSV holds finer stored columns.
+    A grid exactly as wide as the previous dates' ages takes the new dates'
+    width; any other width (kept from another valuation, or the full grid)
+    stays as it is.
+    """
+
+    from .sidecar_core_contract import display_lengths, stored_lengths
+
+    stored = stored_lengths(sidecar)
+    shown = display_lengths(sidecar)
+    origin_length = stored[0] or shown[0] or 12
+    development_length = stored[1] or shown[1] or origin_length
+    origins = project_dates_origin_plan(
+        sidecar.get("origin_labels") or [], origin_length, previous_dates, dates
+    )
+    if origins is None:
+        return {"origins": None, "width": None, "columns": None, "changed": False}
+
+    width = None
+    columns = None
+    old_columns = [str(label) for label in sidecar.get("development_labels") or []]
+    if str(sidecar.get("data_format") or "").strip().casefold() != "vector":
+        if old_width == len(development_ages(
+            previous_dates["origin_start_date"], previous_dates["development_end_date"], development_length
+        )):
+            width = len(development_ages(
+                dates["origin_start_date"], dates["development_end_date"], development_length
+            ))
+        else:
+            width = max(old_width, 1)
+        if not sidecar.get("calendar"):
+            for length in dict.fromkeys((development_length, shown[1] or development_length)):
+                columns = project_dates_development_labels(old_columns, length, previous_dates, dates)
+                if columns is not None:
+                    break
+    changed = not (
+        origins["old"] == origins["new"]
+        and (width is None or width == old_width)
+        and (columns is None or columns == old_columns)
+    )
+    return {"origins": origins, "width": width, "columns": columns, "changed": changed}

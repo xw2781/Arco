@@ -100,6 +100,20 @@ class ProjectLockUpdateRequest(BaseModel):
     request_id: Optional[str] = None
 
 
+class ProjectDatesChangeRequest(BaseModel):
+    """Move the project to new dates: one Engine job saves and reshapes.
+
+    The client owns ``request_id`` so a retry after a lost response resumes
+    the same job instead of queuing a second change.
+    """
+
+    project_name: str
+    origin_start_date: str
+    origin_end_date: str
+    development_end_date: str
+    request_id: str = ""
+
+
 class GeneralSettingsUpdateRequest(BaseModel):
     project_name: str
     origin_start_date: Optional[str] = ""

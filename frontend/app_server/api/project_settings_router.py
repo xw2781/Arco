@@ -18,9 +18,11 @@ from app_server.schemas.project_settings import (
     OpenProjectFolderRequest,
     GeneratedDatasetCacheClearRequest,
     GeneralSettingsUpdateRequest,
+    ProjectDatesChangeRequest,
     ProjectLockUpdateRequest,
 )
 from app_server.services import (
+    project_dates_job_service,
     project_lock_service,
     project_settings_service,
     workspace_mutation_client,
@@ -205,6 +207,57 @@ def get_general_settings(project_name: str) -> Dict[str, Any]:
         "general_settings",
         {"project_name": project_name},
         local=lambda: project_settings_service.get_general_settings(project_name),
+    )
+
+
+# A dates change reshapes the whole project, so it runs as one Engine job:
+# the preview counts what it touches without writing, the submit queues it,
+# and the client polls the status for progress and the result.
+
+
+@router.get("/general_settings/dates/preview")
+def preview_project_dates_change(
+    project_name: str,
+    origin_start_date: str,
+    origin_end_date: str,
+    development_end_date: str,
+) -> Dict[str, Any]:
+    kwargs = {
+        "project_name": project_name,
+        "origin_start_date": origin_start_date,
+        "origin_end_date": origin_end_date,
+        "development_end_date": development_end_date,
+    }
+    return workspace_read_client.run_workspace_read(
+        "project_dates_preview",
+        kwargs,
+        local=lambda: project_dates_job_service.preview_project_dates_change(**kwargs),
+    )
+
+
+@router.post("/general_settings/dates/job")
+def submit_project_dates_change(req: ProjectDatesChangeRequest) -> Dict[str, Any]:
+    kwargs = {
+        "project_name": req.project_name,
+        "request_id": str(req.request_id or "").strip() or uuid.uuid4().hex,
+        "origin_start_date": req.origin_start_date,
+        "origin_end_date": req.origin_end_date,
+        "development_end_date": req.development_end_date,
+    }
+    return workspace_mutation_client.run_workspace_mutation(
+        "project_dates_change_submit",
+        kwargs,
+        local=lambda: project_dates_job_service.submit_project_dates_job(**kwargs),
+    )
+
+
+@router.get("/general_settings/dates/job/status")
+def get_project_dates_change_status(project_name: str, job_id: str = "") -> Dict[str, Any]:
+    kwargs = {"project_name": project_name, "job_id": job_id}
+    return workspace_read_client.run_workspace_read(
+        "project_dates_job_status",
+        kwargs,
+        local=lambda: project_dates_job_service.get_project_dates_job_status(**kwargs),
     )
 
 
