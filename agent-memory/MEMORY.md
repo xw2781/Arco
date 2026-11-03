@@ -117,3 +117,4 @@
 - [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding an empty vector in the base class, not by editing formulas
 - [resq-invalid-aggregate-trace](resq-invalid-aggregate-trace.md) — How to trace a red "invalid" ResQ aggregate — compare ReservingClass.Formula…
 - [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a page-wide shield; reopen the project tab
+- [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation hosted in Legacy\HOPxCAT+HOL; ResQ correlation still unconfirmed
