@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; step 1 done 2026-11-03 (inventory of date-shaped files, every method type has a reshape rule).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-2 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -13,7 +13,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | # | Step | Done | Date | Est. | Actual | What changed for the user |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A written list of every stored file that depends on the project dates, and how each one reshapes | [x] | 2026-11-03 | 60 min | 5 min | Nothing yet; the plan now lists every kind of saved data the dates shape and how each will follow a change. |
-| 2 | A development method accepts a new set of columns and keeps its selections by position | [ ] | | 70 min | | |
+| 2 | A development method accepts a new set of columns and keeps its selections by position | [x] | 2026-11-03 | 70 min | 6 min | A development method whose triangle gains or loses a column after a date change now follows it and keeps its exclusions, selections and notes, instead of refusing. |
 | 3 | Every other method type reshapes the same way | [ ] | | 80 min | | |
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [ ] | | 90 min | | |
 | 5 | The app can start the job, report its progress, and preview what it will touch | [ ] | | 60 min | | |
@@ -21,7 +21,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 
-Overall: 1 of 8 steps done. Estimated 540 min, actual so far 5 min.
+Overall: 2 of 8 steps done. Estimated 540 min, actual so far 11 min.
 
 ## How agents work this plan
 
@@ -102,11 +102,17 @@ Actual: code edit 4 min, test/validation 1 min, total 5 min; well under because 
 ### Step 2: Development method reshape
 Estimate: 70 min
 
+Read first: `_apply_input_snapshot` and `recalculate_dfm_method` in `python-api/src/arcrho_api/dfm_contract.py`, `_calculate_formula_values` (the tail is the last formula column and is read at the new last index), and `normalize_curves_tab` in `dfm_curves.py` (Curves lists already fit by position).
+
 Replace the refusal in `_apply_input_snapshot` with a reshape. The new triangle's origin and development labels replace the saved ones. Rows match by origin label (decision 3): a kept origin carries its row, a dropped origin's row goes, a new origin's row starts empty and non-excluded. Within each row, ratio selections and exclusions copy by absolute development index from the first cell, and new cells are non-excluded. Selected factors, tails and averages follow the development position rule, so no hand-picked value moves to a different column silently. Keep the refusal for a change that is not a date change, if step 1 finds one.
 
 Follow the persisted JSON rules: write through `persisted_json_text`, and keep revisions on the canonical projection. Use `$arcrho-json-contract`.
 
 Done when a 39-column method becomes a 40-column method with its pattern in place, a 40-column method shrinks back, a January change (earliest origin dropped, new origin added) keeps each surviving origin's values and pattern on its own label, and tests cover all three with exact payloads.
+
+Done 2026-11-03. The shared helper is `python-api/src/arcrho_api/period_reshape.py` (`development_axis_reshapable`, `fit_by_position`, `fit_by_position_keep_tail`, `rows_by_label`, `reshape_matrix`); step 3 reuses it. The tail ("N - Ult") column stays last in every average-formula row and cell-note table, so a typed tail never becomes an age-to-age factor; new columns start unselected. A shrink drops the exclusions on the diagonal that went, while an equal-count shift keeps the existing "previously excluded ratio cells" refusal. Tests: `python-api/tests/test_dfm_reshape.py`. Checked read-only against all 16 DFMs of the Fake MA BI Total class: each grew by one column and shrank back to its exact selections, exclusions and ultimates.
+
+Actual: code edit 4 min, test/validation 2 min, total 6 min; well under because the existing per-column lists already fit by position, so only the refusal, the tail and the exclusion rows needed changing.
 
 ### Step 3: Other method types
 Estimate: 80 min

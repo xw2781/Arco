@@ -17,6 +17,7 @@ from typing import Any, Iterable, Mapping
 
 from .dataset_display_contract import normalize_show_subtotal
 from .dfm_curves import curves_table, curves_tab_is_default, normalize_curves_tab, owned_curves_tab
+from .period_reshape import development_axis_reshapable, fit_by_position_keep_tail, reshape_matrix
 from .revision_contract import fingerprint
 from .sidecar_audit_contract import (
     AUDIT_ACTION_INSERT,
@@ -1226,20 +1227,16 @@ def _set_revisions(payload: dict[str, Any]) -> None:
     metadata.update(method_revisions(payload))
 
 
-def _development_axis_shift(old_labels: list[str], new_labels: list[str]) -> bool:
-    """A valuation shift keeps the number and spacing of development columns."""
-    if not old_labels or len(old_labels) != len(new_labels):
-        return False
-    if any(not re.fullmatch(r"\d+(?:\.\d+)?m?", label.strip()) for label in old_labels + new_labels):
-        return False
-    offsets = {
-        float(_age_text(new)) - float(_age_text(old))
-        for old, new in zip(old_labels, new_labels)
-    }
-    return len(offsets) == 1
+def _apply_input_snapshot(payload: dict[str, Any], snapshot: Mapping[str, Any]) -> bool:
+    """Take a new input triangle; True when its development column count changed.
 
+    A move of the project dates reshapes the method (``period_reshape``): rows
+    follow their origin label, and along the development axis the exclusions,
+    the average-formula cells and the cell notes keep their position from the
+    first column, the tail staying last. A development axis that is not the
+    same ages on the same spacing is a different triangle and is refused.
+    """
 
-def _apply_input_snapshot(payload: dict[str, Any], snapshot: Mapping[str, Any]) -> None:
     details = payload["details_tab"]
     old_ratio = payload["ratios_tab"]["ratio_triangle"]
     old_data_devs = _labels(payload["data_tab"].get("development_labels"))
@@ -1255,8 +1252,8 @@ def _apply_input_snapshot(payload: dict[str, Any], snapshot: Mapping[str, Any]) 
     duplicates = _duplicate_labels(origins)
     if duplicates:
         raise DfmContractError("DFM input snapshot has duplicate origin labels: " + ", ".join(duplicates))
-    shifted = old_data_devs != devs and _development_axis_shift(old_data_devs, devs)
-    if old_data_devs and old_data_devs != devs and not shifted:
+    moved = bool(old_data_devs) and old_data_devs != devs
+    if moved and not development_axis_reshapable(old_data_devs, devs):
         raise DfmContractError(
             "DFM input development-label geometry changed; preserve the last valid method and require review."
         )
@@ -1298,29 +1295,24 @@ def _apply_input_snapshot(payload: dict[str, Any], snapshot: Mapping[str, Any]) 
         "source_revision": source_snapshot_revision(canonical_snapshot),
     })
     ratio_labels = _ratio_development_labels(devs)
-    origin_lookup = {label: index for index, label in enumerate(old_origins)}
-    dev_lookup = {label: index for index, label in enumerate(ratio_labels if shifted else old_devs)}
-    if shifted:
-        renamed_columns = dict(zip(old_devs, ratio_labels))
-        for table in payload['ratios_tab']['cell_notes'].values():
+    if moved:
+        old_columns = old_devs or _ratio_development_labels(old_data_devs)
+        renamed = {
+            old: new
+            for new, old in zip(ratio_labels, fit_by_position_keep_tail(old_columns, len(ratio_labels), None))
+            if old is not None
+        }
+        for table in payload["ratios_tab"]["cell_notes"].values():
             for row_name, notes in table.items():
-                table[row_name] = {renamed_columns.get(label, label): note for label, note in notes.items()}
-    remapped: list[list[int]] = []
-    for origin in origins:
-        old_row = origin_lookup.get(origin)
-        row: list[int] = []
-        for dev_label in ratio_labels:
-            old_col = dev_lookup.get(dev_label)
-            value = 0
-            if old_row is not None and old_col is not None and old_row < len(old_excluded):
-                source_row = old_excluded[old_row]
-                if old_col < len(source_row):
-                    value = source_row[old_col]
-            row.append(value)
-        remapped.append(row)
+                table[row_name] = {renamed[label]: note for label, note in notes.items() if label in renamed}
+        formulas = payload["ratios_tab"]["average_formulas"]
+        fills = {"selected": 0, "values": None, "inputs": "", "display_inputs": ""}
+        for key, fill in fills.items():
+            formulas[key] = [fit_by_position_keep_tail(row, len(ratio_labels), fill) for row in formulas[key]]
     old_ratio["origin_labels"] = origins
     old_ratio["development_labels"] = ratio_labels
-    old_ratio["excluded"] = remapped
+    old_ratio["excluded"] = reshape_matrix(old_excluded, old_origins, origins, len(ratio_labels), 0)
+    return moved and len(old_data_devs) != len(devs)
 
 
 def _apply_ratio_basis_snapshot(payload: dict[str, Any], snapshot: Mapping[str, Any]) -> None:
@@ -1860,8 +1852,7 @@ def recalculate_dfm_method(
         update_refresh_timestamp = input_snapshot is not None or ratio_basis_snapshot is not None or bool(changed)
     refreshed_at = _timestamp(timestamp)
     method = normalize_dfm_method(payload, require_complete=False, timestamp=refreshed_at)
-    if input_snapshot is not None:
-        _apply_input_snapshot(method, input_snapshot)
+    reshaped = input_snapshot is not None and _apply_input_snapshot(method, input_snapshot)
     if ratio_basis_snapshot is not None:
         _apply_ratio_basis_snapshot(method, ratio_basis_snapshot)
     ratio = method["ratios_tab"]["ratio_triangle"]
@@ -1872,7 +1863,9 @@ def recalculate_dfm_method(
         data["input_data_triangle_values"], data["input_data_triangle_mask"], len(data["development_labels"])
     )
     prior_excluded = _int_matrix(ratio.get("excluded"))
-    if any(
+    # A reshape to fewer diagonals drops the exclusions on the cells that went;
+    # otherwise a missing value under an exclusion is a source problem.
+    if not reshaped and any(
         value == 1
         for row, excluded_row in enumerate(prior_excluded)
         for value in excluded_row[len(ratio['ratio_values'][row]):]
