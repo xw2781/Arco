@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps, none started.
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; step 1 done 2026-11-03 (inventory of date-shaped files, every method type has a reshape rule).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -12,7 +12,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 
 | # | Step | Done | Date | Est. | Actual | What changed for the user |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | A written list of every stored file that depends on the project dates, and how each one reshapes | [ ] | | 60 min | | |
+| 1 | A written list of every stored file that depends on the project dates, and how each one reshapes | [x] | 2026-11-03 | 60 min | 5 min | Nothing yet; the plan now lists every kind of saved data the dates shape and how each will follow a change. |
 | 2 | A development method accepts a new set of columns and keeps its selections by position | [ ] | | 70 min | | |
 | 3 | Every other method type reshapes the same way | [ ] | | 80 min | | |
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [ ] | | 90 min | | |
@@ -21,7 +21,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 
-Overall: 0 of 8 steps done. Estimated 540 min, actual so far 0 min.
+Overall: 1 of 8 steps done. Estimated 540 min, actual so far 5 min.
 
 ## How agents work this plan
 
@@ -41,6 +41,37 @@ Trigger: the import of Oct data into `NJ_Annual_Prod_2026 Oct`, a copy of the Se
 - **The methods did not.** Every quarterly Development Factor method kept its 39 saved columns. The method rule (`_apply_input_snapshot` in `python-api/src/arcrho_api/dfm_contract.py`) accepts a valuation shift only when the column count is unchanged, so it refused with "DFM input development-label geometry changed" and left the old method in place. Everything built on those methods (Cape Cod, BF, the Current Qtr results) was skipped.
 - **Annual methods pass**, because their column count did not change. Only the log for one class was read in full; the rest are assumed to match until step 1 lists them.
 - **Each date is editable alone.** The three month inputs on the main page each save as soon as they change (`bindEditor` in `project_settings_general_settings.js`). Starting a new year means changing the origin dates and the development end separately, with nothing reshaped in between.
+
+### Inventory of date-shaped files (step 1, 2026-11-03)
+
+Counted in `NJ_Annual_Prod_202605_Fake` (31 classes) from each class `index.json`, sidecar and method JSON. "Origin by label" and "development by position" are decision 3; "listed" is decision 1.
+
+**Datasets**
+
+| Kind | Fake count | Stores | Reshape |
+| :--- | :--- | :--- | :--- |
+| Engine triangles and vectors (`source_kind` engine) | 1,174 + 133 | No labels; CSV views per period (`@12@12@cum@dev.csv`), `processing.config_hash`, stored at source granularity | Regenerate from the source table. The Engine reads the dates from `general_settings.json` (`data_processing.py` project settings, mtime-cached), so saving the dates first is enough. |
+| Calculated (formula) datasets | 85 | 75 carry index labels `1..N` | Recomputed by the dependent walk from their precedents; no reshape. |
+| Method outputs (dfm, result_selection, bornhuetter_ferguson, cape_cod, berquist_sherman_sr/cra, bootstrap, stochastic_consolidation) | 361, 120, 67, 17, 14, 6, 2 | Origin labels copied from the method | Republished by the method's own recalculation after it is reshaped; no separate rule. |
+| Hand-entered and imported (`source_kind` input) | 214: 208 vectors, 6 triangles | 204 vectors store index labels `1..N` (ResQ `resq_vector`), not dates; 8 of the vectors are ResQ Bootstrap outputs; triangles store `Jan 2017` / `2017` / `2017 Q1` origins and `1m`/`5m`/`12m` ages | Rows follow their true origin, columns by position, new cells empty; every one listed. Because most store index labels, the true origin of row *i* is the **old** Origin Start plus *i* stored periods, so the job must keep the previous dates (in its status, before saving) to reshape and to resume. Write the CSV at the stored length and delete its coarser `@n` sibling views ([stale sibling views](../../agent-memory/calculated-walk-reads-stale-sibling-views.md)). |
+| Cell links on input datasets (`formula_links`, `external_links`, `internal_links`) | 7 datasets (6 formula, 1 Excel) | Target cells by row and column index; formula ranges as position text (`[1:40]`) | Target rows shift with their origin and a target whose origin drops is removed; range text is not rewritten; the dataset is listed with the reason "has cell links". |
+| Project header and settings caches (`data/ArcRhoHeaders@*.csv`, `ArcRhoProjectSettings.csv`) | 11 | Labels for the whole project | Already dropped when older than `general_settings.json` (`_drop_project_csv_cache_older_than_settings` in `arcrho_runtime_service.py`); nothing to add. |
+
+**Methods** (owned = the person's choices, kept; derived = recomputed from the new snapshots)
+
+| Type | Fake count | Owned fields that carry geometry | Rule |
+| :--- | :--- | :--- | :--- |
+| Development Factor (`dfm_contract`) | 361: 291 annual, 70 quarterly | `ratios_tab.ratio_triangle.excluded` (origin x ratio column), `average_formulas.selected/inputs/values` of User Entry rows (per ratio column), `curves_tab.included/selected_estimates/user_columns[].values` (per period), `cell_notes` keyed by origin label and column label | Origins by `data_tab.origin_labels`; every per-column list copies by index from the first column, new columns non-excluded and unselected; cell-note columns renamed by position (what `_development_axis_shift` already does for an equal count). Data, ratios, basis, ultimate are derived. Keep the refusal only when the new labels are not ages on the same spacing (a different development length or a different triangle), which is not a date change. |
+| Bornhuetter Ferguson | 67: 44 annual, 23 quarterly | `prior_datasets[].weights` per origin | Already remapped by origin label in the refresh (`bornhuetter_ferguson_contract.py` around line 543); rest derived. Needs only the new snapshots. |
+| Cape Cod | 17 annual | `trend_factor_overrides` per origin | Already remapped by origin label (`cape_cod_contract.py` around line 755); rest derived. |
+| Result Selection | 120: 82 annual, 38 quarterly | `loaded_datasets[].weights` and `ultimate_overrides` per origin | **Not label-aware today**: the refresh fits them by position and refuses when a source's row count differs from the stored `origin_labels` (`result_selection_service.py` around line 806). Reshape by `method_tab.origin_labels`, new origins weight 0 and no override. |
+| Berquist-Sherman SR and CRA | 8 + 6, annual only (`BS_ANNUAL_PERIOD_LENGTH`) | SR: `selected_proportion_settled`, `selected_proportion_is_default` per column, `selected_adjustment` origin x column. CRA: `inflation_selection`, `user_inflation(_inputs)`, `average_case_reserve_selection`, `user_average_case_reserves(_inputs)` per column | Rows by `method_tab.origin_labels`, columns by position, new cells default; output triangle recalculated. |
+| Bootstrap | 6 annual | `residuals_tab.user_scale_values_residuals/forecasting` per period; `results_tab.target_scaling_methods/target_cvs` per origin | Periods by position; per-origin lists by `results_tab.origin_labels` (fit by position today). `dfm_snapshot` and the simulation are derived and rerun. |
+| Stochastic Consolidation | 2 annual | None: segments, factors and correlations only | No reshape; its results are rerun by the walk. |
+
+**Other readers of the dates** read them live and store nothing, so they need no reshape: dataset creation and the roll-up anchor (`_general_settings_month_bounds` and `valuation_months` in `dataset_service.py`), the Excel formula choices' latest project (`excel_formula_choices_service.py`), the header load check (`arcrho_runtime_service.py`), the notes macro's valuation stamp (`link_notes_to_method_values.py`), and the main page's origin span note.
+
+**What the counts change.** In the Fake project a development end that crosses a quarter boundary makes the 70 quarterly DFMs refuse, and everything built on them is skipped. Crossing into January does the same to the 291 annual DFMs, because their column count grows too. Moving the origin range changes the row count, which today also makes all 120 Result Selection methods refuse.
 
 ## Desired behaviour
 
@@ -65,6 +96,8 @@ Read-only. List every file kind that stores period geometry and say how each res
 - Anything else that reads the dates: the dataset service, the Excel formula choices, the origin span note on the main page.
 
 Done when the table sits in this plan under "What was found", and each method type has a named reshape rule or a new entry under "Open decisions".
+
+Actual: code edit 4 min, test/validation 1 min, total 5 min; well under because the class index files gave every count in one read-only pass.
 
 ### Step 2: Development method reshape
 Estimate: 70 min
