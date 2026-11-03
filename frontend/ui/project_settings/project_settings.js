@@ -27,19 +27,20 @@ import {
   saveProjectSettingsCollapsedGroups,
   saveProjectSettingsTableColumnWidths,
   wireProjectSettingsTableScrollbarActivity,
-} from "/ui/project_settings/project_settings_table_columns.js?v=20261027map1";
+} from "/ui/project_settings/project_settings_table_columns.js?v=20261103dates1";
 import {
   createGeneralSettingsFeature,
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261027map1";
-import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261027map1";
-import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261027map1";
-import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261027map1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261103dates1";
+import { createProjectMapStore } from "/ui/project_settings/project_settings_project_map.js?v=20261103dates1";
+import { createTreeViewFeature } from "/ui/project_settings/project_settings_tree_view.js?v=20261103dates1";
+import { createProjectOpsFeature } from "/ui/project_settings/project_settings_project_ops.js?v=20261103dates1";
 import { createAutoSaveScheduler } from "/ui/project_settings/project_settings_auto_save.js?v=20260901dup1";
-import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261027map1";
+import { createProjectLockFeature } from "/ui/project_settings/project_settings_project_lock.js?v=20261103dates1";
 import { createSwitchCover } from "/ui/project_settings/project_settings_switch_cover.js?v=20261009switch1";
 import { createSourceRefreshFeature } from "/ui/project_settings/project_settings_source_refresh.js?v=20260927smb18";
+import { createProjectDatesFeature } from "/ui/project_settings/project_settings_project_dates.js?v=20261103dates1";
 import { loadProjectUserPreferences } from "/ui/shared/services/project_user_preferences.js?v=20260816a";
 import "/ui/shared/integrations/zoom_bridge.js?v=20260521a";
 
@@ -63,6 +64,8 @@ const folderContextMenu = document.getElementById("folderContextMenu");
 const treeContextMenu = document.getElementById("treeContextMenu");
 const summaryTablePathInput = document.getElementById("summaryTablePathInput");
 const summaryTablePathReloadBtn = document.getElementById("summaryTablePathReloadBtn");
+const summaryOriginLabel = document.getElementById("summaryOriginLabel");
+const summaryDevelopmentLabel = document.getElementById("summaryDevelopmentLabel");
 const summaryOriginStartInput = document.getElementById("summaryOriginStartInput");
 const summaryOriginEndInput = document.getElementById("summaryOriginEndInput");
 const summaryDevelopmentEndInput = document.getElementById("summaryDevelopmentEndInput");
@@ -477,6 +480,24 @@ const sourceRefreshFeature = createSourceRefreshFeature({
   publishShellProgress: (message) => window.parent.postMessage(message, window.location.origin),
   readResponseErrorDetail,
 });
+
+// The Project Dates panel: the one place the three dates change together.
+// `projectDatesFeature.open()` is what the main page's dates band opens.
+const projectDatesFeature = createProjectDatesFeature({
+  fetchImpl: fetch.bind(window),
+  setStatus,
+  publishShellProgress: (message) => window.parent.postMessage(message, window.location.origin),
+  readResponseErrorDetail,
+  getSelectedProject: () => selectedProject,
+  loadDates: (projectName) => generalSettingsFeature.load(projectName),
+  reloadDates: (projectName) => generalSettingsFeature.load(projectName, { applyToInputs: true }),
+});
+
+// TEMPORARY entry point until step 7 of docs/plans/project_dates_panel.md makes
+// the whole dates band open the panel: a click on a band label opens it.
+for (const label of [summaryOriginLabel, summaryDevelopmentLabel]) {
+  label?.addEventListener("click", () => void projectDatesFeature.open());
+}
 
 /** Re-attach to a refresh this page left running, then show what it produced. */
 async function resumePendingSourceRefresh(projectName) {

@@ -264,7 +264,7 @@ test("the source data tab only mounts the combined module and keeps the single p
   assert.match(coordinatorJs, /project_settings_source_data\.js\?v=20261027map1/);
   assert.match(coordinatorJs, /createSourceDataFeature\(\{[\s\S]*fetchImpl: fetch\.bind\(window\),/);
   assert.match(html, /project_settings_combined_source\.css\?v=/);
-  assert.match(html, /project_settings\.js\?v=20261027map1/);
+  assert.match(html, /project_settings\.js\?v=20261103dates1/);
 });
 
 test("a table is described through the client route with the table spec", async () => {

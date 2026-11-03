@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 8 session-sized steps; steps 1-5 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 9 session-sized steps (step 9 appended 2026-11-03, runs before step 8); steps 1-6 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -17,11 +17,12 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 3 | Every other method type reshapes the same way | [x] | 2026-11-03 | 80 min | 9 min | Every other method type, and every hand-entered or imported dataset, now follows a date change with its weights, overrides and choices kept on the right origin; Excel-linked cells stay where they are. |
 | 4 | One background job saves the dates, rebuilds the datasets, reshapes the methods and refreshes what depends on them | [x] | 2026-11-03 | 90 min | 60 min | Nothing visible yet; the server can now move a whole project to new dates in one run, and a run that stops part way finishes when started again. |
 | 5 | The app can start the job, report its progress, and preview what it will touch | [x] | 2026-11-03 | 60 min | 8 min | Nothing visible yet; the app can now ask the server what a date change would touch, start it, and follow its progress. |
-| 6 | A floating panel changes all three dates together, behind a confirmation | [ ] | | 80 min | | |
+| 6 | A floating panel changes all three dates together, behind a confirmation | [x] | 2026-11-03 | 80 min | 70 min | A Project Dates panel changes all three dates at once: it checks them, shows what the change touches and which origins drop out, then runs the change with a progress window and lists what to review. |
 | 7 | The dates on the main page are display only | [ ] | | 40 min | | |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
+| 9 | A start-of-year move finishes cleanly and can be run again | [ ] | | 60 min | | |
 
-Overall: 5 of 8 steps done. Estimated 540 min, actual so far 88 min.
+Overall: 6 of 9 steps done. Estimated 600 min, actual so far 158 min. Step 9 was appended after step 6 and runs before step 8.
 
 ## How agents work this plan
 
@@ -176,6 +177,16 @@ Add a floating panel to Project Settings with the three month pickers, reusing t
 
 Done when a start-of-year change (origin and development end together) runs end to end on the local test root.
 
+Actual: code edit 22 min, test/validation 48 min, total 70 min; each Fake run takes 8-17 minutes and three were needed, because the first two exposed Engine faults.
+
+Done 2026-11-03.
+- **Panel.** `frontend/ui/project_settings/project_settings_project_dates.js` (`createProjectDatesFeature`, returns `open`, `close`, `isOpen`, `isRunning`) with its DOM-free half `project_settings_project_dates_job.js` (date rule, request id, poll loop cloned from the rules save, preview and result sentences) and `project_settings_project_dates.css`. Markup is `#projectDatesPanel` and `#projectDatesConfirmOverlay` in `project_settings.html`; the three inputs reuse the page's one month picker (`data-month-picker-for`). The coordinator builds it as `projectDatesFeature`; **step 7 wires the band to `projectDatesFeature.open()`** and replaces the TEMPORARY entry point (a click on the band's "Origin Period:" / "Development End:" labels, plus a pointer cursor rule at the end of `project_settings_project_dates.css`). Apply is in the project lock's guarded buttons, and the lock feature now also returns `isSelectedProjectLocked` for the band.
+- **Flow.** Apply checks decision 4 inline, reads the preview, and says "The project already has these dates." when nothing changes; otherwise the confirmation shows the dates before and after, four counts, one line of copy, and the dropped-origins line. Confirming submits the job, drives the shell progress window, then rereads the dates into the band and shows the result line and a For Review list in the panel.
+- **Engine fixes found by the test** (`server-components/src/arcrho_engine/data_processing.py`; ship with the step 8 Engine deploy): source rows whose origin falls before Origin Start (the year a January move drops) crashed every triangle with "cannot convert float NaN to integer" and are now left out; and an origin span that is not whole years (Jan 2018 - Jan 2027) rounded down to one development age too few, so 616 datasets reported "Source dates do not fit". The ages now always reach the Development End Date, matching `development_ages` in `period_reshape.py`. Tests in `server-components/tests/test_engine_date_range_errors.py`.
+- **Run on the local root** (a copy of the Fake project, 201701-202612/202612 to 201801-202701/202701, 17 min): 33 classes, all 1,288 engine datasets regenerated, 230 hand-entered datasets and 134 methods reshaped, 295 methods refreshed, 364 items listed for review; 1 dataset and 19 methods reported problems (step 9). The local root was put back to its earlier dates afterwards.
+- **Testing on the Server PC.** Production's Gateway holds port 28767, so the local root's Gateway and Engine were run from source with the local Gateway moved to port 28777 for the test and moved back after; `C:\Arco Server\projects\index.json` was added so the dev app lists the Fake copy.
+- **Screenshots** (light from the app, dark from a mock-up with the real stylesheets): kept in `tmp_data/step6_dates/gui/`, not committed.
+
 ### Step 7: Main page display only
 Estimate: 40 min
 
@@ -189,6 +200,16 @@ Estimate: 60 min
 - Run the new tests and the suites around them; baseline failures before blaming the change.
 - Deploy to the local test root, run the whole flow with `launch-app`, then run `server-components/deploy.py` for the Bridge, Engine and Gateway, checking the payload first.
 - Add the memory notes and release fragment, and move this plan to `completed/` when done.
+
+### Step 9: Finish a start-of-year move cleanly
+Estimate: code edit 30 min, test/validation 30 min, total 60 min.
+
+Appended by step 6; runs before step 8. Read step 6's "Run on the local root" note and the job status of that run first.
+
+- **Running the change again does nothing.** The job clears its pending record once every class has run, even when datasets or methods failed, while its message says "Run the same change again to finish it". The preview then answers `unchanged`, so the panel says the project already has these dates. Keep the record (or a rerun path) while anything failed, per decision 2, or change the message.
+- **Methods that still refuse after the January move** (dependent problems in that run): "DFM precedent '…' has N rows; expected N" (about 30), "DFM input values are missing for previously excluded ratio cells" (14), and "BF new_ultimate does not match the embedded source snapshots" (26, already failing before the change, see step 4). Find why a DFM's precedents disagree on the origin count after the move and why the dropped diagonal trips the exclusion check.
+
+Done when the same start-of-year change on a fresh copy of the Fake project ends with no new problems beyond those the project had before the change, and running it a second time finishes anything left.
 
 ## Decisions (2026-11-03)
 

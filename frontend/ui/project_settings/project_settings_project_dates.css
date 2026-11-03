@@ -1,0 +1,181 @@
+/* ---------- Project Dates panel ----------
+   Window chrome comes from the page-wide .rct-row-editor window; colours read
+   the theme tokens so Light and Dark need no separate rules. */
+.pd-panel {
+  width: 360px;
+}
+.pd-panel.show {
+  display: flex;
+  flex-direction: column;
+}
+.pd-panel .rct-row-editor-header {
+  touch-action: none;
+}
+.pd-body {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px;
+}
+.pd-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ar-color-text-muted, #475569);
+}
+.pd-month {
+  justify-self: start;
+}
+/* Page id plus class beats dark.css's global input rule (0,3,0). */
+:root #projectDatesPanel .pd-month input {
+  width: 128px;
+  height: 28px;
+  border-color: var(--ar-color-border-strong, #cbd5e1);
+  background: var(--ar-color-input, #fff);
+  color: var(--ar-color-text, #1f2937);
+}
+:root #projectDatesPanel .pd-month input:focus {
+  border-color: var(--ar-color-border-focus, #93c5fd);
+}
+:root #projectDatesPanel .pd-month input:disabled {
+  color: var(--ar-color-text-disabled, #9ca3af);
+  background: var(--ar-color-surface-muted, #eef2f6);
+}
+:root #projectDatesPanel .sd-month-picker-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
+:root #projectDatesPanel .sd-month-picker-btn:hover:not(:disabled),
+:root #projectDatesPanel .sd-month-picker-btn[aria-expanded="true"] {
+  background: var(--ar-color-accent-soft, #eaf2ff);
+  color: var(--ar-color-accent, #2b6df6);
+}
+.pd-message {
+  margin: 0 12px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ar-color-text-muted, #475569);
+}
+.pd-message.is-error {
+  color: var(--ar-color-danger, #be123c);
+}
+.pd-review {
+  margin: 0 12px 12px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  background: var(--ar-color-canvas-subtle, #f8fafc);
+}
+.pd-review-head {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ar-color-text-muted, #475569);
+  border-bottom: 1px solid var(--ar-color-border, #d8dde3);
+}
+.pd-review-list {
+  max-height: 168px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.pd-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.pd-review-row + .pd-review-row {
+  border-top: 1px solid var(--ar-color-border, #e4e8ee);
+}
+.pd-review-name,
+.pd-review-reason {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-review-name {
+  color: var(--ar-color-text, #1f2937);
+}
+.pd-review-class {
+  color: var(--ar-color-text-subtle, #94a3b8);
+  margin-right: 6px;
+}
+.pd-review-reason {
+  color: var(--ar-color-text-muted, #475569);
+}
+
+:root #projectDatesPanel .dialog-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- Confirmation ---------- */
+/* Above the floating panel (.rct-row-editor sits at 3600). */
+.dialog-overlay.pd-confirm-overlay {
+  z-index: 3700;
+}
+.dialog-box.pd-confirm {
+  width: 340px;
+  padding: 16px;
+  border-radius: 6px;
+}
+.pd-confirm-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ar-color-text, #1f2937);
+}
+.pd-confirm-before {
+  color: var(--ar-color-text-subtle, #94a3b8);
+  font-weight: 400;
+}
+.pd-confirm-arrow {
+  color: var(--ar-color-text-subtle, #94a3b8);
+}
+.pd-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ar-color-border, #d8dde3);
+  border-radius: 4px;
+  background: var(--ar-color-border, #d8dde3);
+  overflow: hidden;
+}
+.pd-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--ar-color-canvas-subtle, #f8fafc);
+}
+.pd-count-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ar-color-text-muted, #475569);
+}
+.pd-count-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ar-color-text, #1f2937);
+}
+:root #projectDatesConfirmOverlay .pd-confirm-message {
+  margin-bottom: 4px;
+  color: var(--ar-color-text, #333);
+}
+:root #projectDatesConfirmOverlay .pd-confirm-dropped {
+  color: var(--ar-color-warning, #b45309);
+}
+
+/* TEMPORARY until step 7 makes the whole dates band the entry point: the band
+   labels open the panel. */
+#summaryPeriodsBand .sd-key {
+  cursor: pointer;
+}

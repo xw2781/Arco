@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/ui/project_settings/project_settings_dataset_types.css?v=20261027map1"/>
   <link rel="stylesheet" href="/ui/project_settings/project_settings_reserving_class_types.css?v=20261027map1"/>
   <link rel="stylesheet" href="/ui/project_settings/project_settings_data_processing_rules.css?v=20261027map1"/>
+  <link rel="stylesheet" href="/ui/project_settings/project_settings_project_dates.css?v=20261027map1"/>
   <link rel="stylesheet" href="/ui/shared/components/table_group_row/table_group_row.css?v=20261013a"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/light.css?v=20260923c"/>
   <link rel="stylesheet" href="/ui/shared/styles/themes/dark.css?v=20260923c"/>
@@ -877,6 +878,62 @@
     </div>
   </div>
 
+  <!-- Project Dates panel: the one place the three project dates change -->
+  <div class="rct-row-editor pd-panel" id="projectDatesPanel" role="dialog" aria-modal="false" aria-labelledby="projectDatesPanelTitle" aria-hidden="true">
+    <div class="rct-row-editor-header" id="projectDatesPanelHeader">
+      <div class="rct-row-editor-title" id="projectDatesPanelTitle">Project Dates</div>
+      <button class="rct-row-editor-close" id="projectDatesPanelClose" type="button" aria-label="Close">
+        <svg viewBox="0 0 10 10" aria-hidden="true">
+          <line x1="2" y1="2" x2="8" y2="8"></line>
+          <line x1="8" y1="2" x2="2" y2="8"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="pd-body">
+      <label class="pd-label" for="pdOriginStartInput">Origin Start</label>
+      <span class="sd-month pd-month">
+        <input id="pdOriginStartInput" type="text" autocomplete="off" placeholder="MMM YYYY">
+        <button class="sd-month-picker-btn" type="button" data-month-picker-for="pdOriginStartInput" aria-haspopup="dialog" aria-expanded="false" aria-controls="summaryMonthPicker" aria-label="Choose Origin Start month">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.2" y="3.3" width="11.6" height="10.3" rx="1.4"/><path d="M5 1.8v3M11 1.8v3M2.2 6.4h11.6"/><path d="M5 8.8h.01M8 8.8h.01M11 8.8h.01M5 11.3h.01M8 11.3h.01"/></svg>
+        </button>
+      </span>
+      <label class="pd-label" for="pdOriginEndInput">Origin End</label>
+      <span class="sd-month pd-month">
+        <input id="pdOriginEndInput" type="text" autocomplete="off" placeholder="MMM YYYY">
+        <button class="sd-month-picker-btn" type="button" data-month-picker-for="pdOriginEndInput" aria-haspopup="dialog" aria-expanded="false" aria-controls="summaryMonthPicker" aria-label="Choose Origin End month">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.2" y="3.3" width="11.6" height="10.3" rx="1.4"/><path d="M5 1.8v3M11 1.8v3M2.2 6.4h11.6"/><path d="M5 8.8h.01M8 8.8h.01M11 8.8h.01M5 11.3h.01M8 11.3h.01"/></svg>
+        </button>
+      </span>
+      <label class="pd-label" for="pdDevelopmentEndInput">Development End</label>
+      <span class="sd-month pd-month">
+        <input id="pdDevelopmentEndInput" type="text" autocomplete="off" placeholder="MMM YYYY">
+        <button class="sd-month-picker-btn" type="button" data-month-picker-for="pdDevelopmentEndInput" aria-haspopup="dialog" aria-expanded="false" aria-controls="summaryMonthPicker" aria-label="Choose Development End month">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.2" y="3.3" width="11.6" height="10.3" rx="1.4"/><path d="M5 1.8v3M11 1.8v3M2.2 6.4h11.6"/><path d="M5 8.8h.01M8 8.8h.01M11 8.8h.01M5 11.3h.01M8 11.3h.01"/></svg>
+        </button>
+      </span>
+    </div>
+    <div class="pd-message" id="pdMessage" role="status" hidden></div>
+    <div class="pd-review" id="pdReview" hidden></div>
+    <div class="rct-row-editor-actions">
+      <button class="dialog-btn" id="pdCancelBtn" type="button">Cancel</button>
+      <button class="dialog-btn primary" id="pdApplyBtn" type="button">Apply</button>
+    </div>
+  </div>
+
+  <div class="dialog-overlay pd-confirm-overlay" id="projectDatesConfirmOverlay" aria-hidden="true">
+    <div class="dialog-box pd-confirm" id="projectDatesConfirmBox" role="alertdialog" aria-modal="true" aria-labelledby="pdConfirmTitle" aria-describedby="pdConfirmMessage">
+      <div class="dialog-title" id="pdConfirmTitle">Change Project Dates</div>
+      <div class="pd-confirm-dates" id="pdConfirmDates"></div>
+      <div class="pd-counts" id="pdConfirmCounts"></div>
+      <div class="dialog-message pd-confirm-message" id="pdConfirmMessage">Reshapes the whole project and starts a large refresh.</div>
+      <div class="dialog-message pd-confirm-dropped" id="pdConfirmDropped" hidden></div>
+      <div class="dialog-buttons">
+        <button class="dialog-btn" id="pdConfirmCancel" type="button">Cancel</button>
+        <button class="dialog-btn primary" id="pdConfirmOk" type="button">Change Dates</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Custom Prompt Dialog -->
   <div class="dialog-overlay" id="dialogOverlay">
     <div class="dialog-box" id="dialogBox">
@@ -926,6 +983,6 @@
     </div>
   </div>
 
-<script type="module" src="/ui/project_settings/project_settings.js?v=20261027map1"></script>
+<script type="module" src="/ui/project_settings/project_settings.js?v=20261103dates1"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@ const projectSettingsStylesheetNames = [
   "project_settings_dataset_types.css",
   "project_settings_reserving_class_types.css",
   "project_settings_data_processing_rules.css",
+  "project_settings_project_dates.css",
   "project_settings_scrollbars.css",
 ];
 const projectSettingsStylesheets = new Map(await Promise.all(
@@ -82,6 +83,7 @@ test("Project Settings stylesheet split keeps feature rules with their owners", 
     ["project_settings_dataset_types.css", /#datasetTypesTable \.dt-filter-btn\s*\{/],
     ["project_settings_reserving_class_types.css", /\.rct-formula-frame\s*\{/],
     ["project_settings_data_processing_rules.css", /\.dpr-editor\s*\{/],
+    ["project_settings_project_dates.css", /\.pd-panel\s*\{/],
     ["project_settings_scrollbars.css", /\/\* Project Settings owns one PI-aligned scrollbar treatment/],
   ]);
   for (const [name, marker] of ownershipMarkers) {

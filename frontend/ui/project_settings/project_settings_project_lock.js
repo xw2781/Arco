@@ -20,6 +20,7 @@ const GUARDED_BUTTON_IDS = [
   "sdImportSaveBtn",
   "sdImportDataBtn",
   "detailRenameBtn",
+  "pdApplyBtn",
 ];
 
 function formatLockedAt(value) {
@@ -112,5 +113,5 @@ export function createProjectLockFeature({ getSelectedProject, fetchImpl = fetch
   switchEl?.addEventListener("click", () => void toggle());
   documentRef.addEventListener("click", guardSaveClick, true);
 
-  return { load };
+  return { load, isSelectedProjectLocked };
 }

@@ -442,6 +442,7 @@ export function createGeneralSettingsFeature(deps) {
     ensureLoaded,
     getCache,
     hasValues,
+    load,
     save,
     setDerivedDateInputs,
   };

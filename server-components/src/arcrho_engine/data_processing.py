@@ -554,7 +554,23 @@ def _development_age_labels(project_settings, dev_len):
         project_settings['origin_start'], project_settings['origin_end'],
         project_settings.get('date_granularity', 'monthly'))
     is_annual = project_settings.get('date_granularity') == 'annual'
-    dev_cnt = len(acc_yrmo_all) if is_annual else round(len(acc_yrmo_all)/dev_len)
+    if is_annual:
+        dev_cnt = len(acc_yrmo_all)
+    else:
+        # The oldest origin's newest cell is valued on the Development End
+        # Date, so the last age must reach it. An origin span that is not
+        # whole development periods (Jan 2018 - Jan 2027 after a start-of-year
+        # date change) rounded down to one column too few.
+        def month_number(value):
+            period = _as_month_period(value)
+            return (period // 100) * 12 + period % 100
+
+        valuation_age = (
+            month_number(project_settings['dev_end'])
+            - month_number(project_settings['origin_start']) + 1
+        )
+        span = max(len(acc_yrmo_all), valuation_age)
+        dev_cnt = -(-span // dev_len)
     first_mon = int(project_settings['dev_end'] % 100)
 
     dev_label = list(range(first_mon, dev_cnt*dev_len+1, dev_len))
@@ -893,6 +909,11 @@ def UDF_ADASTri(arg):
     df1['Org*Grp'] = df1[date_cols[0]].apply(lambda x: _get_org_label(x, org_len))
 
     df1['Org*Start'] = df1[date_cols[0]].map(org_index_map)
+    # Source rows whose origin month falls outside the project's origin range
+    # belong to no origin period. After a start-of-year date change the table
+    # still holds the year that dropped out; those rows are left out, as the
+    # reindex to `org_label` below would leave them out anyway.
+    df1 = df1[df1['Org*Start'].notna()]
     # When Development Date is missing, use dev_end from config for Age* (single column triangle)
     if has_dev_date:
         df1['Age*'] = df1[['Org*Start', date_cols[1]]].apply(lambda row: _calc_age(row.iloc[0], row.iloc[1]), axis=1)
