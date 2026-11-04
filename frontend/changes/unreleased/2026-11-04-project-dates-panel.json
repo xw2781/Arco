@@ -1,0 +1,12 @@
+{
+  "type": "feature",
+  "scope": "project settings",
+  "audience": "user",
+  "summary": "A Project Dates panel changes the origin and development dates together and moves the whole project to them in one run.",
+  "details": [
+    "Click the dates band on the Project Settings page to open the panel; the dates can no longer be typed over on the page itself.",
+    "A confirmation shows the dates before and after and what the change touches, including the origins that drop out.",
+    "Methods keep their exclusions, weights and selections on their own origins, new origins start empty, and hand-entered datasets follow the same rule; Excel-linked cells stay where they are.",
+    "A progress window and the dates band follow the change; the result lists what to review, grouped by reason, and a change that left problems can be run again."
+  ]
+}
