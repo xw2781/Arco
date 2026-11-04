@@ -40,6 +40,14 @@ expected when every precedent that stopped it is. Expected lines go to the statu
 them and they do not hold the record. The triangle's review row says "needs values for the new
 diagonal". New cells stay blank, never 0: a zero diagonal makes B&S calculate silently wrong.
 
+**ResQ triangles stored as engine kind are never regenerated (follow-up 2026-11-04).** The
+job's per-class `prepare` (`_reshape_class`) returns `(roots, kept)`; `kept` holds every
+engine-kind dataset `period_reshape.is_imported_dataset` calls imported, whether this run reshaped
+it, left it unchanged, or an earlier run of the same change already moved it (its key is in
+`inputs_done`). `source_table_refresh._refresh_one_reserving_class` skips both lists. Before this,
+a rerun sent the already-reshaped ones to the Engine and listed ~18 "does not resolve to any
+numeric source columns" failures.
+
 **Testing on the Server PC.** Production's Gateway answers on 127.0.0.1:28767 too, so a local-root
 Gateway there must move to another port (28777 was used) for the test and back afterwards. Move
 the port in `C:\Arco Server\config\arcrho_gateway.json` *before* `local_server.py deploy gateway`:
