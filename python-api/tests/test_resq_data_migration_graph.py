@@ -3,12 +3,14 @@ from __future__ import annotations
 import importlib.util
 import importlib
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from arcrho_api.dataset_link_contract import expand_sidecar_links
+from arcrho_api.sidecar_core_contract import validate_sidecar_core
 
 
 _TMP_ROOT = Path(__file__).resolve().parent / "logs" / "tmp"
@@ -188,8 +190,9 @@ class ResqDataMigrationGraphTests(unittest.TestCase):
 
         sidecar_path = self.sidecars_dir / "Net Ultimate.json"
         deferred = json.loads(sidecar_path.read_text(encoding="utf-8"))
-        self.assertNotIn("precedents", deferred)
-        self.assertNotIn("dependents", deferred)
+        self.assertEqual(deferred["precedents"], [])
+        self.assertEqual(deferred["dependents"], [])
+        validate_sidecar_core(deferred)
 
         self.catalog.refresh_sidecar_graphs_for_rc(self.rc_dir)
 
@@ -199,6 +202,61 @@ class ResqDataMigrationGraphTests(unittest.TestCase):
             ["Paid Loss", "DFM Ultimate"],
         )
         self.assertEqual(refreshed["dependents"], [])
+
+    def test_plain_imported_datasets_write_complete_sidecars(self) -> None:
+        # A plain imported dataset carries the review status and method type
+        # the app writes for a new input dataset, so the shared core check
+        # passes on what the import leaves on disk.
+        frontend_root = str(Path(__file__).resolve().parents[2] / "frontend")
+        if frontend_root not in sys.path:
+            sys.path.insert(0, frontend_root)
+        from app_server.services import dataset_sidecar_status_service as app_status
+
+        common = {
+            "category": "Loss",
+            "origin_length": 12,
+            "development_length": 12,
+            "origin_labels": ["2026"],
+            "user": "tester",
+            "created": "2026-01-01T00:00:00",
+            "modified": "2026-01-02T00:00:00",
+        }
+        self.extractors.write_triangle_export({
+            **common,
+            "name": "Case Reserves",
+            "dataset_type": "Case Reserves",
+            "data_format": 0,
+            "method_type": 0,
+            "development_count": 1,
+            "development_labels": ["12"],
+            "values": [[5.0]],
+        }, r"Auto\PP", self.rc_dir)
+        self.extractors.write_vector_export({
+            **common,
+            "name": "Prior Qtr Indicated",
+            "dataset_type": "Prior Qtr Indicated",
+            "data_format": 1,
+            "method_type": "None",
+            "method_type_code": 0,
+            "development_labels": ["Value"],
+            "values": [[7.0]],
+            "status": 2,
+        }, r"Auto\PP", self.rc_dir)
+
+        triangle = json.loads((self.sidecars_dir / "Case Reserves.json").read_text(encoding="utf-8"))
+        vector = json.loads((self.sidecars_dir / "Prior Qtr Indicated.json").read_text(encoding="utf-8"))
+        for sidecar in (triangle, vector):
+            validate_sidecar_core(sidecar)
+            self.assertEqual(sidecar["method_type"], app_status.METHOD_TYPE_NONE)
+        self.assertEqual(triangle["status"], app_status.STATUS_CURRENT)
+        self.assertEqual(vector["status"], 2)
+
+    def test_import_refuses_a_sidecar_that_fails_the_core_check(self) -> None:
+        core = importlib.import_module("resq_migration.core")
+        path = self.sidecars_dir / "Broken.json"
+        with self.assertRaises(ValueError):
+            core._write_sidecar_json(path, {"dataset_name": "Broken"})
+        self.assertFalse(path.exists())
 
     def test_deferred_graph_enrichment_scope_restores_after_error(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "stop"):

@@ -21,7 +21,7 @@ from arcrho_api.dataset_index_contract import (
 # The one owner of persisted JSON layout, shared with the app server and the
 # Python API so a migrated file and a re-saved file are byte-identical.
 from arcrho_api.io import persisted_json_text
-from arcrho_api.sidecar_core_contract import finalize_sidecar
+from arcrho_api.sidecar_core_contract import finalize_sidecar, validate_sidecar_core
 from arcrho_api.timestamps import format_persisted_timestamp
 
 
@@ -188,14 +188,18 @@ def _write_json(path: Path, payload: object) -> None:
         fh.write(persisted_json_text(payload))
 
 
-def _write_sidecar_json(path: Path, meta: Mapping[str, Any]) -> None:
+def _write_sidecar_json(path: Path, meta: Mapping[str, Any], *, in_place: bool = False) -> None:
     """Write a dataset sidecar through the shared core.
 
     Every sidecar writer lands the file stamped first, stripped of retired
     fields and with ``audit_log`` last (``arcrho_api.sidecar_core_contract``);
-    the migration's hand-built metadata is no exception.
+    the migration's hand-built metadata is no exception. A sidecar the import
+    produces must pass the core check or is refused; *in_place* marks a patch
+    of one field on a file already on disk (graph refresh, label backfill),
+    which writes back whatever else that file held.
     """
-    _write_json(path, finalize_sidecar(meta))
+    payload = finalize_sidecar(meta)
+    _write_json(path, payload if in_place else validate_sidecar_core(payload))
 
 
 def _csv_cell(value) -> str:

@@ -331,6 +331,9 @@ def defer_sidecar_graph_enrichment():
 
 def _apply_graph_meta_best_effort(meta: dict, dataset_type: str, rc_dir: Path, **kwargs) -> None:
     if _DEFER_GRAPH_ENRICHMENT_DEPTH.get() > 0:
+        # The bulk refresh fills the graph; until then the file is complete.
+        meta.setdefault("precedents", [])
+        meta.setdefault("dependents", [])
         return
     try:
         _apply_sidecar_graph_meta(meta, dataset_type, rc_dir, **kwargs)
@@ -769,6 +772,7 @@ def write_triangle_export(payload: dict, rc_path: str, rc_dir: Path) -> Path:
             if method_source_kind == BS_CRA_SOURCE_KIND
             else "resq_triangle"
         ),
+        "method_type": "None",
         "data_format": "Triangle",
         "origin_length": origin_length,
         "development_length": dev_length,
@@ -788,6 +792,7 @@ def write_triangle_export(payload: dict, rc_path: str, rc_dir: Path) -> Path:
         "modified_by": payload.get("user", ""),
         "notes": str(payload.get("notes") or ""),
         "updated_at": updated_at,
+        "status": normalize_method_status(payload.get("status")),
     }
     if is_berquist_sherman:
         meta["method_name"] = _normalize_import_name(payload.get("method_name")) or name
@@ -798,7 +803,6 @@ def write_triangle_export(payload: dict, rc_path: str, rc_dir: Path) -> Path:
             if _normalize_import_name(item)
         ])
         meta["dependents"] = []
-        meta["status"] = normalize_method_status(payload.get("status"))
         _apply_graph_meta_best_effort(meta, dataset_type, rc_dir, preserve_precedents=True)
     else:
         _apply_graph_meta_best_effort(meta, dataset_type, rc_dir)
@@ -1106,7 +1110,7 @@ def _backfill_berquist_sherman_precedent_origin_labels(
         if existing_labels not in (None, []):
             continue
         sidecar["origin_labels"] = canonical_labels
-        _write_sidecar_json(sidecar_path, sidecar)
+        _write_sidecar_json(sidecar_path, sidecar, in_place=True)
 
 
 def _dataset_number_format_entry(rc_dir: Path, dataset_name: object) -> dict:
@@ -1621,6 +1625,7 @@ def write_vector_export(
         "modified_by": payload.get("user", ""),
         "notes": str(payload.get("notes") or ""),
         "updated_at": updated_at,
+        "status": normalize_method_status(payload.get("status")),
     }
     if is_bornhuetter_ferguson and isinstance(bf_method_payload, dict):
         publication_revision = _clean_name(
@@ -1667,7 +1672,6 @@ def write_vector_export(
         # ordinary imported dataset, not a method publication. Preserve the
         # legacy fallback rather than manufacturing an incomplete canonical
         # method sidecar.
-        meta["status"] = normalize_method_status(payload.get("status"))
         meta["precedents"] = dependency_entries([
             _normalize_import_name(item)
             for item in payload.get("precedents", [])
@@ -1675,7 +1679,6 @@ def write_vector_export(
         ])
         meta["dependents"] = []
     elif is_result_selection:
-        meta["status"] = normalize_method_status(payload.get("status"))
         meta["precedents"] = dependency_entries([
             _normalize_import_name(item)
             for item in payload.get("precedents", [])

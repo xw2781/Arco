@@ -1013,6 +1013,6 @@ def refresh_sidecar_graphs_for_rc(rc_dir: Path) -> int:
         after = finalize_sidecar(meta)
         if json.dumps(before, sort_keys=True, ensure_ascii=False, default=str) == json.dumps(after, sort_keys=True, ensure_ascii=False, default=str):
             continue
-        _write_sidecar_json(path, after)
+        _write_sidecar_json(path, after, in_place=True)
         updated += 1
     return updated

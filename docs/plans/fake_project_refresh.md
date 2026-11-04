@@ -1,7 +1,7 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps, none started.
-Last updated: 2026-09-26
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; step 1 done 2026-11-04, step 2 next.
+Last updated: 2026-11-04
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
 **How this ships.** Steps 1 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge): an additive fix, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
@@ -12,7 +12,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 
 | # | Step | Done | Date | Est. | Actual | What changed for the user |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | A ResQ import no longer writes datasets without a review status | [ ] | | 45 min | | |
+| 1 | A ResQ import no longer writes datasets without a review status | [x] | 2026-11-04 | 45 min | 15 min | Imported datasets always carry a review status; an incomplete one is refused instead of saved |
 | 2 | One command reports every file in a project that is not in the current format | [ ] | | 40 min | | |
 | 3 | The local Fake project opens without format errors | [ ] | | 50 min | | |
 | 4 | A realistic synthetic source table for the Fake project | [ ] | | 90 min | | |
@@ -24,7 +24,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 
-Overall: 0 of 11 steps done. Estimated 595 min, actual so far 0 min.
+Overall: 1 of 11 steps done. Estimated 595 min, actual so far 15 min.
 
 ## How agents work this plan
 
@@ -102,14 +102,16 @@ Steps 1 and 2 are independent of each other and of everything else. Steps 3-8 ru
 **Read first.** The sidecar writers under `python-api/migration/resq_migration/` and the Bridge import path; `arcrho_api.sidecar_core_contract` (`validate_sidecar_core`, `SIDECAR_CORE_DEFAULTS`); skill `arcrho-json-contract`.
 
 **Do.**
-- [ ] Find the writer that produced the 119 failing sidecars (ResQ user in `modified_by`, empty `audit_log`, extra `source` / `dataset_category`) and route it through the canonical builder, or validate before writing.
-- [ ] Cross-producer parity test per the Persisted JSON Producer Parity rule.
+- [x] Find the writer that produced the 119 failing sidecars (ResQ user in `modified_by`, empty `audit_log`, extra `source` / `dataset_category`) and route it through the canonical builder, or validate before writing.
+- [x] Cross-producer parity test per the Persisted JSON Producer Parity rule.
 
 **Tests.** A ResQ-import test that every written sidecar passes `validate_sidecar_core`.
 
 **Done when.** No import code path can write a sidecar that fails core validation.
 
-Estimate: code edit 30 min, test/validation 15 min, total 45 min.
+Estimate: code edit 30 min, test/validation 15 min, total 45 min. Actual: code edit 8 min, test/validation 7 min, total 15 min.
+
+**Outcome (2026-11-04).** The plain triangle and vector writers in `resq_migration/extractors.py` never set `status`, and the triangle writer set `method_type` only for Berquist-Sherman; both now write the app's values for a new input dataset (`"None"`, status from ResQ). `core._write_sidecar_json` runs `validate_sidecar_core` on every sidecar the import produces; the graph refresh and the precedent-label backfill patch a file already on disk and pass `in_place=True`, so an old incomplete file is carried forward until step 3 repairs it. A deferred-graph write now carries empty `precedents` / `dependents` until the bulk refresh fills them. The 10 `calculated: false` method outputs came from a 2026-07-20 DFM import and one app edit, not from current import code; the validation now refuses that shape too. The parity test checks the core values against the app's create path; full-payload parity is not possible while the import alone writes `source` and `dataset_category` — left for a separate decision. The shared macro library's ResQ migration support was already 21 files behind before this step; step 9 publishes it with the Bridge deploy.
 
 ### Step 2 — Project contract scan tool
 
@@ -236,7 +238,7 @@ Estimate: code edit 40 min, test/validation 20 min, total 60 min.
 **Do.**
 - [ ] Write the generated file to the agreed place on the share.
 - [ ] A publish command in `tools/local_server.py` that refuses while any class of the project holds a lease, renames production's folder to `NJ_Annual_Prod_202605_Fake.before_refresh_<date>`, copies the local project in, and points its import source at the shared file.
-- [ ] `python server-components/deploy.py` for the step 1 fix.
+- [ ] `python server-components/deploy.py` for the step 1 fix, and `python publish_macro_library.py` from `python-api/macros` so the macro-run import carries it too.
 - [ ] Scan production's copy.
 
 **Tests.** The publish command's refusal test.
