@@ -13,19 +13,19 @@
       <p class="eyebrow">Excel Add-In</p>
       <h1>Bring the demo's values into Excel</h1>
       <p class="lede">Use the Arco add-in to insert a dataset formula, refresh its results, and save a workbook that carries the reviewed values.</p>
-      <div class="guide-meta"><span>Demo project: <strong>Monthly_Insurance_Dataset</strong></span></div>
+      <div class="guide-meta"><span>Demo project: <strong>ABC_Group_Quarterly_Review_202608</strong></span></div>
     </header>
 
     <section class="guide-section" id="prepare">
       <h2>Identify the Dataset First</h2>
       <ol class="step-list">
-        <li>In Arco, open <strong>Monthly_Insurance_Dataset</strong> and select <strong>Commercial Auto → All States → CH02 → Comprehensive</strong>.</li>
-        <li>Open <strong>Gross Paid Loss</strong> and check its annual cumulative view before requesting the same data in Excel.</li>
+        <li>In Arco, open <strong>ABC_Group_Quarterly_Review_202608</strong> and select <strong>ABC Auto → PPA → NJ → Exclusive → BI Full Tort</strong>.</li>
+        <li>Open <strong>Gross Loss--Paid</strong> and check its annual cumulative view before requesting the same data in Excel.</li>
         <li>In Excel, confirm the <strong>Arco</strong> ribbon is available. Use the installed add-in supplied for your environment.</li>
         <li>Choose <strong>Connect and Login</strong> and check the workbook's project connection.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/excel-addin-overview.png" alt="The real Insert Arco Function dialog with ArcoTri, the Commercial Auto demo path, and Gross Paid Loss selected">
+        <img src="../assets/monthly-insurance/excel-addin-overview.png" alt="The real Insert Arco Function dialog with ArcoTri, the ABC Auto demo path, and Gross Loss--Paid selected">
         <figcaption><strong>Use matching names and periods in both apps.</strong> The function builder shows the selected project, path, and triangle. Blank optional arguments use the defaults displayed below each field; this example uses cumulative data and 12-month periods.</figcaption>
       </figure>
     </section>
@@ -34,20 +34,20 @@
       <ol class="step-list">
         <li>Select an empty worksheet cell with room for the triangle to spill into the rows and columns beside it.</li>
         <li>Choose <strong>Arco → Insert Function</strong>, then select <strong>ArcoTri</strong>.</li>
-        <li>Choose the demo project, segment path, and Gross Paid Loss. Use TRUE for <strong>Cumulative</strong>, FALSE for <strong>Transposed</strong> and <strong>Calendar</strong>, and 12 for both period lengths. You can leave an optional field blank when its displayed default matches.</li>
+        <li>Choose the demo project, segment path, and Gross Loss--Paid. Use TRUE for <strong>Cumulative</strong>, FALSE for <strong>Transposed</strong> and <strong>Calendar</strong>, and 12 for both period lengths. You can leave an optional field blank when its displayed default matches.</li>
         <li>Inspect the formula preview and insert it. Check that values appear in the intended cells.</li>
       </ol>
       <p>You can also put the project in B2, the path in B3, and the dataset name in B4, then enter:</p>
-      <pre class="code-sample"><code>B2: Monthly_Insurance_Dataset
-B3: Commercial Auto\All States\CH02\Comprehensive
-B4: Gross Paid Loss
+      <pre class="code-sample"><code>B2: ABC_Group_Quarterly_Review_202608
+B3: ABC Auto\PPA\NJ\Exclusive\BI Full Tort
+B4: Gross Loss--Paid
 
 =ArcoTri($B$3,$B$4,TRUE,FALSE,FALSE,$B$2,12,12)</code></pre>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/excel-result.png" alt="The Arco Excel ribbon and the successfully inserted Gross Paid Loss triangle in the demo workbook" loading="lazy">
+        <img src="../assets/monthly-insurance/excel-result.png" alt="The Arco Excel ribbon and the successfully inserted Gross Loss--Paid triangle in the demo workbook" loading="lazy">
         <figcaption><strong>Inspect the inserted array.</strong> The real add-in returns the full triangle to the worksheet. These displayed values match the annual cumulative view in Arco.</figcaption>
       </figure>
-      <p>Use <strong>ArcoVec</strong> for a vector such as Guide Paid Ultimate. <strong>Load Reserving Classes</strong> and <strong>Select Datasets</strong> help fill paths and names; <strong>Refresh lists</strong> updates the Insert Function panel's available choices.</p>
+      <p>Use <strong>ArcoVec</strong> for a vector such as F 13 - Paid DFM w/ Selected LDFs. <strong>Load Reserving Classes</strong> and <strong>Select Datasets</strong> help fill paths and names; <strong>Refresh lists</strong> updates the Insert Function panel's available choices.</p>
     </section>
     <section class="guide-section" id="refresh">
       <h2>Refresh and Share the Workbook</h2>

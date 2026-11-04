@@ -13,35 +13,35 @@
       <p class="eyebrow">Project Explorer and Settings</p>
       <h1>Check how the project is defined</h1>
       <p class="lede">Use Project Explorer to inspect the source data, segment structure, dataset types, and dates that the rest of the project uses.</p>
-      <div class="guide-meta"><span>Demo project: <strong>Monthly_Insurance_Dataset</strong></span></div>
+      <div class="guide-meta"><span>Demo project: <strong>ABC_Group_Quarterly_Review_202608</strong></span></div>
     </header>
 
     <section class="guide-section" id="open">
       <h2>Select the Demo Project</h2>
       <ol class="step-list">
         <li>From Home, choose <strong>Project Explorer</strong>.</li>
-        <li>Expand <strong>Test/Demos</strong> and single-click <strong>Monthly_Insurance_Dataset</strong> to inspect its configuration.</li>
+        <li>Expand <strong>Test/Demos</strong> and single-click <strong>ABC_Group_Quarterly_Review_202608</strong> to inspect its configuration.</li>
         <li>Use the ribbon to move between <strong>Source Data</strong>, <strong>Field Mapping</strong>, <strong>Reserving Class Types</strong>, <strong>Dataset Types</strong>, <strong>Data Processing</strong>, <strong>Audit Log</strong>, and <strong>Project Settings</strong>.</li>
         <li>Double-click the project in the tree when you want to open its <a href="project-instance.html">Project Page</a> and work with dataset instances.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/project-settings-overview.png" alt="Monthly_Insurance_Dataset in Project Explorer with the project configuration ribbon">
-        <figcaption><strong>Project configuration has its own ribbon.</strong> Select Dataset Types to inspect definitions such as Gross Paid Loss and Guide Paid Ultimate; open the Project Page to work with their instances in a segment.</figcaption>
+        <img src="../assets/monthly-insurance/project-settings-overview.png" alt="ABC_Group_Quarterly_Review_202608 in Project Explorer with the project configuration ribbon">
+        <figcaption><strong>Project configuration has its own ribbon.</strong> Select Dataset Types to inspect definitions such as Gross Loss--Paid and F 13 - Paid DFM w/ Selected LDFs; open the Project Page to work with their instances in a segment.</figcaption>
       </figure>
     </section>
     <section class="guide-section" id="source">
       <h2>Check the Source and Periods</h2>
       <ol class="step-list">
         <li>Open <strong>Source Data</strong> and check the source identity and the origin/development date boundaries.</li>
-        <li>For this guide, check the 2016–2025 origin span and May 2026 development end date. The dataset walkthrough uses 12-month origin and development lengths.</li>
+        <li>For this guide, check the 2017–2026 origin span and August 2026 development end date. The dataset walkthrough uses 12-month origin and development lengths.</li>
         <li>Open <strong>Field Mapping</strong> to see which source fields supply dataset values and segment levels.</li>
-        <li>Open <strong>Reserving Class Types</strong> to inspect the hierarchy. The walkthrough's selected path is <strong>Commercial Auto → All States → CH02 → Comprehensive</strong>.</li>
+        <li>Open <strong>Reserving Class Types</strong> to inspect the hierarchy. The walkthrough's selected path is <strong>ABC Auto → PPA → NJ → Exclusive → BI Full Tort</strong>.</li>
       </ol>
       <p>Use the source panel's <strong>Table details</strong> and <strong>Import settings</strong> controls when you need more information about the source. A source refresh affects project data; inspect the configured source before starting one.</p>
     </section>
     <section class="guide-section" id="types">
       <h2>Understand Dataset Types</h2>
-      <p>In <strong>Dataset Types</strong>, find <strong>Gross Paid Loss</strong> and check its data format and category. Find <strong>Guide Paid Ultimate</strong> to identify the output type used in the DFM walkthrough.</p>
+      <p>In <strong>Dataset Types</strong>, find <strong>Gross Loss--Paid</strong> and check its data format and category. Find <strong>F 13 - Paid DFM w/ Selected LDFs</strong> to identify the output type used in the DFM walkthrough.</p>
       <p>A dataset type is a project definition. A dataset instance is the named triangle or vector you open for one segment on the Project Page. A method's <strong>Name</strong> and <strong>Output Type</strong> can therefore differ.</p>
       <aside class="callout">
         <strong>Changes can affect existing work</strong>

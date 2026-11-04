@@ -14,9 +14,9 @@
       <h1>Find your data and open a method</h1>
       <p class="lede">Use the segment tree to choose the data you are working on, then use the dataset table to inspect inputs and open or create methods.</p>
       <div class="guide-meta">
-        <span>Project: <strong>Monthly_Insurance_Dataset</strong></span>
-        <span>Input: <strong>Gross Paid Loss</strong></span>
-        <span>Finished sample: <strong>Guide Paid Ultimate</strong></span>
+        <span>Project: <strong>ABC_Group_Quarterly_Review_202608</strong></span>
+        <span>Input: <strong>Gross Loss--Paid</strong></span>
+        <span>Finished sample: <strong>F 13 - Paid DFM w/ Selected LDFs</strong></span>
       </div>
     </header>
 
@@ -24,31 +24,31 @@
       <h2>Open the Project and Segment</h2>
       <ol class="step-list">
         <li>In the app's <strong>Project Explorer</strong>, expand <strong>Test/Demos</strong>.</li>
-        <li>Double-click <strong>Monthly_Insurance_Dataset</strong> to open its Project Page page.</li>
-        <li>In the segment tree, expand <strong>Commercial Auto → All States → CH02</strong>, then select <strong>Comprehensive</strong>.</li>
+        <li>Double-click <strong>ABC_Group_Quarterly_Review_202608</strong> to open its Project Page page.</li>
+        <li>In the segment tree, expand <strong>ABC Auto → PPA → NJ → Exclusive</strong>, then select <strong>Comprehensive</strong>.</li>
         <li>Check the dataset table for the selected segment. Each row represents a dataset instance; its data format and method type help you choose the correct action.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/pi-overview.png" alt="Monthly_Insurance_Dataset Project Page with the segment tree and dataset table">
-        <figcaption><strong>Choose the segment first.</strong> The dataset table belongs to Commercial Auto → All States → CH02 → Comprehensive. You will use its Gross Paid Loss triangle throughout this guide.</figcaption>
+        <img src="../assets/monthly-insurance/pi-overview.png" alt="ABC_Group_Quarterly_Review_202608 Project Page with the segment tree and dataset table">
+        <figcaption><strong>Choose the segment first.</strong> The dataset table belongs to ABC Auto → PPA → NJ → Exclusive → BI Full Tort. You will use its Gross Loss--Paid triangle throughout this guide.</figcaption>
       </figure>
     </section>
 
     <section class="guide-section" id="filter">
-      <h2>Find Gross Paid Loss</h2>
+      <h2>Find Gross Loss--Paid</h2>
       <ol class="step-list">
         <li>Click the funnel control in the <strong>Name</strong> column header.</li>
-        <li>Choose <strong>Gross Paid Loss</strong> to show the matching dataset.</li>
+        <li>Choose <strong>Gross Loss--Paid</strong> to show the matching dataset.</li>
         <li>To return to the full table, reopen the Name filter and choose <strong>All</strong>.</li>
       </ol>
       <div data-walkthrough>
         <figure class="screenshot" data-step>
           <img src="../assets/monthly-insurance/pi-name-filter.png" alt="Name column filter open in the Project Page dataset table" loading="lazy">
-          <figcaption><strong>1. Open the Name filter.</strong> Use the column's funnel, then choose Gross Paid Loss from the available names.</figcaption>
+          <figcaption><strong>1. Open the Name filter.</strong> Use the column's funnel, then choose Gross Loss--Paid from the available names.</figcaption>
         </figure>
         <figure class="screenshot" data-step>
-          <img src="../assets/monthly-insurance/pi-filtered.png" alt="Project Page dataset table filtered to Gross Paid Loss" loading="lazy">
-          <figcaption><strong>2. Work with the filtered row.</strong> Confirm Gross Paid Loss is visible. Choose All in the same filter when you need to find the saved output later.</figcaption>
+          <img src="../assets/monthly-insurance/pi-filtered.png" alt="Project Page dataset table filtered to Gross Loss--Paid" loading="lazy">
+          <figcaption><strong>2. Work with the filtered row.</strong> Confirm Gross Loss--Paid is visible. Choose All in the same filter when you need to find the saved output later.</figcaption>
         </figure>
       </div>
     </section>
@@ -56,44 +56,44 @@
     <section class="guide-section" id="inspect-input">
       <h2>Inspect the Input Triangle</h2>
       <ol class="step-list">
-        <li>Double-click the <strong>Gross Paid Loss</strong> row to open the dataset.</li>
+        <li>Double-click the <strong>Gross Loss--Paid</strong> row to open the dataset.</li>
         <li>On its <strong>Data</strong> tab, check that you are viewing cumulative values with <strong>Origin Length</strong> and <strong>Development Length</strong> both set to <strong>12</strong>.</li>
-        <li>Review the origin years 2016–2025. At the May 2026 valuation, the latest ages run from 5 months for the newest origin to 113 months for the oldest.</li>
+        <li>Review the origin years 2017–2026. At the August 2026 valuation, the latest ages run from 8 months for the newest origin to 116 months for the oldest.</li>
         <li>Close or minimize the dataset window to return to Project Page.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/dataset-data.png" alt="Gross Paid Loss Data tab showing the cumulative triangle with 12-month origin and development lengths" loading="lazy">
-        <figcaption><strong>Check the input before building the method.</strong> This is the cumulative Gross Paid Loss triangle. The 12-month period lengths describe the spacing; the May valuation produces the partial development ages shown in the data.</figcaption>
+        <img src="../assets/monthly-insurance/dataset-data.png" alt="Gross Loss--Paid Data tab showing the cumulative triangle with 12-month origin and development lengths" loading="lazy">
+        <figcaption><strong>Check the input before building the method.</strong> This is the cumulative Gross Loss--Paid triangle. The 12-month period lengths describe the spacing; the May valuation produces the partial development ages shown in the data.</figcaption>
       </figure>
     </section>
 
     <section class="guide-section" id="create-method">
       <h2>Create a DFM from the Triangle</h2>
       <ol class="step-list">
-        <li>In Project Page, select the <strong>Gross Paid Loss</strong> triangle row whose <strong>Method Type</strong> is <strong>None</strong>.</li>
+        <li>In Project Page, select the <strong>Gross Loss--Paid</strong> triangle row whose <strong>Method Type</strong> is <strong>None</strong>.</li>
         <li>Right-click the row, point to <strong>Add</strong>, then choose <strong>DFM</strong>.</li>
-        <li>In the new method, use <strong>My Paid DFM</strong> as the Name and <strong>Guide Paid Ultimate</strong> as the Output Type. Continue with the <a href="dfm.html#details">DFM Details walkthrough</a>.</li>
+        <li>In the new method, use <strong>My Paid DFM</strong> as the Name and <strong>F 13 - Paid DFM w/ Selected LDFs</strong> as the Output Type. Continue with the <a href="dfm.html#details">DFM Details walkthrough</a>.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/pi-add-dfm.png" alt="Gross Paid Loss context menu with Add and the DFM method option" loading="lazy">
-        <figcaption><strong>Start from the input row.</strong> Right-click Gross Paid Loss and choose Add → DFM. The next chapter walks through the method's input, period lengths, selections, and output.</figcaption>
+        <img src="../assets/monthly-insurance/pi-add-dfm.png" alt="Gross Loss--Paid context menu with Add and the DFM method option" loading="lazy">
+        <figcaption><strong>Start from the input row.</strong> Right-click Gross Loss--Paid and choose Add → DFM. The next chapter walks through the method's input, period lengths, selections, and output.</figcaption>
       </figure>
       <aside class="callout">
         <strong>Name and Output Type have different roles</strong>
-        <p><strong>My Paid DFM</strong> is your practice method's Name. <strong>Guide Paid Ultimate</strong> is its Output Type. The finished example also uses Guide Paid Ultimate as its Name, so check which method you have opened before making changes.</p>
+        <p><strong>My Paid DFM</strong> is your practice method's Name. <strong>F 13 - Paid DFM w/ Selected LDFs</strong> is its Output Type. The finished example also uses F 13 - Paid DFM w/ Selected LDFs as its Name, so check which method you have opened before making changes.</p>
       </aside>
     </section>
 
     <section class="guide-section" id="saved-method">
       <h2>Open the Saved Method or Its Vector</h2>
       <ol class="step-list">
-        <li>Clear the Name filter with <strong>All</strong>, or filter for <strong>Guide Paid Ultimate</strong>.</li>
-        <li>Find the Guide Paid Ultimate row with data format <strong>Vector</strong> and <strong>Method Type</strong> <strong>DFM</strong>.</li>
+        <li>Clear the Name filter with <strong>All</strong>, or filter for <strong>F 13 - Paid DFM w/ Selected LDFs</strong>.</li>
+        <li>Find the F 13 - Paid DFM w/ Selected LDFs row with data format <strong>Vector</strong> and <strong>Method Type</strong> <strong>DFM</strong>.</li>
         <li>Double-click this row to reopen the DFM method and review its selections.</li>
         <li>To inspect its output as a dataset instead, right-click the same row and choose <strong>Show as vector</strong>.</li>
       </ol>
       <figure class="screenshot">
-        <img src="../assets/monthly-insurance/pi-saved-method.png" alt="Saved Guide Paid Ultimate DFM output in the Project Page dataset table" loading="lazy">
+        <img src="../assets/monthly-insurance/pi-saved-method.png" alt="Saved F 13 - Paid DFM w/ Selected LDFs DFM output in the Project Page dataset table" loading="lazy">
         <figcaption><strong>A saved output has two useful views.</strong> Double-click the DFM row to work on the method; choose Show as vector from its context menu to inspect the published vector.</figcaption>
       </figure>
     </section>
@@ -101,7 +101,7 @@
     <section class="guide-section" id="refresh-status">
       <h2>Check Status and Refresh the Table</h2>
       <p>A method output marked <strong>Review Needed</strong> needs your attention. Open its method, inspect the inputs and selections, and save the reviewed method. Refreshing the table alone does not acknowledge the review.</p>
-      <p>The demo also includes <strong>Guide Reported Ultimate</strong> and <strong>Guide Selected Ultimate</strong>. Use the <a href="result-selection.html">Result Selection walkthrough</a> to compare the paid and reported DFM outputs.</p>
+      <p>The demo also includes <strong>F 23 - Incurred DFM w/ Selected LDFs</strong> and <strong>F 91 - Current Qtr Indicated</strong>. Use the <a href="result-selection.html">Result Selection walkthrough</a> to compare the paid and reported DFM outputs.</p>
       <p>If data or methods changed outside the current page, use <strong>Refresh Table</strong> to reload the inventory. If a row still seems missing, check the selected segment and clear any active column filters.</p>
       <div class="chapter-links">
         <a href="../index.html"><strong>Guide Home</strong><span>Return to the demo overview.</span></a>

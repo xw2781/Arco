@@ -13,14 +13,14 @@
       <p class="eyebrow">Python API</p>
       <h1>Open project data from a script</h1>
       <p class="lede">Use Arcode's bundled Python API to interact with the running Arco app and inspect the resulting dataset window.</p>
-      <div class="guide-meta"><span>Demo project: <strong>Monthly_Insurance_Dataset</strong></span></div>
+      <div class="guide-meta"><span>Demo project: <strong>ABC_Group_Quarterly_Review_202608</strong></span></div>
     </header>
 
     <section class="guide-section" id="prepare">
       <h2>Prepare the App and Editor</h2>
       <ol class="step-list">
-        <li>In Arco, open <strong>Monthly_Insurance_Dataset</strong>.</li>
-        <li>On its <strong>Project Page</strong>, select <strong>Commercial Auto → All States → CH02 → Comprehensive</strong> and keep that page active.</li>
+        <li>In Arco, open <strong>ABC_Group_Quarterly_Review_202608</strong>.</li>
+        <li>On its <strong>Project Page</strong>, select <strong>ABC Auto → PPA → NJ → Exclusive → BI Full Tort</strong> and keep that page active.</li>
         <li>Open <strong>Arcode</strong> and choose <strong>Python File</strong>. Arcode includes the API and a compatible Python runtime.</li>
       </ol>
       <figure class="screenshot">
@@ -35,12 +35,12 @@
 ui = ArcRhoUI()
 ui.wait_for_app(timeout_sec=10)
 
-window = ui.project_instance.open_dataset("Gross Paid Loss")
+window = ui.project_instance.open_dataset("Gross Loss--Paid")
 window.maximize()
 print(window.properties.as_dict())</code></pre>
       <ol class="step-list">
         <li>Paste the example into the Python editor and choose <strong>Run</strong>, or press <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</li>
-        <li>Return to Arco and confirm the opened dataset is Gross Paid Loss in the selected demo segment.</li>
+        <li>Return to Arco and confirm the opened dataset is Gross Loss--Paid in the selected demo segment.</li>
         <li>Inspect the printed window properties in Arcode's Output panel.</li>
         <li>Run <code>window.restore()</code> to return the dataset window to its previous size.</li>
       </ol>

@@ -149,7 +149,7 @@ Estimate: code edit 30 min, test/validation 20 min, total 50 min.
 
 **Goal.** A deterministic generator writes a source table with this project's 34 columns and key combinations, whose figures behave like real insurance data.
 
-**Read first.** `tools/generate_monthly_insurance_demo.py` (the model: development curves, Poisson frequency, lognormal severity, premium trend); the project's `field_mapping.json`; the header and the distinct key combinations, origin range and premium rows of `_Fake_2.csv` (read once, structure only).
+**Read first.** `python-api/src/arcrho_api/demo_data/abc_group.py` (the model: claim-by-claim Poisson frequency, lognormal severity, report and settlement lags, case reserves, premium trend); the project's `field_mapping.json`; the header and the distinct key combinations, origin range and premium rows of `_Fake_2.csv` (read once, structure only).
 
 **Do.**
 - [ ] `tools/generate_fake_project_source.py --output <csv>`: every key combination and month of the current file; per-coverage frequency, severity, reporting and payment patterns, loss ratios 0.5-0.8; identities by construction (incurred = paid + reserve, net = gross − salvage − subrogation − recovery, capped ≤ uncapped by layer, excess ≤ total, integer non-negative counts, pending ≥ 0); premium and exposure rows including budget months.
