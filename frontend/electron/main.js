@@ -33,16 +33,17 @@ const {
 const { createBackendLaunchToken } = require("./backend_health_compatibility");
 const { publishAppEntry, unpublishAppEntry } = require("./backend_port");
 
-// Detect Windows 11 (build number >= 22000)
-function isWindows11() {
-  if (process.platform !== "win32") return false;
+// Which Windows frame the renderer draws: "win11" (build >= 22000), "win10", or "" off
+// Windows, where the app draws no frame of its own.
+function windowsFrameStyle() {
+  if (process.platform !== "win32") return "";
   const release = os.release(); // e.g., "10.0.22000"
   const parts = release.split(".");
   const build = parseInt(parts[2], 10);
-  return !isNaN(build) && build >= 22000;
+  return !isNaN(build) && build >= 22000 ? "win11" : "win10";
 }
 
-const IS_WIN11 = isWindows11();
+const WINDOWS_FRAME_STYLE = windowsFrameStyle();
 
 const PACKAGED_PRODUCT_NAME = String(app.getName?.() || "").trim().toLowerCase();
 const APP_MODE = (
@@ -2009,7 +2010,7 @@ ipcMain.handle("get-windows-user-name", () => {
     return "";
   }
 });
-ipcMain.handle("is-windows-11", () => IS_WIN11);
+ipcMain.handle("windows-frame-style", () => WINDOWS_FRAME_STYLE);
 ipcMain.handle("window-minimize", (event) => getIpcWindow(event)?.minimize());
 ipcMain.handle("window-maximize", (event) => getIpcWindow(event)?.maximize());
 ipcMain.handle("window-restore-native", (event) => getIpcWindow(event)?.restore());

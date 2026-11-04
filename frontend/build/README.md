@@ -11,6 +11,7 @@ These are the files you run. Everything else in this folder is a helper one of t
 | [`release_manager.bat`](release_manager.bat) | Open the local browser UI for choosing a version, building and testing locally, publishing deliberately, viewing GitHub Release history, and revoking a recent release. Keep its console window open while it runs. See [docs/RELEASE_MANAGER.md](docs/RELEASE_MANAGER.md). |
 | [`build_app_from_local_repo.bat`](build_app_from_local_repo.bat) | Build and publish in one legacy command, or use `--build-only` and `--publish` as separate commands. No second PC or ZIP. Start with `--check`. See [docs/BUILD_FROM_LOCAL_REPO.md](docs/BUILD_FROM_LOCAL_REPO.md). |
 | [`build_app_via_local_workspace.bat`](build_app_via_local_workspace.bat) | The shared build body. Also the two-PC entry point, driven from the build share. See [docs/BUILD_FROM_ZIP_ON_SECOND_PC.md](docs/BUILD_FROM_ZIP_ON_SECOND_PC.md). |
+| [`build_mac.sh`](build_mac.sh) | Build the macOS (Apple Silicon) DMG on a Mac, for local use only: it neither publishes nor changes the version. Needs Homebrew `python@3.10`, `node` and `unixodbc`, and a Python 3.10 environment in `<repo>/.venv`. |
 | [`change_app_version.bat`](change_app_version.bat) | Set the app version by hand, without building. |
 | [`create_build_source_zip.bat`](create_build_source_zip.bat) | Cut the curated source ZIP the two-PC workflow consumes. |
 | [`deploy_build_share.bat`](deploy_build_share.bat) | Publish the `build_share` scripts to the build share. |

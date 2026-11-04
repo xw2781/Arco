@@ -2443,11 +2443,11 @@ function initArcodeFileDrops() {
   }, true);
 }
 function initAppFrameStyle() {
-  if (!window.ADAHost?.isWindows11) return;
-  window.ADAHost.isWindows11()
-    .then((isWin11) => {
-      document.body.classList.toggle("win11-frame", !!isWin11);
-      document.body.classList.toggle("win10-borders", !isWin11);
+  if (!window.ADAHost?.windowsFrameStyle) return;
+  window.ADAHost.windowsFrameStyle()
+    .then((frame) => {
+      document.body.classList.toggle("win11-frame", frame === "win11");
+      document.body.classList.toggle("win10-borders", frame === "win10");
     })
     .catch(() => {});
 }

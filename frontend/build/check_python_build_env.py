@@ -38,13 +38,18 @@ REQUIRED_MODULES = {
     # whose SQL Server access always reports the missing driver.
     "pyodbc": "pyodbc",
     "watchdog": "watchdog",
-    "pythoncom": "pywin32",
-    "pywintypes": "pywin32",
-    "win32com": "pywin32",
-    "sspi": "pywin32",
     "arcrho_api": None,
     "sqlfluff": SQLFLUFF_REQUIREMENT,
 }
+# pywin32 exists only on Windows; the macOS build ships without Excel COM and
+# the Windows Gateway sign-in.
+if sys.platform == "win32":
+    REQUIRED_MODULES.update({
+        "pythoncom": "pywin32",
+        "pywintypes": "pywin32",
+        "win32com": "pywin32",
+        "sspi": "pywin32",
+    })
 
 
 def find_missing_modules() -> list[tuple[str, str | None]]:
