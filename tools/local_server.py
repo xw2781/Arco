@@ -3,7 +3,8 @@ r"""Run a private Arco Server on this PC for testing, next to production.
 
 The production server root (``E:\ArcRho Server``, the Server PC's share) is
 shared by every user. This tool keeps a second, independent root on a local
-fixed disk -- ``C:\Arco Server`` by default -- so server-component changes can
+fixed disk -- ``C:\Arco Server`` by default, ``E:\XWSpace\Arco Server`` on the
+Server PC -- so server-component changes can
 be deployed and exercised here before anything reaches other users. See
 ``docs/plans/local_server_root_and_server_switcher.md``.
 
@@ -69,7 +70,13 @@ from server_config import ensure_server_config, read_server_config, write_server
 from utils import component_app_name  # noqa: E402
 
 
-DEFAULT_ROOT = Path(r"C:\Arco Server")
+SERVER_PC_NAME = "NE7SASWPN02"
+# The Server PC keeps the test root on E: beside the repo, never on C:.
+DEFAULT_ROOT = (
+    Path(r"E:\XWSpace\Arco Server")
+    if os.environ.get("COMPUTERNAME", "").upper() == SERVER_PC_NAME
+    else Path(r"C:\Arco Server")
+)
 LOCAL_GATEWAY_HOST = "127.0.0.1"
 LOCAL_GATEWAY_PORT = 28767
 LOCAL_GATEWAY_URL = f"http://{LOCAL_GATEWAY_HOST}:{LOCAL_GATEWAY_PORT}"
