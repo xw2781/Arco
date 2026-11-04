@@ -96,6 +96,16 @@ ArcBot uses the same package through a compact command helper. For DFM inspectio
 python -m arcrho_api.agent --file active-method.json inspect --include summary,average-formulas,ratio-triangle --origin 2020
 ```
 
+## Demo Data
+
+The `ABC_Group_Quarterly_Review_202608` demo project takes its four import tables (Loss, Claim Counts, Premium, Exposure) from a seeded generator that ships with the package, so anyone can write them again byte for byte:
+
+```powershell
+python -m arcrho_api.demo_data.abc_group --output "C:\Temp\abc_tables" --seed 20260831
+```
+
+ABC Insurance Group is fictional: claims are simulated one by one with report and settlement lags, case reserves, ALAE, salvage and subrogation, and some states are entered late so their triangles are short. `tools/build_abc_group_demo_project.py` in the repository builds the project from these tables.
+
 ## Installing From ArcRho
 
 This installation is only needed for external IDEs or Python environments. Arcode already includes the API and a compatible Python runtime.
