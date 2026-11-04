@@ -16,7 +16,11 @@ why the job keeps a *pending record* per project beside its queue: the
 previous dates (most hand-entered datasets store index labels ``1..N``, so
 their true origins can only be worked out from the dates they were saved
 under), and the classes and hand-entered datasets already done, so a resumed
-run never moves a dataset twice.
+run never moves a dataset twice. A class whose refresh reported problems is
+not done: the record stays, and running the same change again walks that
+class once more (``classes_retried``); a class that still reports problems on
+its second walk counts as done, so a problem the project had before the change
+never holds the record forever.
 
 Callers identify the work by logical project name only; the Engine derives
 every absolute filesystem path from its own configured server root.
@@ -330,6 +334,7 @@ def validate_pending_record(payload: Any) -> dict[str, Any]:
         "dates": normalize_date_set(payload.get("dates"), "dates"),
         "classes_done": _name_list(payload.get("classes_done"), "classes_done"),
         "inputs_done": _name_list(payload.get("inputs_done"), "inputs_done"),
+        "classes_retried": _name_list(payload.get("classes_retried"), "classes_retried"),
         "updated_at": _required_text(payload.get("updated_at"), "updated_at"),
     }
 
@@ -349,6 +354,7 @@ def write_pending_record(
     dates: Mapping[str, Any],
     classes_done: Iterable[str] = (),
     inputs_done: Iterable[str] = (),
+    classes_retried: Iterable[str] = (),
 ) -> Path:
     payload = validate_pending_record(
         {
@@ -358,6 +364,7 @@ def write_pending_record(
             "dates": dict(dates),
             "classes_done": list(classes_done),
             "inputs_done": list(inputs_done),
+            "classes_retried": list(classes_retried),
             "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
     )

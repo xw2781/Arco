@@ -353,7 +353,12 @@ def _load_source_snapshot(
                 422,
                 f"DFM precedent '{dataset_name}' could not be rolled up to the method's period: {exc}",
             ) from exc
-    method_origin_labels = _axis_labels(canonical_origin_labels)
+    method_origin_labels = precedent_cache_service.precedent_origin_labels(
+        project_name,
+        _axis_labels(canonical_origin_labels),
+        required_origin_length or source_origin_length,
+        len(raw_values),
+    )
     origin_labels = method_origin_labels or _axis_labels(sidecar.get("origin_labels"))
     if len(origin_labels) != len(raw_values):
         raise HTTPException(

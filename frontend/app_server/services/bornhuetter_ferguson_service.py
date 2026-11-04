@@ -278,7 +278,12 @@ def _read_source_snapshot_from_sidecar(
                 422,
                 f"BF precedent '{requested_name}' could not be rolled up to the method's period: {exc}",
             ) from exc
-    method_origin_labels = [str(item if item is not None else "") for item in origin_labels]
+    method_origin_labels = precedent_cache_service.precedent_origin_labels(
+        project_name,
+        [str(item if item is not None else "") for item in origin_labels],
+        origin_length,
+        len(raw_values),
+    )
     if not method_origin_labels:
         raise HTTPException(422, "BF method origin labels are required before loading precedents.")
     if len(raw_values) != len(method_origin_labels):

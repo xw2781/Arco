@@ -274,3 +274,39 @@ def precedent_csv_path(
     if sidecar_path and os.path.isfile(sidecar_path):
         return sidecar_path
     raise RuntimeError(f"Cached dataset CSV is missing for '{dataset_name}'.")
+
+
+
+def precedent_origin_labels(
+    project_name: str,
+    method_origin_labels: Sequence[Any],
+    origin_length: Any,
+    row_count: int,
+) -> List[str]:
+    """The origin labels of a precedent's rows, for a method that reads it.
+
+    The method's saved labels name the rows, except while a change of the
+    project dates is unfinished: then the precedent already holds the new
+    dates' origins and the method still the old ones, so the rows take the
+    new labels and the method's selections follow their origins
+    (docs/plans/project_dates_panel.md, decision 3). The dates job keeps its
+    pending record for the whole walk, so every method it refreshes is read
+    this way. Every method type's precedent loader asks this one place.
+    """
+
+    labels = [_clean(label) for label in method_origin_labels]
+    length = _positive_int(origin_length)
+    if not labels or not length:
+        return labels
+    from arcrho_api.period_reshape import moved_origin_labels
+    from arcrho_project_dates_job_contract import read_pending_record
+    from app_server.services import dependent_propagation_service
+
+    try:
+        pending = read_pending_record(dependent_propagation_service.workspace_server_root(), project_name)
+    except Exception:
+        return labels
+    if pending is None:
+        return labels
+    moved = moved_origin_labels(labels, length, pending["previous_dates"], pending["dates"], row_count)
+    return labels if moved is None else moved

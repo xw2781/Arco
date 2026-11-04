@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 11 session-sized steps (steps 9-11 appended 2026-11-03 and run in order before step 8); steps 1-7 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 11 session-sized steps (steps 9-11 appended 2026-11-03 and run in order before step 8); steps 1-7 and 9 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel; a start-of-year move keeps every method's selections on the right year, and a change that left problems can be run again to retry them).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -20,11 +20,11 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 6 | A floating panel changes all three dates together, behind a confirmation | [x] | 2026-11-03 | 80 min | 70 min | A Project Dates panel changes all three dates at once: it checks them, shows what the change touches and which origins drop out, then runs the change with a progress window and lists what to review. |
 | 7 | The dates on the main page are display only | [x] | 2026-11-03 | 40 min | 12 min | The dates on the main page can no longer be typed over; clicking anywhere on them, or pressing Enter or Space, opens the Project Dates panel, and they do nothing while the project is locked. |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
-| 9 | A start-of-year move finishes cleanly and can be run again | [ ] | | 60 min | | |
+| 9 | A start-of-year move finishes cleanly and can be run again | [x] | 2026-11-03 | 60 min | 70 min | After a start-of-year move every development, BF and Cape Cod method keeps its exclusions and weights on the right year instead of one year off or refusing, and a change that left problems can be run again to retry them. |
 | 10 | The dates panel reads more clearly: a before-and-after table, a grouped review list, a short result line, and progress on the dates band | [ ] | | 55 min | | |
 | 11 | The whole date change is tried by hand in the real app, in both themes, before anything is deployed | [ ] | | 60 min | | |
 
-Overall: 7 of 11 steps done. Estimated 715 min, actual so far 170 min. Steps 9, 10 and 11 were appended and run in that order before step 8.
+Overall: 8 of 11 steps done. Estimated 715 min, actual so far 240 min. Steps 9, 10 and 11 were appended and run in that order before step 8.
 
 ## How agents work this plan
 
@@ -213,7 +213,7 @@ Estimate: 60 min
 - Add the memory notes and release fragment, and move this plan to `completed/` when done.
 
 ### Step 9: Finish a start-of-year move cleanly
-Estimate: code edit 30 min, test/validation 30 min, total 60 min.
+Estimate: code edit 30 min, test/validation 30 min, total 60 min. Actual: code edit 25 min, test/validation 45 min, total 70 min.
 
 Appended by step 6; runs before step 8. Read step 6's "Run on the local root" note and the job status of that run first.
 
@@ -221,6 +221,15 @@ Appended by step 6; runs before step 8. Read step 6's "Run on the local root" no
 - **Methods that still refuse after the January move** (dependent problems in that run): "DFM precedent '…' has N rows; expected N" (about 30), "DFM input values are missing for previously excluded ratio cells" (14), and "BF new_ultimate does not match the embedded source snapshots" (26, already failing before the change, see step 4). Find why a DFM's precedents disagree on the origin count after the move and why the dropped diagonal trips the exclusion check.
 
 Done when the same start-of-year change on a fresh copy of the Fake project ends with no new problems beyond those the project had before the change, and running it a second time finishes anything left.
+
+Read first (added by step 9): the precedent loaders `_load_source_snapshot` in `frontend/app_server/services/dfm_service.py` and `_read_source_snapshot_from_sidecar` in the BF and Cape Cod services, and the pending record in `python-api/src/arcrho_project_dates_job_contract.py`.
+
+Done 2026-11-03.
+- **Real cause of both method refusals.** Every method's precedent loader labels the rows it reads with the method's *saved* origin labels. After the move the Engine's rows are the new origins, so a quarterly method (40 old origins, 37 new rows) refused with "has N rows; expected N", and an annual method (10 and 10) silently read 2018-2027 data under 2017-2026 labels. Its exclusions then sat one origin off, and where a shifted exclusion met a now-empty cell the DFM refused with "previously excluded ratio cells". The refusal itself was right; the rows were mislabelled.
+- **Fix.** While a dates change is unfinished (its pending record exists for the whole walk), a precedent's rows take the new labels in the method's own spelling when the method's labels are the previous dates' grid (`moved_origin_labels` in `period_reshape.py`, asked through `precedent_origin_labels` in `precedent_cache_service.py` by the DFM, BF, Cape Cod and Bootstrap loaders). The method then follows by label (decision 3): the dropped year's row and exclusions go, the new year starts empty. Outside a change the saved labels stay authoritative, as before.
+- **Running it again.** A class whose walk reported problems is no longer marked done: the pending record keeps it under `classes_retried`, the preview answers "resumed" (the panel offers to finish the change), and a second run walks it once more, after reshaped methods and datasets are marked done so nothing moves twice. A class that still has problems on its second walk counts as done, so a problem the project had before the change never holds the record; the message then says running it again will not change them.
+- **Fake run** (fresh copy; before-set measured by first moving Development End 202605 to 202612; then 201701-202612/202612 to 201801-202701/202701): before the change 227 dependent problems and 8 failed datasets. The first January run: 74 problems, none new, 1 failed dataset; 352 development methods moved to 2018-2027 with every exclusion on its own origin, 9 stayed behind for reasons the project had before (mixed origin lengths, the HOL H 02 exclusion refusal, Penn+CT triangles the Engine cannot build); 16 classes kept for a second walk. The second run walked those 16 classes and cleared the record: 243 problems, 21 not in the before-set. 11 are three Berquist-Sherman methods (HOL, HOPxCAT) whose ResQ-imported triangles have no value on the new diagonal, so their rows are one cell shorter than the regenerated claim counts ("must match the primary triangle row length"), and their dependents; the first walk only reshaped those outputs, so any later refresh shows the same. That is the data a hand-entered triangle cannot gain (decision 1); it needs the new diagonal entered. The other 10 are Berquist-Sherman methods downstream of Current Qtr results that already failed before the change through the BF snapshot mismatch. The local Fake copy was put back to 201701-202612/202612 afterwards; it is now a fresh copy plus that Development End move, with no pending record.
+- Tests: `server-components/tests/test_project_dates_jobs.py` (retry and release of the record), `python-api/tests/test_method_period_reshape.py` (moved labels), `frontend/tests/test_project_dates_job_service.py` (the loader helper with and without a pending record).
 
 ### Step 10: Clearer panel, confirmation and result
 Estimate: code edit 35 min, test/validation 20 min, total 55 min.

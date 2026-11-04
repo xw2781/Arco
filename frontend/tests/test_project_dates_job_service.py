@@ -300,6 +300,30 @@ class PreviewTests(_Workspace):
         self.assertEqual(raised.exception.status_code, 409)
 
 
+class PrecedentOriginLabelTests(_Workspace):
+    """Methods read their precedents on the new origins while a change is unfinished."""
+
+    OLD_YEARS = [str(year) for year in range(2020, 2026)]
+    NEW_YEARS = [str(year) for year in range(2021, 2027)]
+
+    def _labels(self, labels, rows):
+        from app_server.services import precedent_cache_service
+
+        return precedent_cache_service.precedent_origin_labels(PROJECT, labels, 12, rows)
+
+    def test_a_method_keeps_its_saved_labels_when_no_change_is_unfinished(self) -> None:
+        self.assertEqual(self._labels(self.OLD_YEARS, 6), self.OLD_YEARS)
+
+    def test_mid_change_the_rows_take_the_new_origins_at_the_same_count(self) -> None:
+        write_pending_record(
+            self.root, project_name=PROJECT, request_id=OTHER_ID, previous_dates=PREVIOUS, dates=NEW
+        )
+        self.assertEqual(self._labels(self.OLD_YEARS, 6), self.NEW_YEARS)
+        # Already moved, or not the previous grid: the saved labels stand.
+        self.assertEqual(self._labels(self.NEW_YEARS, 6), self.NEW_YEARS)
+        self.assertEqual(self._labels(["1", "2", "3", "4", "5", "6"], 6), ["1", "2", "3", "4", "5", "6"])
+
+
 class RouteTransportTests(unittest.TestCase):
     def test_the_preview_and_status_go_through_hosted_reads(self) -> None:
         calls = []

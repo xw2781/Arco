@@ -123,11 +123,15 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
         fake.start()
         self.addCleanup(fake.stop)
         self.failing_class = ""
+        self.problem_classes: set = set()
 
         def refresh_one(root, project, reserving_class, result, *, on_dataset, prepare=None, dataset_types=None):
             if reserving_class == self.failing_class:
                 raise RuntimeError("the Arco Engine did not answer")
             roots = prepare()
+            if reserving_class in self.problem_classes:
+                result["datasets_failed"] += 1
+                result["failures"].append(f"{reserving_class}: F 42 - BF Paid: snapshot mismatch")
             self.workspace.calls.append(("class", reserving_class, roots))
             result["datasets_regenerated"] += 2
 
@@ -203,6 +207,37 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
         self.assertEqual(self.workspace.calls, [("headers",), ("class", "A\\Two", ["C 82"])])
         self.assertEqual(self.reshaped[-1][1], OLD)
         self.assertIsNone(read_pending_record(self.root, PROJECT))
+
+    def test_a_class_with_problems_is_walked_once_more_when_the_change_runs_again(self) -> None:
+        self.problem_classes = {"A\Two"}
+        first = self._run()
+        self.assertEqual(first["classes_refreshed"], 2)
+        self.assertTrue(first["rerun_needed"])
+        self.assertIn("Run the same change again", project_dates_jobs.summarize_failures(first))
+        pending = read_pending_record(self.root, PROJECT)
+        self.assertEqual(pending["classes_done"], ["A\One"])
+        self.assertEqual(pending["classes_retried"], ["A\Two"])
+
+        # The preview and the panel see an unfinished change, not "unchanged".
+        self.workspace.calls.clear()
+        self.problem_classes = set()
+        second = self._run()
+        self.assertTrue(second["resumed"])
+        self.assertFalse(second["rerun_needed"])
+        self.assertEqual(self.workspace.calls, [("headers",), ("class", "A\Two", ["C 82"])])
+        # Nothing reshaped twice: the dataset moved on the first walk is skipped.
+        self.assertEqual(second["datasets_reshaped"], 0)
+        self.assertIsNone(read_pending_record(self.root, PROJECT))
+
+    def test_a_problem_that_survives_the_second_walk_does_not_hold_the_change(self) -> None:
+        self.problem_classes = {"A\Two"}
+        self._run()
+        second = self._run()
+        self.assertFalse(second["rerun_needed"])
+        self.assertIsNone(read_pending_record(self.root, PROJECT))
+        message = project_dates_jobs.summarize_failures(second)
+        self.assertNotIn("Run the same change again", message)
+        self.assertIn("review them in the list", message)
 
     def test_a_resumed_class_never_moves_a_dataset_twice(self) -> None:
         write_pending_record(

@@ -318,6 +318,51 @@ def origin_length_of_style(style: str) -> int | None:
     return {"year": 12, "half": 6, "quarter": 3, "month_name": 1, "month_number": 1}.get(style)
 
 
+
+def moved_origin_labels(
+    labels: Sequence[Any],
+    length: int,
+    previous_dates: Mapping[str, Any],
+    dates: Mapping[str, Any],
+    row_count: int,
+) -> list[str] | None:
+    """A method's origin labels moved to new dates, for a precedent read mid-change.
+
+    While a change of the project dates is unfinished, a method still holds
+    the labels it was saved with under ``previous_dates`` while the
+    precedents the Engine regenerated (or the job reshaped) hold one row per
+    origin of ``dates``, sometimes at the same count (a January move drops a
+    year and adds one). Labelling the new rows with the old labels would put
+    every row's selections on the wrong origin, so the rows take the new
+    labels in the method's own spelling and the method then follows them by
+    label (decision 3). Returns ``None`` to keep the method's labels: they are
+    not the previous grid, are index labels, or the rows are not the new
+    grid's count.
+    """
+
+    try:
+        plan = project_dates_origin_plan(labels, length, previous_dates, dates)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if plan is None or plan["style"] == "index" or len(plan["labels"]) != int(row_count):
+        return None
+    stored = [str(label if label is not None else "").strip() for label in labels]
+    return None if plan["labels"] == stored else list(plan["labels"])
+    if len(months) != int(row_count):
+        return None
+    stored = [str(label if label is not None else "").strip() for label in labels]
+    if not stored or stored == origin_labels_for(range(len(stored)), "index"):
+        return None
+    for style, pattern in _STYLE_PATTERNS.items():
+        if origin_length_of_style(style) != int(length):
+            continue
+        if not all(pattern.fullmatch(label) for label in stored):
+            continue
+        current = origin_labels_for(months, style)
+        return None if current == stored else current
+    return None
+
+
 def project_dates_origin_plan(
     labels: Sequence[Any],
     length: int,

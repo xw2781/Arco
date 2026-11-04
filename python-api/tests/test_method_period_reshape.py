@@ -30,6 +30,7 @@ from arcrho_api.bornhuetter_ferguson_contract import (  # noqa: E402
 from arcrho_api.cape_cod_contract import CC_JSON_FORMAT, recalculate_cape_cod_method  # noqa: E402
 from arcrho_api.dataset_link_contract import compact_sidecar_links  # noqa: E402
 from arcrho_api.period_reshape import (  # noqa: E402
+    moved_origin_labels,
     REVIEW_CELL_LINKS,
     REVIEW_DROPPED_DATA,
     REVIEW_HAND_ENTERED,
@@ -339,6 +340,32 @@ class InputDatasetReshapeTests(unittest.TestCase):
         self.assertEqual(result["values"], [[5], [None], [None]])
         self.assertEqual(result["sidecar"]["origin_labels"], ["1", "2", "3"])
         self.assertEqual(result["review"], [REVIEW_HAND_ENTERED])
+
+
+class PrecedentOriginLabelTests(unittest.TestCase):
+    """Mid-change, a precedent's rows sit on the new dates; the method's labels do not."""
+
+    BEFORE = {"origin_start_date": "201701", "origin_end_date": "202612", "development_end_date": "202612"}
+    JANUARY = {"origin_start_date": "201801", "origin_end_date": "202701", "development_end_date": "202701"}
+
+    def test_a_january_move_at_the_same_count_relabels_the_rows(self) -> None:
+        old = [str(year) for year in range(2017, 2027)]
+        self.assertEqual(
+            moved_origin_labels(old, 12, self.BEFORE, self.JANUARY, 10),
+            [str(year) for year in range(2018, 2028)],
+        )
+
+    def test_quarterly_labels_follow_the_new_grid_in_their_own_spelling(self) -> None:
+        old = [f"{year} Q{quarter}" for year in range(2017, 2027) for quarter in range(1, 5)]
+        new = moved_origin_labels(old, 3, self.BEFORE, self.JANUARY, 37)
+        self.assertEqual((new[0], new[-1], len(new)), ("2018 Q1", "2027 Q1", 37))
+
+    def test_moved_index_or_off_grid_labels_are_kept(self) -> None:
+        moved = [str(year) for year in range(2018, 2028)]
+        self.assertIsNone(moved_origin_labels(moved, 12, self.BEFORE, self.JANUARY, 10))
+        self.assertIsNone(moved_origin_labels([str(i) for i in range(1, 11)], 12, self.BEFORE, self.JANUARY, 10))
+        # Rows that are not the new grid's count: nothing says where they belong.
+        self.assertIsNone(moved_origin_labels([str(y) for y in range(2017, 2027)], 12, self.BEFORE, self.JANUARY, 9))
 
 
 if __name__ == "__main__":

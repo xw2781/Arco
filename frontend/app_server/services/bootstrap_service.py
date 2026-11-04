@@ -432,7 +432,12 @@ def _read_target_snapshot(
                 422,
                 f"Bootstrap precedent '{requested_name}' could not be rolled up to the method's period: {exc}",
             ) from exc
-    expected_labels = [str(item if item is not None else "") for item in origin_labels]
+    expected_labels = precedent_cache_service.precedent_origin_labels(
+        project_name,
+        [str(item if item is not None else "") for item in origin_labels],
+        origin_length,
+        len(raw_values),
+    )
     if expected_labels and len(raw_values) != len(expected_labels):
         raise HTTPException(
             422,

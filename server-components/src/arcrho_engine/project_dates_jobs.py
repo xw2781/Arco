@@ -116,6 +116,7 @@ def _empty_result(dates: Mapping[str, str]) -> dict[str, Any]:
         "review": [],
         "dependent_problems": [],
         "failures": [],
+        "rerun_needed": False,
     }
 
 
@@ -416,11 +417,12 @@ def _reshape_class(
         method_type = dataset_sidecar_status_service.normalize_method_type(
             row.get("method_type"), row.get("source_kind")
         )
+        # A class walked again after problems must not move anything twice.
+        key = pending_item_key(reserving_class, name)
+        if key in inputs_done:
+            continue
         try:
             if source_kind in {"input", "engine"}:
-                key = pending_item_key(reserving_class, name)
-                if key in inputs_done:
-                    continue
                 outcome = reshape_input_dataset_file(
                     project_name, reserving_class, name, previous_dates, dates
                 )
@@ -451,6 +453,7 @@ def _reshape_class(
                 result["methods_reshaped"] += 1
                 roots.append(name)
             review(name, "method", outcome["review"])
+            mark_input_done(key)
     return roots
 
 
@@ -519,6 +522,7 @@ def execute_project_dates_change(
             previous = pending["previous_dates"]
             classes_done = list(pending["classes_done"])
             inputs_done = set(pending["inputs_done"])
+            classes_retried = list(pending["classes_retried"])
             result["resumed"] = True
         else:
             if current == dates:
@@ -536,6 +540,7 @@ def execute_project_dates_change(
                 ) from exc
             classes_done = []
             inputs_done = set()
+            classes_retried = []
         result["previous_dates"] = dict(previous)
 
         def save_pending() -> None:
@@ -547,6 +552,7 @@ def execute_project_dates_change(
                 dates=dates,
                 classes_done=classes_done,
                 inputs_done=sorted(inputs_done),
+                classes_retried=classes_retried,
             )
 
         # The previous dates are on disk before the new ones, so a run that
@@ -595,6 +601,7 @@ def execute_project_dates_change(
 
             notify("classes", index - 1, total, f"Reshaping {reserving_class} ({index} of {total})")
             class_started = time.monotonic()
+            problems_before = (len(result["failures"]), result["datasets_failed"])
             try:
                 source_table_refresh._refresh_one_reserving_class(
                     root,
@@ -613,7 +620,14 @@ def execute_project_dates_change(
                     ),
                 )
                 result["classes_refreshed"] += 1
-                classes_done.append(reserving_class)
+                problems_after = (len(result["failures"]), result["datasets_failed"])
+                retried = reserving_class.casefold() in {name.casefold() for name in classes_retried}
+                if problems_after == problems_before or retried:
+                    classes_done.append(reserving_class)
+                else:
+                    # Decision 2: running the same change again walks this
+                    # class once more, after the classes it may depend on.
+                    classes_retried.append(reserving_class)
                 save_pending()
             except DependentPropagationLeaseUnavailable as exc:
                 result["failures"].append(_redact_machine_paths(exc))
@@ -624,7 +638,10 @@ def execute_project_dates_change(
             finally:
                 _log(root, f"{reserving_class} took {time.monotonic() - class_started:.2f}s")
 
-        if result["classes_refreshed"] == total:
+        done_keys = {name.casefold() for name in classes_done}
+        unfinished = [name for name in classes if name.casefold() not in done_keys]
+        result["rerun_needed"] = bool(unfinished)
+        if not unfinished:
             clear_pending_record(root, project_name)
         notify("complete", total, total, "Project dates changed")
 
@@ -655,10 +672,14 @@ def summarize_failures(result: Mapping[str, Any] | None) -> str:
     if unfinished > 0:
         counts.append(f"{unfinished} reserving class(es) were not finished")
     head = "; ".join(counts) if counts else "the refresh reported problems"
-    return (
-        f"The dates were saved, but {head}. Run the same change again to finish it. "
-        f"First problem: {failures[0]}"
+    # Only a change that kept its pending record can do more when run again;
+    # otherwise every class has had its second walk and the rest is listed.
+    action = (
+        "Run the same change again to finish it."
+        if result.get("rerun_needed")
+        else "Running it again will not change them; review them in the list."
     )
+    return f"The dates were saved, but {head}. {action} First problem: {failures[0]}"
 
 
 # ---------------------------------------------------------------------------
