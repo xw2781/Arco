@@ -299,11 +299,14 @@ class PreviewTests(_Workspace):
 
         result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0}
         project_dates_jobs._reshape_class(
-            PROJECT, CLASS, PREVIOUS, NEW, result, inputs_done=set(), mark_input_done=lambda _key: None
+            PROJECT, CLASS, PREVIOUS, NEW, result,
+            inputs_done=set(), mark_input_done=lambda _key: None, mark_new_diagonal=lambda _key: None,
         )
         self.assertTrue(result["review"])
         for item in result["review"]:
-            self.assertEqual(set(item), {"reserving_class", "name", "kind", "method_type", "reasons"})
+            self.assertEqual(
+                set(item) - {"needs_new_diagonal"}, {"reserving_class", "name", "kind", "method_type", "reasons"}
+            )
             if item["kind"] == "dataset":
                 self.assertEqual(item["method_type"], "None")
 
@@ -322,7 +325,8 @@ class PreviewTests(_Workspace):
         shrink = {**PREVIOUS, "origin_end_date": "202412"}
         result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0}
         project_dates_jobs._reshape_class(
-            PROJECT, CLASS, PREVIOUS, shrink, result, inputs_done=set(), mark_input_done=lambda _key: None
+            PROJECT, CLASS, PREVIOUS, shrink, result,
+            inputs_done=set(), mark_input_done=lambda _key: None, mark_new_diagonal=lambda _key: None,
         )
         by_name = {item["name"]: item for item in result["review"]}
         self.assertEqual(by_name["Cutoff"]["link_rows_past_grid"], 1)
@@ -348,6 +352,107 @@ class PreviewTests(_Workspace):
         with self.assertRaises(HTTPException) as raised:
             self._preview({**NEW, "development_end_date": "202701"})
         self.assertEqual(raised.exception.status_code, 409)
+
+
+class NewDiagonalTests(PreviewTests):
+    """A hand-entered triangle cannot gain the new diagonal; what reads it waits for it."""
+
+    def _reshape(self, dates=NEW):
+        from arcrho_engine import project_dates_jobs
+
+        marked: list = []
+        result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0}
+        project_dates_jobs._reshape_class(
+            PROJECT, CLASS, PREVIOUS, dates, result,
+            inputs_done=set(), mark_input_done=lambda _key: None, mark_new_diagonal=marked.append,
+        )
+        return result, marked
+
+    def test_new_cells_stay_blank_never_zero(self) -> None:
+        # A zero diagonal would let Berquist-Sherman calculate silently wrong.
+        self._reshape()
+        csv_path = Path(config.get_project_dataset_cache_dir(PROJECT, CLASS)) / "Hand Tri.csv"
+        rows = [line.split(",") for line in csv_path.read_text(encoding="utf-8").splitlines()]
+        cells = [cell for row in rows for cell in row]
+        self.assertEqual(set(cells), {"1", ""})
+        self.assertEqual(rows[-1], [""] * len(rows[-1]))
+
+    def test_a_triangle_that_gains_a_diagonal_is_marked_and_says_so(self) -> None:
+        from arcrho_project_dates_job_contract import pending_item_key
+
+        result, marked = self._reshape()
+        self.assertEqual(marked, [pending_item_key(CLASS, "Hand Tri"), pending_item_key(CLASS, "ResQ Tri")])
+        by_name = {item["name"]: item for item in result["review"]}
+        self.assertTrue(by_name["Hand Tri"]["needs_new_diagonal"])
+        # A vector has no diagonal; its new origin is listed as before.
+        self.assertNotIn("needs_new_diagonal", by_name["Prem Vec"])
+
+    def test_no_diagonal_is_gained_when_the_development_end_stays(self) -> None:
+        result, marked = self._reshape({**NEW, "development_end_date": PREVIOUS["development_end_date"]})
+        self.assertEqual(marked, [])
+        self.assertFalse(any(item.get("needs_new_diagonal") for item in result["review"]))
+
+
+class ExpectedWalkFailureTests(_Workspace):
+    """Which declined dependents of a class walk the dates change expects."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        from arcrho_project_dates_job_contract import pending_item_key
+
+        self.blank = {pending_item_key(CLASS, "Hand Tri")}
+        self._add_dataset("Tri B&S", {"source_kind": "berquist_sherman_cra",
+                                      "precedents": [{"dataset_name": "Hand Tri"}, {"dataset_name": "Paid"}]})
+        self._add_dataset("Other B&S", {"source_kind": "berquist_sherman_cra",
+                                        "precedents": [{"dataset_name": "Other Tri"}, {"dataset_name": "Paid"}]})
+
+    def _expected(self, walk, blank=None):
+        from arcrho_engine import project_dates_jobs
+
+        return project_dates_jobs.expected_walk_failures(
+            PROJECT, CLASS, walk, self.blank if blank is None else blank
+        )
+
+    def test_a_shape_refusal_over_a_blank_diagonal_and_what_it_alone_stopped(self) -> None:
+        shape = "paid_claims[0] must match the primary triangle row length."
+        walk = {
+            "ok": False,
+            "skipped": [
+                {"dataset_type_name": "Severity", "errors": [
+                    "Skipped because an upstream calculated dependency did not refresh: Net, Adjusted DFM"]},
+            ],
+            "berquist_sherman_updates": {"ok": False, "errors": [
+                {"dataset_name": "Tri B&S", "reason": shape},
+                # The same refusal over a triangle this change did not leave blank is real.
+                {"dataset_name": "Other B&S", "reason": shape},
+            ]},
+            "dfm_updates": {"ok": False, "errors": [
+                {"dataset_name": "Net, Adjusted DFM", "reason": "Precedent refresh failed: Tri B&S"},
+                {"dataset_name": "BS DFM 2", "reason": "Precedent refresh failed: Other B&S"},
+                {"dataset_name": "H 02 DFM", "reason": "422: DFM input values are missing for previously excluded ratio cells."},
+            ]},
+            "result_selection_updates": {"ok": False, "errors": [
+                {"dataset_name": "F 92 Selected", "reason": "Precedent refresh failed: Net, Adjusted DFM"},
+                # Stopped by an expected and by a real failure: still a problem.
+                {"dataset_name": "F 91 Indicated", "reason": "Precedent refresh failed: Net, Adjusted DFM, H 02 DFM"},
+            ]},
+        }
+        self.assertEqual(
+            self._expected(walk),
+            {"Tri B&S", "Net, Adjusted DFM", "F 92 Selected", "Severity"},
+        )
+
+    def test_another_refusal_over_the_same_triangle_is_not_expected(self) -> None:
+        walk = {"ok": False, "berquist_sherman_updates": {"ok": False, "errors": [
+            {"dataset_name": "Tri B&S", "reason": "422: BF new_ultimate does not match the embedded source snapshots."},
+        ]}}
+        self.assertEqual(self._expected(walk), set())
+
+    def test_nothing_is_expected_in_a_class_with_no_blank_diagonal(self) -> None:
+        walk = {"ok": False, "berquist_sherman_updates": {"ok": False, "errors": [
+            {"dataset_name": "Tri B&S", "reason": "paid_claims[0] must match the primary triangle row length."},
+        ]}}
+        self.assertEqual(self._expected(walk, blank={"a\\two|hand tri"}), set())
 
 
 class PrecedentOriginLabelTests(_Workspace):

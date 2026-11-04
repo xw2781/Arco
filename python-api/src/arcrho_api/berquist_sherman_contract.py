@@ -312,15 +312,21 @@ def normalize_triangle(value: Any, name: str) -> Triangle:
     return result
 
 
+#: The refusals of an input whose shape differs from the primary triangle.
+#: The project dates job recognises them: a hand-entered triangle cannot
+#: gain the new diagonal its regenerated companions gain.
+SHAPE_ROWS_REFUSAL = "must have the same number of rows as the primary triangle."
+SHAPE_ROW_LENGTH_REFUSAL = "must match the primary triangle row length."
+SHAPE_REFUSALS = (SHAPE_ROWS_REFUSAL, SHAPE_ROW_LENGTH_REFUSAL)
+
+
 def assert_same_triangle_shape(reference: Triangle, candidate: Triangle, name: str) -> None:
     if len(candidate) != len(reference):
-        raise BerquistShermanContractError(
-            f"{name} must have the same number of rows as the primary triangle."
-        )
+        raise BerquistShermanContractError(f"{name} {SHAPE_ROWS_REFUSAL}")
     for row_index, row in enumerate(reference):
         if len(candidate[row_index]) != len(row):
             raise BerquistShermanContractError(
-                f"{name}[{row_index}] must match the primary triangle row length."
+                f"{name}[{row_index}] {SHAPE_ROW_LENGTH_REFUSAL}"
             )
 
 

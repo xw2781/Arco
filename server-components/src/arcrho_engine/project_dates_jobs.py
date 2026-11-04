@@ -115,6 +115,7 @@ def _empty_result(dates: Mapping[str, str]) -> dict[str, Any]:
         "methods_updated": 0,
         "review": [],
         "dependent_problems": [],
+        "expected_problems": [],
         "failures": [],
         "rerun_needed": False,
     }
@@ -202,10 +203,13 @@ def reshape_input_dataset_file(
 ) -> dict[str, Any] | None:
     """Reshape one hand-entered or imported dataset on disk.
 
-    Returns ``{"changed": bool, "review": [...]}``, or ``None`` when the
-    dataset is not a stored hand-entered one (a calculated dataset is the
-    dependent walk's). The CSV is written at its stored length first and the
-    sidecar last, as every dataset save does.
+    Returns ``{"changed": bool, "review": [...], "new_diagonal": bool}``, or
+    ``None`` when the dataset is not a stored hand-entered one (a calculated
+    dataset is the dependent walk's). ``new_diagonal`` says a triangle gained a
+    diagonal it has no values for: the new cells stay blank, never zero, so a
+    method that needs them refuses rather than calculating on a false zero.
+    The CSV is written at its stored length first and the sidecar last, as
+    every dataset save does.
     """
 
     from app_server import config
@@ -262,6 +266,8 @@ def reshape_input_dataset_file(
         "changed": True,
         "review": list(reshaped["review"]),
         "link_rows_past_grid": reshaped["link_rows_past_grid"],
+        "new_diagonal": str(sidecar.get("data_format") or "").strip().casefold() != "vector"
+        and int(dates["development_end_date"]) > int(previous_dates["development_end_date"]),
     }
 
 
@@ -392,6 +398,7 @@ def _reshape_class(
     *,
     inputs_done: set[str],
     mark_input_done: Callable[[str], None],
+    mark_new_diagonal: Callable[[str], None],
 ) -> list[str]:
     """Reshape a class's hand-entered datasets and label-less methods.
 
@@ -404,7 +411,14 @@ def _reshape_class(
 
     roots: list[str] = []
 
-    def review(name: str, kind: str, method_type: str, reasons: list[str], link_rows_past_grid: int = 0) -> None:
+    def review(
+        name: str,
+        kind: str,
+        method_type: str,
+        reasons: list[str],
+        link_rows_past_grid: int = 0,
+        new_diagonal: bool = False,
+    ) -> None:
         # The method type lets the panel open the row the way the project tree does.
         if reasons:
             item = {
@@ -416,6 +430,8 @@ def _reshape_class(
             }
             if link_rows_past_grid:
                 item["link_rows_past_grid"] = link_rows_past_grid
+            if new_diagonal:
+                item["needs_new_diagonal"] = True
             result["review"].append(item)
 
     index = dataset_instance_index_service.get_index(project_name, reserving_class)
@@ -444,7 +460,16 @@ def _reshape_class(
                 if outcome["changed"]:
                     result["datasets_reshaped"] += 1
                     roots.append(name)
-                review(name, "dataset", method_type, outcome["review"], outcome.get("link_rows_past_grid", 0))
+                if outcome.get("new_diagonal"):
+                    mark_new_diagonal(key)
+                review(
+                    name,
+                    "dataset",
+                    method_type,
+                    outcome["review"],
+                    outcome.get("link_rows_past_grid", 0),
+                    bool(outcome.get("new_diagonal")),
+                )
                 mark_input_done(key)
             elif method_type == dataset_sidecar_status_service.METHOD_TYPE_RESULT_SELECTION:
                 outcome = reshape_result_selection_file(
@@ -472,6 +497,91 @@ def _reshape_class(
             review(name, "method", method_type, outcome["review"])
             mark_input_done(key)
     return roots
+
+
+# ---------------------------------------------------------------------------
+# Expected refusals
+# ---------------------------------------------------------------------------
+
+
+def _blocked_keys(reason: str, failed_keys: set[str]) -> list[str] | None:
+    """The failed precedents a cascade line names, or ``None`` for any other line.
+
+    The walk joins the names with ", ", and a name may hold a comma too, so
+    the pieces are joined back until they name a dependent that failed.
+    """
+
+    from app_server.helpers import _canon_dataset_name
+    from app_server.services.dependent_walk_service import BLOCKED_REASON, SKIPPED_REASON
+
+    prefix = next((text for text in (BLOCKED_REASON, SKIPPED_REASON) if reason.startswith(text)), "")
+    if not prefix:
+        return None
+    keys: list[str] = []
+    current = ""
+    for piece in reason[len(prefix):].split(", "):
+        current = f"{current}, {piece}" if current else piece
+        key = _canon_dataset_name(current)
+        if key in failed_keys:
+            keys.append(key)
+            current = ""
+    return keys if keys and not current else None
+
+
+def expected_walk_failures(
+    project_name: str,
+    reserving_class: str,
+    walk: Mapping[str, Any],
+    inputs_new_diagonal: set[str],
+) -> set[str]:
+    """The dependents of one class walk that this change expects to fail.
+
+    A hand-entered or imported triangle cannot gain the new diagonal its
+    regenerated companions gain (decision 1), so a method reading both
+    refuses on their shapes. That refusal is expected when the method's own
+    precedents include such a triangle (``inputs_new_diagonal``) and its
+    reason is a shape refusal. A dependent is expected too when every
+    precedent that stopped it is expected. Anything else stays a problem.
+    """
+
+    from app_server.helpers import _canon_dataset_name
+    from app_server.services import calculated_dataset_service, dataset_sidecar_status_service
+    from arcrho_api.berquist_sherman_contract import SHAPE_REFUSALS
+
+    if not any(key.startswith(f"{reserving_class.casefold()}|") for key in inputs_new_diagonal):
+        return set()
+    pairs = calculated_dataset_service.cascade_failures(walk)
+    reason_by_key: dict[str, str] = {}
+    name_by_key: dict[str, str] = {}
+    for name, reason in pairs:
+        key = _canon_dataset_name(name)
+        if key and key not in reason_by_key:
+            reason_by_key[key] = reason
+            name_by_key[key] = name
+
+    expected: set[str] = set()
+    refused = [key for key, reason in reason_by_key.items() if any(text in reason for text in SHAPE_REFUSALS)]
+    if refused:
+        sidecars = dataset_sidecar_status_service.read_sidecars(
+            project_name, reserving_class, [name_by_key[key] for key in refused]
+        )
+        for key in refused:
+            precedents = dataset_sidecar_status_service.entry_names(
+                (sidecars.get(key) or {}).get("precedents")
+            )
+            if any(pending_item_key(reserving_class, name) in inputs_new_diagonal for name in precedents):
+                expected.add(key)
+
+    failed_keys = set(reason_by_key)
+    blocked = {key: _blocked_keys(reason, failed_keys) for key, reason in reason_by_key.items()}
+    grew = bool(expected)
+    while grew:
+        grew = False
+        for key, keys in blocked.items():
+            if key not in expected and keys and all(item in expected for item in keys):
+                expected.add(key)
+                grew = True
+    return {name for name, _reason in pairs if _canon_dataset_name(name) in expected}
 
 
 # ---------------------------------------------------------------------------
@@ -540,6 +650,7 @@ def execute_project_dates_change(
             classes_done = list(pending["classes_done"])
             inputs_done = set(pending["inputs_done"])
             classes_retried = list(pending["classes_retried"])
+            inputs_new_diagonal = set(pending["inputs_new_diagonal"])
             result["resumed"] = True
         else:
             if current == dates:
@@ -558,6 +669,7 @@ def execute_project_dates_change(
             classes_done = []
             inputs_done = set()
             classes_retried = []
+            inputs_new_diagonal = set()
         result["previous_dates"] = dict(previous)
 
         def save_pending() -> None:
@@ -570,6 +682,7 @@ def execute_project_dates_change(
                 classes_done=classes_done,
                 inputs_done=sorted(inputs_done),
                 classes_retried=classes_retried,
+                inputs_new_diagonal=sorted(inputs_new_diagonal),
             )
 
         # The previous dates are on disk before the new ones, so a run that
@@ -612,6 +725,10 @@ def execute_project_dates_change(
             inputs_done.add(key)
             save_pending()
 
+        def mark_new_diagonal(key: str) -> None:
+            # Saved with the input's own done mark, which follows at once.
+            inputs_new_diagonal.add(key)
+
         for index, reserving_class in enumerate(classes, start=1):
             def on_dataset(dataset_name: str, _class=reserving_class, _done=index - 1) -> None:
                 notify("classes", _done, total, f"Refreshing {_class}: {dataset_name}")
@@ -634,6 +751,10 @@ def execute_project_dates_change(
                         result,
                         inputs_done=inputs_done,
                         mark_input_done=mark_input_done,
+                        mark_new_diagonal=mark_new_diagonal,
+                    ),
+                    expected_failures=lambda walk, _failures, _class=reserving_class: expected_walk_failures(
+                        project_name, _class, walk, inputs_new_diagonal
                     ),
                 )
                 result["classes_refreshed"] += 1
@@ -668,7 +789,8 @@ def execute_project_dates_change(
         f"classes={result['classes_refreshed']}/{result['classes_total']} "
         f"regenerated={result['datasets_regenerated']} reshaped={result['datasets_reshaped']} "
         f"methods_reshaped={result['methods_reshaped']} methods_updated={result['methods_updated']} "
-        f"failed={result['datasets_failed']} review={len(result['review'])}",
+        f"failed={result['datasets_failed']} review={len(result['review'])} "
+        f"expected={len(result['expected_problems'])}",
     )
     return result
 

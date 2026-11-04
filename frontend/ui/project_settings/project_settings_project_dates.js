@@ -13,7 +13,7 @@
 import {
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261103panel1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261104diag1";
 import {
   createProjectDatesRequestId,
   describeProjectDatesMove,
@@ -25,7 +25,7 @@ import {
   projectInstanceOpenMessage,
   validateProjectDates,
   waitForProjectDatesJob,
-} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261103panel1";
+} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261104diag1";
 
 const FIELD_KEYS = ["originStartDate", "originEndDate", "developmentEndDate"];
 

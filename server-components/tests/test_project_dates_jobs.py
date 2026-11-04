@@ -124,11 +124,20 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
         self.addCleanup(fake.stop)
         self.failing_class = ""
         self.problem_classes: set = set()
+        self.expected_classes: set = set()
+        self.expected_seen: list = []
 
-        def refresh_one(root, project, reserving_class, result, *, on_dataset, prepare=None, dataset_types=None):
+        def refresh_one(
+            root, project, reserving_class, result, *, on_dataset, prepare=None, dataset_types=None,
+            expected_failures=None,
+        ):
             if reserving_class == self.failing_class:
                 raise RuntimeError("the Arco Engine did not answer")
             roots = prepare()
+            if reserving_class in self.expected_classes:
+                # Only expected problems: the class is done, nothing is reported.
+                self.expected_seen.append(expected_failures({"ok": False}, []))
+                result["expected_problems"].append(f"{reserving_class}: B&S CRA: row length")
             if reserving_class in self.problem_classes:
                 result["datasets_failed"] += 1
                 result["failures"].append(f"{reserving_class}: F 42 - BF Paid: snapshot mismatch")
@@ -137,10 +146,13 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
 
         self.reshaped: list = []
 
-        def reshape_class(project, reserving_class, previous, dates, result, *, inputs_done, mark_input_done):
+        def reshape_class(
+            project, reserving_class, previous, dates, result, *, inputs_done, mark_input_done, mark_new_diagonal
+        ):
             self.reshaped.append((reserving_class, dict(previous), dict(dates), set(inputs_done)))
             key = f"{reserving_class.casefold()}|c 82"
             if key not in inputs_done:
+                mark_new_diagonal(key)
                 mark_input_done(key)
                 result["datasets_reshaped"] += 1
             return ["C 82"]
@@ -238,6 +250,32 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
         message = project_dates_jobs.summarize_failures(second)
         self.assertNotIn("Run the same change again", message)
         self.assertIn("review them in the list", message)
+
+    def test_expected_problems_alone_finish_the_change_cleanly(self) -> None:
+        self.expected_classes = {"A\\Two"}
+        with patch.object(project_dates_jobs, "expected_walk_failures", return_value=set()) as classify:
+            result = self._run()
+        self.assertFalse(result["rerun_needed"])
+        self.assertEqual(result["failures"], [])
+        self.assertEqual(result["dependent_problems"], [])
+        self.assertEqual(result["expected_problems"], ["A\\Two: B&S CRA: row length"])
+        self.assertEqual(project_dates_jobs.summarize_failures(result), "")
+        self.assertIsNone(read_pending_record(self.root, PROJECT))
+        # The class is judged with the triangles this change left a blank diagonal in.
+        classify.assert_called_once_with(PROJECT, "A\\Two", {"ok": False}, {"a\\one|c 82", "a\\two|c 82"})
+
+    def test_a_resumed_run_still_knows_which_triangles_gained_a_blank_diagonal(self) -> None:
+        self.problem_classes = {"A\\Two"}
+        self._run()
+        self.assertEqual(
+            read_pending_record(self.root, PROJECT)["inputs_new_diagonal"], ["a\\one|c 82", "a\\two|c 82"]
+        )
+        self.problem_classes = set()
+        self.expected_classes = {"A\\Two"}
+        with patch.object(project_dates_jobs, "expected_walk_failures", return_value=set()) as classify:
+            second = self._run()
+        self.assertTrue(second["resumed"])
+        self.assertEqual(classify.call_args.args[3], {"a\\one|c 82", "a\\two|c 82"})
 
     def test_a_resumed_class_never_moves_a_dataset_twice(self) -> None:
         write_pending_record(

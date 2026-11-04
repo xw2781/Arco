@@ -1,0 +1,9 @@
+{
+  "type": "improvement",
+  "scope": "project settings",
+  "audience": "user",
+  "summary": "A dates change no longer reports Berquist-Sherman methods that wait for values on a hand-entered triangle's new diagonal as failures.",
+  "details": [
+    "The hand-entered or imported triangle is listed for review with the note that it needs values for the new diagonal; the methods that read it, and what depends on them, are not listed as problems and do not ask for the change to be run again."
+  ]
+}

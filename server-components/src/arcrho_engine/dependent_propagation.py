@@ -186,18 +186,29 @@ def dependent_refresh_failure_reasons(report: Mapping[str, Any]) -> list[str]:
     because they end up in a status file the client shows verbatim.
     """
 
+    flattened: list[str] = []
+    for _name, text in dependent_refresh_failures(report):
+        if text not in flattened:
+            flattened.append(text)
+    return flattened
+
+
+def dependent_refresh_failures(report: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """Each declined dependent's name beside its redacted ``"<name>: <reason>"`` line."""
+
     try:
         from app_server.services import calculated_dataset_service
 
-        reasons = calculated_dataset_service.cascade_failure_reasons(report)
+        pairs = calculated_dataset_service.cascade_failures(report)
     except Exception:
-        reasons = []
-    flattened: list[str] = []
-    for reason in reasons:
-        text = _redact_machine_paths(str(reason))
-        if text and text not in flattened:
-            flattened.append(text)
-    return flattened
+        pairs = []
+    failures: list[tuple[str, str]] = []
+    for name, reason in pairs:
+        line = f"{name}: {reason}" if name and reason else (name or reason)
+        text = _redact_machine_paths(str(line))
+        if text:
+            failures.append((name, text))
+    return failures
 
 
 def dependent_refresh_failure_message(

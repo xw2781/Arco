@@ -324,6 +324,18 @@ Done 2026-11-04, in two passes. In the first, the person at the desk paused the 
   - Second pass: `74`-`78` Dark (locked band, unlock, project restored on reopen).
 - **Setup put back after each pass.** The local Gateway is back on port 28767, the Fake copy was restored byte for byte from a backup taken first, the theme is Light, and the test app, Gateway and Engine are stopped. The second pass's Engine, started from source, cleared the three stale step-6 Engine heartbeats on the local root as it started; they had no live process behind them, so they were not recreated.
 
+## Follow-up 2026-11-04: expected refusals stay off the page
+
+The user asked that a refusal the change makes inevitable not show on the Project Settings page.
+
+- **What is expected.** A hand-entered or ResQ triangle (including the ResQ triangles stored as engine kind) cannot gain the new diagonal its regenerated claim counts gain, so a Berquist-Sherman method reading both refuses with "must match the primary triangle row length". The job now treats that refusal as expected only when the method's own precedents include a triangle it reshaped while the Development End moved later, and the reason is one of the Berquist-Sherman shape refusals. A dependent is expected when every precedent that stopped it is expected; one stopped by any other failure still shows.
+- **Where it goes.** Expected lines go to the job status's `expected_problems` and the job log, never to its failures or problems, so the panel does not list or count them and they do not keep the change unfinished. The triangle's review row says "needs values for the new diagonal". New cells stay blank, never zero: a zero diagonal would let Berquist-Sherman calculate silently wrong.
+- **Fake run** (local copy, 201701-202612/202612 to 201801-202701/202701, run in-process twice, then restored byte for byte). The first run matched step 9's exactly (74 problems) and flagged 24 triangles. The second hid exactly 15 lines and added none:
+  - HOL: the CRA method, F 28 and F 41 A.
+  - HOPxCAT: the CRA and SR methods and the Current Qtr chain they alone stopped.
+  - The panel's line went from "Saved. 260 items could not refresh." to "Saved. 245 items could not refresh."; every other problem is unchanged.
+- **Left as found.** On the second run the 18 ResQ triangles stored as engine kind are sent to the Engine again and fail "does not resolve to any numeric source columns". The "1 dataset failed" of steps 8 and 9 is the Penn+CT MP+PIP Severity dataset, not the HOL input. Both predate this follow-up.
+
 ## Decisions (2026-11-03)
 
 None open. A new question found during a step goes under a fresh "Open decisions" heading, per the working rules above.

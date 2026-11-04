@@ -2126,15 +2126,27 @@ def cascade_failure_reasons(report: Mapping[str, Any]) -> List[str]:
     surfaces.
     """
     reasons: List[str] = []
+    for name, reason in cascade_failures(report):
+        text = f"{name}: {reason}" if name and reason else (name or reason)
+        if text not in reasons:
+            reasons.append(text)
+    return reasons
+
+
+def cascade_failures(report: Mapping[str, Any]) -> List[Tuple[str, str]]:
+    """The walk's declined dependents as ``(name, reason)`` pairs, in order.
+
+    The structured half of :func:`cascade_failure_reasons`, for a caller that
+    has to tell the dependents apart rather than only show them.
+    """
+    failures: List[Tuple[str, str]] = []
     if not isinstance(report, Mapping):
-        return reasons
+        return failures
 
     def add(name: Any, reason: Any) -> None:
-        text_name = _clean_text(name)
-        text_reason = _clean_text(reason)
-        text = f"{text_name}: {text_reason}" if text_name and text_reason else (text_name or text_reason)
-        if text and text not in reasons:
-            reasons.append(text)
+        pair = (_clean_text(name), _clean_text(reason))
+        if (pair[0] or pair[1]) and pair not in failures:
+            failures.append(pair)
 
     for item in report.get("skipped") or []:
         if not isinstance(item, Mapping):
@@ -2155,14 +2167,13 @@ def cascade_failure_reasons(report: Mapping[str, Any]) -> List[str]:
         for error in domain.get("errors") or []:
             if not isinstance(error, Mapping):
                 continue
-            nested = cascade_failure_reasons(error.get("cascade")) if isinstance(error.get("cascade"), Mapping) else []
+            nested = cascade_failures(error.get("cascade")) if isinstance(error.get("cascade"), Mapping) else []
             if nested:
-                for text in nested:
-                    if text not in reasons:
-                        reasons.append(text)
+                for pair in nested:
+                    add(*pair)
                 continue
             add(error.get("dataset_name") or error.get("method_name"), error.get("reason"))
-    return reasons
+    return failures
 
 
 def recalculate_dependents(

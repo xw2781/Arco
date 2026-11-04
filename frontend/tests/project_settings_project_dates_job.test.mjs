@@ -254,6 +254,32 @@ test("a part failure is one short line and its detail becomes the first group", 
   ]);
 });
 
+test("expected problems never reach the result line, and the input says what it needs", () => {
+  const outcome = describeProjectDatesResult({
+    classes_total: 16,
+    classes_refreshed: 16,
+    datasets_regenerated: 978,
+    methods_updated: 294,
+    failures: [],
+    dependent_problems: [],
+    expected_problems: [
+      "NJ\\HOL: Incurred* - B&S Case Reserve Adequacy Adjustment: paid_claims[0] must match the primary triangle row length.",
+      "NJ\\HOL: F 28 - BS Incurred DFM: Precedent refresh failed: Incurred* - B&S Case Reserve Adequacy Adjustment",
+    ],
+    review: [{ reserving_class: "NJ\\HOL", name: "Incurred*", kind: "dataset", method_type: "None",
+      reasons: ["hand-entered or imported"], needs_new_diagonal: true }],
+    rerun_needed: false,
+  });
+  assert.equal(outcome.failed, false);
+  assert.equal(outcome.rerun, false);
+  assert.equal(outcome.text, "Project dates changed. Refreshed 978 datasets and 294 methods in 16 of 16 reserving classes.");
+  // The input stays in its own group; no problem group, no new group.
+  assert.deepEqual(outcome.groups.map((group) => [group.heading, group.rows.length]), [["Hand-Entered Datasets", 1]]);
+  const row = outcome.groups[0].rows[0];
+  assert.equal(row.note, "needs values for the new diagonal");
+  assert.equal(row.detail, "NJ\\HOL\\Incurred* — hand-entered or imported; needs values for the new diagonal");
+});
+
 test("a review row opens in the project's Project Instance the way the tree does", () => {
   assert.deepEqual(
     projectInstanceOpenMessage(
@@ -354,13 +380,13 @@ test("the panel is wired into Project Settings and guarded by the project lock",
   }
   // The panel reuses the page's one month picker.
   assert.match(html, /data-month-picker-for="pdDevelopmentEndInput"/);
-  assert.match(html, /project_settings_project_dates\.css\?v=20261103panel1/);
-  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261103panel1/);
+  assert.match(html, /project_settings_project_dates\.css\?v=20261104diag1/);
+  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261104diag1/);
   assert.match(coordinatorSource, /const projectDatesFeature = createProjectDatesFeature\(/);
   assert.match(lockSource, /"pdApplyBtn"/);
   // One version URL per shared module.
-  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261103panel1/);
-  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261103panel1/);
+  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261104diag1/);
+  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261104diag1/);
   // Drags follow the pointer-capture rule.
   assert.match(featureSource, /setPointerCapture/);
   assert.doesNotMatch(featureSource, /document\.addEventListener\("mousemove"/);

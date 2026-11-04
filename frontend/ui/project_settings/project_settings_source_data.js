@@ -30,7 +30,7 @@ import {
 import {
   combinedSourceSummary,
   createCombinedSourceFeature,
-} from "./project_settings_combined_source.js?v=20261103panel1";
+} from "./project_settings_combined_source.js?v=20261104diag1";
 
 const COLUMN_MIN_WIDTH = { name: 120, type: 74 };
 const DETAILS_CLOSE_DELAY_MS = 160;

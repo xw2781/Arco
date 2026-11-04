@@ -375,6 +375,7 @@ _METHOD_BUCKETS = {
 _REFRESHABLE_KINDS = tuple(_STAGE_BY_KIND)
 
 BLOCKED_REASON = "Precedent refresh failed: "
+SKIPPED_REASON = "Skipped because an upstream calculated dependency did not refresh: "
 
 
 def _domain_module(kind: str) -> Any:
@@ -661,10 +662,7 @@ def _record_blocked(
             "skipped": True,
             "status": "skipped",
             "reason": "upstream_calculation_failed",
-            "errors": [
-                "Skipped because an upstream calculated dependency did not refresh: "
-                + ", ".join(blocked)
-            ],
+            "errors": [SKIPPED_REASON + ", ".join(blocked)],
         })
         return
     if node.kind == KIND_LINKED_INPUT:

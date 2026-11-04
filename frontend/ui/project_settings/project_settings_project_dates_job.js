@@ -230,6 +230,7 @@ export function describeProjectDatesResult(result, message = "") {
       methodType: String(item.method_type || "").trim(),
       reasons: (Array.isArray(item.reasons) ? item.reasons : []).map((reason) => String(reason || "").trim()).filter(Boolean),
       linkRowsPastGrid: Math.max(0, Math.trunc(Number(item.link_rows_past_grid) || 0)),
+      needsNewDiagonal: item.needs_new_diagonal === true,
     }));
   const lines = (value) => (Array.isArray(value) ? value : []).map((item) => String(item || "").trim()).filter(Boolean);
   const dependentProblems = lines(outcome.dependent_problems);
@@ -247,8 +248,13 @@ export function describeProjectDatesResult(result, message = "") {
     const heading = reviewHeading(item.reasons[item.reasons.length - 1] || "");
     if (!byHeading.has(heading)) byHeading.set(heading, []);
     // An Excel link keeps its cells (decision 8), so after a shrink the row
-    // says how far the link now reaches past the grid.
-    const note = item.linkRowsPastGrid ? `Excel link ${plural(item.linkRowsPastGrid, "row")} past the grid` : "";
+    // says how far the link now reaches past the grid. A hand-entered
+    // triangle cannot fill the new diagonal itself; the methods that need it
+    // wait for it and are not listed as failures.
+    const note = [
+      item.linkRowsPastGrid ? `Excel link ${plural(item.linkRowsPastGrid, "row")} past the grid` : "",
+      item.needsNewDiagonal ? "needs values for the new diagonal" : "",
+    ].filter(Boolean).join("; ");
     const reason = [...item.reasons, note].filter(Boolean).join("; ");
     byHeading.get(heading).push({
       reservingClass: item.reservingClass,

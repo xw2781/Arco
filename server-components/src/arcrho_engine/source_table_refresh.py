@@ -66,7 +66,7 @@ from arcrho_source_refresh_contract import (
 from arcrho_engine.dependent_propagation import (
     configure_canonical_runtime,
     dependent_refresh_failure_message,
-    dependent_refresh_failure_reasons,
+    dependent_refresh_failures,
 )
 from arcrho_engine.project_duplication import _redact_machine_paths
 from arcrho_engine.runtime_log import append_runtime_log
@@ -416,6 +416,7 @@ def _refresh_one_reserving_class(
     on_dataset: Callable[[str], None],
     dataset_types: list[str] | None = None,
     prepare: Callable[[], list[str]] | None = None,
+    expected_failures: Callable[[Mapping[str, Any], list[tuple[str, str]]], set[str]] | None = None,
 ) -> None:
     """Regenerate one class's engine datasets, then walk its dependents.
 
@@ -426,6 +427,9 @@ def _refresh_one_reserving_class(
     from whatever was regenerated. ``prepare`` runs under the same lease before
     anything is regenerated and returns more datasets to walk from (the project
     dates job reshapes hand-entered datasets and methods there).
+    ``expected_failures`` gets the walk and its ``(name, line)`` failures and
+    returns the names the caller expects to fail; their lines go to
+    ``result["expected_problems"]`` instead of the problems and failures.
     """
 
     from app_server.services import calculated_dataset_service
@@ -493,7 +497,25 @@ def _refresh_one_reserving_class(
             # The walk names each dependent that declined; the first reason
             # becomes the job message and every one of them goes to the log,
             # which is where a "reported errors" line used to end the trail.
-            reasons = dependent_refresh_failure_reasons(walk)
+            failures = dependent_refresh_failures(walk)
+            expected = expected_failures(walk, failures) if expected_failures and failures else set()
+            reasons: list[str] = []
+            expected_lines: list[str] = []
+            for name, line in failures:
+                target = expected_lines if name in expected else reasons
+                if line not in target:
+                    target.append(line)
+            if expected_lines:
+                result.setdefault("expected_problems", []).extend(
+                    f"{reserving_class}: {line}" for line in expected_lines
+                )
+                _log(
+                    server_root,
+                    f"{reserving_class} dependent refresh expected problems: "
+                    + " | ".join(expected_lines),
+                )
+            if failures and not reasons:
+                return
             # A caller that lists each declined dependent for review (the
             # project dates job) keeps every reason, not just the first.
             if isinstance(result.get("dependent_problems"), list):

@@ -613,13 +613,13 @@ class EngineDispatchTests(unittest.TestCase):
 class ClassWalkReportingTests(unittest.TestCase):
     """The class step says why a dependent walk failed and counts real updates."""
 
-    def _walk(self, walk):
-        result = source_table_refresh._empty_result()
+    def _walk(self, walk, expected_failures=None, result=None):
+        result = source_table_refresh._empty_result() if result is None else result
         logged: list[str] = []
         calculated = SimpleNamespace(
             recalculate_dependents=lambda *a, **k: walk,
-            cascade_failure_reasons=lambda report: [
-                f"{item['dataset_type_name']}: {item['reason']}"
+            cascade_failures=lambda report: [
+                (item["dataset_type_name"], item["reason"])
                 for item in report.get("skipped", [])
             ],
         )
@@ -650,6 +650,7 @@ class ClassWalkReportingTests(unittest.TestCase):
                 "HPPREF\\NJ",
                 result,
                 on_dataset=lambda name: None,
+                expected_failures=expected_failures,
             )
         return result, logged
 
@@ -705,6 +706,51 @@ class ClassWalkReportingTests(unittest.TestCase):
         )
         self.assertEqual(result["methods_updated"], 3)
         self.assertEqual(result["failures"], [])
+
+    _MIXED_WALK = {
+        "ok": False,
+        "skipped": [
+            {"dataset_type_name": "B&S CRA", "reason": "paid_claims[0] must match the primary triangle row length."},
+            {"dataset_type_name": "F 28 - BS DFM", "reason": "Precedent refresh failed: B&S CRA"},
+            {"dataset_type_name": "F 41 - BF Paid", "reason": "422: BF new_ultimate does not match the embedded source snapshots."},
+        ],
+    }
+
+    def test_expected_failures_leave_the_problems_and_the_failure_line(self) -> None:
+        result = {**source_table_refresh._empty_result(), "dependent_problems": []}
+        seen: list = []
+
+        def expected(walk, failures):
+            seen.append(failures)
+            return {"B&S CRA", "F 28 - BS DFM"}
+
+        result, logged = self._walk(self._MIXED_WALK, expected, result)
+        self.assertEqual(
+            result["dependent_problems"],
+            ["HPPREF\\NJ: F 41 - BF Paid: 422: BF new_ultimate does not match the embedded source snapshots."],
+        )
+        self.assertEqual(
+            result["expected_problems"],
+            [
+                "HPPREF\\NJ: B&S CRA: paid_claims[0] must match the primary triangle row length.",
+                "HPPREF\\NJ: F 28 - BS DFM: Precedent refresh failed: B&S CRA",
+            ],
+        )
+        self.assertEqual(
+            result["failures"],
+            ["HPPREF\\NJ: F 41 - BF Paid: 422: BF new_ultimate does not match the embedded source snapshots."],
+        )
+        # The classifier sees each failing name beside its line.
+        self.assertEqual([name for name, _line in seen[0]], ["B&S CRA", "F 28 - BS DFM", "F 41 - BF Paid"])
+        self.assertTrue(any("expected problems" in line and "B&S CRA" in line for line in logged), logged)
+
+    def test_a_walk_whose_failures_are_all_expected_reports_no_failure(self) -> None:
+        result = {**source_table_refresh._empty_result(), "dependent_problems": []}
+        walk = {"ok": False, "skipped": self._MIXED_WALK["skipped"][:2]}
+        result, _logged = self._walk(walk, lambda walk, failures: {"B&S CRA", "F 28 - BS DFM"}, result)
+        self.assertEqual(result["failures"], [])
+        self.assertEqual(result["dependent_problems"], [])
+        self.assertEqual(len(result["expected_problems"]), 2)
 
 
 class GeneratedFormulaScopeTests(unittest.TestCase):
