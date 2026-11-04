@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; step 1 done 2026-11-04, step 2 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-2 done 2026-11-04, step 3 next.
 Last updated: 2026-11-04
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -13,7 +13,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | # | Step | Done | Date | Est. | Actual | What changed for the user |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A ResQ import no longer writes datasets without a review status | [x] | 2026-11-04 | 45 min | 15 min | Imported datasets always carry a review status; an incomplete one is refused instead of saved |
-| 2 | One command reports every file in a project that is not in the current format | [ ] | | 40 min | | |
+| 2 | One command reports every file in a project that is not in the current format | [x] | 2026-11-04 | 40 min | 6 min | One read-only command lists, by kind and problem, every project file the app would refuse or that is left-over clutter |
 | 3 | The local Fake project opens without format errors | [ ] | | 50 min | | |
 | 4 | A realistic synthetic source table for the Fake project | [ ] | | 90 min | | |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [ ] | | 45 min | | |
@@ -24,7 +24,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 
-Overall: 1 of 11 steps done. Estimated 595 min, actual so far 15 min.
+Overall: 2 of 11 steps done. Estimated 595 min, actual so far 21 min.
 
 ## How agents work this plan
 
@@ -120,14 +120,30 @@ Estimate: code edit 30 min, test/validation 15 min, total 45 min. Actual: code e
 **Read first.** The canonical validators named in "File formats" above; the 2026-09-26 scan scripts are not kept, rebuild from the contracts.
 
 **Do.**
-- [ ] `tools/scan_project_contracts.py --root <root> --project <name>`: sidecars, method JSON of every kind, `index.json`, persisted-text layout, leftovers; counts plus example paths; exit code 1 when anything fails.
-- [ ] Bounded parallel reads, so a scan over the share stays usable.
+- [x] `tools/scan_project_contracts.py --root <root> --project <name>`: sidecars, method JSON of every kind, `index.json`, persisted-text layout, leftovers; counts plus example paths; exit code 1 when anything fails.
+- [x] Bounded parallel reads, so a scan over the share stays usable.
 
 **Tests.** `tools/tests/test_scan_project_contracts.py` on a small fixture project with one file of each problem.
 
 **Done when.** The scan of the local Fake copy reproduces the counts in "File formats".
 
-Estimate: code edit 30 min, test/validation 10 min, total 40 min.
+Estimate: code edit 30 min, test/validation 10 min, total 40 min. Actual: code edit 4 min, test/validation 2 min, total 6 min (each method kind already had a normalizer, and the retired v4 migrator in git history showed the kind-to-contract map).
+
+**Outcome (2026-11-04).** `py -3.10 tools/scan_project_contracts.py --root "<server root>" --project <name> [--examples N] [--json]`. Problems fail the run (exit 1); notices are what the app repairs by itself (a DFM without `curves_tab`, a missing or stale `index.json`) and do not. A lock file inside a staging folder counts under both leftovers, as the 2026-09-26 scan did. Counts measured 2026-11-04:
+
+| Finding | 2026-09-26 | Production today | Local copy today |
+| :--- | :--- | :--- | :--- |
+| BF dead format | 4 | 4 | 4 |
+| BF ultimate disagrees with snapshots | 48 | 48 | 48 |
+| CC trend rate / percentage developed / trend factors | 13 | 5 / 4 / 4 | 5 / 4 / 4 |
+| Sidecar missing `status` (and `method_type`) | 109 (9) | 105 (9) | 89 (8) |
+| Method output `calculated: false` | 10 | 10 | 1 |
+| Sidecar names a missing CSV | 9 | 9 | 7 |
+| Staging-folder files / lock files / root backups / stray class / empty file | 138 / 34 / 4 / 1 / 1 | 138 / 34 / 4 / 1 / 1 | 135 / 32 / 4 / 1 / 0 |
+| Notice: DFM without `curves_tab` | 197 | 191 | 15 |
+| Notice: index missing / not current | 1 / 7 | 1 / 26 (version) | 0 / 24 (folder changed) |
+
+Production reproduces the 2026-09-26 counts except where it was edited since (4 sidecars gained a status, 6 DFMs a `curves_tab`) and where the index version has moved on. Every difference in the local copy traces to that copy: the app saved its sidecars and DFMs on 2026-11-03 (each file that dropped out is now valid, `modified_by` the user), and the copy skipped the empty `.tmp` file and the staging folders' three lock files. No file fails the persisted text layout.
 
 ### Step 3 — Repair the local copy's formats
 
