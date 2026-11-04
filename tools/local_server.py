@@ -6,7 +6,7 @@ shared by every user. This tool keeps a second, independent root on a local
 fixed disk -- ``C:\Arco Server`` by default, ``E:\XWSpace\Arco Server`` on the
 Server PC -- so server-component changes can
 be deployed and exercised here before anything reaches other users. See
-``docs/plans/local_server_root_and_server_switcher.md``.
+``docs/plans/completed/local_server_root_and_server_switcher.md``.
 
 Nothing here writes to the production root. ``init`` and ``copy-project`` read
 from it; every other command touches only the local root, and every command

@@ -1,8 +1,10 @@
 # Local Server Root and Server Switcher
 
-Status: Steps 1-3 done 2026-09-26 — a private test server runs on the developer PC at `C:\Arco Server` beside production, with its own Gateway, credential and app profile, built from the working tree by `tools/local_server.py`; the app keeps a list of servers, one active, each with its own credential, behind three new app-server routes; every server root carries an id its Gateway reports, and the app refuses a Gateway whose id differs from its folder's (the server side reaches production with the step 6 deploy). Step 4 done 2026-09-26: a Server tab opened from Home lists the servers by name and address with a health dot, adds a server from its folder, and switches by restarting the app once no tab has unsaved changes. Step 7 done 2026-09-26: the tab's Components panel lists the server's running components with machine, user, last heard and stale state, grouped by role with each stop switch, read from disk for a folder on this PC and through the Gateway otherwise (the Gateway side reaches production with the step 6 deploy). Step 8 done 2026-09-26: for a server whose folder is on a fixed disk of this PC the panel starts and stops it, through the same module `tools/local_server.py` now uses; production shows only a line saying it is managed from Admin Control on the Server PC. Step 5 done 2026-09-26: the title bar shows a small badge naming the server whenever it is not production, including a server set at launch, and clicking it opens the Server tab. Step 6 (the release) is planned and not started; the Server tab was added 2026-09-26 at the user's request; offline use for every user is recorded as a direction with open decisions, not yet broken into steps.
-Last updated: 2026-09-26
-Related: [client_smb_retirement.md](client_smb_retirement.md) (the first work tested this way), [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md)
+Status: Closed 2026-11-04 — all 8 steps done. Step 6 landed with the Arco 1.8.0 release on 2026-09-27; checked 2026-11-04 that production's Gateway reports the `server_id` held in `E:\ArcRho Server\config\config.json` and lists `server_component_status`. Offline use for every user (open decision 3) was not taken up and would need its own plan.
+
+History: Steps 1-3 done 2026-09-26 — a private test server runs on the developer PC at `C:\Arco Server` beside production, with its own Gateway, credential and app profile, built from the working tree by `tools/local_server.py`; the app keeps a list of servers, one active, each with its own credential, behind three new app-server routes; every server root carries an id its Gateway reports, and the app refuses a Gateway whose id differs from its folder's (the server side reaches production with the step 6 deploy). Step 4 done 2026-09-26: a Server tab opened from Home lists the servers by name and address with a health dot, adds a server from its folder, and switches by restarting the app once no tab has unsaved changes. Step 7 done 2026-09-26: the tab's Components panel lists the server's running components with machine, user, last heard and stale state, grouped by role with each stop switch, read from disk for a folder on this PC and through the Gateway otherwise (the Gateway side reaches production with the step 6 deploy). Step 8 done 2026-09-26: for a server whose folder is on a fixed disk of this PC the panel starts and stops it, through the same module `tools/local_server.py` now uses; production shows only a line saying it is managed from Admin Control on the Server PC. Step 5 done 2026-09-26: the title bar shows a small badge naming the server whenever it is not production, including a server set at launch, and clicking it opens the Server tab. Step 6 (the release) is planned and not started; the Server tab was added 2026-09-26 at the user's request; offline use for every user is recorded as a direction with open decisions, not yet broken into steps.
+Last updated: 2026-11-04
+Related: [client_smb_retirement.md](../client_smb_retirement.md) (the first work tested this way), [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md)
 
 **How this ships.** Step 1 changed only tools, docs and two launch-time switches in the desktop host that do nothing unless a launch sets them; it reaches users with the next frontend release and needs no server deploy. Steps 2, 4, 5 and 8 are frontend-release changes. Steps 3 and 7 add a field to the Gateway's capability answer and a registered read kind, additive server deploys that must land before the frontend release that uses them.
 
@@ -17,18 +19,18 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 3 | The app refuses a server whose address and data folder do not belong together | [x] | 2026-09-26 | 55 min | 30 min | Pointing the app at one server's folder while signed in to another server is refused with a plain message instead of mixing the two. |
 | 4 | A Server tab opened from Home lists servers by name and address and switches between them | [x] | 2026-09-26 | 90 min | 37 min | Home has a Server card that opens a Server tab listing each server by name and address with a live health dot; a server can be added by choosing its folder, and switching restarts the app but waits until no tab has unsaved changes. |
 | 5 | The window shows which server it is using whenever it is not production | [x] | 2026-09-26 | 30 min | 15 min | The title bar shows a small badge naming the server whenever it is not production, with its address in the tooltip; clicking it opens the Server tab. |
-| 6 | Deploy the server side and ship the app | [ ] | | 30 min | | |
+| 6 | Deploy the server side and ship the app | [x] | 2026-09-27 | 30 min | not clocked | The Server tab and the server badge reached every user in Arco 1.8.0, and production's server answers with its own identity and its component list. |
 | 7 | The Server tab shows which server components are running and how long since each was last heard from | [x] | 2026-09-26 | 60 min | 26 min | The Server tab lists each running part of the server with its machine, user and how long since it was last heard from, flags silent ones as stale, and shows when a part's stop switch is on. |
 | 8 | A server on this PC can be started and stopped from the Server tab | [x] | 2026-09-26 | 45 min | 22 min | The Server tab starts and stops a server whose folder is on this PC, asks before stopping the one the window uses, and shows the parts going and coming back; production says it is managed from Admin Control on the Server PC. |
 
-Overall: 7 of 8 steps done. Estimated 470 min; actual so far 145 min (step 1 was not clocked). Order: 2, 3, 4, 7, 8, 5, then 6.
+Overall: 8 of 8 steps done. Estimated 470 min; actual 145 min (steps 1 and 6 were not clocked). Order: 2, 3, 4, 7, 8, 5, then 6.
 
 ## How agents work this plan
 
 - Take the first unticked step in the Progress table. One step is one context (a session or one workflow subagent), one commit.
 - Note the clock before the first file is read and again at the commit, keeping the two parts apart: time spent reading and editing, and time spent running tests, checks and deploys.
 - Read the sections between here and the Plan before starting, then only the files the step names. Do not read ahead into later steps.
-- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](README.md).
+- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](../README.md).
 - If a step turns out to need a decision that is not in "Open decisions", stop, record the question there, commit that note alone, and report it rather than guessing.
 - Do not start a step while the previous one is uncommitted.
 
@@ -122,10 +124,10 @@ Estimate: code edit 55 min, test/validation 35 min, total 90 min. Actual: not cl
 **Read first.** `python-api/src/arcrho_api/config.py` (`get_server_root`, the workspace-paths reader and writer); `frontend/app_server/config.py` (`load_workspace_paths`, `save_workspace_paths`, `get_gateway_config_path`); `python-api/src/arcrho_api/gateway.py`; `frontend/app_server/api/workspace_paths_router.py`.
 
 **Do.**
-- [ ] `profiles` and `active_profile` in `workspace_paths.json`, owned by `arcrho_api.config`; the active root mirrored into `workspace_root`. With no `profiles` key, one `default` profile is built in memory from today's file and nothing is written.
-- [ ] One credential-path helper in `arcrho_api.config`: `ARCRHO_GATEWAY_CONFIG`, then the active profile. `app_server/config.py` and `arcrho_api/gateway.py` use it.
-- [ ] `app_server/config.py` delegates its reader and writer to `arcrho_api.config` and drops its own.
-- [ ] `GET /server_profiles`, `POST /server_profiles`, `POST /server_profiles/activate` (activate then asks for the existing app restart).
+- [x] `profiles` and `active_profile` in `workspace_paths.json`, owned by `arcrho_api.config`; the active root mirrored into `workspace_root`. With no `profiles` key, one `default` profile is built in memory from today's file and nothing is written.
+- [x] One credential-path helper in `arcrho_api.config`: `ARCRHO_GATEWAY_CONFIG`, then the active profile. `app_server/config.py` and `arcrho_api/gateway.py` use it.
+- [x] `app_server/config.py` delegates its reader and writer to `arcrho_api.config` and drops its own.
+- [x] `GET /server_profiles`, `POST /server_profiles`, `POST /server_profiles/activate` (activate then asks for the existing app restart).
 
 **Tests.** Migration from today's file writes nothing; env overrides still win; each profile resolves its own credential.
 
@@ -156,7 +158,7 @@ Estimate: code edit 35 min, test/validation 20 min, total 55 min. Actual: code e
 
 **Goal.** A "Server" card on Home opens one Server tab. It lists the servers by name and address, marks the active one, adds one by choosing its folder, and switching restarts the app server. The Server Connection dialog stays for first-run setup and links to the tab.
 
-**Read first.** [shell.md](../../frontend/docs/ui/shell.md) "Common Change Tasks" (the recipe for a new tab type); `frontend/ui/shell/home_view.js` (the fixed card groups and their click wiring); `frontend/ui/shell/tab_actions.js` (`openProjectSettingsTab`, the single-instance pattern, and `RESTORABLE_ACTIVITY_TYPES`); `frontend/ui/shell/iframe_host.js` `ensureIframe` (the `agent_guide` case is the simplest template); `frontend/ui/shell/root_path_settings.js`; `frontend/ui/shell/app_lifecycle.js` (restart); `frontend/ui/shell/shell_messages.js` (where iframe requests are handled, and the harness `tests/project_settings_shell_progress.test.mjs` uses to test one); `frontend/ui/shell/shell_activity_history.js` and `home_card_icons.js` (the restorable-type list and Home icon kinds); skill `arcrho-ui-design`.
+**Read first.** [shell.md](../../../frontend/docs/ui/shell.md) "Common Change Tasks" (the recipe for a new tab type); `frontend/ui/shell/home_view.js` (the fixed card groups and their click wiring); `frontend/ui/shell/tab_actions.js` (`openProjectSettingsTab`, the single-instance pattern, and `RESTORABLE_ACTIVITY_TYPES`); `frontend/ui/shell/iframe_host.js` `ensureIframe` (the `agent_guide` case is the simplest template); `frontend/ui/shell/root_path_settings.js`; `frontend/ui/shell/app_lifecycle.js` (restart); `frontend/ui/shell/shell_messages.js` (where iframe requests are handled, and the harness `tests/project_settings_shell_progress.test.mjs` uses to test one); `frontend/ui/shell/shell_activity_history.js` and `home_card_icons.js` (the restorable-type list and Home icon kinds); skill `arcrho-ui-design`.
 
 **Do.**
 - [x] A `Server` card in Home's General group, `openServerTab()` in `tab_actions.js`, a `server` tab type in `iframe_host.js`, and a tab icon.
@@ -177,7 +179,7 @@ Estimate: code edit 60 min, test/validation 30 min, total 90 min. Actual: code e
 
 **Goal.** The title bar shows the server's name whenever it is not production.
 
-**Read first.** The title bar in `frontend/ui/index.html` and its shell script (`frontend/ui/shell/ui_shell.js`, `shell.css`); `frontend/app_server/services/server_profile_service.py` `list_server_profiles`; `frontend/ui/server/server_model.js` (`serverLabel`, `isSetAtLaunch`); [server.md](../../frontend/docs/ui/server.md).
+**Read first.** The title bar in `frontend/ui/index.html` and its shell script (`frontend/ui/shell/ui_shell.js`, `shell.css`); `frontend/app_server/services/server_profile_service.py` `list_server_profiles`; `frontend/ui/server/server_model.js` (`serverLabel`, `isSetAtLaunch`); [server.md](../../../frontend/docs/ui/server.md).
 
 **Do.**
 - [x] `GET /server_profiles` (not `/workspace_paths`, which the plan first named) reports `default_profile`, production's id, beside the `current` and `set_at_launch` it already gave, so the shell makes one read and no new route is needed.
@@ -196,8 +198,8 @@ Estimate: code edit 20 min, test/validation 10 min, total 30 min. Actual: code e
 **Goal.** Production's Gateway reports its identity and serves component status (steps 3 and 7), then the app that uses them ships.
 
 **Do.**
-- [ ] Deploy to the local root and check; then `python server-components/deploy.py`.
-- [ ] The frontend release follows the server deploy; the badge's release line is already in the Server tab's fragment (step 5).
+- [x] Deploy to the local root and check; then `python server-components/deploy.py`.
+- [x] The frontend release follows the server deploy; the badge's release line is already in the Server tab's fragment (step 5).
 
 **Done when.** Production's `/api/capabilities` carries `server_id` and lists `server_component_status`, and the released app switches servers.
 

@@ -2,7 +2,7 @@
 
 Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps, none started.
 Last updated: 2026-09-26
-Related: [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
+Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
 **How this ships.** Steps 1 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge): an additive fix, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
 

@@ -2,7 +2,7 @@
 
 ## Local test server root on the developer PC (moved 2026-09-26)
 
-Built and in use: `tools/local_server.py` runs a private root at `C:\Arco Server` beside production. The proposal that stood here became [plans/local_server_root_and_server_switcher.md](plans/local_server_root_and_server_switcher.md), which also plans switching servers from the app and records offline use for every user as a direction. The investigation corrected four of the proposal's assumptions:
+Built and in use: `tools/local_server.py` runs a private root at `C:\Arco Server` beside production. The proposal that stood here became [plans/local_server_root_and_server_switcher.md](plans/completed/local_server_root_and_server_switcher.md), which also plans switching servers from the app and records offline use for every user as a direction. The investigation corrected four of the proposal's assumptions:
 
 - Saving the Server Connection page does **not** re-enrol with the new root's Gateway while a credential file exists; the app keeps signing to the old Gateway.
 - Copied projects are not free of absolute paths: five caches hold `E:\ArcRho Server` paths (they rebuild), and the import source still names the production share.
