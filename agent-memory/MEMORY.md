@@ -118,4 +118,5 @@
 - [resq-invalid-aggregate-trace](resq-invalid-aggregate-trace.md) — How to trace a red "invalid" ResQ aggregate — compare ReservingClass.Formula…
 - [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a page-wide shield; reopen the project tab
 - [Excel-linked cells keep absolute position](excel-linked-cells-keep-absolute-position.md) — on a date reshape, Excel-linked in-cell formulas never shift; hard-coded data follows origin labels
+- [Project dates change job](project-dates-change-job.md) — 2026-11-04: one Engine job moves a project to new dates; its pending record relabels precedent rows until it clears
 - [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation hosted in Legacy\HOPxCAT+HOL; ResQ correlation still unconfirmed
