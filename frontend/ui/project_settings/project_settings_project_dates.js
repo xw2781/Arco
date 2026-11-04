@@ -177,7 +177,8 @@ export function createProjectDatesFeature({
       dom.apply.classList.toggle("primary", !settled);
     }
     if (dom.cancel) {
-      dom.cancel.textContent = finished ? "Close" : "Cancel";
+      // A running change cannot be cancelled from here; the button only closes the panel.
+      dom.cancel.textContent = finished || running ? "Close" : "Cancel";
       dom.cancel.classList.toggle("primary", settled);
     }
     dom.panel?.setAttribute("aria-busy", String(locked));
@@ -223,8 +224,11 @@ export function createProjectDatesFeature({
       dom.inputs.originStartDate?.focus();
       return true;
     }
+    // A change that finished while the panel was closed keeps its result and
+    // review list for this reopen; a later close starts the panel afresh.
+    const keepsResult = panelProject === name && !!finished;
     panelProject = name;
-    if (!running) {
+    if (!running && !keepsResult) {
       setMessage("");
       renderReview([]);
       finished = null;

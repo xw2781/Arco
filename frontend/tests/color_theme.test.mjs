@@ -781,3 +781,9 @@ test("large page styles are maintained as feature CSS instead of inline blocks",
     assert.doesNotMatch(html, /<style>/);
   }
 });
+
+test("Dark dims modal shell overlays but never a floating window such as the progress window", () => {
+  const dark = read("../ui/shared/styles/themes/dark.css");
+  assert.match(dark, /\.uiAutomationOverlay:not\(\.floating\)\s*\)\s*\{[^}]*background-color: var\(--ar-color-overlay\)/);
+  assert.doesNotMatch(dark, /\.uiAutomationOverlay\s*\n\)/);
+});

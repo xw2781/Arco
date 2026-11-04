@@ -2819,13 +2819,6 @@ export function createSourceDataFeature(deps = {}) {
       ) {
         hidePreview();
       }
-      if (
-        activeMonthPickerButton
-        && !dom.monthPicker?.contains(event.target)
-        && !activeMonthPickerButton.contains(event.target)
-      ) {
-        closeMonthPicker();
-      }
       // The Import Settings window is a regular window: an outside click never
       // closes it, only its own dropdowns dismiss. Each list lives in
       // document.body, so ownership is asked of the select, not the markup.
@@ -2838,6 +2831,17 @@ export function createSourceDataFeature(deps = {}) {
       if (!detailsPinned) return;
       if (dom.statsCard?.contains(event.target) || dom.infoBtn?.contains(event.target)) return;
       closeDetails();
+    });
+    // pointerdown, not mousedown: the Project Dates panel's header cancels the
+    // mouse events to drag, and a click there must still close the picker.
+    document.addEventListener("pointerdown", (event) => {
+      if (
+        activeMonthPickerButton
+        && !dom.monthPicker?.contains(event.target)
+        && !activeMonthPickerButton.contains(event.target)
+      ) {
+        closeMonthPicker();
+      }
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {

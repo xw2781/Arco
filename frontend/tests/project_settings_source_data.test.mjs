@@ -242,6 +242,8 @@ test("date inputs use one shared month/year picker that stays open under the poi
   assert.match(moduleSource, /closeMonthPicker\(\{ restoreFocus: true, force: true \}\)/);
   assert.match(moduleSource, /placeFloating\(dom\.monthPicker, activeMonthInput\.getBoundingClientRect\(\), 6\)/);
   assert.doesNotMatch(moduleSource, /placeFloating\(dom\.monthPicker, button\.getBoundingClientRect\(\), 6\)/);
+  // The dates panel header cancels mouse events to drag; a press there still closes the picker.
+  assert.match(moduleSource, /document\.addEventListener\("pointerdown", \(event\) => \{\s*if \(\s*activeMonthPickerButton/);
   assert.match(moduleSource, /input\.dispatchEvent\(new Event\("change"/);
   assert.match(projectSettingsJs, /formatMonth: formatBoundaryYmDisplay/);
   assert.ok(!summaryCss.includes(".sd-month-lane"), "retired stepper lane styles remain");

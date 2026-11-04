@@ -502,8 +502,9 @@
   #aboutOverlay,
   #homeNameOverlay,
   #homeAddCardOverlay,
-  .uiAutomationOverlay
+  .uiAutomationOverlay:not(.floating)
 ) {
+  /* A floating window such as the progress window does not block the app, so it never dims it. */
   background-color: var(--ar-color-overlay);
 }
 

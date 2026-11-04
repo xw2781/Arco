@@ -306,6 +306,7 @@ test("while the change runs the band shows its progress and reopens the progress
   assert.equal(band.classList.contains("is-running"), true);
   assert.equal(get("summaryDatesProgress").hidden, false);
   assert.equal(get("summaryDatesProgress").textContent, "Changing dates…");
+  assert.equal(get("pdCancelBtn").textContent, "Close", "a running change cannot be cancelled");
 
   feature.close();
   const before = calls.progress.length;
@@ -327,6 +328,18 @@ test("while the change runs the band shows its progress and reopens the progress
   assert.equal(feature.isRunning(), false);
   assert.equal(band.classList.contains("is-running"), false);
   assert.equal(get("summaryDatesProgress").hidden, true);
+
+  // The panel was closed during the run: reopening it shows the result, once.
+  band.dispatch("click");
+  await settle();
+  assert.equal(feature.isOpen(), true);
+  assert.match(get("pdMessage").textContent, /^Project dates changed\./);
+  assert.equal(get("pdCancelBtn").textContent, "Close");
+  feature.close();
+  band.dispatch("click");
+  await settle();
+  assert.equal(get("pdMessage").textContent, "");
+  assert.equal(get("pdCancelBtn").textContent, "Cancel");
 });
 
 test("after a clean change Close leads and Apply waits for an edit", async () => {

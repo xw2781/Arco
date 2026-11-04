@@ -498,7 +498,8 @@
   align-items: center;
   margin-bottom: 7px;
 }
-.sd-month-picker-year {
+/* The picker's buttons are scoped by its id so Dark's global button rule cannot fill every month. */
+:root #summaryMonthPicker .sd-month-picker-year {
   justify-self: center;
   min-width: 64px;
   height: 28px;
@@ -514,15 +515,15 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.sd-month-picker-year:hover,
-.sd-month-picker-year:focus-visible,
-.sd-month-picker-year[aria-expanded="true"] {
+:root #summaryMonthPicker .sd-month-picker-year:hover,
+:root #summaryMonthPicker .sd-month-picker-year:focus-visible,
+:root #summaryMonthPicker .sd-month-picker-year[aria-expanded="true"] {
   border-color: var(--ar-color-border, #d8dde3);
   background: var(--ar-color-surface-hover, #e8eef6);
   color: var(--ar-color-accent, #2b6df6);
   outline: none;
 }
-.sd-month-picker-nav {
+:root #summaryMonthPicker .sd-month-picker-nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -535,19 +536,19 @@
   color: var(--ar-color-text-muted, #64748b);
   cursor: pointer;
 }
-.sd-month-picker-nav:hover:not(:disabled),
-.sd-month-picker-nav:focus-visible {
+:root #summaryMonthPicker .sd-month-picker-nav:hover:not(:disabled),
+:root #summaryMonthPicker .sd-month-picker-nav:focus-visible {
   border-color: var(--ar-color-border, #d8dde3);
   background: var(--ar-color-surface-hover, #e8eef6);
   color: var(--ar-color-accent, #2b6df6);
   outline: none;
 }
-.sd-month-picker-nav svg { width: 14px; height: 14px; }
-.sd-month-picker-nav:disabled {
+:root #summaryMonthPicker .sd-month-picker-nav svg { width: 14px; height: 14px; }
+:root #summaryMonthPicker .sd-month-picker-nav:disabled {
   color: var(--ar-color-text-disabled, #9ca3af);
   cursor: default;
 }
-.sd-month-picker-nav.is-year-view-hidden {
+:root #summaryMonthPicker .sd-month-picker-nav.is-year-view-hidden {
   visibility: hidden;
   pointer-events: none;
 }
@@ -563,8 +564,8 @@
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
-.sd-month-picker-month,
-.sd-month-picker-year-option {
+:root #summaryMonthPicker .sd-month-picker-month,
+:root #summaryMonthPicker .sd-month-picker-year-option {
   height: 28px;
   padding: 0;
   border: 1px solid transparent;
@@ -575,16 +576,16 @@
   font-size: 11px;
   cursor: pointer;
 }
-.sd-month-picker-month:hover,
-.sd-month-picker-month:focus-visible,
-.sd-month-picker-year-option:hover,
-.sd-month-picker-year-option:focus-visible {
+:root #summaryMonthPicker .sd-month-picker-month:hover,
+:root #summaryMonthPicker .sd-month-picker-month:focus-visible,
+:root #summaryMonthPicker .sd-month-picker-year-option:hover,
+:root #summaryMonthPicker .sd-month-picker-year-option:focus-visible {
   border-color: var(--ar-color-border, #d8dde3);
   background: var(--ar-color-surface-hover, #e8eef6);
   outline: none;
 }
-.sd-month-picker-month[aria-pressed="true"],
-.sd-month-picker-year-option[aria-pressed="true"] {
+:root #summaryMonthPicker .sd-month-picker-month[aria-pressed="true"],
+:root #summaryMonthPicker .sd-month-picker-year-option[aria-pressed="true"] {
   border-color: var(--ar-color-accent, #2b6df6);
   background: var(--ar-color-accent-soft, #eaf2ff);
   color: var(--ar-color-accent-strong, #1d4ed8);
