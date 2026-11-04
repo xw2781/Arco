@@ -364,8 +364,9 @@
 :root[data-arcrho-theme="dark"] .sd-band {
   --sd-band-hover-bg: var(--ar-color-border-strong, #3a3f4b);
 }
+/* The focus-blue border reads as clickable in Light and matches Dark's popout hover. */
 .sd-band:hover {
-  border-color: var(--ar-color-border-strong, #cbd5e1);
+  border-color: var(--ar-color-border-focus, #93c5fd);
   background: var(--sd-band-hover-bg);
 }
 .sd-band:focus-visible {
@@ -377,6 +378,16 @@
   border-color: var(--ar-color-border, #d8dde3);
   background: var(--ar-color-surface-raised, #fbfcfe);
 }
+/* While the selected project's dates change runs, the band shows its progress
+   in place of the dates, and a click reopens the progress window. */
+.sd-band.is-running .sd-band-group { display: none; }
+.sd-band-progress {
+  color: var(--ar-color-text, #1f2937);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sd-band-progress[hidden] { display: none; }
 /* Each label stays with its dates; the band wraps only between groups. */
 .sd-band-group {
   display: flex;

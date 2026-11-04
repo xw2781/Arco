@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 11 session-sized steps (steps 9-11 appended 2026-11-03 and run in order before step 8); steps 1-7 and 9 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel; a start-of-year move keeps every method's selections on the right year, and a change that left problems can be run again to retry them).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 11 session-sized steps (steps 9-11 appended 2026-11-03 and run in order before step 8); steps 1-7, 9 and 10 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel; a start-of-year move keeps every method's selections on the right year, and a change that left problems can be run again to retry them; the panel shows a before-and-after table, a short result line, a grouped review list that opens each row in the project, and the running change on the dates band).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -21,10 +21,10 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 7 | The dates on the main page are display only | [x] | 2026-11-03 | 40 min | 12 min | The dates on the main page can no longer be typed over; clicking anywhere on them, or pressing Enter or Space, opens the Project Dates panel, and they do nothing while the project is locked. |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 | 9 | A start-of-year move finishes cleanly and can be run again | [x] | 2026-11-03 | 60 min | 70 min | After a start-of-year move every development, BF and Cape Cod method keeps its exclusions and weights on the right year instead of one year off or refusing, and a change that left problems can be run again to retry them. |
-| 10 | The dates panel reads more clearly: a before-and-after table, a grouped review list, a short result line, and progress on the dates band | [ ] | | 55 min | | |
+| 10 | The dates panel reads more clearly: a before-and-after table, a grouped review list, a short result line, and progress on the dates band | [x] | 2026-11-03 | 55 min | 16 min | The confirmation compares old and new dates in a small table, a finished change says what happened in one line, the review list is grouped by reason and opens each dataset or method in the project, and the dates band shows the change's progress while it runs. |
 | 11 | The whole date change is tried by hand in the real app, in both themes, before anything is deployed | [ ] | | 60 min | | |
 
-Overall: 8 of 11 steps done. Estimated 715 min, actual so far 240 min. Steps 9, 10 and 11 were appended and run in that order before step 8.
+Overall: 9 of 11 steps done. Estimated 715 min, actual so far 256 min. Steps 9, 10 and 11 were appended and run in that order before step 8.
 
 ## How agents work this plan
 
@@ -232,20 +232,31 @@ Done 2026-11-03.
 - Tests: `server-components/tests/test_project_dates_jobs.py` (retry and release of the record), `python-api/tests/test_method_period_reshape.py` (moved labels), `frontend/tests/test_project_dates_job_service.py` (the loader helper with and without a pending record).
 
 ### Step 10: Clearer panel, confirmation and result
-Estimate: code edit 35 min, test/validation 20 min, total 55 min.
+Estimate: code edit 35 min, test/validation 20 min, total 55 min. Actual: code edit 11 min, test/validation 5 min, total 16 min; well under because the Project Instance tab already restores a window from a shell message, so opening a review row needed no new path.
 
 Appended 2026-11-03 from the user's review of the step 6 and 7 screenshots; runs after step 9, before step 11. The user's rule: nothing that complicates the interface. No new buttons or presets (no "New year" or "+1 quarter" button), no new icons.
 
-- [ ] **Before and after table.** Replace the confirmation's wrapped "Jan 2017 – Dec 2026, Dec 2026 → …" line with a three-row table (Origin Start, Origin End, Development End; old, new). Bold only the dates that change.
-- [ ] **Grouped review list.** Group the result's review rows by reason, each group headed by the reason and its count and collapsed by default. A row shows its full reason on hover instead of cutting it off, and a click opens that dataset or method the way the project tree does.
-- [ ] **Short result line.** On a part failure, replace the red paragraph with one line ("Saved. 1 dataset could not refresh."); the detail moves into the review list as its own group. The main button reads "Run Again" and resends the same dates (decision 2). Pluralise counts properly rather than "dataset(s)".
-- [ ] **No Apply after success.** Once a change finishes, Close becomes the main button and Apply stays disabled until a date is edited again.
-- [ ] **Progress on the band.** While the job runs, the band's text shows the progress ("Changing dates… 12 of 33") and a click on it reopens the progress window instead of the panel. No new control.
-- [ ] **Firmer hover.** Strengthen the band's hover border in the light theme so it reads as clickable; check that the dark theme matches.
+- [x] **Before and after table.** Replace the confirmation's wrapped "Jan 2017 – Dec 2026, Dec 2026 → …" line with a three-row table (Origin Start, Origin End, Development End; old, new). Bold only the dates that change.
+- [x] **Grouped review list.** Group the result's review rows by reason, each group headed by the reason and its count and collapsed by default. A row shows its full reason on hover instead of cutting it off, and a click opens that dataset or method the way the project tree does.
+- [x] **Short result line.** On a part failure, replace the red paragraph with one line ("Saved. 1 dataset could not refresh."); the detail moves into the review list as its own group. The main button reads "Run Again" and resends the same dates (decision 2). Pluralise counts properly rather than "dataset(s)".
+- [x] **No Apply after success.** Once a change finishes, Close becomes the main button and Apply stays disabled until a date is edited again.
+- [x] **Progress on the band.** While the job runs, the band's text shows the progress ("Changing dates… 12 of 33") and a click on it reopens the progress window instead of the panel. No new control.
+- [x] **Firmer hover.** Strengthen the band's hover border in the light theme so it reads as clickable; check that the dark theme matches.
 
 Follow `$arcrho-ui-design`, keep modal copy to two lines, keep the one-version `?v=` stamp and its pinning tests, and add node tests for each state. Screenshot both themes (a mock-up is enough here; step 11 uses the real app).
 
 Done when each item above is in, its tests pass, and the screenshots show it in both themes.
+
+Read first (added by step 10): the job's `review`, `failures`, `dependent_problems` and `rerun_needed` in `server-components/src/arcrho_engine/project_dates_jobs.py`, and how the Project Instance tab restores windows (`arcrho:open-project-instance` in `frontend/ui/shell/shell_messages.js`, `applyProjectInstanceRestoreState` in `frontend/ui/project_instance/project_instance_windows.js`).
+
+Done 2026-11-03.
+- **Table and result line.** The confirmation's dates are a Before/After table (`describeProjectDatesMove`), the changed After dates bold. A finished change shows one line: the pluralised counts, or on a part failure `Saved. 1 dataset could not refresh.` (`Saved. N items could not refresh.` when dependents failed too) in the warning colour; the job's long message no longer reaches the panel. The dropped-origins line is pluralised too.
+- **Grouped review list.** One collapsed `<details>` group per reason (the item's last, most specific reason; hover lists them all), largest first, with the refresh problems first as `Could Not Refresh`: the job's `dependent_problems` plus any failure line that does not repeat one. Every row shows its full class path and reason on hover.
+- **Opening a row.** A dataset or method row posts `arcrho:open-project-instance` with a restore state (the class as the selected path, one active window), which the shell already routes to the project's Project Instance tab, opening it if needed; the window kind follows the method type the same way the tab's own restore does. The Engine job now writes `method_type` on each review item for this (ships with the step 8 Engine deploy; until then a method row opens as a dataset window). A problem row names its dependent only by text, with no kind or method type, so it opens nothing and shows its reason on hover only.
+- **Buttons.** After a change Close is the primary button and Apply is disabled until a date is edited. When the job kept the unfinished change (`rerun_needed`, step 9), the primary button reads `Run Again` and resends the same dates without a second confirmation; otherwise only Close leads.
+- **Band.** While the selected project's change runs the band shows `Changing dates… N of M` in place of the dates and a click reopens the shell progress window (the shell clears a dismissed window on `open`). Its hover border is the focus blue in both themes; Dark's old hover border matched its hover fill and was invisible.
+- **Stamp** `?v=20261103panel1` on every Project Settings module and stylesheet and its pins.
+- Tests: `frontend/tests/project_settings_project_dates_job.test.mjs` (table rows, plurals, groups, short line, rerun, open message, band text), `frontend/tests/project_settings_dates_band.test.mjs` (each panel state through the feature), `frontend/tests/test_project_dates_job_service.py` (review items carry the method type). Full node suite: 27 failures, the same set as HEAD. Screenshots (Electron mock-up with the real page markup, modules and stylesheets, both themes) in `tmp_data/step10/gui/`, not committed.
 
 ### Step 11: Full GUI test of the new dates experience
 Estimate: code edit 10 min, test/validation 50 min, total 60 min.

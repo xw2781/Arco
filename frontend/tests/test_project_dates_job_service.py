@@ -278,6 +278,21 @@ class PreviewTests(_Workspace):
             outcome = project_dates_jobs.reshape_input_dataset_file(PROJECT, CLASS, item["name"], PREVIOUS, NEW)
             self.assertEqual(outcome["changed"], item["reshaped"], item["name"])
 
+    def test_every_review_row_names_its_method_type(self) -> None:
+        # The panel opens a review row in the project the way the tree does,
+        # which needs the row's method type.
+        from arcrho_engine import project_dates_jobs
+
+        result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0}
+        project_dates_jobs._reshape_class(
+            PROJECT, CLASS, PREVIOUS, NEW, result, inputs_done=set(), mark_input_done=lambda _key: None
+        )
+        self.assertTrue(result["review"])
+        for item in result["review"]:
+            self.assertEqual(set(item), {"reserving_class", "name", "kind", "method_type", "reasons"})
+            if item["kind"] == "dataset":
+                self.assertEqual(item["method_type"], "None")
+
     def test_the_current_dates_change_nothing(self) -> None:
         preview = self._preview(PREVIOUS)
         self.assertTrue(preview["unchanged"])

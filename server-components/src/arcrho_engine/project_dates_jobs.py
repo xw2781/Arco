@@ -400,10 +400,17 @@ def _reshape_class(
 
     roots: list[str] = []
 
-    def review(name: str, kind: str, reasons: list[str]) -> None:
+    def review(name: str, kind: str, method_type: str, reasons: list[str]) -> None:
+        # The method type lets the panel open the row the way the project tree does.
         if reasons:
             result["review"].append(
-                {"reserving_class": reserving_class, "name": name, "kind": kind, "reasons": reasons}
+                {
+                    "reserving_class": reserving_class,
+                    "name": name,
+                    "kind": kind,
+                    "method_type": method_type,
+                    "reasons": reasons,
+                }
             )
 
     index = dataset_instance_index_service.get_index(project_name, reserving_class)
@@ -432,7 +439,7 @@ def _reshape_class(
                 if outcome["changed"]:
                     result["datasets_reshaped"] += 1
                     roots.append(name)
-                review(name, "dataset", outcome["review"])
+                review(name, "dataset", method_type, outcome["review"])
                 mark_input_done(key)
             elif method_type == dataset_sidecar_status_service.METHOD_TYPE_RESULT_SELECTION:
                 outcome = reshape_result_selection_file(
@@ -446,13 +453,18 @@ def _reshape_class(
                 continue
         except Exception as exc:
             result["failures"].append(f"{reserving_class}: {name}: {_redact_machine_paths(exc)}")
-            review(name, "dataset" if source_kind in {"input", "engine"} else "method", ["could not be reshaped"])
+            review(
+                name,
+                "dataset" if source_kind in {"input", "engine"} else "method",
+                method_type,
+                ["could not be reshaped"],
+            )
             continue
         if source_kind != "input":
             if outcome["changed"]:
                 result["methods_reshaped"] += 1
                 roots.append(name)
-            review(name, "method", outcome["review"])
+            review(name, "method", method_type, outcome["review"])
             mark_input_done(key)
     return roots
 

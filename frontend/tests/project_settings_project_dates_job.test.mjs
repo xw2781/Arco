@@ -11,12 +11,15 @@ const lockSource = await read("project_settings_project_lock.js");
 const html = await read("project_settings.html");
 const {
   createProjectDatesRequestId,
+  describeProjectDatesMove,
   describeProjectDatesPreview,
   describeProjectDatesResult,
-  formatProjectDateSet,
+  plural,
+  projectDatesBandProgress,
   projectDatesJobRequestBody,
   projectDatesJobStatusUrl,
   projectDatesPreviewUrl,
+  projectInstanceOpenMessage,
   validateProjectDates,
   waitForProjectDatesJob,
 } = await import(`data:text/javascript;base64,${Buffer.from(moduleSource).toString("base64")}`);
@@ -100,19 +103,36 @@ test("the confirmation counts every dataset kind and names the dropped origins",
     { label: "Methods", value: "589" },
     { label: "Hand-Entered Datasets", value: "16" },
   ]);
-  assert.equal(droppedLine, "Drops 1 annual and 4 quarterly origin(s), with their data and selections.");
+  assert.equal(droppedLine, "Drops 1 annual origin and 4 quarterly origins, with their data and selections.");
   assert.equal(describeProjectDatesPreview({ origin_changes: [{ origin_length: 12, dropped: 0 }] }).droppedLine, "");
 });
 
-test("a date set reads as one line", () => {
-  assert.equal(
-    formatProjectDateSet({ origin_start_date: "201701", origin_end_date: "202612", development_end_date: "202612" }),
-    "Jan 2017 – Dec 2026, Dec 2026",
-  );
-  assert.equal(formatProjectDateSet({}), "");
+test("counts read in the right number", () => {
+  assert.equal(plural(1, "dataset"), "1 dataset");
+  assert.equal(plural(0, "dataset"), "0 datasets");
+  assert.equal(plural(1288, "dataset"), "1,288 datasets");
+  assert.equal(plural(2, "reserving class", "reserving classes"), "2 reserving classes");
 });
 
-test("a finished change reports its counts, its problem and the review list", () => {
+test("the confirmation compares the dates before and after, row by row", () => {
+  assert.deepEqual(
+    describeProjectDatesMove(
+      { origin_start_date: "201701", origin_end_date: "202612", development_end_date: "202612" },
+      { origin_start_date: "201801", origin_end_date: "202712", development_end_date: "202612" },
+    ),
+    [
+      { label: "Origin Start", before: "Jan 2017", after: "Jan 2018", changed: true },
+      { label: "Origin End", before: "Dec 2026", after: "Dec 2027", changed: true },
+      { label: "Development End", before: "Dec 2026", after: "Dec 2026", changed: false },
+    ],
+  );
+  // Only the changed dates are bold; the table replaces the one wrapped line.
+  assert.match(featureSource, /row\.changed \? ' class="is-changed"'/);
+  assert.match(html, /<table class="pd-dates-table" id="pdConfirmDates"><\/table>/);
+  assert.doesNotMatch(moduleSource, /formatProjectDateSet/);
+});
+
+test("a clean change reads as one line and groups its review list by reason", () => {
   const clean = describeProjectDatesResult({
     classes_total: 33,
     classes_refreshed: 33,
@@ -121,20 +141,106 @@ test("a finished change reports its counts, its problem and the review list", ()
     methods_reshaped: 14,
     methods_updated: 380,
     review: [
-      { reserving_class: "MA BI Total", name: "Paid Benchmark", kind: "dataset", reasons: ["hand-entered or imported"] },
+      { reserving_class: "NJ\\MA BI Total", name: "Paid Benchmark", kind: "dataset", method_type: "None", reasons: ["hand-entered or imported"] },
+      { reserving_class: "NJ\\MA BI Total", name: "Linked", kind: "dataset", method_type: "None", reasons: ["hand-entered or imported", "has cell links"] },
+      { reserving_class: "NJ\\NY BI Total", name: "Other Benchmark", kind: "dataset", reasons: ["hand-entered or imported"] },
+      { reserving_class: "NJ\\NY BI Total", name: "Current Qtr", kind: "method", method_type: "Result Selection", reasons: ["periods moved to the new dates"] },
       { reserving_class: "", name: "", reasons: [] },
     ],
     failures: [],
   });
-  assert.equal(clean.text, "Project dates changed. Refreshed 1,304 dataset(s) and 394 method(s) in 33 of 33 reserving class(es).");
+  assert.equal(clean.text, "Project dates changed. Refreshed 1,304 datasets and 394 methods in 33 of 33 reserving classes.");
   assert.equal(clean.failed, false);
-  assert.deepEqual(clean.review, [
-    { reservingClass: "MA BI Total", name: "Paid Benchmark", kind: "dataset", reasons: ["hand-entered or imported"] },
+  assert.equal(clean.rerun, false);
+  assert.equal(clean.review.length, 4);
+  assert.deepEqual(clean.groups.map((group) => [group.heading, group.rows.length]), [
+    ["Hand-Entered Datasets", 2],
+    ["Cell Links", 1],
+    ["Reshaped Methods", 1],
   ]);
-  const short = describeProjectDatesResult({ failures: ["NY: boom"] }, "The dates were saved, but 1 reserving class(es) were not finished.");
-  assert.equal(short.text, "The dates were saved, but 1 reserving class(es) were not finished.");
-  assert.equal(short.failed, true);
+  const linked = clean.groups[1].rows[0];
+  assert.equal(linked.detail, "NJ\\MA BI Total\\Linked — hand-entered or imported; has cell links");
+  assert.deepEqual(clean.groups[2].rows[0].open, {
+    reservingClass: "NJ\\NY BI Total",
+    name: "Current Qtr",
+    methodType: "Result Selection",
+  });
+  assert.equal(
+    describeProjectDatesResult({ classes_total: 1, classes_refreshed: 1, datasets_regenerated: 1, methods_updated: 1 }).text,
+    "Project dates changed. Refreshed 1 dataset and 1 method in 1 of 1 reserving class.",
+  );
   assert.equal(describeProjectDatesResult({ unchanged: true }).text, "The project already has these dates.");
+});
+
+test("a part failure is one short line and its detail becomes the first group", () => {
+  const datasetOnly = describeProjectDatesResult({
+    datasets_failed: 1,
+    failures: ["NJ\\Penn+CT: The Engine cannot build Paid Loss at 3 months"],
+    dependent_problems: [],
+    rerun_needed: true,
+  }, "The dates were saved, but 1 dataset(s) could not be refreshed. Run the same change again to finish it.");
+  assert.equal(datasetOnly.text, "Saved. 1 dataset could not refresh.");
+  assert.equal(datasetOnly.failed, true);
+  assert.equal(datasetOnly.rerun, true);
+  assert.deepEqual(datasetOnly.groups[0], {
+    heading: "Could Not Refresh",
+    problem: true,
+    rows: [{
+      reservingClass: "NJ\\Penn+CT",
+      name: "",
+      reason: "The Engine cannot build Paid Loss at 3 months",
+      detail: "NJ\\Penn+CT: The Engine cannot build Paid Loss at 3 months",
+      open: null,
+    }],
+  });
+
+  // A class's walk failure repeats its first dependent problem; it is listed once.
+  const walk = describeProjectDatesResult({
+    failures: ["NJ\\HOL: B 12: must match the primary triangle row length (+1 more)"],
+    dependent_problems: [
+      "NJ\\HOL: B 12: must match the primary triangle row length",
+      "NJ\\HOL: B 13: must match the primary triangle row length",
+    ],
+    rerun_needed: false,
+  });
+  assert.equal(walk.text, "Saved. 2 items could not refresh.");
+  assert.equal(walk.rerun, false, "Run Again is offered only while running again can help");
+  assert.deepEqual(walk.groups[0].rows.map((row) => [row.reservingClass, row.name, row.reason]), [
+    ["NJ\\HOL", "B 12", "must match the primary triangle row length"],
+    ["NJ\\HOL", "B 13", "must match the primary triangle row length"],
+  ]);
+});
+
+test("a review row opens in the project's Project Instance the way the tree does", () => {
+  assert.deepEqual(
+    projectInstanceOpenMessage(
+      { name: "Fake", folder: "E:\\Fake" },
+      { reservingClass: "NJ\\HOL", name: "Current Qtr", methodType: "Result Selection" },
+    ),
+    {
+      type: "arcrho:open-project-instance",
+      project: {
+        name: "Fake",
+        folder: "E:\\Fake",
+        projectInstanceState: {
+          selectedPath: "NJ\\HOL",
+          windows: [{ kind: "result_selection", name: "Current Qtr", active: true, methodType: "Result Selection" }],
+        },
+      },
+    },
+  );
+  const dataset = projectInstanceOpenMessage({ name: "Fake" }, { reservingClass: "NJ\\HOL", name: "Paid Benchmark", methodType: "None" });
+  assert.deepEqual(dataset.project.projectInstanceState.windows, [{ kind: "dataset", name: "Paid Benchmark", active: true }]);
+  const bs = projectInstanceOpenMessage({ name: "Fake" }, { reservingClass: "NJ\\HOL", name: "BS SR", methodType: "B&S Settlement Rate Adjustment" });
+  assert.deepEqual(bs.project.projectInstanceState.windows, [
+    { kind: "dataset", name: "BS SR", active: true, methodType: "B&S Settlement Rate Adjustment" },
+  ]);
+});
+
+test("the band's progress text follows the class count", () => {
+  assert.equal(projectDatesBandProgress({ stage: "saving", completed: 0, total: 0 }), "Changing dates…");
+  assert.equal(projectDatesBandProgress({ stage: "classes", completed: 12, total: 33 }), "Changing dates… 12 of 33");
+  assert.equal(projectDatesBandProgress(null), "Changing dates…");
 });
 
 test("the poll follows progress to success and returns the terminal status", async () => {
@@ -205,13 +311,13 @@ test("the panel is wired into Project Settings and guarded by the project lock",
   }
   // The panel reuses the page's one month picker.
   assert.match(html, /data-month-picker-for="pdDevelopmentEndInput"/);
-  assert.match(html, /project_settings_project_dates\.css\?v=20261103band1/);
-  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261103band1/);
+  assert.match(html, /project_settings_project_dates\.css\?v=20261103panel1/);
+  assert.match(coordinatorSource, /project_settings_project_dates\.js\?v=20261103panel1/);
   assert.match(coordinatorSource, /const projectDatesFeature = createProjectDatesFeature\(/);
   assert.match(lockSource, /"pdApplyBtn"/);
   // One version URL per shared module.
-  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261103band1/);
-  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261103band1/);
+  assert.match(featureSource, /project_settings_general_settings\.js\?v=20261103panel1/);
+  assert.match(coordinatorSource, /project_settings_general_settings\.js\?v=20261103panel1/);
   // Drags follow the pointer-capture rule.
   assert.match(featureSource, /setPointerCapture/);
   assert.doesNotMatch(featureSource, /document\.addEventListener\("mousemove"/);

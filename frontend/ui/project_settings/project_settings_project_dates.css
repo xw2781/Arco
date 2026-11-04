@@ -60,6 +60,9 @@
 .pd-message.is-error {
   color: var(--ar-color-danger, #be123c);
 }
+.pd-message.is-warning {
+  color: var(--ar-color-warning, #b45309);
+}
 .pd-review {
   margin: 0 12px 12px;
   border: 1px solid var(--ar-color-border, #d8dde3);
@@ -74,29 +77,98 @@
   border-bottom: 1px solid var(--ar-color-border, #d8dde3);
 }
 .pd-review-list {
-  max-height: 168px;
+  max-height: 200px;
   overflow-x: hidden;
   overflow-y: auto;
 }
-.pd-review-row {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 8px;
-  padding: 3px 8px;
+.pd-review-group + .pd-review-group {
+  border-top: 1px solid var(--ar-color-border, #e4e8ee);
+}
+/* One group per reason, collapsed by default; a filled caret turns on open. */
+.pd-review-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
   font-size: 12px;
   line-height: 18px;
+  font-weight: 700;
+  color: var(--ar-color-text, #1f2937);
+  cursor: pointer;
+  list-style: none;
 }
-.pd-review-row + .pd-review-row {
-  border-top: 1px solid var(--ar-color-border, #e4e8ee);
+.pd-review-group > summary::-webkit-details-marker {
+  display: none;
+}
+.pd-review-group > summary::before {
+  content: "";
+  flex: 0 0 auto;
+  border-style: solid;
+  border-width: 4px 0 4px 5px;
+  border-color: transparent transparent transparent var(--ar-color-text-subtle, #94a3b8);
+  transition: transform 150ms ease;
+}
+.pd-review-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+.pd-review-group > summary:hover {
+  background: var(--ar-color-surface-hover, #e8eef6);
+}
+.pd-review-group > summary:focus-visible {
+  outline: 2px solid var(--ar-color-border-focus, #93c5fd);
+  outline-offset: -2px;
+}
+.pd-review-group.is-problem .pd-review-heading {
+  color: var(--ar-color-warning, #b45309);
+}
+.pd-review-heading {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-review-count {
+  margin-left: auto;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ar-color-text-muted, #475569);
+}
+/* Page id plus class beats dark.css's global button rule (0,3,0). */
+:root #projectDatesPanel .pd-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 3px 8px 3px 19px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+  color: var(--ar-color-text, #1f2937);
+}
+:root #projectDatesPanel button.pd-review-row {
+  cursor: pointer;
+}
+:root #projectDatesPanel button.pd-review-row:hover {
+  background: var(--ar-color-surface-hover, #e8eef6);
+  color: var(--ar-color-accent, #2b6df6);
+}
+:root #projectDatesPanel button.pd-review-row:focus-visible {
+  outline: 2px solid var(--ar-color-border-focus, #93c5fd);
+  outline-offset: -2px;
+}
+:root #projectDatesPanel .pd-review-row.is-text:has(.pd-review-name) {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
 }
 .pd-review-name,
 .pd-review-reason {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.pd-review-name {
-  color: var(--ar-color-text, #1f2937);
 }
 .pd-review-class {
   color: var(--ar-color-text-subtle, #94a3b8);
@@ -121,22 +193,39 @@
   padding: 16px;
   border-radius: 6px;
 }
-.pd-confirm-dates {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+/* Before and after, one row per date; only the dates that change are bold. */
+.pd-dates-table {
+  width: 100%;
   margin-bottom: 10px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 12px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.pd-dates-table th,
+.pd-dates-table td {
+  padding: 2px 8px 2px 0;
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.pd-dates-table thead th {
+  font-size: 11px;
   font-weight: 700;
+  color: var(--ar-color-text-muted, #475569);
+}
+.pd-dates-table tbody th {
+  color: var(--ar-color-text-muted, #475569);
+}
+.pd-dates-table tbody td {
   color: var(--ar-color-text, #1f2937);
 }
-.pd-confirm-before {
+.pd-dates-table tbody td:nth-child(2) {
   color: var(--ar-color-text-subtle, #94a3b8);
-  font-weight: 400;
 }
-.pd-confirm-arrow {
-  color: var(--ar-color-text-subtle, #94a3b8);
+.pd-dates-table tr.is-changed td:last-child {
+  font-weight: 700;
 }
 .pd-counts {
   display: grid;

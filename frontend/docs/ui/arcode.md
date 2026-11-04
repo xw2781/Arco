@@ -9,7 +9,7 @@ ArcRho embeds the Arcode launch path, and the same source can be packaged as the
 
 ## Entry Points
 <!-- AUTO-GEN:BEGIN frontend.arcode.entry_points -->
-- `ui/arcode/main.html`: external scripts `/ui/arcode/main.js?v=20260929smb`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
+- `ui/arcode/main.html`: external scripts `/ui/arcode/main.js?v=20261029a`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
 - `ui/arcode/notebook-editor/index.html`: external scripts `/ui/arcode/notebook-editor/cells.js?v=20260726a`, `/ui/arcode/notebook-editor/core.js?v=20260929a`, `/ui/arcode/notebook-editor/execution.js?v=20260929a`, `/ui/arcode/notebook-editor/index.js?v=20260929a`, `/ui/arcode/notebook-editor/notebook-io.js?v=20260927a`, `/ui/arcode/notebook-editor/panels.js?v=20260620a`, `/ui/arcode/notebook-editor/python-intelligence.js?v=20260929a`, `/ui/arcode/notebook-editor/search.js?v=20260929a`, `/ui/arcode/notebook-editor/shortcuts.js?v=20260620a`, `/ui/arcode/notebook-editor/stream-text.js?v=20260929a`, `/ui/arcode/shared/editor_shared.js?v=20260620a`, `/ui/arcode/shared/zoom_bridge.js?v=20260614a`, `/ui/libs/monaco-editor/min/vs/loader.js`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
 - `ui/arcode/code-editor/index.html`: external scripts `/ui/arcode/code-editor/index.js?v=20260929smb`, `/ui/arcode/shared/editor_shared.js?v=20260620a`, `/ui/arcode/shared/zoom_bridge.js?v=20260614a`, `/ui/libs/monaco-editor/min/vs/loader.js`, `/ui/shared/services/color_theme.js?v=20260923c`; inline imports _none_.
 

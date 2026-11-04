@@ -13,17 +13,19 @@
 import {
   formatBoundaryYmDisplay,
   normalizeBoundaryYmCanonical,
-} from "/ui/project_settings/project_settings_general_settings.js?v=20261103band1";
+} from "/ui/project_settings/project_settings_general_settings.js?v=20261103panel1";
 import {
   createProjectDatesRequestId,
+  describeProjectDatesMove,
   describeProjectDatesPreview,
   describeProjectDatesResult,
-  formatProjectDateSet,
+  projectDatesBandProgress,
   projectDatesJobRequestBody,
   projectDatesPreviewUrl,
+  projectInstanceOpenMessage,
   validateProjectDates,
   waitForProjectDatesJob,
-} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261103band1";
+} from "/ui/project_settings/project_settings_project_dates_job.js?v=20261103panel1";
 
 const FIELD_KEYS = ["originStartDate", "originEndDate", "developmentEndDate"];
 
@@ -45,6 +47,7 @@ function escapeHtml(value) {
  * @param {Function} [deps.isProjectLocked] true while the selected project is locked
  * @param {Function} deps.loadDates `(projectName) => Promise<{originStartDate, ...}>`
  * @param {Function} deps.reloadDates `(projectName) => Promise` after a change
+ * @param {Function} [deps.postShellMessage] posts one message to the shell (opens a review row)
  * @param {Document} [deps.documentRef]
  */
 export function createProjectDatesFeature({
@@ -56,6 +59,7 @@ export function createProjectDatesFeature({
   isProjectLocked = () => false,
   loadDates,
   reloadDates,
+  postShellMessage = (message) => window.parent.postMessage(message, window.location.origin),
   documentRef = document,
   requestIdFactory = createProjectDatesRequestId,
   pollOptions = {},
@@ -63,6 +67,7 @@ export function createProjectDatesFeature({
   const el = (id) => documentRef.getElementById(id);
   const dom = {
     band: el("summaryPeriodsBand"),
+    bandProgress: el("summaryDatesProgress"),
     panel: el("projectDatesPanel"),
     header: el("projectDatesPanelHeader"),
     close: el("projectDatesPanelClose"),
@@ -92,6 +97,12 @@ export function createProjectDatesFeature({
   let pendingDates = null;
   let confirmResolve = null;
   let drag = null;
+  // A finished change: Close leads, and Apply waits for an edit unless running
+  // the same dates again can still help (`rerun`, decision 2).
+  let finished = null;
+  let reviewGroups = [];
+  // The running change, so the band can show and reopen its progress.
+  let run = null;
 
   const publishProgress = (action, progressId, details = {}) => publishShellProgress?.({
     type: "arcrho:project-settings-progress",
@@ -102,42 +113,81 @@ export function createProjectDatesFeature({
 
   /* ---------------- panel state ---------------- */
 
-  function setMessage(text = "", { error = false } = {}) {
+  function setMessage(text = "", { error = false, warning = false } = {}) {
     if (!dom.message) return;
     dom.message.textContent = text;
     dom.message.hidden = !text;
     dom.message.classList.toggle("is-error", !!error && !!text);
+    dom.message.classList.toggle("is-warning", !error && !!warning && !!text);
   }
 
-  function renderReview(items = []) {
+  function reviewRowHtml(row, groupIndex, rowIndex) {
+    // A class path is long; its last part tells rows apart, the hover holds the rest.
+    const label = `<span class="pd-review-name"><span class="pd-review-class">${escapeHtml(row.reservingClass.split("\\").pop())}</span>`
+      + `${escapeHtml(row.name)}</span>`;
+    const reason = row.open ? "" : `<span class="pd-review-reason">${escapeHtml(row.reason)}</span>`;
+    const title = `title="${escapeHtml(row.detail)}"`;
+    return row.open
+      ? `<button class="pd-review-row" type="button" role="listitem" data-group="${groupIndex}" data-row="${rowIndex}" ${title}>${label}</button>`
+      : `<div class="pd-review-row is-text" role="listitem" ${title}>${row.reservingClass ? label : ""}${reason}</div>`;
+  }
+
+  /** The review list, one collapsed group per reason, each headed by its count. */
+  function renderReview(groups = []) {
+    reviewGroups = groups;
     if (!dom.review) return;
-    if (!items.length) {
+    const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
+    if (!total) {
       dom.review.hidden = true;
       dom.review.innerHTML = "";
       return;
     }
     dom.review.hidden = false;
-    dom.review.innerHTML = `<div class="pd-review-head">For Review (${items.length.toLocaleString("en-US")})</div>`
-      + '<div class="pd-review-list" role="list">'
-      + items.map((item) => (
-        '<div class="pd-review-row" role="listitem">'
-        + `<span class="pd-review-name" title="${escapeHtml(`${item.reservingClass} / ${item.name}`)}">`
-        // A class path is long; its last part tells rows apart, the title holds the rest.
-        + `<span class="pd-review-class">${escapeHtml(item.reservingClass.split("\\").pop())}</span>${escapeHtml(item.name)}</span>`
-        + `<span class="pd-review-reason" title="${escapeHtml(item.reasons.join("; "))}">${escapeHtml(item.reasons.join("; "))}</span>`
-        + "</div>"
+    dom.review.innerHTML = `<div class="pd-review-head">For Review (${total.toLocaleString("en-US")})</div>`
+      + '<div class="pd-review-list">'
+      + groups.map((group, groupIndex) => (
+        `<details class="pd-review-group${group.problem ? " is-problem" : ""}">`
+        + `<summary><span class="pd-review-heading">${escapeHtml(group.heading)}</span>`
+        + `<span class="pd-review-count">${group.rows.length.toLocaleString("en-US")}</span></summary>`
+        + `<div role="list">${group.rows.map((row, rowIndex) => reviewRowHtml(row, groupIndex, rowIndex)).join("")}</div>`
+        + "</details>"
       )).join("")
       + "</div>";
   }
 
+  function openReviewRow(event) {
+    const button = event.target?.closest?.("button.pd-review-row");
+    if (!button) return;
+    const row = reviewGroups[Number(button.dataset.group)]?.rows?.[Number(button.dataset.row)];
+    const project = getSelectedProject();
+    if (!row?.open || String(project?.name || "").trim() !== panelProject) return;
+    postShellMessage(projectInstanceOpenMessage(project, row.open));
+  }
+
   function syncControls() {
     const locked = busy || running;
+    const settled = !!finished && !finished.rerun;
     for (const key of FIELD_KEYS) {
       if (dom.inputs[key]) dom.inputs[key].disabled = locked;
     }
     dom.pickerButtons.forEach((button) => { button.disabled = locked; });
-    if (dom.apply) dom.apply.disabled = locked;
+    if (dom.apply) {
+      dom.apply.disabled = locked || settled;
+      dom.apply.textContent = finished?.rerun ? "Run Again" : "Apply";
+      dom.apply.classList.toggle("primary", !settled);
+    }
+    if (dom.cancel) {
+      dom.cancel.textContent = finished ? "Close" : "Cancel";
+      dom.cancel.classList.toggle("primary", settled);
+    }
     dom.panel?.setAttribute("aria-busy", String(locked));
+  }
+
+  /** A date edited after a finished change makes Apply the next step again. */
+  function clearFinished() {
+    if (!finished || running) return;
+    finished = null;
+    syncControls();
   }
 
   function readDates() {
@@ -177,8 +227,8 @@ export function createProjectDatesFeature({
     if (!running) {
       setMessage("");
       renderReview([]);
+      finished = null;
     }
-    if (dom.cancel) dom.cancel.textContent = "Cancel";
     // Re-center on every open so a dragged window never opens off-screen.
     dom.panel.style.left = "50%";
     dom.panel.style.top = "140px";
@@ -219,16 +269,35 @@ export function createProjectDatesFeature({
     return !!String(getSelectedProject()?.name || "").trim() && !isProjectLocked();
   }
 
-  /** Reflect whether the band opens the panel: no project or a lock makes it inert. */
+  /** True while the selected project's dates change runs. */
+  function bandShowsRun() {
+    return !!run && String(getSelectedProject()?.name || "").trim() === run.project;
+  }
+
+  /**
+   * Reflect what the band does: while the selected project's change runs it
+   * shows the progress and reopens the progress window; otherwise it opens the
+   * panel, and no project or a lock makes it inert.
+   */
   function syncEntryPoint() {
     if (!dom.band) return;
-    const enabled = bandCanOpen();
+    const showsRun = bandShowsRun();
+    const enabled = showsRun || bandCanOpen();
     dom.band.setAttribute("aria-disabled", String(!enabled));
     dom.band.tabIndex = enabled ? 0 : -1;
+    dom.band.classList.toggle("is-running", showsRun);
+    if (dom.bandProgress) {
+      dom.bandProgress.textContent = showsRun ? projectDatesBandProgress(run.progress) : "";
+      dom.bandProgress.hidden = !showsRun;
+    }
   }
 
   function openFromBand() {
     syncEntryPoint();
+    if (bandShowsRun()) {
+      publishProgress("open", run.progressId, { title: "Change Project Dates", ...run.window });
+      return;
+    }
     if (!bandCanOpen()) return;
     void open();
   }
@@ -238,17 +307,17 @@ export function createProjectDatesFeature({
   function showConfirm(preview) {
     if (!dom.confirmOverlay) return Promise.resolve(false);
     const { rows, droppedLine } = describeProjectDatesPreview(preview);
-    const before = formatProjectDateSet(preview?.previous_dates);
-    const after = formatProjectDateSet(preview?.dates);
     if (dom.confirmTitle) {
       dom.confirmTitle.textContent = preview?.resumed ? "Finish Project Dates Change" : "Change Project Dates";
     }
     if (dom.confirmDates) {
-      dom.confirmDates.innerHTML = before && before !== after
-        ? `<span class="pd-confirm-before">${escapeHtml(before)}</span>`
-          + '<span class="pd-confirm-arrow" aria-label="to">→</span>'
-          + `<span class="pd-confirm-after">${escapeHtml(after)}</span>`
-        : `<span class="pd-confirm-after">${escapeHtml(after)}</span>`;
+      // Before and after, one row per date; only the dates that change are bold.
+      dom.confirmDates.innerHTML = '<thead><tr><td></td><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody>'
+        + describeProjectDatesMove(preview?.previous_dates, preview?.dates).map((row) => (
+          `<tr${row.changed ? ' class="is-changed"' : ""}><th scope="row">${escapeHtml(row.label)}</th>`
+          + `<td>${escapeHtml(row.before)}</td><td>${escapeHtml(row.after)}</td></tr>`
+        )).join("")
+        + "</tbody>";
     }
     if (dom.confirmCounts) {
       dom.confirmCounts.innerHTML = rows.map((row) => (
@@ -287,6 +356,12 @@ export function createProjectDatesFeature({
 
   async function apply() {
     if (busy || running || !panelProject) return;
+    if (finished) {
+      // Run Again resends the dates that just ran; it is offered only while
+      // the job kept the unfinished change, so no new confirmation is asked.
+      if (finished.rerun) await runJob(panelProject, finished.dates);
+      return;
+    }
     FIELD_KEYS.forEach((key) => normalizeInput(dom.inputs[key]));
     const dates = readDates();
     const problem = validateProjectDates(dates);
@@ -325,15 +400,18 @@ export function createProjectDatesFeature({
     const requestId = requestIdFactory();
     const progressId = `project-dates-${requestId}`;
     running = true;
+    finished = null;
+    renderReview([]);
     syncControls();
     setMessage("Changing the project dates...");
-    publishProgress("open", progressId, {
-      title: "Change Project Dates",
-      label: `Submitting the change for "${name}"...`,
-      completed: 0,
-      total: 0,
-      countText: "Working...",
-    });
+    run = {
+      project: name,
+      progressId,
+      progress: null,
+      window: { label: `Submitting the change for "${name}"...`, completed: 0, total: 0, countText: "Working..." },
+    };
+    publishProgress("open", progressId, { title: "Change Project Dates", ...run.window });
+    syncEntryPoint();
     try {
       const response = await fetchImpl("/general_settings/dates/job", {
         method: "POST",
@@ -347,12 +425,17 @@ export function createProjectDatesFeature({
         fetchImpl,
         projectName: name,
         jobId: submitted?.job_id || requestId,
-        onProgress: (progress) => publishProgress("update", progressId, {
-          label: progress.label,
-          completed: progress.completed,
-          total: progress.total,
-          countText: progress.total > 0 ? "" : "Working...",
-        }),
+        onProgress: (progress) => {
+          run.progress = progress;
+          run.window = {
+            label: progress.label,
+            completed: progress.completed,
+            total: progress.total,
+            countText: progress.total > 0 ? "" : "Working...",
+          };
+          publishProgress("update", progressId, run.window);
+          syncEntryPoint();
+        },
         ...pollOptions,
       });
       const outcome = describeProjectDatesResult(terminal?.result, terminal?.message);
@@ -360,9 +443,9 @@ export function createProjectDatesFeature({
       publishProgress("close", progressId, { autoCloseMs: 850 });
       setStatus(outcome.text);
       if (panelProject === name) {
-        setMessage(outcome.text, { error: outcome.failed });
-        renderReview(outcome.review);
-        if (dom.cancel) dom.cancel.textContent = "Close";
+        setMessage(outcome.text, { warning: outcome.failed });
+        renderReview(outcome.groups);
+        finished = { dates, rerun: outcome.rerun };
       }
       try {
         await reloadDates(name);
@@ -380,7 +463,9 @@ export function createProjectDatesFeature({
       return { ok: false, error: message };
     } finally {
       running = false;
+      run = null;
       syncControls();
+      syncEntryPoint();
     }
   }
 
@@ -436,8 +521,10 @@ export function createProjectDatesFeature({
   dom.close?.addEventListener("click", close);
   dom.cancel?.addEventListener("click", close);
   dom.apply?.addEventListener("click", () => void apply());
+  dom.review?.addEventListener("click", openReviewRow);
   for (const key of FIELD_KEYS) {
     const input = dom.inputs[key];
+    input?.addEventListener("input", clearFinished);
     input?.addEventListener("change", () => {
       normalizeInput(input);
       setMessage("");

@@ -46,6 +46,12 @@ function count(value) {
   return number.toLocaleString("en-US");
 }
 
+/** "1 dataset", "2 datasets": a count with its noun in the right number. */
+export function plural(value, singular, pluralForm = `${singular}s`) {
+  const number = Math.max(0, Math.trunc(Number(value) || 0));
+  return `${count(number)} ${number === 1 ? singular : pluralForm}`;
+}
+
 /**
  * Decision 4: origin start <= origin end <= development end, all `YYYYMM`.
  * Returns the first problem as one short sentence, or "" when the set is valid.
@@ -126,31 +132,76 @@ export function describeProjectDatesPreview(preview) {
   ];
   const dropped = (Array.isArray(preview?.origin_changes) ? preview.origin_changes : [])
     .filter((change) => Number(change?.dropped) > 0)
-    .map((change) => `${count(change.dropped)} ${originLengthName(change.origin_length)}`);
+    .map((change) => plural(change.dropped, `${originLengthName(change.origin_length)} origin`));
   let droppedLine = "";
   if (dropped.length) {
     const list = dropped.length > 1
       ? `${dropped.slice(0, -1).join(", ")} and ${dropped[dropped.length - 1]}`
       : dropped[0];
-    droppedLine = `Drops ${list} origin(s), with their data and selections.`;
+    droppedLine = `Drops ${list}, with their data and selections.`;
   }
   return { rows, droppedLine };
 }
 
-/** One line naming the move, e.g. "Jan 2017 - Dec 2026, Dec 2026" for a date set. */
-export function formatProjectDateSet(dates) {
-  const start = displayMonth(dates?.origin_start_date ?? dates?.originStartDate);
-  const end = displayMonth(dates?.origin_end_date ?? dates?.originEndDate);
-  const development = displayMonth(dates?.development_end_date ?? dates?.developmentEndDate);
-  if (!start || !end || !development) return "";
-  return `${start} – ${end}, ${development}`;
+const DATE_ROWS = [
+  ["Origin Start", "origin_start_date", "originStartDate"],
+  ["Origin End", "origin_end_date", "originEndDate"],
+  ["Development End", "development_end_date", "developmentEndDate"],
+];
+
+/**
+ * The confirmation's before-and-after table: one row per date, `changed`
+ * when the new month differs from the saved one.
+ */
+export function describeProjectDatesMove(before, after) {
+  return DATE_ROWS.map(([label, snake, camel]) => {
+    const old = displayMonth(before?.[snake] ?? before?.[camel]);
+    const next = displayMonth(after?.[snake] ?? after?.[camel]);
+    return { label, before: old, after: next, changed: !!old && old !== next };
+  });
+}
+
+// Group headings for the reasons the job writes (period_reshape.py and
+// project_dates_jobs.py); an unknown reason shows as written.
+const REVIEW_HEADINGS = new Map([
+  ["hand-entered or imported", "Hand-Entered Datasets"],
+  ["has cell links", "Cell Links"],
+  ["dropped origins held data", "Dropped Origins Held Data"],
+  ["periods moved to the new dates", "Reshaped Methods"],
+  ["could not be reshaped", "Not Reshaped"],
+  ["origin labels do not match the project dates; not reshaped", "Labels Off The Project Dates"],
+]);
+export const PROBLEM_GROUP = "Could Not Refresh";
+
+function reviewHeading(reason) {
+  const text = String(reason || "").trim();
+  return REVIEW_HEADINGS.get(text.toLowerCase()) || (text.charAt(0).toUpperCase() + text.slice(1));
+}
+
+function splitOnce(text) {
+  const value = String(text || "");
+  const cut = value.indexOf(": ");
+  return cut < 0 ? [value, ""] : [value.slice(0, cut), value.slice(cut + 2)];
+}
+
+/** One job problem line, `"<class>: <name>: <reason>"`, as a review row. */
+function problemRow(line) {
+  const [reservingClass, rest] = splitOnce(line);
+  if (!rest) return { reservingClass: "", name: "", reason: line, detail: line, open: null };
+  const [name, reason] = splitOnce(rest);
+  return reason
+    ? { reservingClass, name, reason, detail: line, open: null }
+    : { reservingClass, name: "", reason: rest, detail: line, open: null };
 }
 
 /**
  * Summarize a finished change for the status line and the panel.
  *
- * `review` is the job's list of hand-entered datasets and methods to check;
- * `message` is the job's own sentence when a class fell short.
+ * `text` is one short line. `groups` is the review list grouped by reason,
+ * with the refresh problems first as their own group. A review row carries
+ * `open`, what the project tree would open; a problem row names its dependent
+ * only by text, so it opens nothing. `rerun` says whether running the same
+ * change again can still help (the job kept its unfinished-change record).
  */
 export function describeProjectDatesResult(result, message = "") {
   const outcome = result && typeof result === "object" ? result : {};
@@ -160,23 +211,90 @@ export function describeProjectDatesResult(result, message = "") {
       reservingClass: String(item.reserving_class || "").trim(),
       name: String(item.name || "").trim(),
       kind: String(item.kind || "").trim(),
+      methodType: String(item.method_type || "").trim(),
       reasons: (Array.isArray(item.reasons) ? item.reasons : []).map((reason) => String(reason || "").trim()).filter(Boolean),
     }));
-  const failures = (Array.isArray(outcome.failures) ? outcome.failures : [])
-    .map((item) => String(item || "").trim())
-    .filter(Boolean);
-  const problem = String(message || "").trim();
+  const lines = (value) => (Array.isArray(value) ? value : []).map((item) => String(item || "").trim()).filter(Boolean);
+  const dependentProblems = lines(outcome.dependent_problems);
+  // A class's walk failure repeats its first dependent problem, maybe with "(+N more)".
+  const listed = new Set(dependentProblems);
+  const otherFailures = lines(outcome.failures)
+    .filter((line) => !listed.has(line.replace(/ \(\+\d+ more\)$/u, "")));
+  const problems = [...otherFailures, ...dependentProblems].map(problemRow);
+
+  const groups = [];
+  if (problems.length) groups.push({ heading: PROBLEM_GROUP, problem: true, rows: problems });
+  const byHeading = new Map();
+  for (const item of review) {
+    // The last reason is the most specific; hover shows every one.
+    const heading = reviewHeading(item.reasons[item.reasons.length - 1] || "");
+    if (!byHeading.has(heading)) byHeading.set(heading, []);
+    const reason = item.reasons.join("; ");
+    byHeading.get(heading).push({
+      reservingClass: item.reservingClass,
+      name: item.name,
+      reason,
+      detail: `${[item.reservingClass, item.name].filter(Boolean).join("\\")}${reason ? ` — ${reason}` : ""}`,
+      open: item.reservingClass
+        ? { reservingClass: item.reservingClass, name: item.name, methodType: item.methodType }
+        : null,
+    });
+  }
+  [...byHeading.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .forEach(([heading, rows]) => groups.push({ heading, problem: false, rows }));
+
+  const failed = problems.length > 0;
   let text;
   if (outcome.unchanged) {
     text = "The project already has these dates.";
+  } else if (failed) {
+    const datasetsFailed = Math.max(0, Number(outcome.datasets_failed) || 0);
+    text = datasetsFailed === problems.length
+      ? `Saved. ${plural(datasetsFailed, "dataset")} could not refresh.`
+      : `Saved. ${plural(problems.length, "item")} could not refresh.`;
+  } else if (String(message || "").trim()) {
+    text = String(message).trim();
   } else {
     const datasets = (Number(outcome.datasets_regenerated) || 0) + (Number(outcome.datasets_reshaped) || 0);
-    text = `Project dates changed. Refreshed ${count(datasets)} dataset(s) and `
-      + `${count((Number(outcome.methods_updated) || 0) + (Number(outcome.methods_reshaped) || 0))} method(s) `
-      + `in ${count(outcome.classes_refreshed)} of ${count(outcome.classes_total)} reserving class(es).`;
+    const methods = (Number(outcome.methods_updated) || 0) + (Number(outcome.methods_reshaped) || 0);
+    text = `Project dates changed. Refreshed ${plural(datasets, "dataset")} and ${plural(methods, "method")} `
+      + `in ${count(outcome.classes_refreshed)} of ${plural(outcome.classes_total, "reserving class", "reserving classes")}.`;
   }
-  if (problem) text = problem;
-  return { text, review, failed: !!problem || failures.length > 0 };
+  return { text, review, groups, failed, rerun: failed && !!outcome.rerun_needed };
+}
+
+/**
+ * The shell message that opens a review row the way the project tree does:
+ * the project's Project Instance tab, on the row's reserving class, with that
+ * dataset or method window open.
+ */
+export function projectInstanceOpenMessage(project, target) {
+  const methodType = String(target?.methodType || "").trim();
+  const key = methodType.toLowerCase();
+  const kind = key === "dfm" ? "dfm" : key === "result selection" ? "result_selection" : "dataset";
+  const entry = { kind, name: String(target?.name || "").trim(), active: true };
+  if (methodType && key !== "none") entry.methodType = methodType;
+  return {
+    type: "arcrho:open-project-instance",
+    project: {
+      name: String(project?.name || "").trim(),
+      folder: String(project?.folder || "").trim(),
+      projectInstanceState: {
+        selectedPath: String(target?.reservingClass || "").trim(),
+        windows: [entry],
+      },
+    },
+  };
+}
+
+/** The band's text while a change runs: "Changing dates… 12 of 33". */
+export function projectDatesBandProgress(progress) {
+  const total = Math.max(0, Number(progress?.total) || 0);
+  const completed = Math.max(0, Number(progress?.completed) || 0);
+  return progress?.stage === "classes" && total > 0
+    ? `Changing dates… ${count(Math.min(completed, total))} of ${count(total)}`
+    : "Changing dates…";
 }
 
 async function readResponseError(response) {

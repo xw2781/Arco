@@ -13,6 +13,9 @@ Provides project-folder filesystem operations used by Project Settings tree acti
 | --- | --- | --- | --- | --- | --- |
 | `GET` | `/general_settings` | `get_general_settings` | `str` | - | `project_settings_service.get_general_settings`, `workspace_read_client.run_workspace_read` |
 | `POST` | `/general_settings` | `update_general_settings` | `GeneralSettingsUpdateRequest` | [`app_server/schemas/project_settings.py`](../../../app_server/schemas/project_settings.py) | `project_settings_service.update_general_settings` |
+| `POST` | `/general_settings/dates/job` | `submit_project_dates_change` | `ProjectDatesChangeRequest` | [`app_server/schemas/project_settings.py`](../../../app_server/schemas/project_settings.py) | `project_dates_job_service.submit_project_dates_job`, `workspace_mutation_client.run_workspace_mutation` |
+| `GET` | `/general_settings/dates/job/status` | `get_project_dates_change_status` | `str` | - | `project_dates_job_service.get_project_dates_job_status`, `workspace_read_client.run_workspace_read` |
+| `GET` | `/general_settings/dates/preview` | `preview_project_dates_change` | `str` | - | `project_dates_job_service.preview_project_dates_change`, `workspace_read_client.run_workspace_read` |
 | `GET` | `/project_lock` | `get_project_lock` | `str` | - | `project_lock_service.get_project_lock`, `workspace_read_client.run_workspace_read` |
 | `POST` | `/project_lock` | `set_project_lock` | `ProjectLockUpdateRequest` | [`app_server/schemas/project_settings.py`](../../../app_server/schemas/project_settings.py) | `project_lock_service.set_project_lock` |
 | `GET` | `/project_settings` | `list_project_settings_sources` | - | - | `workspace_read_client.run_workspace_read` |

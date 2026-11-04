@@ -23,7 +23,7 @@ App-server domain map for FastAPI routers, schemas, and services.
 | `excel_link` | [`app_server/api/excel_link_router.py`](../../app_server/api/excel_link_router.py) | 8 | [`excel_link.md`](domains/excel_link.md) |
 | `field_mapping` | [`app_server/api/field_mapping_router.py`](../../app_server/api/field_mapping_router.py) | 2 | [`field_mapping.md`](domains/field_mapping.md) |
 | `object_change_watch` | [`app_server/api/object_change_watch_router.py`](../../app_server/api/object_change_watch_router.py) | 2 | [`object_change_watch.md`](domains/object_change_watch.md) |
-| `project_settings` | [`app_server/api/project_settings_router.py`](../../app_server/api/project_settings_router.py) | 16 | [`project_settings.md`](domains/project_settings.md) |
+| `project_settings` | [`app_server/api/project_settings_router.py`](../../app_server/api/project_settings_router.py) | 19 | [`project_settings.md`](domains/project_settings.md) |
 | `reserving_class` | [`app_server/api/reserving_class_router.py`](../../app_server/api/reserving_class_router.py) | 10 | [`reserving_class.md`](domains/reserving_class.md) |
 | `result_selection` | [`app_server/api/result_selection_router.py`](../../app_server/api/result_selection_router.py) | 3 | [`result_selection.md`](domains/result_selection.md) |
 | `snowflake` | [`app_server/api/snowflake_router.py`](../../app_server/api/snowflake_router.py) | 6 | [`snowflake.md`](domains/snowflake.md) |

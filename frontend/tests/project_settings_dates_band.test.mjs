@@ -216,3 +216,204 @@ test("the band reads as one button: pointer, hover, focus ring, inert look", () 
   assert.match(summaryCss, /\.sd-band\[aria-disabled="true"\] \{ cursor: default; \}/);
   assert.doesNotMatch(summaryCss, /\.table-summary\.is-loading \.sd-month/);
 });
+
+// ---- step 10: the run on the band, the finished states, the review rows ----
+
+function jsonResponse(body, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) };
+}
+
+const PREVIOUS = { origin_start_date: "201701", origin_end_date: "202612", development_end_date: "202612" };
+
+/** A panel wired to a fake server; `result` is what the finished job reports. */
+function runSetup({ result, gate = null } = {}) {
+  const documentRef = fakeDocument();
+  const calls = { posts: [], progress: [], shell: [], statusPolls: 0 };
+  const state = { project: { name: "Fake", folder: "E:\\Fake" } };
+  const fetchImpl = async (url, init = {}) => {
+    if (url.startsWith("/general_settings/dates/preview")) {
+      return jsonResponse({ unchanged: false, previous_dates: PREVIOUS, dates: { ...PREVIOUS, development_end_date: "202703" } });
+    }
+    if (url === "/general_settings/dates/job") {
+      calls.posts.push(JSON.parse(init.body));
+      return jsonResponse({ ok: true, job_id: `job${calls.posts.length}` });
+    }
+    calls.statusPolls += 1;
+    if (gate && calls.statusPolls === 1) {
+      await gate.promise;
+      return jsonResponse({ status: "processing", progress: { stage: "classes", completed: 12, total: 33, label: "MA BI Total" } });
+    }
+    return jsonResponse({ status: "success", result, progress: { stage: "complete", completed: 33, total: 33 } });
+  };
+  const feature = createProjectDatesFeature({
+    fetchImpl,
+    setStatus() {},
+    publishShellProgress: (message) => calls.progress.push(message),
+    readResponseErrorDetail: async () => "",
+    getSelectedProject: () => state.project,
+    loadDates: async () => ({ originStartDate: "201701", originEndDate: "202612", developmentEndDate: "202612" }),
+    reloadDates: async () => {},
+    postShellMessage: (message) => calls.shell.push(message),
+    documentRef,
+    requestIdFactory: () => `psdates_${calls.posts.length + 1}`,
+    pollOptions: { waitForPoll: () => Promise.resolve() },
+  });
+  const get = (id) => documentRef.getElementById(id);
+  return { feature, calls, state, get, band: get("summaryPeriodsBand") };
+}
+
+async function applyAndConfirm({ get }) {
+  get("pdDevelopmentEndInput").value = "Mar 2027";
+  get("pdApplyBtn").dispatch("click");
+  await settle();
+  await settle();
+  get("pdConfirmOk").dispatch("click");
+  for (let index = 0; index < 8; index += 1) await settle();
+}
+
+const CLEAN = { classes_total: 2, classes_refreshed: 2, datasets_regenerated: 4, methods_updated: 3, review: [], failures: [] };
+
+test("the confirmation shows a before-and-after table with only the changed date bold", async () => {
+  const setupState = runSetup({ result: CLEAN });
+  setupState.band.dispatch("click");
+  await settle();
+  setupState.get("pdDevelopmentEndInput").value = "Mar 2027";
+  setupState.get("pdApplyBtn").dispatch("click");
+  await settle();
+  await settle();
+  const table = setupState.get("pdConfirmDates").innerHTML;
+  assert.match(table, /<th scope="col">Before<\/th><th scope="col">After<\/th>/);
+  assert.match(table, /<tr><th scope="row">Origin Start<\/th><td>Jan 2017<\/td><td>Jan 2017<\/td><\/tr>/);
+  assert.match(table, /<tr class="is-changed"><th scope="row">Development End<\/th><td>Dec 2026<\/td><td>Mar 2027<\/td><\/tr>/);
+  assert.equal((table.match(/is-changed/g) || []).length, 1);
+  setupState.get("pdConfirmCancel").dispatch("click");
+});
+
+test("while the change runs the band shows its progress and reopens the progress window", async () => {
+  let release;
+  const gate = { promise: new Promise((resolve) => { release = resolve; }) };
+  const setupState = runSetup({ result: CLEAN, gate });
+  const { band, get, calls, feature } = setupState;
+  band.dispatch("click");
+  await settle();
+  get("pdDevelopmentEndInput").value = "Mar 2027";
+  get("pdApplyBtn").dispatch("click");
+  await settle();
+  await settle();
+  get("pdConfirmOk").dispatch("click");
+  for (let index = 0; index < 4; index += 1) await settle();
+  assert.equal(feature.isRunning(), true);
+  assert.equal(band.classList.contains("is-running"), true);
+  assert.equal(get("summaryDatesProgress").hidden, false);
+  assert.equal(get("summaryDatesProgress").textContent, "Changing dates…");
+
+  feature.close();
+  const before = calls.progress.length;
+  band.dispatch("click");
+  await settle();
+  assert.equal(feature.isOpen(), false, "a click during the run opened the panel");
+  assert.deepEqual(calls.progress.slice(before).map((message) => message.action), ["open"]);
+  assert.equal(calls.progress.at(-1).title, "Change Project Dates");
+
+  // Another project selected: its band shows its own dates.
+  setupState.state.project = { name: "Other" };
+  feature.syncEntryPoint();
+  assert.equal(band.classList.contains("is-running"), false);
+  setupState.state.project = { name: "Fake", folder: "E:\\Fake" };
+  feature.syncEntryPoint();
+
+  release();
+  for (let index = 0; index < 6; index += 1) await settle();
+  assert.equal(feature.isRunning(), false);
+  assert.equal(band.classList.contains("is-running"), false);
+  assert.equal(get("summaryDatesProgress").hidden, true);
+});
+
+test("after a clean change Close leads and Apply waits for an edit", async () => {
+  const setupState = runSetup({ result: CLEAN });
+  const { band, get, calls } = setupState;
+  band.dispatch("click");
+  await settle();
+  await applyAndConfirm(setupState);
+  assert.equal(calls.posts.length, 1);
+  assert.equal(get("pdMessage").textContent, "Project dates changed. Refreshed 4 datasets and 3 methods in 2 of 2 reserving classes.");
+  assert.equal(get("pdCancelBtn").textContent, "Close");
+  assert.equal(get("pdCancelBtn").classList.contains("primary"), true);
+  assert.equal(get("pdApplyBtn").disabled, true);
+  assert.equal(get("pdApplyBtn").classList.contains("primary"), false);
+
+  get("pdOriginEndInput").dispatch("input");
+  assert.equal(get("pdApplyBtn").disabled, false);
+  assert.equal(get("pdApplyBtn").textContent, "Apply");
+  assert.equal(get("pdApplyBtn").classList.contains("primary"), true);
+  assert.equal(get("pdCancelBtn").textContent, "Cancel");
+});
+
+test("a part failure reads as one line and Run Again resends the same dates", async () => {
+  const result = {
+    classes_total: 2,
+    classes_refreshed: 2,
+    datasets_failed: 1,
+    failures: ["NJ\\HOL: Paid Loss could not be built"],
+    dependent_problems: [],
+    review: [],
+    rerun_needed: true,
+  };
+  const setupState = runSetup({ result });
+  const { band, get, calls } = setupState;
+  band.dispatch("click");
+  await settle();
+  await applyAndConfirm(setupState);
+  assert.equal(get("pdMessage").textContent, "Saved. 1 dataset could not refresh.");
+  assert.equal(get("pdMessage").classList.contains("is-warning"), true);
+  assert.equal(get("pdMessage").classList.contains("is-error"), false);
+  assert.match(get("pdReview").innerHTML, /<details class="pd-review-group is-problem"><summary><span class="pd-review-heading">Could Not Refresh<\/span><span class="pd-review-count">1<\/span><\/summary>/);
+  assert.doesNotMatch(get("pdReview").innerHTML, /<details[^>]* open/, "groups start collapsed");
+  assert.equal(get("pdApplyBtn").textContent, "Run Again");
+  assert.equal(get("pdApplyBtn").disabled, false);
+  assert.equal(get("pdApplyBtn").classList.contains("primary"), true);
+
+  get("pdApplyBtn").dispatch("click");
+  for (let index = 0; index < 8; index += 1) await settle();
+  assert.equal(calls.posts.length, 2, "Run Again did not resend");
+  const { request_id: _first, ...firstDates } = calls.posts[0];
+  const { request_id: _second, ...secondDates } = calls.posts[1];
+  assert.deepEqual(secondDates, firstDates);
+  assert.equal(secondDates.development_end_date, "202703");
+});
+
+test("a review row shows its full reason on hover and a click opens it in the project", async () => {
+  const result = {
+    classes_total: 1,
+    classes_refreshed: 1,
+    failures: [],
+    review: [{ reserving_class: "NJ\\HOL", name: "Current Qtr", kind: "method", method_type: "Result Selection", reasons: ["periods moved to the new dates"] }],
+  };
+  const setupState = runSetup({ result });
+  const { band, get, calls } = setupState;
+  band.dispatch("click");
+  await settle();
+  await applyAndConfirm(setupState);
+  const review = get("pdReview").innerHTML;
+  assert.match(review, /<span class="pd-review-heading">Reshaped Methods<\/span><span class="pd-review-count">1<\/span>/);
+  assert.match(review, /<button class="pd-review-row" type="button" role="listitem" data-group="0" data-row="0" title="NJ\\HOL\\Current Qtr — periods moved to the new dates">/);
+  const button = { dataset: { group: "0", row: "0" } };
+  get("pdReview").dispatch("click", { target: { closest: (selector) => (selector === "button.pd-review-row" ? button : null) } });
+  assert.deepEqual(calls.shell, [{
+    type: "arcrho:open-project-instance",
+    project: {
+      name: "Fake",
+      folder: "E:\\Fake",
+      projectInstanceState: {
+        selectedPath: "NJ\\HOL",
+        windows: [{ kind: "result_selection", name: "Current Qtr", active: true, methodType: "Result Selection" }],
+      },
+    },
+  }]);
+});
+
+test("the band's hover border is the focus blue and the run hides the dates", () => {
+  assert.match(summaryCss, /\.sd-band:hover \{\s*border-color: var\(--ar-color-border-focus/);
+  assert.match(summaryCss, /\.sd-band\.is-running \.sd-band-group \{ display: none; \}/);
+  assert.match(html, /<span class="sd-band-progress" id="summaryDatesProgress" role="status" hidden><\/span>/);
+});
