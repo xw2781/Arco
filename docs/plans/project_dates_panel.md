@@ -1,6 +1,6 @@
 # Project Dates Panel: Change All Project Dates at Once and Reshape the Project
 
-Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 9 session-sized steps (step 9 appended 2026-11-03, runs before step 8); steps 1-7 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel).
+Status: Planned 2026-11-03; all decisions taken the same day (origins follow their labels, developments follow absolute position, new cells start non-excluded, hand-entered datasets reshape and are listed, dates save first, a confirmation modal commits the change). 11 session-sized steps (steps 9-11 appended 2026-11-03 and run in order before step 8); steps 1-7 done 2026-11-03 (inventory of date-shaped files; the Development Factor method reshapes instead of refusing; every other method type and the hand-entered datasets reshape through the same rule; one Engine job saves the dates and moves the whole project, resuming when run again; the app can start that job, follow it and preview what it touches; a floating Project Dates panel changes all three dates behind a confirmation; the dates on the main page are display only and open that panel).
 Last updated: 2026-11-03
 Related: [generated_formula_dependency_refresh.md](generated_formula_dependency_refresh.md) (the scoped Engine refresh this reuses), [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root to deploy to first)
 
@@ -21,8 +21,10 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 7 | The dates on the main page are display only | [x] | 2026-11-03 | 40 min | 12 min | The dates on the main page can no longer be typed over; clicking anywhere on them, or pressing Enter or Space, opens the Project Dates panel, and they do nothing while the project is locked. |
 | 8 | Tests, deploy to the local test server, then to production | [ ] | | 60 min | | |
 | 9 | A start-of-year move finishes cleanly and can be run again | [ ] | | 60 min | | |
+| 10 | The dates panel reads more clearly: a before-and-after table, a grouped review list, a short result line, and progress on the dates band | [ ] | | 55 min | | |
+| 11 | The whole date change is tried by hand in the real app, in both themes, before anything is deployed | [ ] | | 60 min | | |
 
-Overall: 7 of 9 steps done. Estimated 600 min, actual so far 170 min. Step 9 was appended after step 6 and runs before step 8.
+Overall: 7 of 11 steps done. Estimated 715 min, actual so far 170 min. Steps 9, 10 and 11 were appended and run in that order before step 8.
 
 ## How agents work this plan
 
@@ -219,6 +221,35 @@ Appended by step 6; runs before step 8. Read step 6's "Run on the local root" no
 - **Methods that still refuse after the January move** (dependent problems in that run): "DFM precedent '…' has N rows; expected N" (about 30), "DFM input values are missing for previously excluded ratio cells" (14), and "BF new_ultimate does not match the embedded source snapshots" (26, already failing before the change, see step 4). Find why a DFM's precedents disagree on the origin count after the move and why the dropped diagonal trips the exclusion check.
 
 Done when the same start-of-year change on a fresh copy of the Fake project ends with no new problems beyond those the project had before the change, and running it a second time finishes anything left.
+
+### Step 10: Clearer panel, confirmation and result
+Estimate: code edit 35 min, test/validation 20 min, total 55 min.
+
+Appended 2026-11-03 from the user's review of the step 6 and 7 screenshots; runs after step 9, before step 11. The user's rule: nothing that complicates the interface. No new buttons or presets (no "New year" or "+1 quarter" button), no new icons.
+
+- [ ] **Before and after table.** Replace the confirmation's wrapped "Jan 2017 – Dec 2026, Dec 2026 → …" line with a three-row table (Origin Start, Origin End, Development End; old, new). Bold only the dates that change.
+- [ ] **Grouped review list.** Group the result's review rows by reason, each group headed by the reason and its count and collapsed by default. A row shows its full reason on hover instead of cutting it off, and a click opens that dataset or method the way the project tree does.
+- [ ] **Short result line.** On a part failure, replace the red paragraph with one line ("Saved. 1 dataset could not refresh."); the detail moves into the review list as its own group. The main button reads "Run Again" and resends the same dates (decision 2). Pluralise counts properly rather than "dataset(s)".
+- [ ] **No Apply after success.** Once a change finishes, Close becomes the main button and Apply stays disabled until a date is edited again.
+- [ ] **Progress on the band.** While the job runs, the band's text shows the progress ("Changing dates… 12 of 33") and a click on it reopens the progress window instead of the panel. No new control.
+- [ ] **Firmer hover.** Strengthen the band's hover border in the light theme so it reads as clickable; check that the dark theme matches.
+
+Follow `$arcrho-ui-design`, keep modal copy to two lines, keep the one-version `?v=` stamp and its pinning tests, and add node tests for each state. Screenshot both themes (a mock-up is enough here; step 11 uses the real app).
+
+Done when each item above is in, its tests pass, and the screenshots show it in both themes.
+
+### Step 11: Full GUI test of the new dates experience
+Estimate: code edit 10 min, test/validation 50 min, total 60 min.
+
+Appended 2026-11-03 at the user's request; runs after step 10 and before step 8, so the deploy ships a UX that has been seen working. Use the real Arco app (`launch-app`) against a fresh copy of the Fake project on the local test root, with the local Gateway and Engine set up as step 6's note describes, and leave that setup as found. Drive it with `tools/agent_screen_control` and screenshot every state.
+
+- [ ] **The whole path, light theme:** hover the band; open it by click, Enter and Space; edit; see the date-order check refuse a bad order; open the confirmation and cancel; confirm; watch the progress, including on the band; read the grouped review list and open a row from it; run the same change again.
+- [ ] **The same path in the dark theme.** Switch the theme back to the user's setting afterwards.
+- [ ] **Inert cases:** a locked project and no project selected.
+- [ ] **Real changes:** a start-of-year change, one quarter forward, and shrinking back. After each, open a quarterly development method and a Result Selection and confirm the selections sit on the right origins (decision 3), and that an Excel-linked cell stayed in place (decision 8).
+- [ ] **Judge the UX** against `$arcrho-ui-design`. Fix small faults in this step; anything larger goes in the step note as a proposal, without adding controls (step 10's rule).
+
+Done when every state above has a screenshot in both themes, the real changes leave methods where decision 3 says, and the screenshot paths are in the step note.
 
 ## Decisions (2026-11-03)
 
