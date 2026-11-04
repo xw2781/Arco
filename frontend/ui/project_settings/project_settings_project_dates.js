@@ -125,10 +125,11 @@ export function createProjectDatesFeature({
     // A class path is long; its last part tells rows apart, the hover holds the rest.
     const label = `<span class="pd-review-name"><span class="pd-review-class">${escapeHtml(row.reservingClass.split("\\").pop())}</span>`
       + `${escapeHtml(row.name)}</span>`;
-    const reason = row.open ? "" : `<span class="pd-review-reason">${escapeHtml(row.reason)}</span>`;
+    const reasonText = row.open ? row.note : row.reason;
+    const reason = reasonText ? `<span class="pd-review-reason">${escapeHtml(reasonText)}</span>` : "";
     const title = `title="${escapeHtml(row.detail)}"`;
     return row.open
-      ? `<button class="pd-review-row" type="button" role="listitem" data-group="${groupIndex}" data-row="${rowIndex}" ${title}>${label}</button>`
+      ? `<button class="pd-review-row" type="button" role="listitem" data-group="${groupIndex}" data-row="${rowIndex}" ${title}>${label}${reason}</button>`
       : `<div class="pd-review-row is-text" role="listitem" ${title}>${row.reservingClass ? label : ""}${reason}</div>`;
   }
 
@@ -137,6 +138,7 @@ export function createProjectDatesFeature({
     reviewGroups = groups;
     if (!dom.review) return;
     const total = groups.reduce((sum, group) => sum + group.rows.length, 0);
+    dom.panel?.classList.toggle("has-review", total > 0);
     if (!total) {
       dom.review.hidden = true;
       dom.review.innerHTML = "";

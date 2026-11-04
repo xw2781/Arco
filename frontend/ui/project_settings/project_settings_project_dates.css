@@ -3,6 +3,11 @@
    the theme tokens so Light and Dark need no separate rules. */
 .pd-panel {
   width: 360px;
+  max-width: calc(100vw - 16px);
+}
+/* Wide enough while the review list shows that most reasons read without hovering. */
+.pd-panel.has-review {
+  width: 640px;
 }
 .pd-panel.show {
   display: flex;
@@ -163,6 +168,9 @@
 }
 :root #projectDatesPanel .pd-review-row.is-text:has(.pd-review-name) {
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+:root #projectDatesPanel button.pd-review-row:has(.pd-review-reason) {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 .pd-review-name,
 .pd-review-reason {

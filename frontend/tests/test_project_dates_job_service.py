@@ -264,11 +264,25 @@ class PreviewTests(_Workspace):
         self.assertEqual(by_name["ResQ Tri"]["origins_dropped"], 4)
         self.assertEqual(
             preview["origin_changes"],
-            [{"origin_length": 12, "before": 6, "after": 6, "dropped": 1, "added": 1},
-             {"origin_length": 3, "before": 24, "after": 24, "dropped": 4, "added": 4}],
+            [{"origin_length": 12, "before": 6, "after": 6, "dropped": 1, "dropped_before": 1,
+              "dropped_after": 0, "added": 1},
+             {"origin_length": 3, "before": 24, "after": 24, "dropped": 4, "dropped_before": 4,
+              "dropped_after": 0, "added": 4}],
         )
         after = {path: path.stat().st_mtime_ns for path in self.root.rglob("*") if path.is_file()}
         self.assertEqual(before, after)
+
+    def test_dropped_origins_say_which_side_of_the_new_range_they_fall_on(self) -> None:
+        changes = project_dates_job_service._origin_changes
+        shrink = changes([12, 3], {"origin_start_date": "201801", "origin_end_date": "202704"},
+                         {"origin_start_date": "201801", "origin_end_date": "202701"})
+        self.assertEqual([(c["dropped"], c["dropped_before"], c["dropped_after"]) for c in shrink],
+                         [(0, 0, 0), (1, 0, 1)])
+        # A start moved by one quarter regroups every annual origin: none falls outside the range.
+        regroup = changes([12], {"origin_start_date": "201801", "origin_end_date": "202612"},
+                          {"origin_start_date": "201804", "origin_end_date": "202612"})
+        self.assertEqual((regroup[0]["dropped"], regroup[0]["dropped_before"], regroup[0]["dropped_after"]),
+                         (9, 1, 0))
 
     def test_the_preview_names_the_datasets_the_job_then_reshapes(self) -> None:
         from arcrho_engine import project_dates_jobs
@@ -292,6 +306,27 @@ class PreviewTests(_Workspace):
             self.assertEqual(set(item), {"reserving_class", "name", "kind", "method_type", "reasons"})
             if item["kind"] == "dataset":
                 self.assertEqual(item["method_type"], "None")
+
+    def test_an_excel_link_past_the_shrunken_grid_is_counted_on_its_review_row(self) -> None:
+        from arcrho_engine import project_dates_jobs
+
+        self._add_dataset(
+            "Cutoff",
+            {"source_kind": "input", "data_format": "Vector", "period_length": 12,
+             "origin_labels": [str(i) for i in range(1, 7)],
+             "external_links": [{"reference": "='[Inputs.xlsx]Cutoff'!B2:B7",
+                                 "target_cells": [[0, 0, 6, 1, "B2"]]}]},
+            [["1"] for _ in range(6)],
+            origin_length=12,
+        )
+        shrink = {**PREVIOUS, "origin_end_date": "202412"}
+        result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0}
+        project_dates_jobs._reshape_class(
+            PROJECT, CLASS, PREVIOUS, shrink, result, inputs_done=set(), mark_input_done=lambda _key: None
+        )
+        by_name = {item["name"]: item for item in result["review"]}
+        self.assertEqual(by_name["Cutoff"]["link_rows_past_grid"], 1)
+        self.assertNotIn("link_rows_past_grid", by_name["Prem Vec"])
 
     def test_the_current_dates_change_nothing(self) -> None:
         preview = self._preview(PREVIOUS)

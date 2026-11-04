@@ -408,6 +408,7 @@ test("a review row shows its full reason on hover and a click opens it in the pr
   await settle();
   await applyAndConfirm(setupState);
   const review = get("pdReview").innerHTML;
+  assert.equal(get("projectDatesPanel").classList.contains("has-review"), true, "the panel widens for the review list");
   assert.match(review, /<span class="pd-review-heading">Reshaped Methods<\/span><span class="pd-review-count">1<\/span>/);
   assert.match(review, /<button class="pd-review-row" type="button" role="listitem" data-group="0" data-row="0" title="NJ\\HOL\\Current Qtr — periods moved to the new dates">/);
   const button = { dataset: { group: "0", row: "0" } };

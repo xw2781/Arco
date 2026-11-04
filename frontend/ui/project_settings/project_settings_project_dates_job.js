@@ -130,15 +130,31 @@ export function describeProjectDatesPreview(preview) {
     { label: "Methods", value: count(preview?.methods) },
     { label: "Hand-Entered Datasets", value: count(preview?.imported_reshaped) },
   ];
-  const dropped = (Array.isArray(preview?.origin_changes) ? preview.origin_changes : [])
-    .filter((change) => Number(change?.dropped) > 0)
-    .map((change) => plural(change.dropped, `${originLengthName(change.origin_length)} origin`));
+  const changes = (Array.isArray(preview?.origin_changes) ? preview.origin_changes : [])
+    .filter((change) => Number(change?.dropped) > 0);
   let droppedLine = "";
-  if (dropped.length) {
-    const list = dropped.length > 1
-      ? `${dropped.slice(0, -1).join(", ")} and ${dropped[dropped.length - 1]}`
-      : dropped[0];
-    droppedLine = `Drops ${list}, with their data and selections.`;
+  if (changes.length) {
+    // Every dropped origin outside the new range: name the cut-off once.
+    // One inside it means the periods were regrouped, so only counts are honest.
+    const outside = changes.every((change) => (
+      (Number(change.dropped_before) || 0) + (Number(change.dropped_after) || 0) === Number(change.dropped)
+    ));
+    if (outside) {
+      const sides = [];
+      if (changes.some((change) => Number(change.dropped_before) > 0)) {
+        sides.push(`before ${displayMonth(preview?.dates?.origin_start_date)}`);
+      }
+      if (changes.some((change) => Number(change.dropped_after) > 0)) {
+        sides.push(`after ${displayMonth(preview?.dates?.origin_end_date)}`);
+      }
+      droppedLine = `Drops the origins ${sides.join(" and ")}, with their data and selections.`;
+    } else {
+      const dropped = changes.map((change) => plural(change.dropped, `${originLengthName(change.origin_length)} origin`));
+      const list = dropped.length > 1
+        ? `${dropped.slice(0, -1).join(", ")} and ${dropped[dropped.length - 1]}`
+        : dropped[0];
+      droppedLine = `Drops ${list}, with their data and selections.`;
+    }
   }
   return { rows, droppedLine };
 }
@@ -213,6 +229,7 @@ export function describeProjectDatesResult(result, message = "") {
       kind: String(item.kind || "").trim(),
       methodType: String(item.method_type || "").trim(),
       reasons: (Array.isArray(item.reasons) ? item.reasons : []).map((reason) => String(reason || "").trim()).filter(Boolean),
+      linkRowsPastGrid: Math.max(0, Math.trunc(Number(item.link_rows_past_grid) || 0)),
     }));
   const lines = (value) => (Array.isArray(value) ? value : []).map((item) => String(item || "").trim()).filter(Boolean);
   const dependentProblems = lines(outcome.dependent_problems);
@@ -229,11 +246,15 @@ export function describeProjectDatesResult(result, message = "") {
     // The last reason is the most specific; hover shows every one.
     const heading = reviewHeading(item.reasons[item.reasons.length - 1] || "");
     if (!byHeading.has(heading)) byHeading.set(heading, []);
-    const reason = item.reasons.join("; ");
+    // An Excel link keeps its cells (decision 8), so after a shrink the row
+    // says how far the link now reaches past the grid.
+    const note = item.linkRowsPastGrid ? `Excel link ${plural(item.linkRowsPastGrid, "row")} past the grid` : "";
+    const reason = [...item.reasons, note].filter(Boolean).join("; ");
     byHeading.get(heading).push({
       reservingClass: item.reservingClass,
       name: item.name,
       reason,
+      note,
       detail: `${[item.reservingClass, item.name].filter(Boolean).join("\\")}${reason ? ` — ${reason}` : ""}`,
       open: item.reservingClass
         ? { reservingClass: item.reservingClass, name: item.name, methodType: item.methodType }

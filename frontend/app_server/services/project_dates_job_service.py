@@ -32,6 +32,7 @@ from fastapi import HTTPException
 
 from arcrho_api.period_reshape import (
     is_imported_dataset,
+    month_index,
     origin_start_months,
     plan_input_dataset_reshape,
 )
@@ -273,13 +274,19 @@ def _origin_changes(lengths: List[int], previous: Mapping[str, str], dates: Mapp
         old = origin_start_months(previous["origin_start_date"], previous["origin_end_date"], length)
         new = origin_start_months(dates["origin_start_date"], dates["origin_end_date"], length)
         kept = set(new)
-        dropped = sum(1 for month in old if month not in kept)
+        dropped = [month for month in old if month not in kept]
+        # Which side of the new origin range each dropped origin starts on, so
+        # the panel can name the cut-off once; one inside the range means the
+        # periods were regrouped and only the counts are honest.
+        first, last = month_index(dates["origin_start_date"]), month_index(dates["origin_end_date"])
         changes.append({
             "origin_length": length,
             "before": len(old),
             "after": len(new),
-            "dropped": dropped,
-            "added": len(new) - (len(old) - dropped),
+            "dropped": len(dropped),
+            "dropped_before": sum(1 for month in dropped if month < first),
+            "dropped_after": sum(1 for month in dropped if month > last),
+            "added": len(new) - (len(old) - len(dropped)),
         })
     return changes
 

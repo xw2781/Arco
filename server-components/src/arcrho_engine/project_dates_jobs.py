@@ -258,7 +258,11 @@ def reshape_input_dataset_file(
         _write_text_atomic(csv_path, _grid_text(reshaped["values"]))
         _delete_sibling_views(data_dir, dataset_name, csv_file)
     dataset_service._write_dataset_sidecar_payload(sidecar_path, out)
-    return {"changed": True, "review": list(reshaped["review"])}
+    return {
+        "changed": True,
+        "review": list(reshaped["review"]),
+        "link_rows_past_grid": reshaped["link_rows_past_grid"],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -400,18 +404,19 @@ def _reshape_class(
 
     roots: list[str] = []
 
-    def review(name: str, kind: str, method_type: str, reasons: list[str]) -> None:
+    def review(name: str, kind: str, method_type: str, reasons: list[str], link_rows_past_grid: int = 0) -> None:
         # The method type lets the panel open the row the way the project tree does.
         if reasons:
-            result["review"].append(
-                {
-                    "reserving_class": reserving_class,
-                    "name": name,
-                    "kind": kind,
-                    "method_type": method_type,
-                    "reasons": reasons,
-                }
-            )
+            item = {
+                "reserving_class": reserving_class,
+                "name": name,
+                "kind": kind,
+                "method_type": method_type,
+                "reasons": reasons,
+            }
+            if link_rows_past_grid:
+                item["link_rows_past_grid"] = link_rows_past_grid
+            result["review"].append(item)
 
     index = dataset_instance_index_service.get_index(project_name, reserving_class)
     for row in index.get("files") or []:
@@ -439,7 +444,7 @@ def _reshape_class(
                 if outcome["changed"]:
                     result["datasets_reshaped"] += 1
                     roots.append(name)
-                review(name, "dataset", method_type, outcome["review"])
+                review(name, "dataset", method_type, outcome["review"], outcome.get("link_rows_past_grid", 0))
                 mark_input_done(key)
             elif method_type == dataset_sidecar_status_service.METHOD_TYPE_RESULT_SELECTION:
                 outcome = reshape_result_selection_file(

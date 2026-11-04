@@ -332,6 +332,25 @@ class InputDatasetReshapeTests(unittest.TestCase):
         ])
         self.assertEqual(result["sidecar"]["external_links"], sidecar["external_links"])
         self.assertEqual(result["review"], [REVIEW_HAND_ENTERED, REVIEW_CELL_LINKS, REVIEW_DROPPED_DATA])
+        self.assertEqual(result["link_rows_past_grid"], 0)
+
+    def test_an_excel_link_reports_the_rows_it_reaches_past_a_shrunken_grid(self) -> None:
+        sidecar = compact_sidecar_links({
+            "source_kind": "input",
+            "data_format": "Vector",
+            "origin_labels": ["1", "2", "3", "4"],
+            "development_labels": ["Value"],
+            "external_links": [{
+                "reference": "='[Inputs.xlsx]Cutoff'!B2:B5",
+                "target_cells": [{"row": row, "column": 0, "source_cell": f"B{row + 2}"} for row in range(4)],
+            }],
+        })
+        result = reshape_input_dataset(sidecar, [[1.0], [2.0], [3.0], [4.0]], OLD, OLD[1:3])
+
+        # The link keeps its four cells while the grid now holds two rows.
+        self.assertEqual(result["values"], [[1.0], [2.0]])
+        self.assertEqual(result["sidecar"]["external_links"], sidecar["external_links"])
+        self.assertEqual(result["link_rows_past_grid"], 2)
 
     def test_unlinked_vector_with_nothing_dropped_is_listed_as_hand_entered(self) -> None:
         sidecar = {"origin_labels": ["1", "2"], "development_labels": ["Value"]}

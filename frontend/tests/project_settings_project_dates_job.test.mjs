@@ -107,6 +107,41 @@ test("the confirmation counts every dataset kind and names the dropped origins",
   assert.equal(describeProjectDatesPreview({ origin_changes: [{ origin_length: 12, dropped: 0 }] }).droppedLine, "");
 });
 
+test("dropped origins outside the new range name the cut-off once", () => {
+  const dates = { origin_start_date: "201801", origin_end_date: "202701", development_end_date: "202701" };
+  const startOfYear = describeProjectDatesPreview({
+    dates,
+    origin_changes: [
+      { origin_length: 12, dropped: 1, dropped_before: 1, dropped_after: 0 },
+      { origin_length: 3, dropped: 4, dropped_before: 4, dropped_after: 0 },
+      { origin_length: 1, dropped: 12, dropped_before: 12, dropped_after: 0 },
+    ],
+  });
+  assert.equal(startOfYear.droppedLine, "Drops the origins before Jan 2018, with their data and selections.");
+  const shrink = describeProjectDatesPreview({
+    dates,
+    origin_changes: [
+      { origin_length: 12, dropped: 0, dropped_before: 0, dropped_after: 0 },
+      { origin_length: 3, dropped: 1, dropped_before: 0, dropped_after: 1 },
+    ],
+  });
+  assert.equal(shrink.droppedLine, "Drops the origins after Jan 2027, with their data and selections.");
+  const both = describeProjectDatesPreview({
+    dates,
+    origin_changes: [{ origin_length: 3, dropped: 2, dropped_before: 1, dropped_after: 1 }],
+  });
+  assert.equal(both.droppedLine, "Drops the origins before Jan 2018 and after Jan 2027, with their data and selections.");
+  // A start moved inside a year regroups the annual origins: only counts are honest.
+  const regrouped = describeProjectDatesPreview({
+    dates,
+    origin_changes: [
+      { origin_length: 12, dropped: 9, dropped_before: 1, dropped_after: 0 },
+      { origin_length: 3, dropped: 1, dropped_before: 1, dropped_after: 0 },
+    ],
+  });
+  assert.equal(regrouped.droppedLine, "Drops 9 annual origins and 1 quarterly origin, with their data and selections.");
+});
+
 test("counts read in the right number", () => {
   assert.equal(plural(1, "dataset"), "1 dataset");
   assert.equal(plural(0, "dataset"), "0 datasets");
@@ -160,6 +195,14 @@ test("a clean change reads as one line and groups its review list by reason", ()
   ]);
   const linked = clean.groups[1].rows[0];
   assert.equal(linked.detail, "NJ\\MA BI Total\\Linked — hand-entered or imported; has cell links");
+  assert.equal(linked.note, "");
+  // After a shrink an Excel link names rows the grid no longer has; its row says how many.
+  const shrunk = describeProjectDatesResult({
+    review: [{ reserving_class: "NJ\\NY MP+PIP", name: "Accounting Cutoff", kind: "dataset", method_type: "None",
+      reasons: ["hand-entered or imported", "has cell links"], link_rows_past_grid: 3 }],
+  }).groups[0].rows[0];
+  assert.equal(shrunk.note, "Excel link 3 rows past the grid");
+  assert.equal(shrunk.detail, "NJ\\NY MP+PIP\\Accounting Cutoff — hand-entered or imported; has cell links; Excel link 3 rows past the grid");
   assert.deepEqual(clean.groups[2].rows[0].open, {
     reservingClass: "NJ\\NY BI Total",
     name: "Current Qtr",

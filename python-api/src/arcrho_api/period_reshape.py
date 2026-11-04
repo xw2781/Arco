@@ -136,9 +136,10 @@ def reshape_input_dataset(
     formula and source text are not rewritten. Excel links keep their absolute
     cells and the values under them stay put (decision 8).
 
-    Returns ``{"sidecar", "values", "review"}``: a new sidecar (origin and
-    development labels and link targets updated), the new grid, and the
-    reasons the dataset is listed for review.
+    Returns ``{"sidecar", "values", "review", "link_rows_past_grid"}``: a new
+    sidecar (origin and development labels and link targets updated), the new
+    grid, the reasons the dataset is listed for review, and how many rows an
+    Excel link now reaches past the grid.
     """
 
     from .dataset_link_contract import compact_target_cells, expand_target_cells
@@ -224,7 +225,15 @@ def reshape_input_dataset(
         for index, label in enumerate(old_labels)
     ):
         review.append(REVIEW_DROPPED_DATA)
-    return {"sidecar": out, "values": grid, "review": review}
+    # An Excel link keeps its cells, so after a shrink it can name rows the
+    # grid no longer has; the review row says how many.
+    link_rows_past_grid = max((row + 1 for row, _column in excel_cells), default=0) - len(grid)
+    return {
+        "sidecar": out,
+        "values": grid,
+        "review": review,
+        "link_rows_past_grid": max(0, link_rows_past_grid),
+    }
 
 
 # ---------------------------------------------------------------------------
