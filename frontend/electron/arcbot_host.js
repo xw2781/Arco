@@ -319,12 +319,14 @@ function readCodexLoginEmail(authOutput = "") {
 }
 
 function getUserClaudeInstallPrefix() {
-  return path.join(path.dirname(getUserCodexInstallPrefix()), "claude-cli");
+  return path.join(getArcBotCliRoot(), "claude-cli");
 }
 
 function getClaudeCommand() {
-  const installed = path.join(getUserClaudeInstallPrefix(), process.platform === "win32" ? "claude.cmd" : path.join("bin", "claude"));
+  const installed = cliCommandIn(getUserClaudeInstallPrefix(), "claude");
   if (fs.existsSync(installed)) return installed;
+  const legacy = cliCommandIn(path.join(getLegacyCliRoot(), "claude-cli"), "claude");
+  if (fs.existsSync(legacy)) return legacy;
   if (process.platform === "win32") {
     const candidates = [
       process.env.APPDATA ? path.join(process.env.APPDATA, "npm", "claude.cmd") : "",
@@ -799,21 +801,93 @@ function getNpmCommand() {
   return getBundledNpmCommand() || "npm";
 }
 
-function getUserCodexInstallPrefix() {
+const ARCBOT_CLI_FOLDER = "ArcBot CLI";
+const ARCBOT_CLI_NAMES = ["codex-cli", "claude-cli"];
+
+// Where copies before 2026-11 went: the Electron profile, always on C:.
+function getLegacyCliRoot() {
   let userDataRoot = "";
   try {
     userDataRoot = String(app?.getPath?.("userData") || "").trim();
   } catch {
     // Fall through to the existing ArcRho preferences root.
   }
-  return path.join(userDataRoot || getPrefsDir() || getLocalArcRhoAssistantRoot(), "codex-cli");
+  return userDataRoot || getPrefsDir() || getLocalArcRhoAssistantRoot();
+}
+
+// The CLIs sit beside the install folder, on the drive the user installed to.
+// Not inside it: every update empties the install folder. A dev run keeps them
+// in the repo's ignored tmp_data folder.
+function getArcBotCliRoot() {
+  if (app?.isPackaged && process.resourcesPath) {
+    const installDir = path.dirname(process.resourcesPath);
+    const parent = path.dirname(installDir);
+    if (parent && parent !== installDir) return path.join(parent, ARCBOT_CLI_FOLDER);
+  } else if (REPO_ROOT) {
+    return path.join(REPO_ROOT, "tmp_data", "arcbot-cli");
+  }
+  return getLegacyCliRoot();
+}
+
+function getUserCodexInstallPrefix() {
+  return path.join(getArcBotCliRoot(), "codex-cli");
+}
+
+// Moves copies left in the profile to the new folder. Runs in the background;
+// until a copy has moved, the command lookups still find it at the old place.
+let cliMigration = null;
+function migrateLegacyCliInstalls() {
+  if (cliMigration) return cliMigration;
+  cliMigration = (async () => {
+    const legacyRoot = getLegacyCliRoot();
+    const newRoot = getArcBotCliRoot();
+    if (path.resolve(legacyRoot).toLowerCase() === path.resolve(newRoot).toLowerCase()) return;
+    for (const name of ARCBOT_CLI_NAMES) {
+      const from = path.join(legacyRoot, name);
+      const to = path.join(newRoot, name);
+      try {
+        if (!fs.existsSync(from)) continue;
+        // A link left by a manual move points at the copy; drop only the link.
+        if (fs.lstatSync(from).isSymbolicLink()) {
+          if (fs.existsSync(to)) fs.rmSync(from, { recursive: true, force: true });
+          continue;
+        }
+        if (!fs.existsSync(to)) {
+          await fs.promises.mkdir(newRoot, { recursive: true });
+          try {
+            await fs.promises.rename(from, to);
+            continue;
+          } catch {
+            // Another drive: copy to a staging folder so a half copy is never used.
+          }
+          const staging = `${to}.moving`;
+          await fs.promises.rm(staging, { recursive: true, force: true });
+          await fs.promises.cp(from, staging, { recursive: true, verbatimSymlinks: true });
+          await fs.promises.rename(staging, to);
+        }
+        await fs.promises.rm(from, { recursive: true, force: true, maxRetries: 3 });
+      } catch (error) {
+        // A running CLI can lock its files; the next start tries again.
+        console.warn(`[ArcBot] Could not move ${from} to ${to}: ${error?.message || error}`);
+      }
+    }
+  })().finally(() => {
+    cliMigration = null;
+  });
+  return cliMigration;
+}
+
+function cliCommandIn(prefix, name) {
+  return process.platform === "win32"
+    ? path.join(prefix, `${name}.cmd`)
+    : path.join(prefix, "bin", name);
 }
 
 function getUserInstalledCodexCommand() {
-  const prefix = getUserCodexInstallPrefix();
-  return process.platform === "win32"
-    ? path.join(prefix, "codex.cmd")
-    : path.join(prefix, "bin", "codex");
+  const installed = cliCommandIn(getUserCodexInstallPrefix(), "codex");
+  if (fs.existsSync(installed)) return installed;
+  const legacy = cliCommandIn(path.join(getLegacyCliRoot(), "codex-cli"), "codex");
+  return fs.existsSync(legacy) ? legacy : installed;
 }
 
 function isWindowsAppsPath(filePath) {
@@ -2548,6 +2622,7 @@ function registerArcBotIpc(deps = {}) {
   PYTHON_API_WHEEL_DIR = app.isPackaged
     ? path.join(process.resourcesPath, "python_packages")
     : path.join(APP_ROOT, "build", "python_packages");
+  void migrateLegacyCliInstalls();
 
 ipcMain.handle("codex-assistant-prepare", async (event, payload) => {
   const owner = event.sender.id;
@@ -2684,6 +2759,7 @@ ipcMain.handle("codex-assistant-skills-list", async () => {
 });
 
 ipcMain.handle("codex-assistant-install", async () => {
+  await cliMigration;
   if (process.platform === "win32") {
     const scriptPath = writeCodexInstallScript();
     const result = await runHostCommand("powershell.exe", [
@@ -2748,11 +2824,12 @@ function installClaudeCli() {
   const bundledNode = path.join(getBundledNodePortableRoot(), process.platform === "win32" ? "node.exe" : "bin/node");
   const npmCli = path.join(getBundledNodePortableRoot(), "node_modules", "npm", "bin", "npm-cli.js");
   const npm = getNpmCommand();
-  claudeCliInstall = (fs.existsSync(bundledNode) && fs.existsSync(npmCli)
-    ? runHostCommand(bundledNode, [npmCli, ...args], options)
-    : process.platform === "win32" && /\.(cmd|bat)$/iu.test(npm)
-      ? runWindowsCmdCommand(npm, args, options)
-      : runHostCommand(npm, args, options))
+  claudeCliInstall = Promise.resolve(cliMigration)
+    .then(() => (fs.existsSync(bundledNode) && fs.existsSync(npmCli)
+      ? runHostCommand(bundledNode, [npmCli, ...args], options)
+      : process.platform === "win32" && /\.(cmd|bat)$/iu.test(npm)
+        ? runWindowsCmdCommand(npm, args, options)
+        : runHostCommand(npm, args, options)))
     .then((result) => (result.ok ? "" : normalizeHostError(result, "Claude CLI installation failed.")))
     .finally(() => { claudeCliInstall = null; });
   return claudeCliInstall;
@@ -3415,7 +3492,10 @@ module.exports = {
     getArcBotHostCwd,
     getClaudeCredentialsPath,
     getNodeBackedCodexSpec,
+    getClaudeCommand,
+    getUserInstalledCodexCommand,
     launchDetachedArcBotProcess,
+    migrateLegacyCliInstalls,
     listClaudeModelEntries,
     reconcileArcBotReasoningEffort,
     runClaudeArcBotRequest,

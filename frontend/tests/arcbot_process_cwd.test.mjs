@@ -10,7 +10,9 @@ const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const testRoot = fs.mkdtempSync(path.join(TESTS_DIR, "arcbot-process-cwd-"));
 const documentsDir = path.join(testRoot, "Documents");
 const userDataDir = path.join(testRoot, "UserData");
-const resourcesDir = path.join(testRoot, "resources");
+const installDir = path.join(testRoot, "Install", "ArcRho");
+const resourcesDir = path.join(installDir, "resources");
+const cliRoot = path.join(testRoot, "Install", "ArcBot CLI");
 const packagedAppRoot = path.join(resourcesDir, "app.asar");
 const expectedHostCwd = path.join(documentsDir, "ArcRho");
 fs.mkdirSync(userDataDir, { recursive: true });
@@ -111,7 +113,7 @@ test("packaged ArcBot status, install, and fallback commands use a writable host
   assert.equal(installCall.options.cwd, expectedHostCwd);
   const installPrefixAt = installCall.args.indexOf("-InstallPrefix");
   assert.ok(installPrefixAt >= 0);
-  assert.equal(installCall.args[installPrefixAt + 1], path.join(userDataDir, "codex-cli"));
+  assert.equal(installCall.args[installPrefixAt + 1], path.join(cliRoot, "codex-cli"));
 
   const requestedCwd = path.join(testRoot, "requested-workspace");
   await testHooks.runCodexCommand(["exec", "--cd", requestedCwd]);
@@ -193,9 +195,9 @@ test("warm Codex app-server launch cwd stays separate from the requested thread 
 
 test("a repaired per-user Codex install still runs through bundled Node", () => {
   const bundledNode = path.join(resourcesDir, "node-portable", "node.exe");
-  const userCodex = path.join(userDataDir, "codex-cli", "codex.cmd");
+  const userCodex = path.join(cliRoot, "codex-cli", "codex.cmd");
   const userCodexJs = path.join(
-    userDataDir,
+    cliRoot,
     "codex-cli",
     "node_modules",
     "@openai",
@@ -217,4 +219,28 @@ test("a repaired per-user Codex install still runs through bundled Node", () => 
       shell: false,
     },
   );
+});
+
+test("CLI copies left in the profile move beside the install folder", async () => {
+  const legacyClaude = path.join(userDataDir, "claude-cli", "claude.cmd");
+  fs.mkdirSync(path.dirname(legacyClaude), { recursive: true });
+  fs.writeFileSync(legacyClaude, "claude");
+  // Until it moves, ArcBot still runs the old copy.
+  assert.equal(testHooks.getClaudeCommand(), legacyClaude);
+
+  // A link from a manual move is dropped; the copy it points at stays.
+  const movedCodex = path.join(cliRoot, "codex-cli");
+  fs.mkdirSync(movedCodex, { recursive: true });
+  fs.writeFileSync(path.join(movedCodex, "codex.cmd"), "codex");
+  fs.symlinkSync(movedCodex, path.join(userDataDir, "codex-cli"), "junction");
+
+  await testHooks.migrateLegacyCliInstalls();
+
+  const newClaude = path.join(cliRoot, "claude-cli", "claude.cmd");
+  assert.equal(fs.readFileSync(newClaude, "utf8"), "claude");
+  assert.equal(fs.existsSync(path.join(userDataDir, "claude-cli")), false);
+  assert.equal(testHooks.getClaudeCommand(), newClaude);
+  assert.equal(fs.existsSync(path.join(userDataDir, "codex-cli")), false);
+  assert.equal(fs.readFileSync(path.join(movedCodex, "codex.cmd"), "utf8"), "codex");
+  assert.equal(testHooks.getUserInstalledCodexCommand(), path.join(movedCodex, "codex.cmd"));
 });
