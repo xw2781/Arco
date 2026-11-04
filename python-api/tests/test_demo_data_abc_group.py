@@ -98,8 +98,31 @@ class AbcGroupTablesTest(unittest.TestCase):
         for year in range(2017, 2024):
             ratio = incurred[("PPA", year)] / premium[("PPA", year)]
             self.assertTrue(0.45 < ratio < 0.85, (year, ratio))
-        self.assertTrue(1.6 < paid_by_age[24] / paid_by_age[12] < 4.0)
-        self.assertTrue(1.05 < incurred_by_age[24] / incurred_by_age[12] < 1.4)
+        # Wide bounds: shared shocks, large losses and the 2020 court closures
+        # move these by design; the point is that liability still develops.
+        self.assertTrue(1.6 < paid_by_age[24] / paid_by_age[12] < 5.0)
+        self.assertTrue(1.05 < incurred_by_age[24] / incurred_by_age[12] < 1.6)
+
+    def test_covid_cuts_2020_vehicle_frequency_and_premium(self) -> None:
+        reported = defaultdict(int)
+        for row in self.tables.claim_counts:
+            if row[1] == "PPA" and row[4] == "Collision" and row[5] in (201904, 202004):
+                reported[row[5]] += row[COUNT["reported"]]
+        self.assertLess(reported[202004], 0.7 * reported[201904])
+        premium = defaultdict(float)
+        for row in self.tables.premium:
+            if row[1] == "PPA" and row[5] in (202003, 202004):
+                premium[row[5]] += row[-1]
+        self.assertLess(premium[202004], 0.9 * premium[202003])
+
+    def test_shared_shocks_repeat_for_a_seed_and_differ_across_seeds(self) -> None:
+        one, two = abc_group.Shocks(1), abc_group.Shocks(1)
+        coverage = abc_group.AUTO_COVERAGES["Bodily Injury"]
+        self.assertEqual(one.severity("PPA", coverage, 40), two.severity("PPA", coverage, 40))
+        self.assertNotEqual(one.severity("PPA", coverage, 40), abc_group.Shocks(2).severity("PPA", coverage, 40))
+        draws = [one.settle(coverage, month) for month in range(0, 120, 12)]
+        self.assertTrue(all(0.4 < d < 2.5 for d in draws))
+        self.assertGreater(max(draws) - min(draws), 0.05)
 
     def test_aggregate_members_leave_out_reporting_subsets(self) -> None:
         self.assertEqual(abc_group.reserving_class_members(5, "Comp ex Cat"), {"Comprehensive"})

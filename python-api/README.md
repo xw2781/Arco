@@ -104,7 +104,7 @@ The `ABC_Group_Quarterly_Review_202608` demo project takes its four import table
 python -m arcrho_api.demo_data.abc_group --output "C:\Temp\abc_tables" --seed 20260831
 ```
 
-ABC Insurance Group is fictional: claims are simulated one by one with report and settlement lags, case reserves, ALAE, salvage and subrogation, and some states are entered late so their triangles are short. `tools/build_abc_group_demo_project.py` in the repository builds the project from these tables.
+ABC Insurance Group is fictional: claims are simulated one by one with report and settlement lags, case reserves, ALAE, salvage and subrogation, and some states are entered late so their triangles are short. Shared shocks (by accident year, calendar year and month) and a heavy-tailed large-loss share give the triangles the development volatility of real data, and the vehicle lines carry the industry's COVID-19 pattern: the 2020 frequency drop, shelter-in-place premium paybacks, court-closure settlement delays and the later severity and theft surges. `tools/build_abc_group_demo_project.py` in the repository builds the project from these tables.
 
 ## Installing From ArcRho
 

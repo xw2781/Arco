@@ -12,6 +12,17 @@ generator, so the same seed always writes byte-identical files:
 - claim counts are Poisson, severities lognormal with an annual trend and a
   2021-2023 inflation spike, and each claim has a report lag, a settlement lag,
   case reserves, ALAE, salvage and subrogation;
+- liability claims include a heavy-tailed (Pareto) large-loss share;
+- shared shocks move many claims at once, as real books do: frequency by
+  accident year, state and month (weather, mix), severity by accident year,
+  report speed by accident year, and settlement speed and case-reserve
+  adequacy by calendar year. Without them the independent claim-level noise
+  averages out and the triangles develop far more smoothly than real ones;
+- COVID-19 hits the vehicle lines as it hit the industry: claim frequency
+  roughly halves in April 2020 and recovers through 2022, injury severity
+  rises on emptier, faster roads, court closures hold injury settlements over
+  into mid-2021, April-May 2020 premium carries a 15% shelter-in-place
+  payback, and a theft wave lifts comprehensive frequency in 2022-2024;
 - liability case reserves are set below ultimate until a case-reserve
   strengthening review in January 2024, which re-sets every open reserve;
 - a few catastrophe months add Comprehensive and Home Property claims, which
@@ -107,8 +118,8 @@ AUTO_COVERAGES = _coverages(
     ("Bodily Injury Limited Tort", 0.0060, 12500, 1.10, 1.0, 1.4, 13, 0.30, 0.12, 0.0, 0.010, 0.05, "liability", 0.64),
     ("Uninsured Motorist BI", 0.0018, 23000, 1.20, 2.5, 1.5, 21, 0.25, 0.12, 0.0, 0.030, 0.05, "liability", 0.62),
     ("Uninsured Motorist BI Limited Tort", 0.0012, 18000, 1.15, 2.5, 1.5, 18, 0.30, 0.11, 0.0, 0.030, 0.05, "liability", 0.60),
-    ("Property Damage", 0.0330, 4300, 0.80, 0.3, 1.0, 2, 0.12, 0.03, 0.0, 0.040, 0.04, "physical", 0.62),
-    ("Uninsured Motorist PD", 0.0040, 3600, 0.85, 0.5, 1.0, 3, 0.20, 0.02, 0.0, 0.100, 0.04, "physical", 0.55),
+    ("Property Damage", 0.0330, 4300, 0.80, 0.3, 1.6, 2, 0.12, 0.03, 0.0, 0.040, 0.04, "physical", 0.62),
+    ("Uninsured Motorist PD", 0.0040, 3600, 0.85, 0.5, 1.6, 3, 0.20, 0.02, 0.0, 0.100, 0.04, "physical", 0.55),
     ("Medical Payments", 0.0070, 3300, 0.90, 0.8, 1.2, 5, 0.18, 0.04, 0.0, 0.020, 0.03, "liability", 0.58),
     ("Personal Injury Protection", 0.0140, 7600, 1.10, 0.8, 1.2, 12, 0.12, 0.10, 0.0, 0.020, 0.04, "liability", 0.68),
     ("Collision", 0.0520, 4800, 0.70, 0.2, 0.8, 1.5, 0.12, 0.015, 0.070, 0.090, 0.04, "physical", 0.60),
@@ -117,7 +128,7 @@ AUTO_COVERAGES = _coverages(
 MOTORCYCLE_COVERAGES = _coverages(
     ("Bodily Injury", 0.0110, 24000, 1.20, 1.0, 1.4, 18, 0.20, 0.15, 0.0, 0.010, 0.05, "liability", 0.65),
     ("Uninsured Motorist BI", 0.0020, 26000, 1.20, 2.5, 1.5, 21, 0.25, 0.12, 0.0, 0.030, 0.05, "liability", 0.60),
-    ("Property Damage", 0.0090, 3200, 0.80, 0.3, 1.0, 2, 0.12, 0.03, 0.0, 0.040, 0.04, "physical", 0.60),
+    ("Property Damage", 0.0090, 3200, 0.80, 0.3, 1.6, 2, 0.12, 0.03, 0.0, 0.040, 0.04, "physical", 0.60),
     ("Medical Payments", 0.0060, 5000, 0.95, 0.8, 1.2, 6, 0.15, 0.05, 0.0, 0.020, 0.03, "liability", 0.58),
     ("Collision", 0.0220, 6500, 0.75, 0.2, 0.8, 1.8, 0.12, 0.015, 0.080, 0.070, 0.04, "physical", 0.58),
     ("Comprehensive", 0.0120, 3000, 0.95, 0.2, 0.8, 1.2, 0.15, 0.010, 0.060, 0.020, 0.04, "physical", 0.50),
@@ -270,16 +281,75 @@ def policies_in_force(book: Book, channel_share: float, channel: str, index: int
     return units
 
 
+# COVID-19 in the vehicle lines (PPA and MC), from published industry figures:
+# - Frequency: claims fell 43% (injury) to 47% (physical damage) from March to
+#   mid-April 2020 (Guidewire), were still 25-35% down in May-June (CCC) and
+#   20-30% down in July (Snapsheet), and recovered slowly through 2021-2022.
+#   (first month, last month, injury-coverage factor, physical-damage factor)
+COVID_FREQUENCY = (
+    (202003, 202003, 0.86, 0.83),
+    (202004, 202004, 0.58, 0.53),
+    (202005, 202005, 0.67, 0.63),
+    (202006, 202006, 0.77, 0.74),
+    (202007, 202012, 0.84, 0.80),
+    (202101, 202106, 0.90, 0.88),
+    (202107, 202112, 0.95, 0.94),
+    (202201, 202212, 0.97, 0.97),
+)
+# Comprehensive (theft, weather, glass) did not depend on miles driven as much.
+COVID_COMPREHENSIVE_SHARE = 0.4
+# - Severity: emptier roads meant faster crashes; the fatality rate per mile
+#   rose 21% in 2020 (NHTSA), so injury claims from those months cost more.
+#   (first month, last month, injury severity factor, physical severity factor)
+COVID_SEVERITY = (
+    (202004, 202012, 1.12, 1.05),
+    (202101, 202106, 1.08, 1.03),
+    (202107, 202112, 1.04, 1.00),
+)
+# - Courts closed in late March 2020 (court conferences fell ~90%, Milliman);
+#   injury claims due to settle then were held over until they reopened, and
+#   parts shortages lengthened repair cycle times in 2021-2022.
+#   Only third-party and uninsured-motorist injury claims go to court, and
+#   about half of those claimants have attorneys (IRC).
+COURT_CLOSURE = (202004, 202106)
+COURT_DELAY_MONTHS = (2, 9)
+COURT_DELAYED_SHARE = 0.5
+COURT_COVERAGES = frozenset({"Bodily Injury", "Bodily Injury Limited Tort", "Uninsured Motorist BI",
+                             "Uninsured Motorist BI Limited Tort"})
+REPAIR_DELAY = (202107, 202212, 0.35)  # first and last close month, share delayed one month
+# - Insurers returned 15-25% of April-May 2020 auto premium as shelter-in-place
+#   paybacks (Allstate 15%, Progressive/USAA 20%); ABC credited 15%.
+PREMIUM_PAYBACK = {202004: 0.15, 202005: 0.15}
+# The Hyundai/Kia theft wave (HLDI) lifted comprehensive frequency.
+THEFT_WAVE = ((202207, 202312, 1.20), (202401, 202412, 1.08))
+VEHICLE_LINES = frozenset({"PPA", "MC"})
+
+
+def _period_factor(table, label: int, column: int, default: float = 1.0) -> float:
+    for first, last, *factors in table:
+        if first <= label <= last:
+            return factors[column]
+    return default
+
+
+def _covid_frequency(coverage: Coverage, line: str, label: int) -> float:
+    if line not in VEHICLE_LINES:
+        return 1.0
+    factor = _period_factor(COVID_FREQUENCY, label, 0 if coverage.family == "liability" else 1)
+    if coverage.name == "Comprehensive":
+        factor = 1.0 - (1.0 - factor) * COVID_COMPREHENSIVE_SHARE
+        factor *= _period_factor(THEFT_WAVE, label, 0)
+    return factor
+
+
+def _covid_severity(coverage: Coverage, line: str, label: int) -> float:
+    if line not in VEHICLE_LINES:
+        return 1.0
+    return _period_factor(COVID_SEVERITY, label, 0 if coverage.family == "liability" else 1)
+
+
 def _frequency_index(coverage: Coverage, line: str, index: int) -> float:
-    label = month_label(index)
-    factor = 1.0
-    if line != "HO" and line != "DF":
-        if 202004 <= label <= 202005:
-            factor = 0.70
-        elif 202006 <= label <= 202012:
-            factor = 0.85
-        elif 202101 <= label <= 202106:
-            factor = 0.93
+    factor = _covid_frequency(coverage, line, month_label(index))
     winter = index % 12 in (0, 1, 11)
     if winter and coverage.name in ("Collision", "Property Damage", "Home Property"):
         factor *= 1.15
@@ -338,6 +408,75 @@ def _lognormal(rng: random.Random, mean: float, sigma: float) -> float:
     return rng.lognormvariate(math.log(mean) - sigma * sigma / 2.0, sigma)
 
 
+# Shared shocks: lognormal multipliers with mean 1, one per key. Each is drawn
+# from its own generator seeded by the key, so a shock does not depend on the
+# order the book is simulated in. Shape by kind and coverage family.
+SHOCK_SIGMA = {
+    "frequency_year": {"liability": 0.08, "physical": 0.06, "property": 0.07},
+    "frequency_state_year": {"liability": 0.05, "physical": 0.04, "property": 0.05},
+    "frequency_month": {"liability": 0.10, "physical": 0.18, "property": 0.15},
+    "severity_year": {"liability": 0.08, "physical": 0.05, "property": 0.06},
+    "report_year": {"liability": 0.25, "physical": 0.20, "property": 0.20},
+    "settle_year": {"liability": 0.18, "physical": 0.15, "property": 0.15},
+    "adequacy_year": {"liability": 0.10, "physical": 0.06, "property": 0.07},
+}
+# Spread of one adjuster's case reserve around the target adequacy.
+CASE_NOISE_SIGMA = {"liability": 0.45, "physical": 0.30, "property": 0.35}
+# Large liability losses: the share of paid claims that are large, the mean
+# large loss as a multiple of the coverage severity, the Pareto shape, the
+# policy-limit cap as a multiple of severity, and how much slower they settle.
+LARGE_LOSS_SHARE = 0.02
+LARGE_LOSS_MULTIPLE = 6.0
+LARGE_LOSS_ALPHA = 1.8
+LARGE_LOSS_CAP = 60.0
+LARGE_LOSS_SETTLE = 1.8
+
+
+class Shocks:
+    def __init__(self, seed: int) -> None:
+        self.seed = seed
+        self._cache: dict[tuple, float] = {}
+
+    def draw(self, kind: str, family: str, *key) -> float:
+        cache_key = (kind, family, *key)
+        value = self._cache.get(cache_key)
+        if value is None:
+            sigma = SHOCK_SIGMA[kind][family]
+            normal = random.Random(f"{self.seed}|{kind}|{family}|{'|'.join(map(str, key))}").gauss(0.0, 1.0)
+            value = self._cache[cache_key] = math.exp(sigma * normal - sigma * sigma / 2.0)
+        return value
+
+    def frequency(self, line: str, coverage: Coverage, state: str, index: int) -> float:
+        year = _year(index)
+        return (self.draw("frequency_year", coverage.family, line, coverage.name, year)
+                * self.draw("frequency_state_year", coverage.family, line, state, coverage.name, year)
+                * self.draw("frequency_month", coverage.family, line, index))
+
+    def severity(self, line: str, coverage: Coverage, index: int) -> float:
+        return self.draw("severity_year", coverage.family, line, coverage.name, _year(index))
+
+    def report(self, line: str, coverage: Coverage, index: int) -> float:
+        return self.draw("report_year", coverage.family, line, _year(index))
+
+    def settle(self, coverage: Coverage, index: int) -> float:
+        return self.draw("settle_year", coverage.family, _year(index))
+
+    def adequacy(self, coverage: Coverage, index: int) -> float:
+        return self.draw("adequacy_year", coverage.family, _year(index))
+
+
+def _claim_loss(rng: random.Random, coverage: Coverage, severity: float) -> tuple[float, bool]:
+    """One paid claim's ultimate loss; liability has a capped Pareto large-loss share."""
+    if coverage.family != "liability":
+        return _lognormal(rng, severity, coverage.sigma), False
+    if rng.random() < LARGE_LOSS_SHARE:
+        alpha = LARGE_LOSS_ALPHA
+        scale = severity * LARGE_LOSS_MULTIPLE * (alpha - 1.0) / alpha
+        return min(scale * (1.0 - rng.random()) ** (-1.0 / alpha), severity * LARGE_LOSS_CAP), True
+    attritional = severity * (1.0 - LARGE_LOSS_SHARE * LARGE_LOSS_MULTIPLE) / (1.0 - LARGE_LOSS_SHARE)
+    return _lognormal(rng, attritional, coverage.sigma), False
+
+
 # ---------------------------------------------------------------- claims
 
 
@@ -357,17 +496,28 @@ def _case_adequacy(coverage: Coverage, stage: int, index: int) -> float:
     return (after if index >= month_index(STRENGTHENING_MONTH) else before)[stage]
 
 
-def _claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_multiple: float):
+def _claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_multiple: float,
+                  shocks: Shocks, line: str):
     """Events of one claim in time order: (month, kind, paid, case after, alae, salvage, subro)."""
     cat = cat_multiple != 1.0
-    severity = severity_mean(coverage, accident) * cat_multiple
+    severity = (severity_mean(coverage, accident) * cat_multiple * shocks.severity(line, coverage, accident)
+                * _covid_severity(coverage, line, month_label(accident)))
     paid_claim = rng.random() >= coverage.closed_without_payment
-    report_median = 0.3 if cat else coverage.report_median
+    loss, large = _claim_loss(rng, coverage, severity) if paid_claim else (0.0, False)
+    report_median = 0.3 if cat else coverage.report_median * shocks.report(line, coverage, accident)
     report = accident + int(rng.lognormvariate(math.log(report_median), coverage.report_sigma))
-    settle_median = coverage.settle_months * (0.6 if cat else 1.0)
+    settle_median = (coverage.settle_months * (0.6 if cat else 1.0) * shocks.settle(coverage, report)
+                     * (LARGE_LOSS_SETTLE if large else 1.0))
     settle_sigma = 0.6 if coverage.family == "physical" else 0.85
     close = report + max(0, int(round(rng.lognormvariate(math.log(settle_median), settle_sigma))))
-    loss = _lognormal(rng, severity, coverage.sigma) if paid_claim else 0.0
+    if line in VEHICLE_LINES:
+        close_label = month_label(close)
+        if coverage.name in COURT_COVERAGES and COURT_CLOSURE[0] <= close_label <= COURT_CLOSURE[1] \
+                and rng.random() < COURT_DELAYED_SHARE:
+            close += rng.randint(*COURT_DELAY_MONTHS)
+        elif coverage.family == "physical" and REPAIR_DELAY[0] <= close_label <= REPAIR_DELAY[1] \
+                and rng.random() < REPAIR_DELAY[2]:
+            close += 1
     life = close - report
     reviews = [report + life // 3, report + 2 * life // 3] if life >= 6 else ([report + life // 2] if life >= 3 else [])
     shares = (rng.uniform(0.05, 0.20), rng.uniform(0.20, 0.40)) if len(reviews) == 2 else (rng.uniform(0.2, 0.5),)
@@ -376,7 +526,8 @@ def _claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_mul
 
     def case_reserve(stage: int, month: int, outstanding: float) -> float:
         base = outstanding if paid_claim else severity * (0.25 if coverage.family == "liability" else 0.4)
-        return max(50.0, base * _case_adequacy(coverage, stage, month) * _lognormal(rng, 1.0, 0.25))
+        adequacy = _case_adequacy(coverage, stage, month) * shocks.adequacy(coverage, month)
+        return max(50.0, base * adequacy * _lognormal(rng, 1.0, CASE_NOISE_SIGMA[coverage.family]))
 
     events = [(report, "report", 0.0, case_reserve(0, report, loss), 0.0, 0.0, 0.0)]
     paid = 0.0
@@ -502,6 +653,7 @@ class GeneratedTables:
 
 def generate(seed: int = DEFAULT_SEED, valuation_month: int = VALUATION_MONTH) -> GeneratedTables:
     rng = random.Random(seed)
+    shocks = Shocks(seed)
     valuation = month_index(valuation_month)
     last_premium = month_index(valuation_month // 100 * 100 + 12)
     cells: dict[tuple, tuple[list[float], list[float]]] = {}
@@ -523,12 +675,14 @@ def generate(seed: int = DEFAULT_SEED, valuation_month: int = VALUATION_MONTH) -
                         continue
                     earned = units * exposure_factor / 12.0
                     exposure[(*key, index)] = earned
-                    premium[(*key, index)] = earned * _premium_per_exposure(book, coverage, index)
+                    payback = PREMIUM_PAYBACK.get(month_label(index), 0.0) if book.line in VEHICLE_LINES else 0.0
+                    premium[(*key, index)] = earned * _premium_per_exposure(book, coverage, index) * (1.0 - payback)
                     if index > valuation:
                         continue
-                    expected = earned * coverage.frequency * _frequency_index(coverage, book.line, index)
+                    expected = (earned * coverage.frequency * _frequency_index(coverage, book.line, index)
+                                * shocks.frequency(book.line, coverage, book.state, index))
                     for _ in range(_poisson(rng, expected)):
-                        claim = _claim_events(rng, coverage, index, 1.0)
+                        claim = _claim_events(rng, coverage, index, 1.0, shocks, book.line)
                         _post_claim(cells, (key,), index, valuation, claim)
                         _post_ultimate(ultimates, (key,), index, claim)
                     event = cat_by_month.get(index)
@@ -536,7 +690,7 @@ def generate(seed: int = DEFAULT_SEED, valuation_month: int = VALUATION_MONTH) -
                         rate = event[2] if coverage_name == "Comprehensive" else event[3]
                         multiple = event[4] if coverage_name == "Comprehensive" else 1.0
                         for _ in range(_poisson(rng, earned * rate)):
-                            claim = _claim_events(rng, coverage, index, multiple)
+                            claim = _claim_events(rng, coverage, index, multiple, shocks, book.line)
                             _post_claim(cells, (key, cat_key), index, valuation, claim)
                             _post_ultimate(ultimates, (key, cat_key), index, claim)
 

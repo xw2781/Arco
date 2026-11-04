@@ -8,6 +8,7 @@ from tools.build_abc_group_demo_project import (
     CLASS_MAP,
     PROJECTS_DIR,
     PROJECT,
+    _exclude_covid_year,
     _primary_development_method,
     class_dir,
     combined_source_spec,
@@ -71,6 +72,19 @@ class SelectionRulesTest(unittest.TestCase):
         kinds = ["dfm", "dfm", "dfm"]
         self.assertEqual(_primary_development_method(sources, kinds, {"liability": True}), 1)
         self.assertEqual(_primary_development_method(sources, kinds, {"liability": False}), 2)
+
+    def test_covid_year_is_excluded_only_where_three_factors_remain(self) -> None:
+        ratios = [[1.5, 1.1, 1.01, 1.0] for _ in range(4)] + [[1.6, 1.2]]  # 2017-2021; 2020 is row 3
+        method = {"details_tab": {"origin_length": 12},
+                  "ratios_tab": {"ratio_triangle": {"ratio_values": ratios,
+                                                    "excluded": [[0] * len(row) for row in ratios]}}}
+        self.assertTrue(_exclude_covid_year(method))
+        excluded = method["ratios_tab"]["ratio_triangle"]["excluded"]
+        self.assertEqual(excluded[3], [1, 1, 1, 1])
+        method["ratios_tab"]["ratio_triangle"]["excluded"] = [[0] * len(row) for row in ratios]
+        method["ratios_tab"]["ratio_triangle"]["ratio_values"][0][3] = None
+        _exclude_covid_year(method)
+        self.assertEqual(method["ratios_tab"]["ratio_triangle"]["excluded"][3], [1, 1, 1, 0])
 
     def test_result_selection_weights_follow_maturity(self) -> None:
         labels = [str(year) for year in range(2017, 2027)]

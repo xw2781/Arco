@@ -1099,6 +1099,38 @@ def _crossing_cells(method: dict) -> list[tuple[int, int]]:
     return cells
 
 
+COVID_YEAR = 2020
+VEHICLE_GROUPS = ("ABC Auto", "ABC Moto")
+MIN_FACTORS_LEFT = 3
+
+
+def _exclude_covid_year(method: dict) -> bool:
+    """Exclude accident-year 2020 factors wherever at least three other factors remain."""
+    details = method.get("details_tab", {})
+    origin = int(details.get("origin_length") or 12)
+    first_year = abc_group.FIRST_MONTH // 100
+    triangle = method.get("ratios_tab", {}).get("ratio_triangle", {})
+    ratios = triangle.get("ratio_values") or []
+    excluded = triangle.get("excluded") or []
+    rows = [i for i in range(len(ratios)) if first_year + (i * origin) // 12 == COVID_YEAR]
+    changed = False
+    columns = max((len(row) for row in ratios), default=0)
+    for j in range(columns):
+        def kept(i: int) -> bool:
+            row = ratios[i]
+            return j < len(row) and isinstance(row[j], (int, float)) and not (
+                i < len(excluded) and j < len(excluded[i]) and excluded[i][j])
+        targets = [i for i in rows if kept(i)]
+        others = sum(1 for i in range(len(ratios)) if i not in rows and kept(i))
+        if not targets or others < MIN_FACTORS_LEFT:
+            continue
+        for i in targets:
+            if i < len(excluded) and j < len(excluded[i]):
+                excluded[i][j] = 1
+                changed = True
+    return changed
+
+
 def plan_dfm(method: dict, reserving_class: str, benchmark: list[float] | None) -> tuple[dict, str]:
     """Selections and the notes that describe them for one DFM payload."""
     details = method["details_tab"]
@@ -1210,6 +1242,10 @@ def plan_dfm(method: dict, reserving_class: str, benchmark: list[float] | None) 
         else:
             tail_reason = "a small allowance for late case development on the oldest open claims"
         lines.append(f"Tail {tail:.3f}: {tail_reason}.")
+        if reserving_class.split(BS)[0] in VEHICLE_GROUPS and _exclude_covid_year(method):
+            effects = ("cut its claim frequency, raised its injury severity and held its court settlements over"
+                       if segment["liability"] else "cut its claim frequency by up to half in the spring")
+            lines.append(f"Excluded accident year 2020: COVID-19 lockdowns {effects}, so its factors are not typical.")
     if excluded_note:
         lines.append(excluded_note)
     title = "Selections"
@@ -1400,7 +1436,16 @@ def _rs_order(path: Path) -> tuple[int, int]:
     return stage, {"F": 0, "D": 1, "C": 2, "G": 3}.get(series, 4)
 
 
-def other_method_notes(kind: str, method: dict) -> str:
+def _settlement_reason(reserving_class: str) -> str:
+    if reserving_class.split(BS)[0] not in VEHICLE_GROUPS:
+        return "settlement speed varies from year to year with claim volume and staffing"
+    if reserving_class.split(BS)[-1] in LIABILITY_LEAVES:
+        return ("court closures held injury settlements over from April 2020 to mid-2021, and settlement "
+                "speed varies from year to year")
+    return ("parts shortages lengthened repair times in 2021-2022, and settlement speed varies from year to year")
+
+
+def other_method_notes(kind: str, method: dict, reserving_class: str = "") -> str:
     """Plain notes for the methods whose settings the demo keeps as the template set them."""
     tab = method.get("method_tab") or {}
     details = method.get("details_tab") or {}
@@ -1429,8 +1474,7 @@ def other_method_notes(kind: str, method: dict) -> str:
         return ("Berquist-Sherman settlement rate\n"
                 f"- Restates {tab.get('paid_claims')} to the latest diagonal's proportion of {tab.get('ultimate_claim_numbers')} "
                 f"closed, using {tab.get('closed_claim_numbers')}.\n"
-                "- A control on the paid method: ABC's closing pace has been steady, so the adjustment is small "
-                "and the adjusted paid DFM should agree with the unadjusted one.")
+                f"- Needed because the closing pace has moved: {_settlement_reason(reserving_class)}.")
     if kind == "BST":
         simulation = method.get("simulation_tab") or {}
         results = method.get("results_tab") or {}
@@ -1450,7 +1494,7 @@ def save_other_notes(reserving_class: str) -> list[str]:
         if kind not in ("BF", "CC", "BSCRA", "BSSR", "BST"):
             continue
         method = read_json(path)
-        notes = other_method_notes(kind, method)
+        notes = other_method_notes(kind, method, reserving_class)
         name = str(method.get("details_tab", {}).get("name") or "")
         if not notes or not name:
             continue
