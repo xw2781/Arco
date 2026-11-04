@@ -4,7 +4,7 @@ description: "2026-11-04: the Project Dates panel's Engine job moves a whole pro
 metadata:
   node_type: memory
   type: project
-  modified: 2026-11-04T07:00:00.000Z
+  modified: 2026-11-04T13:30:00.000Z
 ---
 
 Since 2026-11-04 (plan `docs/plans/completed/project_dates_panel.md`, deployed to the Bridge,
@@ -28,6 +28,17 @@ failure, `dependent_problems` (one line per declined dependent, not just the fir
 items and `rerun_needed`. A start-of-year move on the Fake project needs two runs (~17 then ~11
 min); problems the project had before the change (BF snapshot mismatch, mixed origin lengths)
 stay and never hold the record.
+
+**Expected problems (follow-up 2026-11-04).** A hand-entered or ResQ triangle cannot gain the
+new diagonal, so a Berquist-Sherman method reading it beside regenerated claim counts refuses
+("must match the primary triangle row length"). `expected_walk_failures` in the job marks that
+refusal expected only when the method's sidecar precedents include a triangle the job flagged
+(`inputs_new_diagonal` in the pending record: reshaped, not a vector, Development End moved
+later) and the reason is one of `SHAPE_REFUSALS` in `berquist_sherman_contract`; a dependent is
+expected when every precedent that stopped it is. Expected lines go to the status's
+`expected_problems`, never `failures`/`dependent_problems`, so the panel does not show or count
+them and they do not hold the record. The triangle's review row says "needs values for the new
+diagonal". New cells stay blank, never 0: a zero diagonal makes B&S calculate silently wrong.
 
 **Testing on the Server PC.** Production's Gateway answers on 127.0.0.1:28767 too, so a local-root
 Gateway there must move to another port (28777 was used) for the test and back afterwards. Move
