@@ -133,7 +133,7 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
         ):
             if reserving_class == self.failing_class:
                 raise RuntimeError("the Arco Engine did not answer")
-            roots = prepare()
+            roots, _kept = prepare()
             if reserving_class in self.expected_classes:
                 # Only expected problems: the class is done, nothing is reported.
                 self.expected_seen.append(expected_failures({"ok": False}, []))
@@ -155,7 +155,7 @@ class ExecuteProjectDatesChangeTests(unittest.TestCase):
                 mark_new_diagonal(key)
                 mark_input_done(key)
                 result["datasets_reshaped"] += 1
-            return ["C 82"]
+            return ["C 82"], {"c 82"}
 
         for target in (
             patch.object(source_table_refresh, "_refresh_one_reserving_class", side_effect=refresh_one),

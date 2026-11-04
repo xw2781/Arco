@@ -393,6 +393,113 @@ class NewDiagonalTests(PreviewTests):
         self.assertFalse(any(item.get("needs_new_diagonal") for item in result["review"]))
 
 
+class RerunTests(PreviewTests):
+    """Running the same change again (resume) through the Engine's per-class step.
+
+    A ResQ triangle stored as engine kind cannot be rebuilt from the source
+    table, so neither run sends it to the Engine; the rerun leaves anything
+    already reshaped exactly as it is and reshapes only what the first run
+    never reached.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        from app_server.services import calculated_dataset_service
+        from arcrho_engine import source_table_refresh
+
+        self.regenerated: list = []
+        self.walk_roots: list = []
+
+        def regenerate(_root, _project, _class, name):
+            self.regenerated.append(name)
+
+        def walk(_project, _class, first, _ref, *, additional_roots=(), rebuild_index=False):
+            self.walk_roots.append([first, *(name for name, _ in additional_roots)])
+            return {"ok": True}
+
+        for item in (
+            patch.object(source_table_refresh, "acquire_reserving_class_lease", return_value=object()),
+            patch.object(source_table_refresh, "start_reserving_class_lease_heartbeat", return_value=(None, None)),
+            patch.object(source_table_refresh, "stop_reserving_class_lease_heartbeat"),
+            patch.object(source_table_refresh, "release_reserving_class_lease"),
+            patch.object(source_table_refresh, "_regenerate_engine_dataset", side_effect=regenerate),
+            patch.object(calculated_dataset_service, "recalculate_dependents", side_effect=walk),
+        ):
+            item.start()
+            self.addCleanup(item.stop)
+
+    def _run_class(self, inputs_done: set):
+        from arcrho_engine import project_dates_jobs, source_table_refresh
+
+        result = {"review": [], "failures": [], "datasets_reshaped": 0, "methods_reshaped": 0,
+                  "datasets_failed": 0, "datasets_regenerated": 0, "methods_updated": 0,
+                  "dependent_problems": [], "expected_problems": []}
+        self.regenerated.clear()
+        source_table_refresh._refresh_one_reserving_class(
+            self.root, PROJECT, CLASS, result,
+            on_dataset=lambda _name: None,
+            prepare=lambda: project_dates_jobs._reshape_class(
+                PROJECT, CLASS, PREVIOUS, NEW, result,
+                inputs_done=inputs_done, mark_input_done=inputs_done.add, mark_new_diagonal=lambda _key: None,
+            ),
+        )
+        return result
+
+    def _stored(self) -> dict:
+        return {
+            path.relative_to(self.project_dir).as_posix(): path.read_bytes()
+            for path in self.project_dir.rglob("*")
+            if path.is_file() and path.suffix in {".csv", ".json"} and path.name != "index.json"
+        }
+
+    def _csv(self, name: str) -> str:
+        return (Path(config.get_project_dataset_cache_dir(PROJECT, CLASS)) / f"{name}.csv").read_text(encoding="utf-8")
+
+    def test_an_already_reshaped_resq_triangle_is_left_alone_and_never_regenerated(self) -> None:
+        from arcrho_project_dates_job_contract import pending_item_key
+
+        inputs_done: set = set()
+        first = self._run_class(inputs_done)
+        self.assertEqual(self.regenerated, ["Paid"])
+        self.assertEqual(first["failures"], [])
+        self.assertIn(pending_item_key(CLASS, "ResQ Tri"), inputs_done)
+        after_first = self._stored()
+
+        second = self._run_class(inputs_done)
+        # The rerun regenerates only the real engine dataset and moves nothing twice.
+        self.assertEqual(self.regenerated, ["Paid"])
+        self.assertEqual(second["failures"], [])
+        self.assertEqual(second["datasets_failed"], 0)
+        self.assertEqual((second["datasets_reshaped"], second["methods_reshaped"]), (0, 0))
+        self.assertEqual(self._stored(), after_first)
+        self.assertEqual(self.walk_roots[-1], ["Paid"])
+
+    def test_a_resq_triangle_the_first_run_never_reached_is_reshaped_once(self) -> None:
+        from arcrho_project_dates_job_contract import pending_item_key
+
+        before = self._csv("ResQ Tri")
+        # The first run stopped after the hand-entered triangle.
+        inputs_done = {pending_item_key(CLASS, "Hand Tri")}
+        hand_before = self._csv("Hand Tri")
+        resumed = self._run_class(inputs_done)
+        self.assertEqual(self.regenerated, ["Paid"])
+        self.assertEqual(resumed["failures"], [])
+        self.assertNotEqual(self._csv("ResQ Tri"), before)
+        self.assertEqual(self._csv("Hand Tri"), hand_before)
+        self.assertIn("ResQ Tri", self.walk_roots[-1])
+        # Dropped origins go; the new ones start blank, never zero.
+        rows = self._csv("ResQ Tri").splitlines()
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(rows[:20], ["1"] * 20)
+        self.assertEqual(rows[20:], [""] * 4)
+        once = self._stored()
+
+        again = self._run_class(inputs_done)
+        self.assertEqual(self.regenerated, ["Paid"])
+        self.assertEqual(again["datasets_reshaped"], 0)
+        self.assertEqual(self._stored(), once)
+
+
 class ExpectedWalkFailureTests(_Workspace):
     """Which declined dependents of a class walk the dates change expects."""
 

@@ -415,7 +415,7 @@ def _refresh_one_reserving_class(
     *,
     on_dataset: Callable[[str], None],
     dataset_types: list[str] | None = None,
-    prepare: Callable[[], list[str]] | None = None,
+    prepare: Callable[[], tuple[list[str], set[str]]] | None = None,
     expected_failures: Callable[[Mapping[str, Any], list[tuple[str, str]]], set[str]] | None = None,
 ) -> None:
     """Regenerate one class's engine datasets, then walk its dependents.
@@ -425,8 +425,11 @@ def _refresh_one_reserving_class(
     handles rather than racing the rewrite. ``dataset_types`` limits the
     regeneration to those types; the dependent walk that follows still starts
     from whatever was regenerated. ``prepare`` runs under the same lease before
-    anything is regenerated and returns more datasets to walk from (the project
-    dates job reshapes hand-entered datasets and methods there).
+    anything is regenerated and returns ``(roots, kept)``: more datasets to
+    walk from (the project dates job reshapes hand-entered datasets and methods
+    there), and the casefolded names of engine datasets it owns that must not
+    be regenerated (ResQ triangles stored as engine kind, whether reshaped now
+    or on an earlier run). Neither is regenerated.
     ``expected_failures`` gets the walk and its ``(name, line)`` failures and
     returns the names the caller expects to fail; their lines go to
     ``result["expected_problems"]`` instead of the problems and failures.
@@ -446,14 +449,20 @@ def _refresh_one_reserving_class(
 
     heartbeat_stop, heartbeat_thread = start_reserving_class_lease_heartbeat(lease)
     try:
-        prepared = list(prepare() or []) if prepare is not None else []
+        prepared: list[str] = []
+        kept: set[str] = set()
+        if prepare is not None:
+            roots_from_prepare, kept_from_prepare = prepare()
+            prepared = list(roots_from_prepare or [])
+            kept = {str(name).casefold() for name in kept_from_prepare or ()}
         regenerated: list[str] = []
-        prepared_keys = {name.casefold() for name in prepared}
+        prepared_keys = {name.casefold() for name in prepared} | kept
         for dataset_name in _engine_dataset_instances(
             project_name, reserving_class, dataset_types
         ):
             if dataset_name.casefold() in prepared_keys:
-                # Already rewritten by ``prepare``; it is walked from below.
+                # Already rewritten by ``prepare`` (walked from below), or a
+                # stored dataset the Engine cannot rebuild from its source.
                 continue
             on_dataset(dataset_name)
             try:

@@ -271,6 +271,25 @@ def reshape_input_dataset_file(
     }
 
 
+def _is_imported_dataset_file(project_name: str, reserving_class: str, dataset_name: str) -> bool:
+    """``is_imported_dataset`` for a dataset on disk (its sidecar).
+
+    Asked only of an engine-kind dataset an earlier run already reshaped, so a
+    sidecar that cannot be read counts as imported: the Engine could not
+    rebuild it either.
+    """
+
+    from app_server.services import dataset_service
+
+    try:
+        sidecar = dataset_service._read_dataset_sidecar(
+            dataset_service._get_dataset_sidecar_path(project_name, reserving_class, dataset_name)
+        )
+    except Exception:
+        return True
+    return bool(sidecar) and not sidecar.get("calculated") and is_imported_dataset(sidecar)
+
+
 # ---------------------------------------------------------------------------
 # Methods whose refresh reads values without labels
 # ---------------------------------------------------------------------------
@@ -399,17 +418,22 @@ def _reshape_class(
     inputs_done: set[str],
     mark_input_done: Callable[[str], None],
     mark_new_diagonal: Callable[[str], None],
-) -> list[str]:
+) -> tuple[list[str], set[str]]:
     """Reshape a class's hand-entered datasets and label-less methods.
 
     Runs under the class lease, before the engine datasets are regenerated.
-    Returns the datasets the dependent walk has to start from as well.
+    Returns the datasets the dependent walk has to start from as well, and the
+    casefolded names of engine-kind datasets that hold imported values (ResQ
+    triangles, ``is_imported_dataset``): those are never regenerated, whether
+    this run reshaped them, left them as they were, or an earlier run of the
+    same change already moved them.
     """
 
     from app_server.services import dataset_instance_index_service, dataset_sidecar_status_service
     from app_server.services.berquist_sherman_service import BERQUIST_SHERMAN_METHOD_TYPES
 
     roots: list[str] = []
+    kept: set[str] = set()
 
     def review(
         name: str,
@@ -448,6 +472,12 @@ def _reshape_class(
         # A class walked again after problems must not move anything twice.
         key = pending_item_key(reserving_class, name)
         if key in inputs_done:
+            # Moved on an earlier run: leave it. An engine-kind one must not be
+            # sent to the Engine either, which cannot rebuild it.
+            if source_kind == "engine" and _is_imported_dataset_file(
+                project_name, reserving_class, name
+            ):
+                kept.add(name.casefold())
             continue
         try:
             if source_kind in {"input", "engine"}:
@@ -456,6 +486,8 @@ def _reshape_class(
                 )
                 if outcome is None:
                     continue
+                if source_kind == "engine":
+                    kept.add(name.casefold())
                 source_kind = "input"
                 if outcome["changed"]:
                     result["datasets_reshaped"] += 1
@@ -496,7 +528,7 @@ def _reshape_class(
                 roots.append(name)
             review(name, "method", method_type, outcome["review"])
             mark_input_done(key)
-    return roots
+    return roots, kept
 
 
 # ---------------------------------------------------------------------------

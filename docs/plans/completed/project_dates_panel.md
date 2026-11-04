@@ -335,6 +335,7 @@ The user asked that a refusal the change makes inevitable not show on the Projec
   - HOPxCAT: the CRA and SR methods and the Current Qtr chain they alone stopped.
   - The panel's line went from "Saved. 260 items could not refresh." to "Saved. 245 items could not refresh."; every other problem is unchanged.
 - **Left as found.** On the second run the 18 ResQ triangles stored as engine kind are sent to the Engine again and fail "does not resolve to any numeric source columns". The "1 dataset failed" of steps 8 and 9 is the Penn+CT MP+PIP Severity dataset, not the HOL input. Both predate this follow-up.
+- **Rerun fixed (later 2026-11-04).** A second run no longer sends ResQ triangles stored as engine kind to the Engine: the per-class reshape names every one the shared imported-dataset rule covers, whether it was reshaped now, left unchanged, or moved by an earlier run, and none of them is regenerated. One already moved stays as it is; one the first run never reached is reshaped once, with blank new cells. On the same Fake check run 1 was unchanged (74 problems, 1 failed dataset) and run 2 went from 18 failed datasets and 245 items on the panel to 1 failed dataset (the Penn+CT Severity one) and 228 items; regenerated, refreshed and expected counts were unchanged. The copy was restored byte for byte.
 
 ## Decisions (2026-11-03)
 
