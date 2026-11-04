@@ -120,3 +120,4 @@
 - [Excel-linked cells keep absolute position](excel-linked-cells-keep-absolute-position.md) — on a date reshape, Excel-linked in-cell formulas never shift; hard-coded data follows origin labels
 - [Project dates change job](project-dates-change-job.md) — 2026-11-04: one Engine job moves a project to new dates; its pending record relabels precedent rows until it clears
 - [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation hosted in Legacy\HOPxCAT+HOL; ResQ correlation still unconfirmed
+- [ABC demo project build](abc-demo-project-build.md) — 2026-11-04: demo is ABC_Group_Quarterly_Review_202608, built by tools/build_abc_group_demo_project.py; template-copy pitfalls
