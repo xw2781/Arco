@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-2 done 2026-11-04, step 3 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-3 done 2026-11-04, step 4 next.
 Last updated: 2026-11-04
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -14,7 +14,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | A ResQ import no longer writes datasets without a review status | [x] | 2026-11-04 | 45 min | 15 min | Imported datasets always carry a review status; an incomplete one is refused instead of saved |
 | 2 | One command reports every file in a project that is not in the current format | [x] | 2026-11-04 | 40 min | 6 min | One read-only command lists, by kind and problem, every project file the app would refuse or that is left-over clutter |
-| 3 | The local Fake project opens without format errors | [ ] | | 50 min | | |
+| 3 | The local Fake project opens without format errors | [x] | 2026-11-04 | 50 min | 25 min | The local copy passes every format check, and the BF and Cape Cod methods it refused before open again |
 | 4 | A realistic synthetic source table for the Fake project | [ ] | | 90 min | | |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [ ] | | 45 min | | |
 | 6 | Prior-quarter and prior-ultimate inputs sit on the same scale as the results | [ ] | | 50 min | | |
@@ -24,7 +24,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 
-Overall: 2 of 11 steps done. Estimated 595 min, actual so far 21 min.
+Overall: 3 of 11 steps done. Estimated 595 min, actual so far 46 min.
 
 ## How agents work this plan
 
@@ -149,19 +149,29 @@ Production reproduces the 2026-09-26 counts except where it was edited since (4 
 
 **Goal.** The local Fake project scans clean.
 
-**Read first.** `tools/restate_bf_unobserved_origin_ultimates.py`; `tools/restate_percentage_developed.py`; memory `bulk-method-restatement-hold`; `tools/local_server.py`.
+**Read first.** `tools/restate_bf_unobserved_origin_ultimates.py`; `tools/restate_percentage_developed.py`; memory `bulk-method-restatement-hold`; `tools/local_server.py`; memory `local-root-scripts-need-local-gateway-env` (a script against the local root needs the local Gateway credential and URL, not only `ARCRHO_SERVER_ROOT`).
 
 **Do.**
-- [ ] With `ARCRHO_SERVER_ROOT=C:\Arco Server` and the local server started, run both restate tools with `--apply`; extend the CC restate to the trend-rate and trend-factor cases if the scan still reports them.
-- [ ] A one-off `tools/repair_sidecar_core_fields.py --apply`: fill `status` and `method_type` from `SIDECAR_CORE_DEFAULTS`, mark method outputs calculated; no timestamp or audit change.
-- [ ] Delete the 4 dead-format BF methods and their 9 sidecars, the staging folders, `data\tmp`, the root backups, lock and temp files.
-- [ ] `copy-project` gains the same exclusions so a fresh copy never brings leftovers.
+- [x] With the local root, the local Gateway credential and URL set and the local server started, run both restate tools with `--apply`; extend the CC restate to the trend-rate and trend-factor cases if the scan still reports them.
+- [x] A one-off `tools/repair_sidecar_core_fields.py --apply`: fill `status` and `method_type` from `SIDECAR_CORE_DEFAULTS`, mark method outputs calculated; no timestamp or audit change.
+- [x] Delete the 4 dead-format BF methods and their 9 sidecars, the staging folders, `data\tmp`, the root backups, lock and temp files.
+- [x] `copy-project` gains the same exclusions so a fresh copy never brings leftovers.
 
 **Tests.** The repair tool's tests on a fixture.
 
 **Done when.** `scan_project_contracts.py` reports nothing for the local copy, and the app opens a BF and a CC method that it refused before.
 
-Estimate: code edit 30 min, test/validation 20 min, total 50 min.
+Estimate: code edit 30 min, test/validation 20 min, total 50 min. Actual: code edit 12 min, test/validation 13 min, total 25 min (the existing snapshot restate needed only a second method kind; the production-write investigation below is in the validation time).
+
+**Outcome (2026-11-04).** The local copy scans with no problems; the 13 notices left (5 DFMs without `curves_tab`, 8 indexes the app rebuilds on read) are self-healing. Done on the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Methods.** `restate_bf_unobserved_origin_ultimates.py` now covers Cape Cod too (`--kind bf|cc|all`, default all): it recalculates from the method's own snapshots, so it fixes the trend-rate and trend-factor cases as well as percentage developed, and restates any method the app would refuse. `restate_percentage_developed.py` was not used for the apply: it re-reads precedents, and 5 of the methods it covers cannot refresh on this data (mixed origin lengths, a 1-row adjusted triangle). The apply restated 48 BF and 13 CC methods and queued 16 walks; 14 succeeded, and 2 left Result Selections review-needed on the old 3-month vs 12-month mismatch (`MA\MP+PIP` C/D/E/G 92, `NY\MP+PIP` C 91/92, F 31) — data problems for steps 5-8.
+- **Sidecars.** `tools/repair_sidecar_core_fields.py` filled 81 `status`, 8 `method_type` + `status` (`method_type` takes the reader default `""`, not the `"None"` a fresh import writes) and marked 1 B&S output calculated.
+- **Deleted.** The 4 dead BF methods; 7 sidecars without a CSV (the 4 BF outputs, and `F 42` / `G 42` / `F 63` in `NY\BI Total`, which only the dead BFs read) and their entries in 5 sibling graphs; the staging folder, `data\tmp`, 4 root backups and every lock file. The Result Selections `F 91` / `G 91` in `NY\BI Total` still list the deleted BFs as candidate methods; step 8 resets them if a refresh refuses.
+- **copy-project** now also leaves out the project-root backups and the `data` folders project duplication already skips (staging, `tmp`); the backup pattern is shared with the scan.
+- **Opened.** `load_bornhuetter_ferguson_method` / `load_cape_cod_method` run against the local root open `HOL / F 41 A` and the `HOPxCAT` and `PD+UMPD` `F 53` methods, all three refused before.
+- **Lock files come back.** Every index write leaves `.index.json.lock`, so the scan reports lock files again after any use of the project; delete them before step 9's copy.
+- **Production touched once.** A first `restate_percentage_developed.py --dry-run` run with only `ARCRHO_SERVER_ROOT` set sent its Engine calculations to the production Gateway: production's Engine regenerated 76 engine-dataset CSVs in production's `NJ_Annual_Prod_202605_Fake` (18:59-19:06, no other production file changed), and the local copies, cleared before the request, were regenerated by the local Engine afterwards (two 3-month views in `NY\BI Total` are left to regenerate on demand). The production CSVs are Engine output from production's own source table, the same an open in the app would produce; 54 of them differ from the local Engine's output for the same file, which is built from today's source.
 
 ### Step 4 — Synthetic source generator
 

@@ -90,10 +90,21 @@ class LocalServerTests(unittest.TestCase):
         (project / "data" / "index.json").write_text("{}", encoding="utf-8")
         (project / "data" / ".index.json.lock").write_text("", encoding="utf-8")
         (project / ".tmp_write").write_text("", encoding="utf-8")
+        (project / "data" / ".arcrho-resq-import-staging" / "abc").mkdir(parents=True)
+        (project / "data" / "tmp").mkdir()
+        (project / "data" / "Class" / "sidecars").mkdir(parents=True)
+        (project / "data" / "Class" / "sidecars" / "x.json.bak").write_text("{}", encoding="utf-8")
+        (project / "dataset_types.json").write_text("{}", encoding="utf-8")
+        (project / "dataset_types.json.before-severity-formulas-20260830.bak").write_text("{}", encoding="utf-8")
+        (project / "data_processing_rules.before_phase2_20260717.json").write_text("{}", encoding="utf-8")
         target = local_server.copy_project(self.root, production_root=self.production, name="Fake", overwrite=False)
         self.assertTrue((target / "data" / "index.json").is_file())
         self.assertFalse((target / "data" / ".index.json.lock").exists())
         self.assertFalse((target / ".tmp_write").exists())
+        # The leftovers the contract scan reports stay behind; only root backups are dropped.
+        self.assertEqual(sorted(path.name for path in target.iterdir()), ["data", "dataset_types.json"])
+        self.assertEqual(sorted(path.name for path in (target / "data").iterdir()), ["Class", "index.json"])
+        self.assertTrue((target / "data" / "Class" / "sidecars" / "x.json.bak").is_file())
         with self.assertRaisesRegex(local_server.LocalServerError, "--overwrite"):
             local_server.copy_project(self.root, production_root=self.production, name="Fake", overwrite=False)
 

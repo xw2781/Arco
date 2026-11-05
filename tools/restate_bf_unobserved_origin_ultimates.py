@@ -1,4 +1,4 @@
-"""Republish Bornhuetter Ferguson methods whose unobserved origins now take the Selected Prior.
+"""Republish Bornhuetter Ferguson and Cape Cod methods that no longer match their own snapshots.
 
 A BF origin with no Latest value yet -- a quarter beyond the valuation in a
 quarterly class -- used to leave its New Ultimate blank. It now takes the whole
@@ -13,6 +13,10 @@ publish it: method JSON, output sidecar, and output vector, with the output
 flagged for review because its values changed. Every method of a reserving
 class is rewritten before that class's single dependent walk is queued on the
 Engine, so the walk never meets a sibling BF the app cannot yet open.
+
+Cape Cod methods are held to the same rule -- a stored trend rate, trend
+factor or percentage developed must be what the method's own snapshots give --
+and are restated the same way. ``--kind`` limits a run to one of the two.
 
 Examples:
 
@@ -37,14 +41,22 @@ sys.path.insert(0, str(REPO_ROOT / "python-api" / "src"))
 from app_server import config  # noqa: E402
 from app_server.services import (  # noqa: E402
     bornhuetter_ferguson_service as bf,
+    cape_cod_service as cc,
     dataset_sidecar_status_service,
     dependent_propagation_service as propagation,
 )
 from arcrho_api.bornhuetter_ferguson_contract import (  # noqa: E402
+    normalize_bornhuetter_ferguson_method,
     recalculate_bornhuetter_ferguson_method,
+)
+from arcrho_api.cape_cod_contract import (  # noqa: E402
+    CC_DERIVED_COLUMNS,
+    normalize_cape_cod_method,
+    recalculate_cape_cod_method,
 )
 from restate_percentage_developed import (  # noqa: E402
     BF_PREFIX,
+    CC_PREFIX,
     RestateError,
     _changed_rows,
     _method_names,
@@ -57,33 +69,66 @@ WALK_POLL_SECONDS = 5.0
 WALK_TIMEOUT_SECONDS = 1800.0
 
 
-def _plan_one(project: str, reserving_class: str, method_name: str) -> Dict[str, Any]:
-    method = _read_json(Path(bf._method_path(project, reserving_class, method_name)))
-    refreshed = recalculate_bornhuetter_ferguson_method(method, update_refresh_timestamp=False)
-    old = (method.get("method_tab") or {}).get("new_ultimate") or []
-    new = refreshed["method_tab"]["new_ultimate"]
+# kind -> (method file prefix, service, snapshot recalculation, the check the
+# app runs before it opens one, the method_tab columns compared row by row).
+KINDS = {
+    "BF": (BF_PREFIX, bf, recalculate_bornhuetter_ferguson_method, normalize_bornhuetter_ferguson_method, ("new_ultimate",)),
+    "Cape Cod": (CC_PREFIX, cc, recalculate_cape_cod_method, normalize_cape_cod_method, CC_DERIVED_COLUMNS),
+}
+KIND_OPTIONS = {"bf": ("BF",), "cc": ("Cape Cod",), "all": tuple(KINDS)}
+
+
+def _is_current(normalize: Any, method: Dict[str, Any]) -> bool:
+    try:
+        normalize(method)
+    except Exception:  # noqa: BLE001 - any refusal means the method needs restating
+        return False
+    return True
+
+
+def _plan_one(project: str, reserving_class: str, method_name: str, kind: str = "BF") -> Dict[str, Any]:
+    _prefix, service, recalculate, normalize, columns = KINDS[kind]
+    method = _read_json(Path(service._method_path(project, reserving_class, method_name)))
+    refreshed = recalculate(method, update_refresh_timestamp=False)
+    old_tab = method.get("method_tab") or {}
+    new_tab = refreshed["method_tab"]
+    old = old_tab.get(columns[0]) or []
+    new = new_tab[columns[0]]
+    changed = set()
+    for column in columns:
+        before = old_tab.get(column) if isinstance(old_tab.get(column), list) else []
+        after = new_tab.get(column) if isinstance(new_tab.get(column), list) else []
+        changed.update(
+            index for index in range(max(len(before), len(after)))
+            if _changed_rows(before[index:index + 1], after[index:index + 1])
+        )
     return {
+        "kind": kind,
         "reserving_class": reserving_class,
         "method": method_name,
         "origins": len(new),
-        "changed_rows": _changed_rows(old, new),
+        "changed_rows": len(changed),
         "filled_blanks": sum(
             1 for index in range(len(new))
             if (index >= len(old) or old[index] is None) and new[index] is not None
         ),
+        # A method the app refuses is restated even when no row moves past the
+        # comparison tolerance (a Cape Cod trend rate alone), or it stays refused.
+        "needs_restating": bool(changed) or not _is_current(normalize, method),
         "refreshed": refreshed,
     }
 
 
 def _publish_one(project: str, reserving_class: str, plan: Dict[str, Any]) -> Tuple[str, str]:
     refreshed = plan["refreshed"]
-    _method_name, output_dataset = bf._identity(refreshed)
-    sidecar_path = bf._sidecar_path(project, reserving_class, output_dataset)
+    service = KINDS[plan["kind"]][1]
+    _method_name, output_dataset = service._identity(refreshed)
+    sidecar_path = service._sidecar_path(project, reserving_class, output_dataset)
     with dataset_sidecar_status_service.sidecar_write_lock(sidecar_path):
-        existing_sidecar = bf._read_json(sidecar_path)
+        existing_sidecar = service._read_json(sidecar_path)
         if not existing_sidecar:
-            raise RestateError("BF output sidecar is missing.")
-        bf._publish(
+            raise RestateError(f"{plan['kind']} output sidecar is missing.")
+        service._publish(
             project,
             reserving_class,
             refreshed,
@@ -100,11 +145,15 @@ def _publish_one(project: str, reserving_class: str, plan: Dict[str, Any]) -> Tu
 def _apply_class(project: str, reserving_class: str, plans: List[Dict[str, Any]]) -> Dict[str, Any]:
     _wait_for_class(project, reserving_class)
     roots = []
-    with bf._lock(project, reserving_class):
-        for plan in plans:
-            output_dataset, output_type = _publish_one(project, reserving_class, plan)
-            roots.append(propagation.changed_root(output_dataset, output_type))
-            print(f"  restated {reserving_class} / {plan['method']}")
+    for kind, (_prefix, service, *_rest) in KINDS.items():
+        kind_plans = [plan for plan in plans if plan["kind"] == kind]
+        if not kind_plans:
+            continue
+        with service._lock(project, reserving_class):
+            for plan in kind_plans:
+                output_dataset, output_type = _publish_one(project, reserving_class, plan)
+                roots.append(propagation.changed_root(output_dataset, output_type))
+                print(f"  restated {kind:8} {reserving_class} / {plan['method']}")
     return propagation.enqueue_save_propagation(project, reserving_class, roots)
 
 
@@ -131,18 +180,19 @@ def _wait_for_walks(jobs: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
     return failed
 
 
-def run(project: str, *, apply: bool, verbose: bool) -> int:
+def run(project: str, *, apply: bool, verbose: bool, kinds: Tuple[str, ...] = tuple(KINDS)) -> int:
     classes = _reserving_classes(project)
     plans: List[Dict[str, Any]] = []
     failures: List[Tuple[str, str, str]] = []
     for reserving_class in classes:
-        for method_name in _method_names(project, reserving_class, BF_PREFIX):
-            try:
-                plans.append(_plan_one(project, reserving_class, method_name))
-            except Exception as err:  # noqa: BLE001 - reported, never fatal
-                failures.append((reserving_class, method_name, str(err)))
+        for kind in kinds:
+            for method_name in _method_names(project, reserving_class, KINDS[kind][0]):
+                try:
+                    plans.append(_plan_one(project, reserving_class, method_name, kind))
+                except Exception as err:  # noqa: BLE001 - reported, never fatal
+                    failures.append((reserving_class, method_name, str(err)))
 
-    touched = [plan for plan in plans if plan["changed_rows"]]
+    touched = [plan for plan in plans if plan["needs_restating"]]
     print(f"Project              : {project}")
     print(f"Reserving classes    : {len(classes)}")
     print(f"Methods inspected    : {len(plans)}")
@@ -156,7 +206,7 @@ def run(project: str, *, apply: bool, verbose: bool) -> int:
     if verbose:
         for plan in touched:
             print(
-                f"  {plan['reserving_class']} / {plan['method']}: "
+                f"  {plan['kind']:8} {plan['reserving_class']} / {plan['method']}: "
                 f"{plan['changed_rows']} of {plan['origins']} rows"
                 f" ({plan['filled_blanks']} previously blank)"
             )
@@ -207,6 +257,7 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument("--apply", action="store_true", help="Write the restated methods and queue the walks.")
     parser.add_argument("--dry-run", action="store_true", help="Report without writing (default).")
     parser.add_argument("--verbose", action="store_true", help="List every method that changes.")
+    parser.add_argument("--kind", choices=sorted(KIND_OPTIONS), default="all", help="Method kind (default: all).")
     args = parser.parse_args(argv)
     if args.apply and args.dry_run:
         parser.error("Choose either --apply or --dry-run.")
@@ -219,7 +270,10 @@ def main(argv: List[str] | None = None) -> int:
     for index, project in enumerate(projects):
         if index:
             print()
-        exit_code = max(exit_code, run(project, apply=bool(args.apply), verbose=bool(args.verbose)))
+        exit_code = max(
+            exit_code,
+            run(project, apply=bool(args.apply), verbose=bool(args.verbose), kinds=KIND_OPTIONS[args.kind]),
+        )
     return exit_code
 
 

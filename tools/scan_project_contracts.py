@@ -31,7 +31,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import threading
 from collections import defaultdict
@@ -79,9 +78,12 @@ from app_server.services.result_selection_service import (  # noqa: E402
 )
 
 
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+# copy-project leaves the same backups behind, so the pattern is the copier's.
+from local_server import ROOT_BACKUP_NAME as BACKUP_NAME  # noqa: E402
+
 STAGING_DIR_NAME = ".arcrho-resq-import-staging"
 CLASS_FOLDERS = (DATASET_DIR_NAME, METHOD_DIR_NAME, SIDECAR_DIR_NAME)
-BACKUP_NAME = re.compile(r"\.bak$|\.before[-_]", re.IGNORECASE)
 
 KIND_SIDECAR = "sidecar"
 KIND_INDEX = "index"

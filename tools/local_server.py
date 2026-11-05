@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +52,7 @@ for _source in (REPO_ROOT / "server-components" / "src", REPO_ROOT / "python-api
 from arcrho_api.config import DEFAULT_WORKSPACE_ROOT  # noqa: E402
 from arcrho_api.hosted_save_enrollment import provision_gateway_user  # noqa: E402
 from arcrho_api.io import write_json_atomic  # noqa: E402
+from arcrho_project_duplication_contract import PROJECT_DUPLICATION_TRANSIENT_DATA_DIR_NAMES  # noqa: E402
 from arcrho_hosted_save_http_contract import (  # noqa: E402
     default_gateway_config,
     normalize_gateway_config,
@@ -92,6 +94,8 @@ SHARED_CONFIG_FILES = (
     "mssql_connections.json",
 )
 BUILDABLE = ("engine", "gateway", "orchestrator")
+# A hand-made backup at a project's root, e.g. ``dataset_types.json.before-eex-drop.bak``.
+ROOT_BACKUP_NAME = re.compile(r"\.bak$|\.before[-_]", re.IGNORECASE)
 
 # The local-root check, start and stop live in python-api's
 # arcrho_server_control, which the desktop app's Server tab uses too.
@@ -189,8 +193,27 @@ def copy_project(root: Path, *, production_root: Path, name: str, overwrite: boo
         if not overwrite:
             raise LocalServerError(f"{target} exists; pass --overwrite to replace it.")
         shutil.rmtree(target)
-    shutil.copytree(source, target, ignore=shutil.ignore_patterns("*.lock", ".tmp*", "*.tmp"))
+    shutil.copytree(source, target, ignore=_copy_ignore(source))
     return target
+
+
+def _copy_ignore(project: Path):
+    """What a project copy leaves behind: the leftovers ``scan_project_contracts`` reports."""
+
+    locks_and_temps = shutil.ignore_patterns("*.lock", ".tmp*", "*.tmp")
+    project_dir = os.path.normcase(str(project))
+    data_dir = os.path.normcase(str(project / "data"))
+
+    def ignore(directory: str, names: list[str]) -> set[str]:
+        skipped = set(locks_and_temps(directory, names))
+        folder = os.path.normcase(directory)
+        if folder == project_dir:
+            skipped.update(name for name in names if ROOT_BACKUP_NAME.search(name))
+        elif folder == data_dir:
+            skipped.update(name for name in names if name in PROJECT_DUPLICATION_TRANSIENT_DATA_DIR_NAMES)
+        return skipped
+
+    return ignore
 
 
 def deploy(root: Path, components: Sequence[str]) -> None:
