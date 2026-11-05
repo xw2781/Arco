@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 waits on open decision 3.
 Last updated: 2026-11-05
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -90,6 +90,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
+3. **Step 6's "current results" do not exist until step 7** (raised 2026-11-05 by the first step 6 run, which stopped before writing anything). Step 6 sets each prior to "the matching current result", but none of the local project's 120 Result Selection outputs (the x 91 / x 92 vectors the priors, BF priors and expected loss ratios are taken from) was recalculated by step 5's refresh: every one is still marked review-needed and holds its pre-refresh values. Against the rebuilt latest incurred, F 92 runs from 0.00 times (HOL, HOPxCAT, NY, Penn+CT) to 7.2 times (MA BI Total), so a prior copied from it now would be off the new scale, and the ratio check would pass against a wrong counterpart. The ResQ-stored "Adjusted" / ad hoc triangles do not have this problem: they rescale from the rebuilt source triangles alone. Recommended: **split step 6.** Step 6 rescales only the 25 ResQ-stored triangles. The prior, BF prior and expected-loss-ratio vectors move to a new step 12, run between steps 7 and 8, which takes them from step 7's recalculated Result Selections, refreshes the Result Selections they feed once more, and keeps step 6's ratio check as its "Done when".
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
