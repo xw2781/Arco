@@ -106,6 +106,7 @@
 - [Arco is the app name](arco-is-the-app-name.md) — "Arco Workspace" is the ArcRho desktop app; reopen the window or project tab to load UI edits
 - [Scripts save through the Gateway client](scripts-save-through-gateway-client.md) — notebooks use arcrho_api.gateway, not the local app URL (another user's Arco can hold 28765); audit log must show the user
 - [Local test root](local-test-root.md) — since 2026-09-26 C:\Arco Server runs a private server via tools/local_server.py (Server PC: E:\XWSpace\Arco Server, never C:); deploy there first, launch-app for the test client
+- [Local-root scripts need the local Gateway env](local-root-scripts-need-local-gateway-env.md) — ARCRHO_SERVER_ROOT alone sends Engine work to production (76 Fake CSVs regenerated 2026-11-04); set the local credential + URL too
 - [Tests never reach a real Gateway](job-tests-read-live-gateway.md) — since 2026-09-27 arcrho_api.gateway_test_guard hides the credential and refuses Gateway URLs in any test run; loopback test Gateways opt in
 - [Fake MA BI Total is the F 63 test class](fake-ma-bi-total-f63-test-class.md) — quarterly P 06 + annual Engine premiums; Fake NY BI Total cannot build F 63
 - [Update blocked by unkillable processes](update-blocked-by-unkillable-processes.md) — 2026-10-06: "still running" PIDs that Task Manager cannot end are stuck in Windows teardown; they clear in minutes
