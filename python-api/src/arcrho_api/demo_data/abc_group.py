@@ -348,7 +348,7 @@ def _covid_severity(coverage: Coverage, line: str, label: int) -> float:
     return _period_factor(COVID_SEVERITY, label, 0 if coverage.family == "liability" else 1)
 
 
-def _frequency_index(coverage: Coverage, line: str, index: int) -> float:
+def frequency_index(coverage: Coverage, line: str, index: int) -> float:
     factor = _covid_frequency(coverage, line, month_label(index))
     winter = index % 12 in (0, 1, 11)
     if winter and coverage.name in ("Collision", "Property Damage", "Home Property"):
@@ -392,7 +392,7 @@ def _premium_per_exposure(book: Book, coverage: Coverage, index: int) -> float:
 # ---------------------------------------------------------------- randomness
 
 
-def _poisson(rng: random.Random, mean: float) -> int:
+def poisson(rng: random.Random, mean: float) -> int:
     if mean <= 0:
         return 0
     if mean > 30:
@@ -404,7 +404,7 @@ def _poisson(rng: random.Random, mean: float) -> int:
     return k
 
 
-def _lognormal(rng: random.Random, mean: float, sigma: float) -> float:
+def lognormal(rng: random.Random, mean: float, sigma: float) -> float:
     return rng.lognormvariate(math.log(mean) - sigma * sigma / 2.0, sigma)
 
 
@@ -468,13 +468,13 @@ class Shocks:
 def _claim_loss(rng: random.Random, coverage: Coverage, severity: float) -> tuple[float, bool]:
     """One paid claim's ultimate loss; liability has a capped Pareto large-loss share."""
     if coverage.family != "liability":
-        return _lognormal(rng, severity, coverage.sigma), False
+        return lognormal(rng, severity, coverage.sigma), False
     if rng.random() < LARGE_LOSS_SHARE:
         alpha = LARGE_LOSS_ALPHA
         scale = severity * LARGE_LOSS_MULTIPLE * (alpha - 1.0) / alpha
         return min(scale * (1.0 - rng.random()) ** (-1.0 / alpha), severity * LARGE_LOSS_CAP), True
     attritional = severity * (1.0 - LARGE_LOSS_SHARE * LARGE_LOSS_MULTIPLE) / (1.0 - LARGE_LOSS_SHARE)
-    return _lognormal(rng, attritional, coverage.sigma), False
+    return lognormal(rng, attritional, coverage.sigma), False
 
 
 # ---------------------------------------------------------------- claims
@@ -496,7 +496,7 @@ def _case_adequacy(coverage: Coverage, stage: int, index: int) -> float:
     return (after if index >= month_index(STRENGTHENING_MONTH) else before)[stage]
 
 
-def _claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_multiple: float,
+def claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_multiple: float,
                   shocks: Shocks, line: str):
     """Events of one claim in time order: (month, kind, paid, case after, alae, salvage, subro)."""
     cat = cat_multiple != 1.0
@@ -521,13 +521,13 @@ def _claim_events(rng: random.Random, coverage: Coverage, accident: int, cat_mul
     life = close - report
     reviews = [report + life // 3, report + 2 * life // 3] if life >= 6 else ([report + life // 2] if life >= 3 else [])
     shares = (rng.uniform(0.05, 0.20), rng.uniform(0.20, 0.40)) if len(reviews) == 2 else (rng.uniform(0.2, 0.5),)
-    alae_total = coverage.alae_ratio * (loss if paid_claim else severity * 0.25) * _lognormal(rng, 1.0, 0.4)
+    alae_total = coverage.alae_ratio * (loss if paid_claim else severity * 0.25) * lognormal(rng, 1.0, 0.4)
     alae_shares = (0.2, 0.3, 0.5) if len(reviews) == 2 else ((0.4, 0.6) if reviews else (1.0,))
 
     def case_reserve(stage: int, month: int, outstanding: float) -> float:
         base = outstanding if paid_claim else severity * (0.25 if coverage.family == "liability" else 0.4)
         adequacy = _case_adequacy(coverage, stage, month) * shocks.adequacy(coverage, month)
-        return max(50.0, base * adequacy * _lognormal(rng, 1.0, CASE_NOISE_SIGMA[coverage.family]))
+        return max(50.0, base * adequacy * lognormal(rng, 1.0, CASE_NOISE_SIGMA[coverage.family]))
 
     events = [(report, "report", 0.0, case_reserve(0, report, loss), 0.0, 0.0, 0.0)]
     paid = 0.0
@@ -579,7 +579,7 @@ def _post_ultimate(ultimates: dict, keys: Iterable[tuple], accident: int, claim)
             target[i] += value
 
 
-def _post_claim(cells: dict, keys: Iterable[tuple], accident: int, valuation: int, claim) -> None:
+def post_claim(cells: dict, keys: Iterable[tuple], accident: int, valuation: int, claim) -> None:
     paid_claim, report, events = claim
     if report > valuation:
         return
@@ -679,19 +679,19 @@ def generate(seed: int = DEFAULT_SEED, valuation_month: int = VALUATION_MONTH) -
                     premium[(*key, index)] = earned * _premium_per_exposure(book, coverage, index) * (1.0 - payback)
                     if index > valuation:
                         continue
-                    expected = (earned * coverage.frequency * _frequency_index(coverage, book.line, index)
+                    expected = (earned * coverage.frequency * frequency_index(coverage, book.line, index)
                                 * shocks.frequency(book.line, coverage, book.state, index))
-                    for _ in range(_poisson(rng, expected)):
-                        claim = _claim_events(rng, coverage, index, 1.0, shocks, book.line)
-                        _post_claim(cells, (key,), index, valuation, claim)
+                    for _ in range(poisson(rng, expected)):
+                        claim = claim_events(rng, coverage, index, 1.0, shocks, book.line)
+                        post_claim(cells, (key,), index, valuation, claim)
                         _post_ultimate(ultimates, (key,), index, claim)
                     event = cat_by_month.get(index)
                     if event and coverage_name in CAT_COVERAGE and book.state in event[1]:
                         rate = event[2] if coverage_name == "Comprehensive" else event[3]
                         multiple = event[4] if coverage_name == "Comprehensive" else 1.0
-                        for _ in range(_poisson(rng, earned * rate)):
-                            claim = _claim_events(rng, coverage, index, multiple, shocks, book.line)
-                            _post_claim(cells, (key, cat_key), index, valuation, claim)
+                        for _ in range(poisson(rng, earned * rate)):
+                            claim = claim_events(rng, coverage, index, multiple, shocks, book.line)
+                            post_claim(cells, (key, cat_key), index, valuation, claim)
                             _post_ultimate(ultimates, (key, cat_key), index, claim)
 
     loss_rows, count_rows = [], []

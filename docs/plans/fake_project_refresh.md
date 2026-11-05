@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-3 done 2026-11-04, step 4 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 next.
 Last updated: 2026-11-04
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -15,7 +15,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 1 | A ResQ import no longer writes datasets without a review status | [x] | 2026-11-04 | 45 min | 15 min | Imported datasets always carry a review status; an incomplete one is refused instead of saved |
 | 2 | One command reports every file in a project that is not in the current format | [x] | 2026-11-04 | 40 min | 6 min | One read-only command lists, by kind and problem, every project file the app would refuse or that is left-over clutter |
 | 3 | The local Fake project opens without format errors | [x] | 2026-11-04 | 50 min | 25 min | The local copy passes every format check, and the BF and Cape Cod methods it refused before open again |
-| 4 | A realistic synthetic source table for the Fake project | [ ] | | 90 min | | |
+| 4 | A realistic synthetic source table for the Fake project | [x] | 2026-11-04 | 90 min | 14 min | One command writes a new source table with the same columns and segments whose totals add up and whose loss ratios and development look like real business |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [ ] | | 45 min | | |
 | 6 | Prior-quarter and prior-ultimate inputs sit on the same scale as the results | [ ] | | 50 min | | |
 | 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | |
@@ -24,7 +24,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 
-Overall: 3 of 11 steps done. Estimated 595 min, actual so far 46 min.
+Overall: 4 of 11 steps done. Estimated 595 min, actual so far 60 min.
 
 ## How agents work this plan
 
@@ -180,14 +180,21 @@ Estimate: code edit 30 min, test/validation 20 min, total 50 min. Actual: code e
 **Read first.** `python-api/src/arcrho_api/demo_data/abc_group.py` (the model: claim-by-claim Poisson frequency, lognormal severity, report and settlement lags, case reserves, premium trend); the project's `field_mapping.json`; the header and the distinct key combinations, origin range and premium rows of `_Fake_2.csv` (read once, structure only).
 
 **Do.**
-- [ ] `tools/generate_fake_project_source.py --output <csv>`: every key combination and month of the current file; per-coverage frequency, severity, reporting and payment patterns, loss ratios 0.5-0.8; identities by construction (incurred = paid + reserve, net = gross − salvage − subrogation − recovery, capped ≤ uncapped by layer, excess ≤ total, integer non-negative counts, pending ≥ 0); premium and exposure rows including budget months.
-- [ ] Reuse the demo generator's helpers rather than copying them.
+- [x] `tools/generate_fake_project_source.py --output <csv>`: every key combination and month of the current file; per-coverage frequency, severity, reporting and payment patterns, loss ratios 0.5-0.8; identities by construction (incurred = paid + reserve, net = gross − salvage − subrogation − recovery, capped ≤ uncapped by layer, excess ≤ total, integer non-negative counts, pending ≥ 0); premium and exposure rows including budget months.
+- [x] Reuse the demo generator's helpers rather than copying them.
 
 **Tests.** `tools/tests/test_generate_fake_project_source.py`: every identity holds on every row; same seed gives the same file; annual loss ratios and first link ratios fall in plausible ranges.
 
 **Done when.** A generated file has the current header and keys and passes every identity.
 
-Estimate: code edit 70 min, test/validation 20 min, total 90 min.
+Estimate: code edit 70 min, test/validation 20 min, total 90 min. Actual: code edit 9 min, test/validation 5 min, total 14 min (the demo model covered almost everything; the generator only maps the extract's keys onto it).
+
+**Outcome (2026-11-04).** `py -3.10 tools/generate_fake_project_source.py --template <current csv> --output <new csv> [--seed N] [--valuation 202605]`, default seed `20261104`.
+
+- **Template, structure only.** `--template` is the current extract (the local copy `source\master_table.csv` is the imported copy of `_Fake_2.csv`); only its keys and, per key, the month spans of its loss, earned-premium and remaining-budget rows are read. The output keeps all 759 keys, the 34 columns, those spans, the `sys_yrmo = 0` premium rows and the extract's `201701.0` origin text; running it on its own output keeps the same structure.
+- **Model.** The demo's claim simulation (`abc_group`, whose five simulation helpers are now public) per key: IBNRCAT maps to a demo coverage, plus oil tank, foundation and umbrella coverages, health-care-primary and commercial-auto variants; `_CAT` keys get the demo's named catastrophes (Penn read as PA) and minor storm months as a subset of their parent. Keys with premium but no losses in the template still get none, so a few classes (umbrella mostly) show low loss ratios.
+- **Budget rows.** An aggregate key's remaining budget is its members' projected premium and exposure after the valuation (zero up to it), with a 5% deviation.
+- **Full run.** 226,393 rows (186,478 loss, 39,915 premium and budget) in 17 s, 33.8 MB; every identity holds on every row and cumulatively. Accident-year gross incurred / earned premium 0.57-0.69 for 2017-2024 (PA 0.55-0.79, HO 0.45-0.68); incurred 12-24 link 1.03-1.18 for the large lines, paid 1.3-1.6; 264,646 reported claims, 3,102 above 50K. The file is not committed: step 5 generates it.
 
 ### Step 5 — Rebuild the local datasets from the new source
 
