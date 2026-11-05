@@ -1,10 +1,10 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 next.
-Last updated: 2026-11-04
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 next.
+Last updated: 2026-11-05
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
-**How this ships.** Steps 1 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge): an additive fix, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
+**How this ships.** Steps 1, 5 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
 
 ## Progress
 
@@ -16,7 +16,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 2 | One command reports every file in a project that is not in the current format | [x] | 2026-11-04 | 40 min | 6 min | One read-only command lists, by kind and problem, every project file the app would refuse or that is left-over clutter |
 | 3 | The local Fake project opens without format errors | [x] | 2026-11-04 | 50 min | 25 min | The local copy passes every format check, and the BF and Cape Cod methods it refused before open again |
 | 4 | A realistic synthetic source table for the Fake project | [x] | 2026-11-04 | 90 min | 14 min | One command writes a new source table with the same columns and segments whose totals add up and whose loss ratios and development look like real business |
-| 5 | The local Fake project's datasets are rebuilt from the new source | [ ] | | 45 min | | |
+| 5 | The local Fake project's datasets are rebuilt from the new source | [x] | 2026-11-05 | 45 min | 48 min | The local project now reads the new source table: every dataset built from it was rebuilt, pending counts are never negative and reported claim counts never go down |
 | 6 | Prior-quarter and prior-ultimate inputs sit on the same scale as the results | [ ] | | 50 min | | |
 | 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | |
 | 8 | Methods whose settings make no sense on the new data are reset | [ ] | | 60 min | | |
@@ -24,7 +24,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 
-Overall: 4 of 11 steps done. Estimated 595 min, actual so far 60 min.
+Overall: 5 of 11 steps done. Estimated 595 min, actual so far 108 min.
 
 ## How agents work this plan
 
@@ -73,23 +73,23 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
 3. **New synthetic data**, not a repair of the perturbed extract. Hand-made selections and the bootstrap tuning are given up; step 8 resets what no longer fits.
 4. **Repair formats in place**, not a re-import from ResQ; the four dead-format BF methods are deleted.
+5. **What step 5's "Done when" accepts** (taken 2026-11-05, raised by the first step 5 run, whose refresh ended with 19 failed datasets):
+   - **ResQ-stored triangles are never rebuilt.** The "Adjusted" / "ad hoc" triangles a ResQ import stored as engine datasets (`source` `resq_triangle`) read no source column. The source refresh now skips them with the same `period_reshape.is_imported_dataset` rule the project dates job uses; their old-scale values are rescaled in step 6. Deployed to the local root now, to production with step 9.
+   - **Method refusals** (DFMs whose excluded cells are now missing, a Cape Cod on a 3-month precedent, a Result Selection's 3-month cache) are left to steps 7 and 8.
+   - **A young class may have all-zero counts.** The all-zero check skips classes with fewer than 50 reported claims: MA has written only since 202512 and has no closed claim yet.
+   - **A −1 excess pending cell is accepted**: a closed claim that a later recovery takes below the layer leaves the reported layer only. The pending check covers the total, not the excess layers.
+   - **"No decreasing cumulative reported"** means reported claim counts; incurred losses may fall as case reserves are taken down.
 
 ## Open decisions
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
-3. **What step 5's "Done when" accepts** (step 5, raised 2026-11-04). The local refresh from the generated file ran (job `f4614e5d…`, 226,393 rows, 31 of 31 classes, 1,288 datasets regenerated, 482 methods updated) but ended `error` with 19 failed datasets, and the realism checks do not all pass. None of it is a fault in the new source rows. Each part needs an answer before step 5 can be ticked:
-   - **a. ResQ-stored triangles.** 18 failures are the "Adjusted" / "ad hoc" triangles a ResQ import stored as engine datasets (`source` `resq_triangle`, no source column). A plain source refresh tries to rebuild them and always fails, keeping the old file; the same failures are in the 13:37 log of an earlier local refresh on the old data. The project dates job already skips them (`period_reshape.is_imported_dataset`, commit 936fab8f). Recommended: make the source refresh skip them the same way (an Engine change, deployed locally now and to production with step 9), and treat their old-scale values with the step 6 inputs.
-   - **b. Method refusals.** DFMs with excluded cells now missing, the MA `BI Total` Cape Cod on a 3-month precedent, and the MA `MP+PIP` Result Selection's 3-month cache. Recommended: accept for step 5; steps 7 and 8 own them.
-   - **c. New-state classes.** MA has written since 202512, so MA `BI Total` and `MP+PIP` have a handful of open claims and no closed ones: their CWP, CWOP and Total Closed triangles are all zero. Recommended: accept as realistic; the check exempts classes with fewer than 50 reported claims.
-   - **d. Layer counts after recovery.** One cell of HOPxCAT "Pending Excess of 100K" is −1: a closed claim fell below 100K net after a later recovery, so it left the reported layer but not the closed-with-payment layer. Recommended: accept as a real-world effect.
-   - **e. "Decreasing cumulative reported losses".** Reported claim counts never decrease now (0.00%, was 0.02%); incurred losses decrease in 11-14% of steps, a median drop of 0.5% (case reserve take-downs; the old data was 14-19%). Recommended: read the check as reported claim counts.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
@@ -206,18 +206,26 @@ Estimate: code edit 70 min, test/validation 20 min, total 90 min. Actual: code e
 
 **Goal.** The local project imports the generated file and every Engine-built dataset is regenerated from it.
 
-**Read first.** `source_refresh_service` and the source-table profile (`field_mapping.json` `table_path`, `source/source_import.json`); memory `source-refresh-job-diagnosis`.
+**Read first.** `source_refresh_service` and the source-table profile (`field_mapping.json` `table_path`, `source/source_import.json`); memory `source-refresh-job-diagnosis`; memory `local-root-scripts-need-local-gateway-env`; `period_reshape.is_imported_dataset` and the class step of `server-components/src/arcrho_engine/source_table_refresh.py` (decision 5).
 
 **Do.**
-- [ ] Generate the file under `C:\Arco Server\sources\` and point the local project's import source at it.
-- [ ] Run the source refresh on the local Engine; collect its failures.
-- [ ] A small realism report (share of negative, decreasing and all-zero cells per dataset type) run before and after.
+- [x] Generate the file under `C:\Arco Server\sources\` and point the local project's import source at it.
+- [x] Run the source refresh on the local Engine; collect its failures.
+- [x] A small realism report (share of negative, decreasing and all-zero cells per dataset type) run before and after.
+- [x] (Decision 5) The source refresh skips the ResQ-stored triangles the Engine cannot rebuild; deployed to the local root.
 
-**Tests.** None new; the report is the check.
+**Tests.** None new for the data; the report is the check. `server-components/tests/test_source_table_refresh.py` gains the ResQ-triangle skip.
 
-**Done when.** The refresh finishes with no failures and the report shows no negative pending counts, no decreasing cumulative reported losses, and no all-zero count triangles outside the excess layers.
+**Done when.** The refresh finishes with no failures and the report shows no negative pending counts, no decreasing cumulative reported losses, and no all-zero count triangles outside the excess layers. Decision 5 says what this accepts.
 
-Estimate: code edit 20 min, test/validation 25 min, total 45 min.
+Estimate: code edit 20 min, test/validation 25 min, total 45 min. Actual: code edit 13 min, test/validation 35 min, total 48 min (two runs of the 14-minute refresh, the first blocked on decision 5).
+
+**Outcome (2026-11-05).** On the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Source.** `E:\XWSpace\Arco Server\sources\ResQ_Channel_202605_Fake_3.csv` from `generate_fake_project_source.py` (default seed, template the old local `master_table.csv`; the original `_Fake_2.csv` is unchanged on the ResQ share). `field_mapping.json` `table_path` points at it; not committed.
+- **Refresh.** Job `96a960fe…`: 226,393 rows, 32 of 32 classes, 1,288 datasets regenerated, 482 methods updated. The 18 ResQ-stored triangles are now skipped. One dataset still fails: Penn+CT `MP+PIP` "Severity--Adjusted Net Incurred per Reported ex CWOP", a calculated ResQ-stored triangle over a 3-month imported `Net Loss--Incurred Adjusted*` that the Engine cannot build at 12 months (the same failure as before; step 6 or 7). The other failure lines are method refusals left to steps 7-8: DFMs with excluded cells now missing (HOL, NY and Penn+CT `BI Total`, NY `MP+PIP`), the MA `BI Total` Cape Cod `F 53`, and the MA `MP+PIP` Result Selections.
+- **Realism** (`tools/fake_project_realism_report.py`, before -> after): all three checks pass. Pending counts negative 21.3% -> 0%, outstanding negative 15.2% -> 7.4%, reported counts decreasing 0.02% -> 0%, gross incurred decreasing 14.1% -> 10.8%, net incurred 19.1% -> 14.2%, capped incurred about 36% -> 24%. Subro and recoveries are mostly negative because the source stores recoveries as negative amounts. The "Adjusted" triangles keep their old values until step 6.
+- **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
 
 ### Step 6 — Rescale the hand-entered inputs
 

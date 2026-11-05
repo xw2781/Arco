@@ -56,6 +56,11 @@ def _install_fake_app_server(modules: dict):
         "data_processing_values_service": SimpleNamespace(
             get_data_processing_values=lambda project: {}
         ),
+        # Every engine dataset reads a source column unless a test says not.
+        "dataset_service": SimpleNamespace(
+            _get_dataset_sidecar_path=lambda project, reserving_class, name: name,
+            _read_dataset_sidecar=lambda path: {"source_kind": "engine", "source": path},
+        ),
         **modules,
     }
     for name, module in modules.items():
@@ -751,6 +756,66 @@ class ClassWalkReportingTests(unittest.TestCase):
         self.assertEqual(result["failures"], [])
         self.assertEqual(result["dependent_problems"], [])
         self.assertEqual(len(result["expected_problems"]), 2)
+
+
+class ImportedTriangleSkipTests(unittest.TestCase):
+    """A source refresh never asks the Engine to rebuild a ResQ-stored triangle."""
+
+    SIDECARS = {
+        "Paid": {"source_kind": "engine", "source": "Paid"},
+        "Adjusted*": {"source_kind": "engine", "source": "resq_triangle"},
+    }
+
+    def _dataset_service(self):
+        def read(name):
+            if name not in self.SIDECARS:
+                raise OSError("unreadable")
+            return self.SIDECARS[name]
+
+        return SimpleNamespace(
+            _get_dataset_sidecar_path=lambda project, reserving_class, name: name,
+            _read_dataset_sidecar=read,
+        )
+
+    def test_the_imported_dataset_rule_decides_from_the_sidecar(self) -> None:
+        with _install_fake_app_server({"dataset_service": self._dataset_service()}):
+            imported = {
+                name: source_table_refresh.is_imported_dataset_file("Demo", "HPPREF\\NJ", name)
+                for name in ("Paid", "Adjusted*", "Missing")
+            }
+        self.assertEqual(imported, {"Paid": False, "Adjusted*": True, "Missing": True})
+
+    def test_only_the_rebuildable_engine_datasets_are_regenerated(self) -> None:
+        regenerated: list[str] = []
+        result = source_table_refresh._empty_result()
+        calculated = SimpleNamespace(recalculate_dependents=lambda *a, **k: {"ok": True})
+        with _install_fake_app_server(
+            {"calculated_dataset_service": calculated, "dataset_service": self._dataset_service()}
+        ), patch.object(
+            source_table_refresh, "acquire_reserving_class_lease", lambda *a: object()
+        ), patch.object(
+            source_table_refresh, "start_reserving_class_lease_heartbeat", lambda lease: (None, None)
+        ), patch.object(
+            source_table_refresh, "stop_reserving_class_lease_heartbeat", lambda *a: None
+        ), patch.object(
+            source_table_refresh, "release_reserving_class_lease", lambda lease: None
+        ), patch.object(
+            source_table_refresh, "_engine_dataset_instances", lambda *a: ["Paid", "Adjusted*"]
+        ), patch.object(
+            source_table_refresh,
+            "_regenerate_engine_dataset",
+            lambda root, project, reserving_class, name: regenerated.append(name),
+        ):
+            source_table_refresh._refresh_one_reserving_class(
+                Path(tempfile.gettempdir()),
+                "Demo Project",
+                "HPPREF\\NJ",
+                result,
+                on_dataset=lambda name: None,
+            )
+        self.assertEqual(regenerated, ["Paid"])
+        self.assertEqual((result["datasets_regenerated"], result["datasets_failed"]), (1, 0))
+        self.assertEqual(result["failures"], [])
 
 
 class GeneratedFormulaScopeTests(unittest.TestCase):

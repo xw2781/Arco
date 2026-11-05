@@ -70,6 +70,7 @@ from arcrho_engine.dependent_propagation import (
 )
 from arcrho_engine.project_duplication import _redact_machine_paths
 from arcrho_engine.runtime_log import append_runtime_log
+from arcrho_api.period_reshape import is_imported_dataset
 
 SOURCE_REFRESH_LOG_FILENAME = "source_table_refresh.log"
 
@@ -247,6 +248,25 @@ def _engine_dataset_instances(
             seen.add(key)
             names.append(name)
     return names
+
+
+def is_imported_dataset_file(project_name: str, reserving_class: str, dataset_name: str) -> bool:
+    """``is_imported_dataset`` for an engine-kind dataset on disk (its sidecar).
+
+    A ResQ triangle stored as an engine dataset reads no source column, so the
+    Engine cannot rebuild it; a sidecar that cannot be read counts as imported
+    for the same reason.
+    """
+
+    from app_server.services import dataset_service
+
+    try:
+        sidecar = dataset_service._read_dataset_sidecar(
+            dataset_service._get_dataset_sidecar_path(project_name, reserving_class, dataset_name)
+        )
+    except Exception:
+        return True
+    return bool(sidecar) and not sidecar.get("calculated") and is_imported_dataset(sidecar)
 
 
 def _regeneration_request(
@@ -460,7 +480,9 @@ def _refresh_one_reserving_class(
         for dataset_name in _engine_dataset_instances(
             project_name, reserving_class, dataset_types
         ):
-            if dataset_name.casefold() in prepared_keys:
+            if dataset_name.casefold() in prepared_keys or is_imported_dataset_file(
+                project_name, reserving_class, dataset_name
+            ):
                 # Already rewritten by ``prepare`` (walked from below), or a
                 # stored dataset the Engine cannot rebuild from its source.
                 continue

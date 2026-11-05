@@ -271,25 +271,6 @@ def reshape_input_dataset_file(
     }
 
 
-def _is_imported_dataset_file(project_name: str, reserving_class: str, dataset_name: str) -> bool:
-    """``is_imported_dataset`` for a dataset on disk (its sidecar).
-
-    Asked only of an engine-kind dataset an earlier run already reshaped, so a
-    sidecar that cannot be read counts as imported: the Engine could not
-    rebuild it either.
-    """
-
-    from app_server.services import dataset_service
-
-    try:
-        sidecar = dataset_service._read_dataset_sidecar(
-            dataset_service._get_dataset_sidecar_path(project_name, reserving_class, dataset_name)
-        )
-    except Exception:
-        return True
-    return bool(sidecar) and not sidecar.get("calculated") and is_imported_dataset(sidecar)
-
-
 # ---------------------------------------------------------------------------
 # Methods whose refresh reads values without labels
 # ---------------------------------------------------------------------------
@@ -431,6 +412,7 @@ def _reshape_class(
 
     from app_server.services import dataset_instance_index_service, dataset_sidecar_status_service
     from app_server.services.berquist_sherman_service import BERQUIST_SHERMAN_METHOD_TYPES
+    from arcrho_engine import source_table_refresh
 
     roots: list[str] = []
     kept: set[str] = set()
@@ -474,7 +456,7 @@ def _reshape_class(
         if key in inputs_done:
             # Moved on an earlier run: leave it. An engine-kind one must not be
             # sent to the Engine either, which cannot rebuild it.
-            if source_kind == "engine" and _is_imported_dataset_file(
+            if source_kind == "engine" and source_table_refresh.is_imported_dataset_file(
                 project_name, reserving_class, name
             ):
                 kept.add(name.casefold())
