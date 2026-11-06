@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6 and 7 done 2026-11-06 (decisions 8 and 9 taken in step 7), step 12 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7 and 12 done 2026-11-06 (decisions 8 and 9 taken in step 7), step 8 next.
 Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -23,9 +23,9 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
-| 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [ ] | | 60 min | | |
+| 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
 
-Overall: 7 of 12 steps done. Estimated 655 min, actual so far 172 min.
+Overall: 8 of 12 steps done. Estimated 655 min, actual so far 188 min.
 
 ## How agents work this plan
 
@@ -363,9 +363,9 @@ Appended 2026-11-06 (decision 6); runs after step 7 and before step 8.
 **Read first.** Decision 6; the x 81 / x 82 vector sidecars and the BF prior sources in two classes; the hosted dataset save; step 6's tool.
 
 **Do.**
-- [ ] A one-off tool (or step 6's, extended) that sets each prior vector to its counterpart times a small seeded deviation: x 81 from x 91; x 82, x 42, C 42a, F 42 B and F 00 from x 92.
-- [ ] Expected ratios from the same results: P 01, P 02, P 03 and P 04 A are E, E1, E2 and G 92 over D 92; P 04 B is G 92 over F 92; P 05, P 06 and P 07 are G, F and D 92 over Total Earned Premium.
-- [ ] Refresh the Result Selections these inputs feed once more.
+- [x] A one-off tool (or step 6's, extended) that sets each prior vector to its counterpart times a small seeded deviation: x 81 from x 91; x 82, x 42, C 42a, F 42 B and F 00 from x 92.
+- [x] Expected ratios from the same results: P 01, P 02, P 03 and P 04 A are E, E1, E2 and G 92 over D 92; P 04 B is G 92 over F 92; P 05, P 06 and P 07 are G, F and D 92 over Total Earned Premium.
+- [x] Refresh the Result Selections these inputs feed once more.
 
 **Notes.** Most prior vectors are stored monthly (120 rows) while their Result Selection is annual or quarterly: re-store each at its counterpart's period, with `stored_values_cleared` and the counterpart's origin labels. Save through `GatewayClient.save("dataset_sidecar", ...)` and poll `propagation_busy` before each save.
 
@@ -373,4 +373,13 @@ Appended 2026-11-06 (decision 6); runs after step 7 and before step 8.
 
 **Done when.** No prior vector is more than twice or less than half its current counterpart.
 
-Estimate: code edit 35 min, test/validation 25 min, total 60 min.
+Estimate: code edit 35 min, test/validation 25 min, total 60 min. Actual: code edit 7 min, test/validation 9 min, total 16 min (step 6's helpers and step 7's driver were reused, and each hosted save took about a second).
+
+**Outcome (2026-11-06).** `tools/rescale_prior_inputs.py` (`--dry-run`, `--check`), tests in `tools/tests/test_rescale_prior_inputs.py`. On the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Saved.** 191 vectors through the hosted dataset save (seed 20261106, ±5% per origin), run twice so the "Prior Qtr Selected" and BF priors read the selections the first run's walks refreshed. `--check` passes for all 191 it covers: vector over current counterpart from 0.84 to 1.15 (before: 0.001 to 1,936). There is no F 00 or P 05 input in this project. CMPxCAT "E1 42" and "E2 42" have no E1 / E2 selection and hold nothing; they are left as they are. Auto Liab Total "E 42" follows E 91, the only E selection there.
+- **Period.** Each vector is written at the shortest period its counterpart and its dependents use; 51 were re-stored (most were monthly). The first run wrote MA BI Total "P 06" at its yearly F 63's period, and F 63 failed on a 10-against-40 shape, because a calculated dataset reads it at the quarterly selection's period; the second run put it back at 3 months.
+- **Step 7's MA MP+PIP failure is gone.** C 92 / D 92 refresh now that C 81 / D 81 / C 82 / D 82 are stored at 3 months.
+- **Left for step 8.** A final walk per class (step 7's driver) leaves the same 9 classes with the same refusals as step 7 (excluded ratio cells, development geometry, origin length). Two more show only in the walks this step's saves started: NY MP+PIP C 91 cannot read the 12-month C 42 DFM at 3 months, and NY BI Total G 91 finds no "G 41 - BF Paid" sidecar.
+- **Plausibility.** Result Selection loss ratios on earned premium: median 0.54 over 33, maximum 2.81 (step 7: 0.52, 2.88). The selections still carry the old data's choices, which step 8 resets.
+- **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
