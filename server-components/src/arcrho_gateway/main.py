@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import socket
@@ -727,7 +728,10 @@ def main() -> int:
     try:
         server.serve_forever(poll_interval=0.25)
     finally:
-        heartbeat.unlink(missing_ok=True)
+        # Another process reading the heartbeat can hold it open; a stop
+        # must not crash on that.
+        with contextlib.suppress(OSError):
+            heartbeat.unlink(missing_ok=True)
         server.server_close()
         _log(root, f"stopped pid={os.getpid()}")
     return 0
