@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7 and 12 done 2026-11-06 (decisions 8 and 9 taken in step 7), step 8 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12 and 8 done 2026-11-06 (decisions 8 and 9 taken in step 7); step 9 waits on open decision 3 (eight methods whose precedent has another origin length).
 Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -19,13 +19,13 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 5 | The local Fake project's datasets are rebuilt from the new source | [x] | 2026-11-05 | 45 min | 48 min | The local project now reads the new source table: every dataset built from it was rebuilt, pending counts are never negative and reported claim counts never go down |
 | 6 | The adjusted triangles imported from ResQ sit on the same scale as the new data | [x] | 2026-11-06 | 50 min | 22 min | The adjusted and ad hoc triangles now follow the new figures, and the Penn+CT MP+PIP adjusted severity builds again |
 | 7 | Every method in the local Fake project is recalculated on the new data | [x] | 2026-11-06 | 70 min | 42 min | The local project is valued at May 2026 again, Origin End may now fall after Development End, and every method that can refresh on the new data has; the ones that cannot are listed for step 8 |
-| 8 | Methods whose settings make no sense on the new data are reset | [ ] | | 60 min | | |
+| 8 | Methods whose settings make no sense on the new data are reset | [x] | 2026-11-06 | 60 min | 27 min | Hand-typed factors far from the new data, exclusions on empty cells and deleted candidates are reset, and every result is plausible; eight methods that read a precedent at another period length still refuse and wait on a decision |
 | 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
 
-Overall: 8 of 12 steps done. Estimated 655 min, actual so far 188 min.
+Overall: 9 of 12 steps done. Estimated 655 min, actual so far 215 min.
 
 ## How agents work this plan
 
@@ -95,6 +95,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
+3. **Eight methods read a precedent at another origin length** (raised by step 8; blocks step 9). They refuse every refresh and keep their last result: the Cape Cods MA BI Total F 53, MA MP+PIP D 53, NY BI Total F 53 and Penn+CT MP+PIP F 53 (12-month, on a 3-month DFM: "uses 3-month origins; expected 12"); the DFMs NY BI Total F 13 and Penn+CT BI Total F 13 (12-month, ratio basis the 3-month C 12) and NY MP+PIP F 13 (3-month, ratio basis the 12-month C 12); and the Result Selection NY MP+PIP C 91 (3-month, candidate the 12-month C 42: "Exact 3-month cache cannot be derived"), which also holds back C 92 and F 31. ResQ rolls the finer method up; Arco rolls up only a hand-entered dataset, so no data or setting fix exists short of changing each method's period. Separately, the Stochastic Consolidation "F 72B" in All States Total has never run: one of its segments names a Bootstrap "F 72B" in All States BI Total that does not exist. Recommended: publish them as they stand in step 9 (they keep their last valid result and refuse with a clear reason) and plan the roll-up of a finer method output as its own app change; the alternative, moving each method to its precedent's origin length, changes eight methods' design and their dependents' shapes.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
@@ -290,18 +291,30 @@ Estimate: code edit 40 min, test/validation 30 min, total 70 min. Actual: code e
 
 **Goal.** No method carries a setting made for the old data that gives nonsense on the new.
 
-**Read first.** Step 7's report.
+**Read first.** Step 7's report; step 6's and step 12's tools (`rescale_resq_stored_triangles.py`, `rescale_prior_inputs.py`), which this step re-runs; `dfm_contract.recalculate_dfm_method` (the exclusion refusal) and `dfm_service._load_source_snapshot` (why a hand-entered triangle's sidecar development labels must match its file).
 
 **Do.**
-- [ ] Manual factor overrides and User Entry rows outside plausible ranges reset to the default average; tails re-selected.
-- [ ] Bootstrap and Stochastic Consolidation re-run and checked for sane ranges.
-- [ ] Re-run the plausibility report.
+- [x] Manual factor overrides and User Entry rows outside plausible ranges reset to the default average; tails re-selected.
+- [x] Bootstrap and Stochastic Consolidation re-run and checked for sane ranges.
+- [x] Re-run the plausibility report.
 
 **Tests.** None.
 
 **Done when.** The report shows no selected factor above 10 outside the first two columns and no ultimate more than 20 times the latest where the origin is past its third year.
 
-Estimate: code edit 40 min, test/validation 20 min, total 60 min.
+Estimate: code edit 40 min, test/validation 20 min, total 60 min. Actual: code edit 11 min, test/validation 16 min, total 27 min (the step 6 and 12 tools did most of the saving, and each class walk took under 10 seconds).
+
+**Outcome (2026-11-06).** `tools/reset_unfit_method_settings.py` (`--walks`, `--part refusals|selections`, `--dry-run`), tests in `tools/tests/test_reset_unfit_method_settings.py`; `recalculate_project_methods.py --report` now lists this step's bar directly (`late_factor_over_10`, `mature_ult_over_20x_latest`). On the Server PC root `E:\XWSpace\Arco Server`, every save through the hosted method or dataset save:
+
+- **Triangles.** Penn+CT BI Total "Net Loss--Incurred Adjusted" and MA MP+PIP "Gross Loss--Incurred Adjusted*" rewritten at the Engine's 40 quarterly columns (step 6's tool). NY BI Total and MA BI Total "Net Loss--Incurred Adjusted*" were hand-entered stores whose sidecars kept ResQ's 113 monthly development labels, which a DFM reads as they stand and the dataset save cannot change; they are now stored like the other ResQ triangles (engine kind, 3x3, 40 columns), so F 23 C, F 24 C and their BF refresh.
+- **Exclusions.** 23 DFMs refused "previously excluded ratio cells" (21 from step 7, plus NY BI Total and NY MP+PIP C 22 once their class got further): the new data has no ratio where the old exclusions sit (a zero first-age count), so every exclusion of those DFMs is cleared.
+- **Deleted candidates.** NY BI Total F 91 drops F 41 and F 41 B, G 91 drops G 41 (the BFs step 3 deleted); their origins go to F 23 and G 12.
+- **Hand-typed factors.** 147 development columns in 104 DFMs selected a typed User Entry more than 25% from the column's "Volume - all" average; they now select that average. A column the new data has no ratio in keeps its typed factor. No Curves-tab tail was outside 1.0-1.5.
+- **Priors.** The resets moved the selections, so step 12's tool was re-run (twice) on NY BI Total, NY MP+PIP, Penn+CT BI Total, Penn+CT MP+PIP and HOL; `--check` passes for all 191 vectors again.
+- **Bootstrap and Stochastic Consolidation.** The class walks refreshed all six Bootstraps (scaled mean equals the selected ultimate; total reserve CV 0.07-0.27). The consolidation "F 72 A" was saved again and re-ran (CV 0.10). "F 72B" refuses: its segment Bootstrap does not exist and it has never run (open decision 3).
+- **Plausibility** (561 methods): no selected factor above 10 past the second column, and the largest ultimate-to-latest ratio of an origin past its third year is 3.1, so the bar holds. First DFM factor median 2.60, 90th percentile 24.3, maximum 241 (was 1,614); 54 methods have an origin over 20 times its latest, all young. Result Selection loss ratios on earned premium: median 0.55 over 33; 7 outside 0.3-1.5 (HOL F 91/92 0.12; MA BI Total F 91/92 1.76 and MA MP+PIP D 91/92 2.81, a class written only since 202512; Rider BI+PIP F 92 0.26).
+- **Still refusing.** The eight origin-length methods of open decision 3, and C 92 / F 31 behind NY MP+PIP C 91. Every other walk succeeds (16 of 22 classes clean).
+- **Scan and production.** The scan reports nothing after the 25 lock files and the recreated empty `data\tmp` class were deleted (one self-healing notice). No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
 
 ### Step 9 — Publish to production
 

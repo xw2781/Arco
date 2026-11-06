@@ -51,6 +51,13 @@ CHECK_TOLERANCE = 0.10
 LABEL_STYLES = {12: "year", 6: "half", 3: "quarter", 1: "month_name"}
 # Plan decision 7: stored as a hand-entered triangle so it rolls up.
 INPUT_KIND = {("PRNJ - PA\\PA\\Penn+CT\\Direct Group\\MP+PIP", "Net Loss--Incurred Adjusted*")}
+# Step 8: hand-entered stores whose sidecar keeps ResQ's monthly development
+# labels, which a DFM reads as they stand. Stored like the other ResQ
+# triangles instead, they are read on the project's own development grid.
+ENGINE_KIND = {
+    ("PRNJ - PA\\PA\\NY\\Direct Group\\BI Total", "Net Loss--Incurred Adjusted*"),
+    ("PRNJ - PA\\PA\\MA\\Direct Group\\BI Total", "Net Loss--Incurred Adjusted*"),
+}
 
 
 @dataclass
@@ -189,7 +196,9 @@ def plan_project(project_dir: Path, seed: int = DEFAULT_SEED) -> list[Rescale]:
             else:
                 origin = int(sidecar["origin_length"])
                 development = int(sidecar["development_length"])
-            source_kind = "input" if (rc, name) in INPUT_KIND else str(sidecar["source_kind"])
+            source_kind = (
+                "input" if (rc, name) in INPUT_KIND else "engine" if (rc, name) in ENGINE_KIND else str(sidecar["source_kind"])
+            )
             stored_origin = int(sidecar.get("stored_origin_length") or origin)
             stored_development = int(sidecar.get("stored_development_length") or development)
             # A hand-entered store keeps a finer development axis (values are

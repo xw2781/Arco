@@ -80,6 +80,18 @@ class MeasureTests(unittest.TestCase):
         }
         self.assertAlmostEqual(tool.method_measures("RS", rs)["loss_ratio"], 0.65)
 
+    def test_step_8_bar_counts_late_factors_and_mature_origins_only(self) -> None:
+        dfm = {
+            "curves_tab": {"selected_values": [30.0, 12.0, 11.0, 1.0]},
+            "data_tab": {"origin_labels": ["2019", "2025"], "input_data_triangle_values": [[10, 20], [1]]},
+            "results_tab": {"ultimate_vector": [500, 100]},
+        }
+        valuation = 2026 * 12 + 4  # May 2026
+        measures = tool.method_measures("DFM", dfm, valuation)
+        self.assertEqual(measures["late_factors_over_10"], [3])
+        self.assertAlmostEqual(measures["max_mature_ult_to_latest"], 25.0)  # 2025 is young and left out
+        self.assertEqual(tool.mature_origins(["2023 Q1", "2023 Q3", "Jan 2023"], valuation), [True, False, True])
+
 
 if __name__ == "__main__":
     unittest.main()

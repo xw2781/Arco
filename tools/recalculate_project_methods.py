@@ -38,6 +38,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "python-api" / "src"))
 
 TERMINAL = ("success", "error")
+# Step 8's bar: an origin past its third year, and a factor past the second column.
+MATURE_MONTHS = 36
+LATE_FACTOR_LIMIT = 10.0
+ULT_TO_LATEST_LIMIT = 20.0
 
 
 @dataclass
@@ -169,6 +173,37 @@ def _loss_ratio(ultimate: list[float | None], basis: list[float | None]) -> floa
     return sum(u for u, _ in pairs) / total if total else None
 
 
+def origin_start_month(label: str) -> int | None:
+    """Months since year 0 of an origin label's first month ("2019", "2019 Q3", "2019 H2", "Mar 2019")."""
+
+    text = str(label).strip()
+    parts = text.split()
+    try:
+        if len(parts) == 1:
+            return int(parts[0][:4]) * 12
+        year, period = (parts[0], parts[1]) if parts[0].isdigit() else (parts[1], parts[0])
+        year_months = int(year) * 12
+        if period[:1] in ("Q", "H") and period[1:].isdigit():
+            return year_months + (int(period[1:]) - 1) * (3 if period[0] == "Q" else 6)
+        return year_months + time.strptime(period[:3], "%b").tm_mon - 1
+    except (ValueError, IndexError):
+        return None
+
+
+def mature_origins(labels: list[Any], valuation_month: int, months: int = MATURE_MONTHS) -> list[bool]:
+    """Whether each origin is past its third year at the valuation (more than 36 months old)."""
+
+    starts = [origin_start_month(label) for label in labels]
+    return [start is not None and valuation_month - start + 1 > months for start in starts]
+
+
+def chain_factors(dfm: dict[str, Any]) -> list[float | None]:
+    """The factors a DFM projects with: the Curves tab's selection, else the Ratios tab's."""
+
+    chain = _numbers((dfm.get("curves_tab") or {}).get("selected_values"))
+    return chain or selected_factors(dfm)
+
+
 def selected_factors(dfm: dict[str, Any]) -> list[float | None]:
     averages = (dfm.get("ratios_tab") or {}).get("average_formulas") or {}
     selected, values = averages.get("selected") or [], averages.get("values") or []
@@ -180,39 +215,59 @@ def selected_factors(dfm: dict[str, Any]) -> list[float | None]:
     return factors
 
 
-def method_measures(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _max_ratio_where(ultimate: list[float | None], latest: list[float | None], keep: list[bool]) -> float | None:
+    return _max_ratio([u if k else None for u, k in zip(ultimate, keep)], latest)
+
+
+def method_measures(kind: str, payload: dict[str, Any], valuation_month: int | None = None) -> dict[str, Any]:
     if kind == "DFM":
         results = payload.get("results_tab") or {}
+        data = payload.get("data_tab") or {}
         ultimate = _numbers(results.get("ultimate_vector"))
-        latest = _latest((payload.get("data_tab") or {}).get("input_data_triangle_values"))
+        latest = _latest(data.get("input_data_triangle_values"))
         factors = selected_factors(payload)
-        return {
+        chain = chain_factors(payload)
+        measures = {
             "first_factor": factors[0] if factors else None,
             "max_ult_to_latest": _max_ratio(ultimate, latest),
+            "late_factors_over_10": [i + 1 for i, f in enumerate(chain) if i >= 2 and f is not None and f > LATE_FACTOR_LIMIT],
             # Only a premium basis gives a loss ratio; other bases are counts or exposures.
             "loss_ratio": _loss_ratio(ultimate, _numbers(results.get("ratio_basis_values")))
             if "premium" in str(results.get("ratio_basis_dataset") or "").lower() else None,
         }
-    tab = payload.get("method_tab") or {}
-    if kind == "BF":
-        return {"max_ult_to_latest": _max_ratio(_numbers(tab.get("new_ultimate")), _numbers(tab.get("latest_values")))}
-    if kind == "CC":
-        ultimate = _numbers(tab.get("cape_cod_ultimate"))
-        return {
-            "max_ult_to_latest": _max_ratio(ultimate, _numbers(tab.get("latest_values"))),
-            "loss_ratio": _loss_ratio(ultimate, _numbers(tab.get("exposure_values"))),
-        }
-    if kind == "RS":
-        active = (payload.get("details_tab") or {}).get("active_ratio_basis_dataset")
-        basis = next((item.get("values") for item in tab.get("ratio_basis_values") or []
-                      if isinstance(item, dict) and item.get("name") == active), None)
-        if not active or "premium" not in str(active).lower():
+        labels = data.get("origin_labels") or []
+    else:
+        tab = payload.get("method_tab") or {}
+        labels = tab.get("origin_labels") or []
+        if kind == "BF":
+            ultimate, latest = _numbers(tab.get("new_ultimate")), _numbers(tab.get("latest_values"))
+            measures = {"max_ult_to_latest": _max_ratio(ultimate, latest)}
+        elif kind == "CC":
+            ultimate, latest = _numbers(tab.get("cape_cod_ultimate")), _numbers(tab.get("latest_values"))
+            measures = {
+                "max_ult_to_latest": _max_ratio(ultimate, latest),
+                "loss_ratio": _loss_ratio(ultimate, _numbers(tab.get("exposure_values"))),
+            }
+        elif kind == "RS":
+            active = (payload.get("details_tab") or {}).get("active_ratio_basis_dataset")
+            basis = next((item.get("values") for item in tab.get("ratio_basis_values") or []
+                          if isinstance(item, dict) and item.get("name") == active), None)
+            if not active or "premium" not in str(active).lower():
+                return {}
+            return {"loss_ratio": _loss_ratio(_numbers(tab.get("selected_ultimate")), _numbers(basis))}
+        else:
             return {}
-        return {"loss_ratio": _loss_ratio(_numbers(tab.get("selected_ultimate")), _numbers(basis))}
-    return {}
+    if valuation_month is not None:
+        measures["max_mature_ult_to_latest"] = _max_ratio_where(
+            ultimate, latest, mature_origins(labels, valuation_month)
+        )
+    return measures
 
 
 def plausibility(project_dir: Path) -> list[dict[str, Any]]:
+    settings = _read_json(project_dir / "general_settings.json")
+    end = str(settings.get("development_end_date") or "")
+    valuation_month = int(end[:4]) * 12 + int(end[4:6]) - 1 if len(end) >= 6 else None
     rows = []
     for folder in sorted((project_dir / "data").iterdir()):
         index_path = folder / "index.json"
@@ -224,7 +279,7 @@ def plausibility(project_dir: Path) -> list[dict[str, Any]]:
             if kind not in ("DFM", "BF", "CC", "RS"):
                 continue
             rows.append({"reserving_class": reserving_class, "file": path.name, "kind": kind,
-                         **method_measures(kind, _read_json(path))})
+                         **method_measures(kind, _read_json(path), valuation_month)})
     return rows
 
 
@@ -242,7 +297,12 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "max_ult_to_latest": spread("max_ult_to_latest"),
         "dfm_loss_ratio": spread("loss_ratio", "DFM"),
         "rs_loss_ratio": spread("loss_ratio", "RS"),
-        "ult_over_20x_latest": sum(1 for r in rows if (r.get("max_ult_to_latest") or 0) > 20),
+        "ult_over_20x_latest": sum(1 for r in rows if (r.get("max_ult_to_latest") or 0) > ULT_TO_LATEST_LIMIT),
+        # Step 8's "Done when": both lists empty.
+        "late_factor_over_10": [f"{r['reserving_class']} | {r['file']}: columns {r['late_factors_over_10']}"
+                                for r in rows if r.get("late_factors_over_10")],
+        "mature_ult_over_20x_latest": [f"{r['reserving_class']} | {r['file']}: {r['max_mature_ult_to_latest']:.1f}"
+                                       for r in rows if (r.get("max_mature_ult_to_latest") or 0) > ULT_TO_LATEST_LIMIT],
     }
 
 
