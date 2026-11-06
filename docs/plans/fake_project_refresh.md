@@ -1,7 +1,7 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 11 session-sized steps; steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 waits on open decision 3.
-Last updated: 2026-11-05
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 done 2026-11-06, step 7 next.
+Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
 **How this ships.** Steps 1, 5 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
@@ -17,14 +17,15 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 3 | The local Fake project opens without format errors | [x] | 2026-11-04 | 50 min | 25 min | The local copy passes every format check, and the BF and Cape Cod methods it refused before open again |
 | 4 | A realistic synthetic source table for the Fake project | [x] | 2026-11-04 | 90 min | 14 min | One command writes a new source table with the same columns and segments whose totals add up and whose loss ratios and development look like real business |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [x] | 2026-11-05 | 45 min | 48 min | The local project now reads the new source table: every dataset built from it was rebuilt, pending counts are never negative and reported claim counts never go down |
-| 6 | Prior-quarter and prior-ultimate inputs sit on the same scale as the results | [ ] | | 50 min | | |
+| 6 | The adjusted triangles imported from ResQ sit on the same scale as the new data | [x] | 2026-11-06 | 50 min | 22 min | The adjusted and ad hoc triangles now follow the new figures, and the Penn+CT MP+PIP adjusted severity builds again |
 | 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | |
 | 8 | Methods whose settings make no sense on the new data are reset | [ ] | | 60 min | | |
 | 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
+| 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [ ] | | 60 min | | |
 
-Overall: 5 of 11 steps done. Estimated 595 min, actual so far 108 min.
+Overall: 6 of 12 steps done. Estimated 655 min, actual so far 130 min.
 
 ## How agents work this plan
 
@@ -73,7 +74,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6 and 7 on 2026-11-06)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -85,22 +86,23 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
    - **A young class may have all-zero counts.** The all-zero check skips classes with fewer than 50 reported claims: MA has written only since 202512 and has no closed claim yet.
    - **A −1 excess pending cell is accepted**: a closed claim that a later recovery takes below the layer leaves the reported layer only. The pending check covers the total, not the excess layers.
    - **"No decreasing cumulative reported"** means reported claim counts; incurred losses may fall as case reserves are taken down.
+6. **Step 6 is split** (taken 2026-11-06, raised by the first step 6 run). None of the 120 Result Selection outputs (the x 91 / x 92 vectors the priors, BF priors and expected loss ratios copy) was recalculated by step 5, so they still hold pre-refresh values: F 92 against the rebuilt latest incurred ran from 0.00 times to 7.2 times. Step 6 therefore rescales only the 25 ResQ-stored "Adjusted" / ad hoc triangles, which need nothing but the rebuilt source triangles. The prior, BF prior and expected-loss-ratio vectors move to step 12, run between steps 7 and 8 on step 7's recalculated Result Selections.
+7. **Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" becomes a hand-entered (input) triangle stored at 3 months** (taken 2026-11-06). It feeds a 3-month DFM and the 12-month "Severity--Adjusted Net Incurred per Reported ex CWOP"; an Engine-kind ResQ triangle cannot be rebuilt at another length, while a hand-entered one rolls up to 12, so the severity builds. Done in step 6 through the dataset save.
 
 ## Open decisions
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
-3. **Step 6's "current results" do not exist until step 7** (raised 2026-11-05 by the first step 6 run, which stopped before writing anything). Step 6 sets each prior to "the matching current result", but none of the local project's 120 Result Selection outputs (the x 91 / x 92 vectors the priors, BF priors and expected loss ratios are taken from) was recalculated by step 5's refresh: every one is still marked review-needed and holds its pre-refresh values. Against the rebuilt latest incurred, F 92 runs from 0.00 times (HOL, HOPxCAT, NY, Penn+CT) to 7.2 times (MA BI Total), so a prior copied from it now would be off the new scale, and the ratio check would pass against a wrong counterpart. The ResQ-stored "Adjusted" / ad hoc triangles do not have this problem: they rescale from the rebuilt source triangles alone. Recommended: **split step 6.** Step 6 rescales only the 25 ResQ-stored triangles. The prior, BF prior and expected-loss-ratio vectors move to a new step 12, run between steps 7 and 8, which takes them from step 7's recalculated Result Selections, refreshes the Result Selections they feed once more, and keeps step 6's ratio check as its "Done when".
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
 ## Rough size
 
-Estimated 595 minutes of agent time across 11 steps: 350 minutes of code edit and 245 of test, validation and deploy. The ResQ re-import in step 10 is the user's time and is not counted.
+Estimated 655 minutes of agent time across 12 steps: 385 minutes of code edit and 270 of test, validation and deploy. The ResQ re-import in step 10 is the user's time and is not counted.
 
 ## Plan
 
-Steps 1 and 2 are independent of each other and of everything else. Steps 3-8 run in order on the local root. Step 9 needs 1 and 8; step 10 needs 9; step 11 needs 10.
+Steps 1 and 2 are independent of each other and of everything else. Steps 3-8 run in order on the local root, with step 12 between 7 and 8 (order 3, 4, 5, 6, 7, 12, 8). Step 9 needs 1, 8 and 12; step 10 needs 9; step 11 needs 10.
 
 ### Step 1 — ResQ import writes complete sidecars
 
@@ -228,21 +230,30 @@ Estimate: code edit 20 min, test/validation 25 min, total 45 min. Actual: code e
 - **Realism** (`tools/fake_project_realism_report.py`, before -> after): all three checks pass. Pending counts negative 21.3% -> 0%, outstanding negative 15.2% -> 7.4%, reported counts decreasing 0.02% -> 0%, gross incurred decreasing 14.1% -> 10.8%, net incurred 19.1% -> 14.2%, capped incurred about 36% -> 24%. Subro and recoveries are mostly negative because the source stores recoveries as negative amounts. The "Adjusted" triangles keep their old values until step 6.
 - **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
 
-### Step 6 — Rescale the hand-entered inputs
+### Step 6 — Rescale the ResQ-stored triangles
 
-**Goal.** "Prior Qtr Selected / Indicated", BF priors and expected loss ratios sit on the same scale as the new results.
+**Goal.** The 25 "Adjusted" / ad hoc triangles a ResQ import stored (`source` `resq_triangle`) sit on the scale of the rebuilt source triangles (decisions 5 and 6).
 
-**Read first.** The x 81 / x 82 vector sidecars and the BF prior sources in two classes; the hosted dataset save.
+**Read first.** Decisions 5-7; `dataset_service._save_dataset_sidecar_impl` (the stored-shape rules for a hand-entered dataset, `stored_values_cleared`); `precedent_cache_service.materialize_engine_source` (why an Engine-kind ResQ triangle cannot be read at another length); `dfm_service._load_source_snapshot`'s development labels (a hand-entered precedent read without roll-up takes its sidecar's own labels); memories `local-root-scripts-need-local-gateway-env`, `scripts-save-through-gateway-client`, `bulk-method-restatement-hold`.
 
 **Do.**
-- [ ] A one-off tool that sets each prior vector to the matching current result times a small seeded deviation, at the method's own period, saved through the dataset save so the walk runs.
-- [ ] Expected loss ratios and BF priors from the new premium and results.
+- [x] A one-off tool that sets each triangle to its base triangle (Net Loss--Incurred, Net Loss--Paid or Gross Loss--Incurred; "Net Loss - ad hoc" reads Net Loss--Incurred) times a small seeded per-origin factor, at the shortest lengths its dependent methods use, saved through the hosted dataset save so the walk runs.
+- [x] (Decision 7) Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" saved as a hand-entered triangle at 3 months.
 
 **Tests.** The tool's tests on a fixture class.
 
-**Done when.** No prior vector is more than twice or less than half its current counterpart.
+**Done when.** Every triangle's latest diagonal is within 10% of its base's, and the Penn+CT `MP+PIP` severity builds.
 
-Estimate: code edit 35 min, test/validation 15 min, total 50 min.
+Estimate: code edit 35 min, test/validation 15 min, total 50 min. Actual: code edit 16 min, test/validation 6 min, total 22 min (each hosted save took about a second, and the split left only the triangles).
+
+**Outcome (2026-11-06).** `tools/rescale_resq_stored_triangles.py` (`--dry-run`, `--check`), tests in `tools/tests/test_rescale_resq_stored_triangles.py`. On the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Saved.** All 24 non-calculated triangles went through the hosted dataset save (seed 20261106, ±5% per origin); `--check` passes for every one, with latest/base from 0.977 to 1.014.
+- **Shapes.** Penn+CT `BI Total` "Net Loss--Incurred Adjusted" (1x1 -> 3x3) and "Adjusted*" (1x1 -> 12x12) are rewritten at their DFMs' lengths. The two hand-entered monthly stores keep their store and are rescaled per origin: HOL "Net Loss--Incurred Adjusted***" held only zeros and stays empty, and MA `BI Total` "Adjusted*" holds one quarter. Moving them would carry their ResQ development labels (120 / 113) into a store their DFMs read without roll-up.
+- **Decision 7.** Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" is now hand-entered at 3 months, and its severity rebuilt (status current).
+- **Walk failures for step 7 or 8.** NY `BI Total` F 23 C / F 24 C and Penn+CT `MP+PIP` F 23 C: "DFM input 'Net Loss--Incurred Adjusted*' has incompatible development geometry". Their sidecars keep ResQ's development labels (113 and 38), while the file has the local project's 40 quarterly columns. MA `MP+PIP` D 92: "Exact 3-month cache cannot be derived from the current 12-month output for 'D 81 - Prior Qtr Indicated'" (step 12's vectors).
+- **Development end date differs.** The local project's General Settings say development end 202612; production's say 202605. So the local Engine builds 40 quarterly columns where ResQ had 38.
+- **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after 2026-11-05 00:57 EST (5,841 files checked).
 
 ### Step 7 — Recalculate every method
 
@@ -327,3 +338,24 @@ Estimate: code edit 10 min, test/validation 50 min, total 60 min.
 **Done when.** The parity report passes against the new fixture and no note presents the old figures as current.
 
 Estimate: code edit 25 min, test/validation 15 min, total 40 min.
+
+### Step 12 — Rescale the prior inputs
+
+Appended 2026-11-06 (decision 6); runs after step 7 and before step 8.
+
+**Goal.** "Prior Qtr Selected / Indicated", BF priors and expected loss ratios sit on the same scale as step 7's recalculated results.
+
+**Read first.** Decision 6; the x 81 / x 82 vector sidecars and the BF prior sources in two classes; the hosted dataset save; step 6's tool.
+
+**Do.**
+- [ ] A one-off tool (or step 6's, extended) that sets each prior vector to its counterpart times a small seeded deviation: x 81 from x 91; x 82, x 42, C 42a, F 42 B and F 00 from x 92.
+- [ ] Expected ratios from the same results: P 01, P 02, P 03 and P 04 A are E, E1, E2 and G 92 over D 92; P 04 B is G 92 over F 92; P 05, P 06 and P 07 are G, F and D 92 over Total Earned Premium.
+- [ ] Refresh the Result Selections these inputs feed once more.
+
+**Notes.** Most prior vectors are stored monthly (120 rows) while their Result Selection is annual or quarterly: re-store each at its counterpart's period, with `stored_values_cleared` and the counterpart's origin labels. Save through `GatewayClient.save("dataset_sidecar", ...)` and poll `propagation_busy` before each save.
+
+**Tests.** The tool's tests on a fixture class.
+
+**Done when.** No prior vector is more than twice or less than half its current counterpart.
+
+Estimate: code edit 35 min, test/validation 25 min, total 60 min.
