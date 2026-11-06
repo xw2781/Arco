@@ -148,8 +148,14 @@ def _column(rows: list[list[float | None]]) -> list[float]:
     return [(row[0] if row and row[0] is not None else 0.0) for row in rows]
 
 
-def source_values(project_dir: Path, class_dir: Path, sidecar: dict[str, Any], period: int) -> list[float]:
-    """A source vector at ``period``: an Engine dataset's own file, or a stored one summed up to it."""
+def source_values(
+    project_dir: Path, class_dir: Path, sidecar: dict[str, Any], period: int, *, split: bool = False
+) -> list[float]:
+    """A source vector at ``period``: an Engine dataset's own file, or a stored one summed up to it.
+
+    ``split`` spreads a counterpart stored coarser than ``period`` evenly over
+    its finer origins (a yearly selection whose BF prior is read quarterly).
+    """
 
     name = str(sidecar["dataset_name"])
     if sidecar.get("source_kind") == "engine":
@@ -169,6 +175,10 @@ def source_values(project_dir: Path, class_dir: Path, sidecar: dict[str, Any], p
         step = period // stored
         return [sum(values[index:index + step]) for index in range(0, len(values), step)]
     stored = _stored_period(sidecar)
+    if split and stored > period and stored % period == 0:
+        step = stored // period
+        values = _column(triangles.read_rows(class_dir / "datasets" / str(sidecar["csv_file"])))
+        return [value / step for value in values for _ in range(step)]
     if period % stored:
         raise ValueError(f"{name} is stored at {stored} months and cannot give {period}")
     values = _column(triangles.read_rows(class_dir / "datasets" / str(sidecar["csv_file"])))
@@ -181,7 +191,7 @@ def target_values(project_dir: Path, item: Vector, seed: int) -> tuple[list[floa
 
     class_dir = project_dir / "data" / sanitize_file_name_part(item.reserving_class, "class")
     sidecars = load_sidecars(class_dir)
-    columns = [source_values(project_dir, class_dir, sidecars[name], item.period) for name in item.sources]
+    columns = [source_values(project_dir, class_dir, sidecars[name], item.period, split=True) for name in item.sources]
     if item.stage == "ratio":
         numerator, denominator = columns
         current = [n / d if d else 0.0 for n, d in zip(numerator, denominator)]

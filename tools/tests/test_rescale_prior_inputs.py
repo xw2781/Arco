@@ -113,6 +113,14 @@ class RescalePriorInputsTest(unittest.TestCase):
             self.assertLessEqual(abs(value / base - 1.0), tool.triangles.DEVIATION)
         self.assertEqual(values, tool.target_values(self.project, item, 7)[0])
 
+    def test_a_yearly_counterpart_is_spread_over_the_quarters_its_prior_is_read_at(self) -> None:
+        self._vector("D 92 - Current Qtr Selected", "result_selection", 12, [100.0, 260.0])
+        self._vector("D 41 - BF Incurred", "bf", 3, [0.0] * 8)
+        item = self._plan()["D 42 - Prior for BF Incurred"]
+        self.assertEqual(item.period, 3)
+        _, current = tool.target_values(self.project, item, 7)
+        self.assertEqual(current, [25.0] * 4 + [65.0] * 4)
+
     def test_ratios_divide_numerator_by_denominator(self) -> None:
         item = self._plan()["P 04 A-ALAE--Expected % of Ultimate Gross Loss - Indicated"]
         _, current = tool.target_values(self.project, item, 7)

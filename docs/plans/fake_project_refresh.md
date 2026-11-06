@@ -1,10 +1,10 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12 and 8 done 2026-11-06 (decisions 8 and 9 taken in step 7); step 9 waits on open decision 3 (eight methods whose precedent has another origin length).
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8 and 13 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); step 9 is next.
 Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
-**How this ships.** Steps 1, 5, 7 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles; the project dates rule that lets Origin End follow Development End, decision 9, in the Engine and Gateway): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
+**How this ships.** Steps 1, 5, 7 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles; the project dates rule that lets Origin End follow Development End, decision 9, in the Engine and Gateway): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8, 12 and 13 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
 
 ## Progress
 
@@ -24,8 +24,9 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
+| 13 | Methods that read another method at a different period length are moved to that length (runs between 8 and 9) | [x] | 2026-11-06 | 55 min | 25 min | The eight methods that refused every refresh now use the period length of the method they read, and every class of the local project refreshes cleanly |
 
-Overall: 9 of 12 steps done. Estimated 655 min, actual so far 215 min.
+Overall: 10 of 13 steps done. Estimated 710 min, actual so far 240 min.
 
 ## How agents work this plan
 
@@ -74,7 +75,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-9 on 2026-11-06)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-11 on 2026-11-06)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -90,22 +91,22 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 7. **Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" becomes a hand-entered (input) triangle stored at 3 months** (taken 2026-11-06). It feeds a 3-month DFM and the 12-month "Severity--Adjusted Net Incurred per Reported ex CWOP"; an Engine-kind ResQ triangle cannot be rebuilt at another length, while a hand-entered one rolls up to 12, so the severity builds. Done in step 6 through the dataset save.
 8. **The local project moves back to development end 202605** (taken 2026-11-06, raised by step 6's outcome). The local copy's development end had drifted to 202612 (a dates-panel test on 2026-11-03); production, ResQ and this plan use 202605. Step 7 moves it back with the project dates Engine job, the canonical path, and waits for its pending record to clear before any recalculation. Origin end stays 202612 (decision 9).
 9. **Origin End may fall after Development End** (taken 2026-11-06, raised by step 7: the dates job refused 201701 / 202612 / 202605). Production and ResQ both hold that pair, and a mid-year valuation keeping the year's later (empty) origins is the normal layout; moving origin end to 202605 instead would have dropped 7 monthly origins from 104 imported datasets and left ResQ's grid. The project dates contract's rule now checks only Origin Start ≤ Origin End; the Project Dates panel's pre-check drops the same comparison. Deployed to the local root in step 7, to production's Engine and Gateway with step 9; the panel's pre-check reaches users with the next app release (until then the released panel still refuses that pair before submitting).
+10. **The new source file goes beside the old one on the share** (taken 2026-11-06, was open decision 1): `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_Channel_202605_Fake_3.csv`, with `_Fake_2.csv` kept for rollback. Step 9 writes it.
+11. **Methods that read another method at a different origin length are moved to that length** (taken 2026-11-06, was open decision 3, raised by step 8), not published refusing. Each of the eight methods takes its precedent's origin length: the four Cape Cods and the NY BI Total and Penn+CT BI Total DFMs F 13 become 3-month, the NY MP+PIP DFM F 13 and the Result Selection C 91 become 12-month (and C 92, which reads C 91, follows). Done in step 13.
 
 ## Open decisions
 
-1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
-3. **Eight methods read a precedent at another origin length** (raised by step 8; blocks step 9). They refuse every refresh and keep their last result: the Cape Cods MA BI Total F 53, MA MP+PIP D 53, NY BI Total F 53 and Penn+CT MP+PIP F 53 (12-month, on a 3-month DFM: "uses 3-month origins; expected 12"); the DFMs NY BI Total F 13 and Penn+CT BI Total F 13 (12-month, ratio basis the 3-month C 12) and NY MP+PIP F 13 (3-month, ratio basis the 12-month C 12); and the Result Selection NY MP+PIP C 91 (3-month, candidate the 12-month C 42: "Exact 3-month cache cannot be derived"), which also holds back C 92 and F 31. ResQ rolls the finer method up; Arco rolls up only a hand-entered dataset, so no data or setting fix exists short of changing each method's period. Separately, the Stochastic Consolidation "F 72B" in All States Total has never run: one of its segments names a Bootstrap "F 72B" in All States BI Total that does not exist. Recommended: publish them as they stand in step 9 (they keep their last valid result and refuse with a clear reason) and plan the roll-up of a finer method output as its own app change; the alternative, moving each method to its precedent's origin length, changes eight methods' design and their dependents' shapes.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
 ## Rough size
 
-Estimated 655 minutes of agent time across 12 steps: 385 minutes of code edit and 270 of test, validation and deploy. The ResQ re-import in step 10 is the user's time and is not counted.
+Estimated 710 minutes of agent time across 13 steps: 415 minutes of code edit and 295 of test, validation and deploy. The ResQ re-import in step 10 is the user's time and is not counted.
 
 ## Plan
 
-Steps 1 and 2 are independent of each other and of everything else. Steps 3-8 run in order on the local root, with step 12 between 7 and 8 (order 3, 4, 5, 6, 7, 12, 8). Step 9 needs 1, 8 and 12; step 10 needs 9; step 11 needs 10.
+Steps 1 and 2 are independent of each other and of everything else. Steps 3-8 run in order on the local root, with step 12 between 7 and 8 and step 13 after 8 (order 3, 4, 5, 6, 7, 12, 8, 13). Step 9 needs 1, 8, 12 and 13; step 10 needs 9; step 11 needs 10.
 
 ### Step 1 — ResQ import writes complete sidecars
 
@@ -311,14 +312,14 @@ Estimate: code edit 40 min, test/validation 20 min, total 60 min. Actual: code e
 - **Deleted candidates.** NY BI Total F 91 drops F 41 and F 41 B, G 91 drops G 41 (the BFs step 3 deleted); their origins go to F 23 and G 12.
 - **Hand-typed factors.** 147 development columns in 104 DFMs selected a typed User Entry more than 25% from the column's "Volume - all" average; they now select that average. A column the new data has no ratio in keeps its typed factor. No Curves-tab tail was outside 1.0-1.5.
 - **Priors.** The resets moved the selections, so step 12's tool was re-run (twice) on NY BI Total, NY MP+PIP, Penn+CT BI Total, Penn+CT MP+PIP and HOL; `--check` passes for all 191 vectors again.
-- **Bootstrap and Stochastic Consolidation.** The class walks refreshed all six Bootstraps (scaled mean equals the selected ultimate; total reserve CV 0.07-0.27). The consolidation "F 72 A" was saved again and re-ran (CV 0.10). "F 72B" refuses: its segment Bootstrap does not exist and it has never run (open decision 3).
+- **Bootstrap and Stochastic Consolidation.** The class walks refreshed all six Bootstraps (scaled mean equals the selected ultimate; total reserve CV 0.07-0.27). The consolidation "F 72 A" was saved again and re-ran (CV 0.10). "F 72B" refuses: its segment Bootstrap does not exist and it has never run (then open decision 3; see step 13).
 - **Plausibility** (561 methods): no selected factor above 10 past the second column, and the largest ultimate-to-latest ratio of an origin past its third year is 3.1, so the bar holds. First DFM factor median 2.60, 90th percentile 24.3, maximum 241 (was 1,614); 54 methods have an origin over 20 times its latest, all young. Result Selection loss ratios on earned premium: median 0.55 over 33; 7 outside 0.3-1.5 (HOL F 91/92 0.12; MA BI Total F 91/92 1.76 and MA MP+PIP D 91/92 2.81, a class written only since 202512; Rider BI+PIP F 92 0.26).
-- **Still refusing.** The eight origin-length methods of open decision 3, and C 92 / F 31 behind NY MP+PIP C 91. Every other walk succeeds (16 of 22 classes clean).
+- **Still refusing.** The eight origin-length methods of then open decision 3 (moved in step 13, decision 11), and C 92 / F 31 behind NY MP+PIP C 91. Every other walk succeeds (16 of 22 classes clean).
 - **Scan and production.** The scan reports nothing after the 25 lock files and the recreated empty `data\tmp` class were deleted (one self-healing notice). No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
 
 ### Step 9 — Publish to production
 
-**Goal.** Production's Fake project is the refreshed one, reading the new shared source file, and the import fix is deployed. Needs open decision 1.
+**Goal.** Production's Fake project is the refreshed one, reading the new shared source file, and the import fix is deployed. Needs step 13; decision 10 says where the file goes.
 
 **Read first.** `AGENT_GUIDELINES.md` "Component Build and Deploy"; `tools/local_server.py`.
 
@@ -396,3 +397,34 @@ Estimate: code edit 35 min, test/validation 25 min, total 60 min. Actual: code e
 - **Left for step 8.** A final walk per class (step 7's driver) leaves the same 9 classes with the same refusals as step 7 (excluded ratio cells, development geometry, origin length). Two more show only in the walks this step's saves started: NY MP+PIP C 91 cannot read the 12-month C 42 DFM at 3 months, and NY BI Total G 91 finds no "G 41 - BF Paid" sidecar.
 - **Plausibility.** Result Selection loss ratios on earned premium: median 0.54 over 33, maximum 2.81 (step 7: 0.52, 2.88). The selections still carry the old data's choices, which step 8 resets.
 - **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
+
+### Step 13 — Reshape the methods that read a precedent at another period length
+
+Appended 2026-11-06 (decision 11); runs after step 8 and before step 9.
+
+**Goal.** The eight methods of decision 11 take their precedent's origin length, so every method of the local project refreshes.
+
+**Read first.** Decision 11; step 8's outcome; memories `mixed-origin-length-precedents`, `bulk-method-restatement-hold`, `method-precision-observed-not-projected`, `local-root-scripts-need-local-gateway-env`; the length handling of the method saves: `dfm_service.save_dfm_method` with `dfm_contract.apply_owned_patch` and `_apply_input_snapshot`, `cape_cod_service.save_cape_cod_method` with `cape_cod_contract.apply_owned_patch`, `result_selection_service.save_result_selection` with `_refresh_review_save_payload`; `dataset_instance_index_service.delete_cached_datasets`.
+
+**Do.**
+- [x] A one-off tool that finds every method reading a method output it cannot read at its own length and moves it through the app's saves.
+- [x] Walk every class (step 7's driver), re-run step 12's `--check` and the rescale where it fails, and the plausibility report against step 8's bar.
+- [x] Stochastic Consolidation F 72B: repair it if its missing segment Bootstrap is a data slip, otherwise list it.
+
+**Tests.** The tool's tests on fixture sidecars and payloads; step 12's tool gains a test for a yearly counterpart read quarterly.
+
+**Done when.** No method refuses for an origin length, every class walk succeeds, step 12's check passes, and step 8's bar still holds.
+
+Estimate: code edit 30 min, test/validation 25 min, total 55 min. Actual: code edit 13 min, test/validation 12 min, total 25 min (the saves and walks took seconds each; most of the time went into finding which save path can change a length).
+
+**Outcome (2026-11-06).** `tools/reshape_mixed_period_methods.py` (`--dry-run`), tests in `tools/tests/test_reshape_mixed_period_methods.py`. On the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Moved.** The four Cape Cods (MA BI Total F 53, MA MP+PIP D 53, NY BI Total F 53, Penn+CT MP+PIP F 53) and the DFMs NY BI Total F 13 and Penn+CT BI Total F 13 are now 3-month; NY MP+PIP F 13 and C 91 are 12-month, and C 92, which then could not read C 91 at 3 months, followed on the tool's second pass. The tool's plan found exactly these eight, and nothing else, before it ran.
+- **How.** A Result Selection save of a review-needed selection re-reads every candidate at the new length, so C 91 and C 92 were saved with annual labels and each candidate's quarterly weights averaged per year. The Cape Cod and DFM saves cannot change a stored method's length: the Cape Cod save keeps the stored origin labels ("has 40 rows; expected 10"), the DFM save keeps the stored triangle and only relabels it, and a DFM refresh refuses a triangle whose development steps differ. None of the seven has a dependent, so each was deleted with the Project Instance delete and saved again as a new method, which reads every source at the new length. The Cape Cods keep their settings; the DFMs take their ratio-basis DFM's average-formula rows (the same rows at the new length) and select the row their old selection used most (Simple - 3 became Simple - 12 in NY BI Total and Simple - 8 in Penn+CT BI Total; Volume - all in NY MP+PIP). Their typed factors, Curves-tab choices and audit history start fresh. A first run sent the new DFMs without origin labels; the save refused them after the delete, and the three were restored from a copy taken beforehand and moved on the second run.
+- **App gap found.** Changing Origin Length on an existing DFM or Cape Cod page cannot be saved as a user expects: the DFM save publishes the old triangle under the new length, and the Cape Cod save refuses. Not fixed here; worth its own fix.
+- **Priors.** C 91 had refused since step 7, so the old data's figures it held had been copied into C 81 / C 82 / C 42a by step 12 (about 10 times the new results). Step 12's tool was re-run twice on NY MP+PIP; it now spreads a yearly counterpart evenly over the quarters when a prior is read quarterly (C 42a for the 3-month BF C 41). `--check` passes for all 191 vectors.
+- **Walks.** All 22 classes succeed (step 8: 16).
+- **Plausibility** (561 methods): step 8's bar holds (no selected factor above 10 past the second column, no origin past its third year over 20 times its latest). First DFM factor median 2.56, 90th percentile 23.5, maximum 220; Result Selection loss ratios on earned premium median 0.55 over 33, the same 7 outside 0.3-1.5 as step 8.
+- **Left behind.** C 91 keeps its old 3-month and 6-month files beside the 12-month one; nothing reads them now (memory `calculated-walk-reads-stale-sibling-views` describes the risk if a reader is added).
+- **F 72B not repaired.** All five of its segments name "F 72B - Bootstrap Net Incurred no PV", which exists only in All States MP+PIP; BI Total, CMPxCAT, COL and PD+UMPD have only "F 72 A ... with PV". Repairing it means creating four "no PV" Bootstraps or repointing the segments at the "with PV" ones, which changes what the consolidation means; left for a later decision. It has never run and holds no result.
+- **Scan and production.** The scan reports nothing after the 22 lock files were deleted. No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
