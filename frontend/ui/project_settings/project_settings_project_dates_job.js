@@ -53,7 +53,9 @@ export function plural(value, singular, pluralForm = `${singular}s`) {
 }
 
 /**
- * Decision 4: origin start <= origin end <= development end, all `YYYYMM`.
+ * Origin start <= origin end, all `YYYYMM`; origin end may follow development
+ * end. Mirrors `normalize_project_dates` in arcrho_project_dates_job_contract,
+ * which the server applies on submit; this copy only answers before the click.
  * Returns the first problem as one short sentence, or "" when the set is valid.
  */
 export function validateProjectDates({ originStartDate, originEndDate, developmentEndDate }) {
@@ -64,7 +66,6 @@ export function validateProjectDates({ originStartDate, originEndDate, developme
   if (end === null) return "Enter an Origin End month.";
   if (development === null) return "Enter a Development End month.";
   if (start > end) return "Origin Start is after Origin End.";
-  if (end > development) return "Origin End is after Development End.";
   return "";
 }
 

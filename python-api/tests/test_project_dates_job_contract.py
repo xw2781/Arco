@@ -47,12 +47,12 @@ def _request(**dates):
 
 
 class DateRuleTests(unittest.TestCase):
-    def test_start_end_and_development_end_must_be_in_order(self) -> None:
+    def test_start_must_not_follow_end_but_end_may_follow_development_end(self) -> None:
         self.assertEqual(_request()["DevelopmentEndDate"], "202612")
+        self.assertEqual(_request(development_end_date="202605")["OriginEndDate"], "202612")
         self.assertEqual(_request(origin_start_date="202612")["OriginStartDate"], "202612")
         for dates, message in (
             ({"origin_start_date": "202701"}, "Origin Start Date must not be after Origin End Date"),
-            ({"development_end_date": "202611"}, "Origin End Date must not be after Development End Date"),
             ({"origin_end_date": "202613"}, "Origin End Date must be a month"),
         ):
             with self.subTest(dates=dates):

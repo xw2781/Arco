@@ -136,9 +136,10 @@ def normalize_project_dates(
 ) -> dict[str, str]:
     """The three dates as ``YYYYMM`` text, refusing any that break the rule.
 
-    Origin Start must not be after Origin End, and Origin End must not be
-    after Development End. All three are months, so there is nothing else to
-    check; ``YYYYMM`` text compares in date order.
+    Origin Start must not be after Origin End. Origin End may fall after
+    Development End: a project valued mid-year keeps the year's later origins
+    (empty until they are written), as ResQ does. All three are months, so
+    there is nothing else to check; ``YYYYMM`` text compares in date order.
     """
 
     dates = {
@@ -150,10 +151,6 @@ def normalize_project_dates(
         raise ProjectDatesJobContractError(
             "Origin Start Date must not be after Origin End Date."
         )
-    if dates["origin_end_date"] > dates["development_end_date"]:
-        raise ProjectDatesJobContractError(
-            "Origin End Date must not be after Development End Date."
-        )
     return dates
 
 
@@ -164,8 +161,7 @@ def normalize_date_set(
 
     ``enforce_rule=False`` checks only that each is a month: the dates a
     project is moved *from* were saved before the rule existed and may break
-    it (an Origin End after the Development End), and they are recorded as
-    they were.
+    it, and they are recorded as they were.
     """
 
     if not isinstance(value, Mapping):

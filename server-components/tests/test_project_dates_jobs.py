@@ -369,7 +369,7 @@ class DurableProjectDatesJobTests(unittest.TestCase):
         self.assertNotIn("previous_dates", status)
 
     def test_dates_that_break_the_rule_are_rejected_without_a_lease(self) -> None:
-        broken = {**self.request, "OriginEndDate": "202701"}
+        broken = {**self.request, "OriginStartDate": "209901"}
         execute = Mock()
         with patch.object(project_dates_jobs, "execute_project_dates_change", execute):
             self.assertFalse(
@@ -378,7 +378,7 @@ class DurableProjectDatesJobTests(unittest.TestCase):
         execute.assert_not_called()
         status = read_project_dates_job_status(self.root, REQUEST_ID)
         self.assertEqual(status["status_code"], 400)
-        self.assertIn("Origin End Date must not be after Development End Date", status["message"])
+        self.assertIn("Origin Start Date must not be after Origin End Date", status["message"])
 
 
 class EngineDispatchTests(unittest.TestCase):

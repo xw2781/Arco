@@ -1,10 +1,10 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, step 6 done 2026-11-06, step 7 next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 12 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6 and 7 done 2026-11-06 (decisions 8 and 9 taken in step 7), step 12 next.
 Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
-**How this ships.** Steps 1, 5 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
+**How this ships.** Steps 1, 5, 7 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles; the project dates rule that lets Origin End follow Development End, decision 9, in the Engine and Gateway): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
 
 ## Progress
 
@@ -18,14 +18,14 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 4 | A realistic synthetic source table for the Fake project | [x] | 2026-11-04 | 90 min | 14 min | One command writes a new source table with the same columns and segments whose totals add up and whose loss ratios and development look like real business |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [x] | 2026-11-05 | 45 min | 48 min | The local project now reads the new source table: every dataset built from it was rebuilt, pending counts are never negative and reported claim counts never go down |
 | 6 | The adjusted triangles imported from ResQ sit on the same scale as the new data | [x] | 2026-11-06 | 50 min | 22 min | The adjusted and ad hoc triangles now follow the new figures, and the Penn+CT MP+PIP adjusted severity builds again |
-| 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | In progress 2026-11-06: waiting on open decision 3 |
+| 7 | Every method in the local Fake project is recalculated on the new data | [x] | 2026-11-06 | 70 min | 42 min | The local project is valued at May 2026 again, Origin End may now fall after Development End, and every method that can refresh on the new data has; the ones that cannot are listed for step 8 |
 | 8 | Methods whose settings make no sense on the new data are reset | [ ] | | 60 min | | |
 | 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [ ] | | 60 min | | |
 
-Overall: 6 of 12 steps done. Estimated 655 min, actual so far 130 min.
+Overall: 7 of 12 steps done. Estimated 655 min, actual so far 172 min.
 
 ## How agents work this plan
 
@@ -74,7 +74,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6, 7 and 8 on 2026-11-06)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-9 on 2026-11-06)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -88,16 +88,13 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
    - **"No decreasing cumulative reported"** means reported claim counts; incurred losses may fall as case reserves are taken down.
 6. **Step 6 is split** (taken 2026-11-06, raised by the first step 6 run). None of the 120 Result Selection outputs (the x 91 / x 92 vectors the priors, BF priors and expected loss ratios copy) was recalculated by step 5, so they still hold pre-refresh values: F 92 against the rebuilt latest incurred ran from 0.00 times to 7.2 times. Step 6 therefore rescales only the 25 ResQ-stored "Adjusted" / ad hoc triangles, which need nothing but the rebuilt source triangles. The prior, BF prior and expected-loss-ratio vectors move to step 12, run between steps 7 and 8 on step 7's recalculated Result Selections.
 7. **Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" becomes a hand-entered (input) triangle stored at 3 months** (taken 2026-11-06). It feeds a 3-month DFM and the 12-month "Severity--Adjusted Net Incurred per Reported ex CWOP"; an Engine-kind ResQ triangle cannot be rebuilt at another length, while a hand-entered one rolls up to 12, so the severity builds. Done in step 6 through the dataset save.
-8. **The local project moves back to development end 202605** (taken 2026-11-06, raised by step 6's outcome). The local copy's development end had drifted to 202612 (a dates-panel test on 2026-11-03); production, ResQ and this plan use 202605. Step 7 moves it back with the project dates Engine job, the canonical path, and waits for its pending record to clear before any recalculation. How the origin end date goes with it is open decision 3.
+8. **The local project moves back to development end 202605** (taken 2026-11-06, raised by step 6's outcome). The local copy's development end had drifted to 202612 (a dates-panel test on 2026-11-03); production, ResQ and this plan use 202605. Step 7 moves it back with the project dates Engine job, the canonical path, and waits for its pending record to clear before any recalculation. Origin end stays 202612 (decision 9).
+9. **Origin End may fall after Development End** (taken 2026-11-06, raised by step 7: the dates job refused 201701 / 202612 / 202605). Production and ResQ both hold that pair, and a mid-year valuation keeping the year's later (empty) origins is the normal layout; moving origin end to 202605 instead would have dropped 7 monthly origins from 104 imported datasets and left ResQ's grid. The project dates contract's rule now checks only Origin Start ≤ Origin End; the Project Dates panel's pre-check drops the same comparison. Deployed to the local root in step 7, to production's Engine and Gateway with step 9; the panel's pre-check reaches users with the next app release (until then the released panel still refuses that pair before submitting).
 
 ## Open decisions
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
-3. **The origin end date when development end moves back to 202605** (step 7, raised 2026-11-06). Production and ResQ hold origin end 202612 with development end 202605: ResQ-stored datasets carry origins through Dec 2026 (40 quarters, 120 months). The project dates job refuses that pair ("Origin End Date must not be after Development End Date", `arcrho_project_dates_job_contract.normalize_project_dates`), so decision 8 cannot be carried out with the local origin end left at 202612. Its preview with origin end 202605 accepts the change but drops 7 empty monthly origins (Jun-Dec 2026; quarters 2026 Q3-Q4) from 104 of the 228 imported datasets, so the local shape would no longer match ResQ's or production's. Choices:
-   - **A. Origin end 202605 as well.** No code change; runs today. The project leaves ResQ's origin grid, so step 10 must move ResQ's origin end too or the two disagree on row counts again.
-   - **B. Let origin end fall after development end.** Drop or relax the contract rule (and its two tests), deploy to the local root, then run the job with 201701 / 202612 / 202605; production gets the change in step 9. Keeps ResQ's and production's grid.
-   Recommended: **B**, because production and ResQ already use that pair and a 202605 valuation with full-year 2026 origins is the normal layout; the rule appears to have been written without that case in mind. Step 7 is blocked until this is chosen.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
@@ -264,17 +261,30 @@ Estimate: code edit 35 min, test/validation 15 min, total 50 min. Actual: code e
 
 **Goal.** Every DFM, BF, CC, RS, Bootstrap and Stochastic Consolidation in the local project is refreshed on the new data.
 
-**Read first.** Memory `bulk-method-restatement-hold` (the 423 wait between classes); the restate tools' `_wait_for_class`; memory `refresh-problem-diagnosis-logs`. Memory `blank-csv-row-is-an-empty-origin`: the reader fix for a Result Selection whose oldest origin is unselected (commit 6f70babd, 2026-09-27) must be in the local root's Engine and Gateway before this step, or every such method's dependents fail to read it.
+**Read first.** Decisions 8 and 9; memory `project-dates-change-job` (the dates move, its pending record and its second run); memory `bulk-method-restatement-hold` (the 423 wait between classes); the restate tools' `_wait_for_class`; memory `refresh-problem-diagnosis-logs`. Memory `blank-csv-row-is-an-empty-origin`: the reader fix for a Result Selection whose oldest origin is unselected (commit 6f70babd, 2026-09-27) must be in the local root's Engine and Gateway before this step, or every such method's dependents fail to read it.
 
 **Do.**
-- [ ] A driver that refreshes class by class in dependency order and records each failure.
-- [ ] A plausibility report: selected factors, ultimate-to-latest ratios, loss ratios per method.
+- [x] (Decision 8) Move the local project to 201701 / 202612 / 202605 with the project dates job; (decision 9) the contract first lets Origin End follow Development End.
+- [x] A driver that refreshes class by class in dependency order and records each failure.
+- [x] A plausibility report: selected factors, ultimate-to-latest ratios, loss ratios per method.
 
 **Tests.** None new beyond the driver's dry-run test.
 
 **Done when.** Every method refreshes, or each failure is listed with its reason for step 8.
 
-Estimate: code edit 40 min, test/validation 30 min, total 70 min.
+Estimate: code edit 40 min, test/validation 30 min, total 70 min. Actual: code edit 18 min, test/validation 24 min, total 42 min (the dates job's two runs took 21 minutes; the walks found nearly everything already refreshed by it).
+
+**Outcome (2026-11-06).** `tools/recalculate_project_methods.py` (`--dry-run`, `--report`), tests in `tools/tests/test_recalculate_project_methods.py`. On the Server PC root `E:\XWSpace\Arco Server`:
+
+- **Engine and Gateway.** The blank-first-row reader fix (6f70babd) was already in both. The Gateway was behind the tree and was redeployed, then both again with decision 9.
+- **Dates (decisions 8, 9).** Job `psdates_step7_1606a764d1ce` moved the project to 201701 / 202612 / 202605: 1,288 engine datasets regenerated, 23 imported datasets and 14 methods reshaped, 458 methods updated; it asked for a second run, which (`psdates_step7_792827a49237`, 9 classes, 181 methods) cleared the pending record.
+- **Walks.** One walk per class over its engine and hand-entered datasets: 13 of 22 classes clean. The method refusals left for step 8 (each blocks its dependents; the rest of each list is "precedent refresh failed"):
+  - *Excluded ratio cells now empty* ("DFM input values are missing for previously excluded ratio cells"), 22 DFMs: HOL C 22, C 52, H 02; NJ BIR51+UMBIR51 C 22; NJ BIx51+UMBIx51 C 52; NY BI Total C 12, C 32, C 42, C 43, C 52, F 23, F 24; NY MP+PIP C 32, C 43, C 52, F 11, F 23; Penn+CT BI Total C 22, C 52; Penn+CT MP+PIP C 22, C 52.
+  - *Development geometry.* NY BI Total F 23 C / F 24 C: the hand-entered "Net Loss--Incurred Adjusted*" was reshaped to 38 quarterly columns but its sidecar keeps ResQ's 113 monthly development labels. Penn+CT MP+PIP F 23 C now refreshes. Newly failing after the date move: Penn+CT BI Total F 23 E and F 46 ("Net Loss--Incurred Adjusted", engine kind), MA MP+PIP D 23 C ("Gross Loss--Incurred Adjusted*", engine kind) and MA BI Total F 23 C (monthly hand-entered store): the date move left these ResQ triangles 38 columns wide, while an Engine triangle with origins to 2026 Q4 is 40 wide (two blank columns past the valuation) and the DFM reader only trims extra blank columns. A rewrite at 40 columns through the dataset save (as step 6 did) fits them without a code change.
+  - *Origin length.* Cape Cod on a 3-month DFM: MA BI Total F 53, MA MP+PIP D 53, NY BI Total F 53, Penn+CT MP+PIP F 53. DFM precedent at another origin length: NY MP+PIP F 13 (C 12 is 12-month, expected 3), Penn+CT BI Total F 13 (C 12 is 3-month, expected 12).
+  - *Step 12's vectors.* MA MP+PIP C 92 / D 92: "Exact 3-month cache cannot be derived from the current 12-month output" for C 81 / D 81 Prior Qtr Indicated.
+- **Plausibility** (`--report`, 561 DFM, BF, Cape Cod and Result Selection methods): first selected DFM factor median 2.73, 90th percentile 18.5, maximum 1,614 (NJ BIx51+UMBIx51 F 12 Prior LDFs; the large ones are paid and ALAE DFMs on young or excess layers, and prior or user-entry selections from the old data); 48 methods have an origin whose ultimate is over 20 times its latest (worst MA MP+PIP G 41 BF Paid). Result Selection loss ratios on earned premium: median 0.52 over 33, 9 outside 0.3-1.5 (0.11 to 2.88), because their selections still hold the old figures. Step 8 resets these.
+- **Production untouched.** No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
 
 ### Step 8 — Reset methods that no longer fit
 

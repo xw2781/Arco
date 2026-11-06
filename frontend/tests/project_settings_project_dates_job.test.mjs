@@ -48,7 +48,7 @@ const START_OF_YEAR = { originStartDate: "201801", originEndDate: "202712", deve
 test("the date rule is start <= end <= development end", () => {
   assert.equal(validateProjectDates(START_OF_YEAR), "");
   assert.equal(validateProjectDates({ ...START_OF_YEAR, originStartDate: "202801" }), "Origin Start is after Origin End.");
-  assert.equal(validateProjectDates({ ...START_OF_YEAR, developmentEndDate: "202711" }), "Origin End is after Development End.");
+  assert.equal(validateProjectDates({ ...START_OF_YEAR, developmentEndDate: "202711" }), "");
   assert.equal(validateProjectDates({ ...START_OF_YEAR, originEndDate: "" }), "Enter an Origin End month.");
   assert.equal(validateProjectDates({ ...START_OF_YEAR, developmentEndDate: "202713" }), "Enter a Development End month.");
   // Equal months are allowed.

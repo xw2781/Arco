@@ -1,0 +1,6 @@
+{
+  "type": "improvement",
+  "scope": "project settings",
+  "audience": "user",
+  "summary": "Project Dates accept an Origin End later than the Development End, so a mid-year valuation can keep the rest of the year's origins."
+}
