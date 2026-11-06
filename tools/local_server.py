@@ -8,9 +8,10 @@ Server PC -- so server-component changes can
 be deployed and exercised here before anything reaches other users. See
 ``docs/plans/completed/local_server_root_and_server_switcher.md``.
 
-Nothing here writes to the production root. ``init`` and ``copy-project`` read
-from it; every other command touches only the local root, and every command
-refuses a root that is not on a local fixed disk or that is the production root.
+Only ``publish-project`` writes to the production root. ``init`` and
+``copy-project`` read from it; every other command touches only the local root,
+and every command refuses a root that is not on a local fixed disk or that is
+the production root.
 
 Usage
 -----
@@ -19,6 +20,7 @@ Usage
     py -3.10 tools/local_server.py deploy [engine] [gateway] [orchestrator]
     py -3.10 tools/local_server.py start | stop | status
     py -3.10 tools/local_server.py launch-app
+    py -3.10 tools/local_server.py publish-project [NAME] --source <shared csv>
 
 ``init`` creates the folders and ``config`` files, installs a prebuilt
 Orchestrator copied from production, binds the local Gateway to this PC only,
@@ -27,7 +29,10 @@ credential in ``%APPDATA%\ArcRho\arcrho_gateway.json`` is never touched.
 ``deploy`` builds the named components from this working tree into the local
 root. ``launch-app`` starts the dev-mode desktop app against the local root,
 with its own Electron profile and backend port, beside any app already running
-against production.
+against production. ``publish-project`` replaces production's copy of a
+project with the local one once it has been checked here; production's folder
+is renamed, never deleted, and the command refuses while anything is writing
+to it.
 """
 
 from __future__ import annotations
@@ -39,6 +44,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from typing import Any, Sequence
@@ -52,7 +58,13 @@ for _source in (REPO_ROOT / "server-components" / "src", REPO_ROOT / "python-api
 from arcrho_api.config import DEFAULT_WORKSPACE_ROOT  # noqa: E402
 from arcrho_api.hosted_save_enrollment import provision_gateway_user  # noqa: E402
 from arcrho_api.io import write_json_atomic  # noqa: E402
+from arcrho_dependent_propagation_contract import (  # noqa: E402
+    find_any_reserving_class_propagation_hold,
+    find_project_scope_propagation_hold,
+)
+from arcrho_project_dates_job_contract import project_dates_pending_path  # noqa: E402
 from arcrho_project_duplication_contract import PROJECT_DUPLICATION_TRANSIENT_DATA_DIR_NAMES  # noqa: E402
+from arcrho_source_refresh_contract import find_source_refresh_hold  # noqa: E402
 from arcrho_hosted_save_http_contract import (  # noqa: E402
     default_gateway_config,
     normalize_gateway_config,
@@ -216,6 +228,115 @@ def _copy_ignore(project: Path):
     return ignore
 
 
+def _publish_holds(production_root: Path, name: str) -> list[str]:
+    """Every reason production's copy of the project is busy right now."""
+
+    reasons = []
+    if find_project_scope_propagation_hold(production_root, name):
+        reasons.append("a project-wide job holds the project")
+    hold = find_any_reserving_class_propagation_hold(production_root, name)
+    if hold:
+        reasons.append(f"a dependent walk is {hold['reason']} for {hold['reserving_class']}")
+    hold = find_source_refresh_hold(production_root, name)
+    if hold:
+        reasons.append(f"a source refresh is {hold['reason']}")
+    pending = project_dates_pending_path(production_root, name)
+    if pending.exists():
+        reasons.append(f"a project dates change has not finished ({pending})")
+    return reasons
+
+
+def _json_text(value: str) -> str:
+    """A path as it is written inside a JSON string: backslashes doubled."""
+
+    return json.dumps(value, ensure_ascii=False)[1:-1]
+
+
+def _rewrite_paths(project: Path, replacements: Sequence[tuple[str, str]]) -> int:
+    """Replace path prefixes in every JSON file of a project; return the files changed.
+
+    Text-level, so each file keeps its own layout. A prefix matches whatever
+    its case (one index stores its path lower-cased) and a lower-case match
+    gets a lower-case replacement.
+    """
+
+    patterns = [
+        (re.compile(re.escape(_json_text(old)) + r'(?=\\\\|")', re.IGNORECASE), _json_text(new))
+        for old, new in replacements
+    ]
+    changed = 0
+    for path in project.rglob("*.json"):
+        text = path.read_bytes().decode("utf-8")
+        updated = text
+        for pattern, new in patterns:
+            updated = pattern.sub(lambda match: new.lower() if match.group(0).islower() else new, updated)
+        if updated != text:
+            path.write_bytes(updated.encode("utf-8"))
+            changed += 1
+    return changed
+
+
+def publish_project(
+    root: Path,
+    *,
+    production_root: Path,
+    name: str,
+    source: Path,
+    today: str | None = None,
+) -> tuple[Path, Path]:
+    """Replace production's copy of a project with the local one.
+
+    Production's folder is renamed to ``<name>.before_refresh_<date>``, never
+    deleted, so renaming it back is the rollback. The copy leaves behind what
+    ``copy-project`` leaves behind, then every path into the local root is
+    pointed at production's root and the import source at ``source``, a file
+    every server component can read. Refuses while anything is writing to
+    production's copy. Returns the published folder and the backup.
+    """
+
+    local = root / "projects" / name
+    target = production_root / "projects" / name
+    if not local.is_dir():
+        raise LocalServerError(f"No local project named {name!r}.")
+    if not target.is_dir():
+        raise LocalServerError(f"No production project named {name!r} to replace.")
+    if not source.is_file():
+        raise LocalServerError(f"The source file {source} does not exist.")
+    reasons = _publish_holds(production_root, name)
+    if reasons:
+        raise LocalServerError(f"Production's {name} is busy: {'; '.join(reasons)}. Try again when it is quiet.")
+    backup = target.with_name(f"{name}.before_refresh_{today or time.strftime('%Y%m%d')}")
+    if backup.exists():
+        raise LocalServerError(f"{backup} already exists; move it aside first.")
+
+    mapping_path = local / "field_mapping.json"
+    local_source = json.loads(mapping_path.read_text(encoding="utf-8")).get("table_path") if mapping_path.is_file() else None
+
+    target.rename(backup)
+    try:
+        shutil.copytree(local, target, ignore=_copy_ignore(local))
+    except BaseException:
+        shutil.rmtree(target, ignore_errors=True)
+        backup.rename(target)
+        raise
+    replacements = [(str(local), str(target))]
+    if local_source:
+        replacements.append((str(local_source), str(source)))
+    _rewrite_paths(target, replacements)
+
+    # The source refresh compares the file it last imported with the file now
+    # at that path, so the record names the shared file as it is.
+    import_path = target / "source" / "source_import.json"
+    if import_path.is_file():
+        record = json.loads(import_path.read_text(encoding="utf-8"))
+        last = record.get("last_import")
+        if isinstance(last, dict) and last.get("csv_path") == str(source):
+            stat = source.stat()
+            last.update(csv_mtime_ns=stat.st_mtime_ns, csv_size=stat.st_size)
+            write_json_atomic(import_path, record)
+    return target, backup
+
+
 def deploy(root: Path, components: Sequence[str]) -> None:
     # ARCRHO_ROOT as well as ARCRHO_DEPLOY_ROOT: the Engine and Orchestrator
     # builds find their kill switches and heartbeats through ARCRHO_ROOT and
@@ -286,6 +407,11 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("stop", help="stop every component of the local root")
     commands.add_parser("status", help="show heartbeats and Gateway health")
     commands.add_parser("launch-app", help="start the dev-mode app against the local root")
+    publish = commands.add_parser(
+        "publish-project", help="replace production's copy of a project with the local one (keeps a backup)"
+    )
+    publish.add_argument("name", nargs="?", default=DEFAULT_PROJECT)
+    publish.add_argument("--source", required=True, help="the import source file, on a path every server component reads")
     return parser
 
 
@@ -323,6 +449,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"gateway       {LOCAL_GATEWAY_URL}/api/health: {gateway_health() or 'no answer'}")
         elif args.command == "launch-app":
             launch_app(root, local_credential_path())
+        elif args.command == "publish-project":
+            target, backup = publish_project(
+                root, production_root=production_root, name=args.name, source=Path(args.source)
+            )
+            print(f"Published to {target}; production's previous copy is {backup}.")
     except LocalServerError as error:
         print(f"local_server: {error}", file=sys.stderr)
         return 2

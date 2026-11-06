@@ -27,6 +27,11 @@ local_server = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = local_server
 SPEC.loader.exec_module(local_server)
 
+from arcrho_dependent_propagation_contract import (  # noqa: E402  (on sys.path once the tool loads)
+    acquire_reserving_class_lease,
+    release_reserving_class_lease,
+)
+
 
 class LocalServerTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -107,6 +112,61 @@ class LocalServerTests(unittest.TestCase):
         self.assertTrue((target / "data" / "Class" / "sidecars" / "x.json.bak").is_file())
         with self.assertRaisesRegex(local_server.LocalServerError, "--overwrite"):
             local_server.copy_project(self.root, production_root=self.production, name="Fake", overwrite=False)
+
+    def _publishable(self) -> Path:
+        local = self.root / "projects" / "Fake"
+        (local / "data").mkdir(parents=True)
+        (local / "source").mkdir()
+        local_source = self.root / "sources" / "new.csv"
+        mapping = {"project_name": "Fake", "table_path": str(local_source)}
+        (local / "field_mapping.json").write_text(json.dumps(mapping, indent=2), encoding="utf-8")
+        record = {"last_import": {"csv_path": str(local_source), "source_label": str(local_source), "csv_size": 1}}
+        (local / "source" / "source_import.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+        values = {"path": str(local / "source" / "master_table.csv").lower()}
+        (local / "data_processing_values.json").write_text(json.dumps(values), encoding="utf-8")
+        (local / "data" / ".index.json.lock").write_text("", encoding="utf-8")
+        old = self.production / "projects" / "Fake"
+        old.mkdir(parents=True)
+        (old / "old.txt").write_text("old", encoding="utf-8")
+        shared = self.production / "shared.csv"
+        shared.write_text("a,b\n", encoding="utf-8")
+        return shared
+
+    def test_publish_keeps_a_backup_and_points_paths_at_production(self) -> None:
+        shared = self._publishable()
+        target, backup = local_server.publish_project(
+            self.root, production_root=self.production, name="Fake", source=shared, today="20261106"
+        )
+        self.assertEqual(backup.name, "Fake.before_refresh_20261106")
+        self.assertTrue((backup / "old.txt").is_file())
+        self.assertFalse((target / "old.txt").exists())
+        self.assertFalse((target / "data" / ".index.json.lock").exists())
+        mapping = json.loads((target / "field_mapping.json").read_text(encoding="utf-8"))
+        self.assertEqual(mapping["table_path"], str(shared))
+        last = json.loads((target / "source" / "source_import.json").read_text(encoding="utf-8"))["last_import"]
+        self.assertEqual((last["csv_path"], last["source_label"]), (str(shared), str(shared)))
+        self.assertEqual(last["csv_size"], shared.stat().st_size)
+        values = json.loads((target / "data_processing_values.json").read_text(encoding="utf-8"))
+        self.assertEqual(values["path"], str(target / "source" / "master_table.csv").lower())
+
+    def test_publish_refuses_while_production_is_busy(self) -> None:
+        shared = self._publishable()
+        old = self.production / "projects" / "Fake"
+        lease = acquire_reserving_class_lease(self.production, "Fake", "A\\B")
+        self.assertIsNotNone(lease)
+        try:
+            with self.assertRaisesRegex(local_server.LocalServerError, "busy: a dependent walk is processing for A"):
+                local_server.publish_project(self.root, production_root=self.production, name="Fake", source=shared)
+        finally:
+            release_reserving_class_lease(lease)
+        pending = local_server.project_dates_pending_path(self.production, "Fake")
+        pending.parent.mkdir(parents=True, exist_ok=True)
+        pending.write_text("{}", encoding="utf-8")
+        with self.assertRaisesRegex(local_server.LocalServerError, "project dates change"):
+            local_server.publish_project(self.root, production_root=self.production, name="Fake", source=shared)
+        # Nothing moved: production's copy is where it was and no backup exists.
+        self.assertTrue((old / "old.txt").is_file())
+        self.assertEqual([path.name for path in (self.production / "projects").iterdir()], ["Fake"])
 
     def test_builds_get_the_local_root_and_none_of_the_inherited_overrides(self) -> None:
         inherited = {"ARCRHO_SERVER_ROOT": r"E:\ArcRho Server", "ARCRHO_RUNTIME_SERVER_ROOT": r"E:\ArcRho Server"}

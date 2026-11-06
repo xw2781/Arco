@@ -1,6 +1,6 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8 and 13 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); step 9 is next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8, 13 and 9 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); production now holds the refreshed project; step 10 (the user's ResQ re-import) is next.
 Last updated: 2026-11-06
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
@@ -20,13 +20,13 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 6 | The adjusted triangles imported from ResQ sit on the same scale as the new data | [x] | 2026-11-06 | 50 min | 22 min | The adjusted and ad hoc triangles now follow the new figures, and the Penn+CT MP+PIP adjusted severity builds again |
 | 7 | Every method in the local Fake project is recalculated on the new data | [x] | 2026-11-06 | 70 min | 42 min | The local project is valued at May 2026 again, Origin End may now fall after Development End, and every method that can refresh on the new data has; the ones that cannot are listed for step 8 |
 | 8 | Methods whose settings make no sense on the new data are reset | [x] | 2026-11-06 | 60 min | 27 min | Hand-typed factors far from the new data, exclusions on empty cells and deleted candidates are reset, and every result is plausible; eight methods that read a precedent at another period length still refuse and wait on a decision |
-| 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
+| 9 | The refreshed project and the import fix reach production | [x] | 2026-11-06 | 45 min | 11 min | Production's Fake project is the refreshed one, reading the new source file beside the old one on the ResQ share, with the previous copy kept beside it; the import, refresh and dates fixes are live |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
 | 13 | Methods that read another method at a different period length are moved to that length (runs between 8 and 9) | [x] | 2026-11-06 | 55 min | 25 min | The eight methods that refused every refresh now use the period length of the method they read, and every class of the local project refreshes cleanly |
 
-Overall: 10 of 13 steps done. Estimated 710 min, actual so far 240 min.
+Overall: 11 of 13 steps done. Estimated 710 min, actual so far 251 min.
 
 ## How agents work this plan
 
@@ -324,16 +324,23 @@ Estimate: code edit 40 min, test/validation 20 min, total 60 min. Actual: code e
 **Read first.** `AGENT_GUIDELINES.md` "Component Build and Deploy"; `tools/local_server.py`.
 
 **Do.**
-- [ ] Write the generated file to the agreed place on the share.
-- [ ] A publish command in `tools/local_server.py` that refuses while any class of the project holds a lease, renames production's folder to `NJ_Annual_Prod_202605_Fake.before_refresh_<date>`, copies the local project in, and points its import source at the shared file.
-- [ ] `python server-components/deploy.py` for the step 1 fix, and `python publish_macro_library.py` from `python-api/macros` so the macro-run import carries it too.
-- [ ] Scan production's copy.
+- [x] Write the generated file to the agreed place on the share.
+- [x] A publish command in `tools/local_server.py` that refuses while any class of the project holds a lease, renames production's folder to `NJ_Annual_Prod_202605_Fake.before_refresh_<date>`, copies the local project in, and points its import source at the shared file.
+- [x] `python server-components/deploy.py` for the step 1 fix, and `python publish_macro_library.py` from `python-api/macros` so the macro-run import carries it too.
+- [x] Scan production's copy.
 
 **Tests.** The publish command's refusal test.
 
 **Done when.** Production's scan is clean and the app opens the project from a Client PC.
 
-Estimate: code edit 20 min, test/validation 25 min, total 45 min.
+Estimate: code edit 20 min, test/validation 25 min, total 45 min. Actual: code edit 4 min, test/validation 7 min, total 11 min (under a quarter: the listener deploy took 4 minutes and the copy is local disk on the Server PC).
+
+**Outcome (2026-11-06).**
+- **Source.** `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_Channel_202605_Fake_3.csv` (226,393 rows, default seed, byte-identical to the local `master_table.csv`); `_Fake_2.csv` untouched.
+- **Publish.** `py -3.10 tools/local_server.py publish-project NJ_Annual_Prod_202605_Fake --source <shared csv>`. It refuses while a project-scope or class lease, a queued walk, a source refresh or a project dates pending record exists; renames production's folder to `NJ_Annual_Prod_202605_Fake.before_refresh_20261106` (the rollback: rename it back); copies with `copy-project`'s exclusions; rewrites every JSON path into the local root to production's root (no local-root path is left) and the import source to the shared file, with `source_import.json`'s size and mtime taken from it.
+- **Deploy.** `server-components/deploy.py` rebuilt Bridge, Engine, Gateway and Credential, exit 0; the payload was the five committed bundled files since `45429b8c`. Fresh heartbeats, Gateway health ok.
+- **Macros.** `publish_macro_library.py` published the 21 ResQ migration-support files; `--check` exits 0.
+- **Checks.** Production scan: 0 problems, 0 notices. Through the production Gateway: 31 classes with data, the table summary reads the new 226,393-row source, and one DFM, BF and Cape Cod (HOL F 23, F 41, F 53) load with no changed paths. The GUI open from a Client PC was not done by the agent.
 
 ### Step 10 — Bring ResQ's Fake project in line
 
