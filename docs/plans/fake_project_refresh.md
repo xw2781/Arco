@@ -18,7 +18,7 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 4 | A realistic synthetic source table for the Fake project | [x] | 2026-11-04 | 90 min | 14 min | One command writes a new source table with the same columns and segments whose totals add up and whose loss ratios and development look like real business |
 | 5 | The local Fake project's datasets are rebuilt from the new source | [x] | 2026-11-05 | 45 min | 48 min | The local project now reads the new source table: every dataset built from it was rebuilt, pending counts are never negative and reported claim counts never go down |
 | 6 | The adjusted triangles imported from ResQ sit on the same scale as the new data | [x] | 2026-11-06 | 50 min | 22 min | The adjusted and ad hoc triangles now follow the new figures, and the Penn+CT MP+PIP adjusted severity builds again |
-| 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | |
+| 7 | Every method in the local Fake project is recalculated on the new data | [ ] | | 70 min | | In progress 2026-11-06: waiting on open decision 3 |
 | 8 | Methods whose settings make no sense on the new data are reset | [ ] | | 60 min | | |
 | 9 | The refreshed project and the import fix reach production | [ ] | | 45 min | | |
 | 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
@@ -74,7 +74,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6 and 7 on 2026-11-06)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6, 7 and 8 on 2026-11-06)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -88,11 +88,16 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
    - **"No decreasing cumulative reported"** means reported claim counts; incurred losses may fall as case reserves are taken down.
 6. **Step 6 is split** (taken 2026-11-06, raised by the first step 6 run). None of the 120 Result Selection outputs (the x 91 / x 92 vectors the priors, BF priors and expected loss ratios copy) was recalculated by step 5, so they still hold pre-refresh values: F 92 against the rebuilt latest incurred ran from 0.00 times to 7.2 times. Step 6 therefore rescales only the 25 ResQ-stored "Adjusted" / ad hoc triangles, which need nothing but the rebuilt source triangles. The prior, BF prior and expected-loss-ratio vectors move to step 12, run between steps 7 and 8 on step 7's recalculated Result Selections.
 7. **Penn+CT `MP+PIP` "Net Loss--Incurred Adjusted*" becomes a hand-entered (input) triangle stored at 3 months** (taken 2026-11-06). It feeds a 3-month DFM and the 12-month "Severity--Adjusted Net Incurred per Reported ex CWOP"; an Engine-kind ResQ triangle cannot be rebuilt at another length, while a hand-entered one rolls up to 12, so the severity builds. Done in step 6 through the dataset save.
+8. **The local project moves back to development end 202605** (taken 2026-11-06, raised by step 6's outcome). The local copy's development end had drifted to 202612 (a dates-panel test on 2026-11-03); production, ResQ and this plan use 202605. Step 7 moves it back with the project dates Engine job, the canonical path, and waits for its pending record to clear before any recalculation. How the origin end date goes with it is open decision 3.
 
 ## Open decisions
 
 1. **Where the new source file lives on the share** (step 9). Recommended: `ResQ_Channel_202605_Fake_3.csv` beside `_Fake_2.csv`, which stays for rollback. Writing into the ResQ source folder on the Server PC share needs the user's go-ahead at step 9.
 2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
+3. **The origin end date when development end moves back to 202605** (step 7, raised 2026-11-06). Production and ResQ hold origin end 202612 with development end 202605: ResQ-stored datasets carry origins through Dec 2026 (40 quarters, 120 months). The project dates job refuses that pair ("Origin End Date must not be after Development End Date", `arcrho_project_dates_job_contract.normalize_project_dates`), so decision 8 cannot be carried out with the local origin end left at 202612. Its preview with origin end 202605 accepts the change but drops 7 empty monthly origins (Jun-Dec 2026; quarters 2026 Q3-Q4) from 104 of the 228 imported datasets, so the local shape would no longer match ResQ's or production's. Choices:
+   - **A. Origin end 202605 as well.** No code change; runs today. The project leaves ResQ's origin grid, so step 10 must move ResQ's origin end too or the two disagree on row counts again.
+   - **B. Let origin end fall after development end.** Drop or relax the contract rule (and its two tests), deploy to the local root, then run the job with 201701 / 202612 / 202605; production gets the change in step 9. Keeps ResQ's and production's grid.
+   Recommended: **B**, because production and ResQ already use that pair and a 202605 valuation with full-year 2026 origins is the normal layout; the rule appears to have been written without that case in mind. Step 7 is blocked until this is chosen.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
