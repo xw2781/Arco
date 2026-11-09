@@ -123,4 +123,4 @@
 - [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation hosted in Legacy\HOPxCAT+HOL; ResQ correlation still unconfirmed
 - [ABC demo project build](abc-demo-project-build.md) — 2026-11-04: demo is ABC_Group_Quarterly_Review_202608, built by tools/build_abc_group_demo_project.py; template-copy pitfalls
 - [ResQ import: set up in GUI, run via API](resq-import-settings-gui-run-via-api.md) — wizard owns transforms/mappings; COM only runs or repoints a saved import; the Fake project's five imports
-- [ResQ DFM at a mid-period valuation](resq-dfm-mid-period-valuation.md) — ResQ divides the latest by a spline-interpolated MonthlyPattern at the true age; Arco applies factors from shifted ages, so young origins differ
+- [ResQ triangle stored at development 12](resq-dfm-mid-period-valuation.md) — at a May valuation its DFM interpolates a monthly pattern and young origins differ from Arco; store it 12/1 so both read 5m/17m
