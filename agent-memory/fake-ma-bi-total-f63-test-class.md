@@ -15,8 +15,8 @@ quarterly. NY MP+PIP and Penn+CT BI Total look the same. Fake **NY BI Total** do
 is annual only and F 63 has no CSV, so a quarterly F 63 cannot be built there at all.
 
 **How to apply:** in Arco, change the path bar's state to MA and the last segment to BI Total
-(the list scrolls; drag its scrollbar). Saving P 06 with no edit forces the walk. Every save in
-that class shows a "Dependent updates" box for G 41 / G 91 / G 92 — Fake-data failures unrelated
-to F 63 ([[fake-project-refresh]] plan). Used 2026-09-29 for the
+(the list scrolls; drag its scrollbar). Saving P 06 with no edit forces the walk. Before the
+2026-11 data refresh every save there showed a "Dependent updates" box for G 41 / G 91 / G 92;
+since the refresh every class walk is clean ([[fake-project-refresh]] plan, step 13). Used 2026-09-29 for the
 [[calculated-walk-reads-stale-sibling-views]] fix; the evidence script pattern (recompute F 63
 from the `@3` files) is in that session's temp/f63_gui_test/snapshot.py.
