@@ -1,6 +1,6 @@
 """Write the Fake project's values the Export macro does not send into ResQ.
 
-The Export macro (step 10 of docs/plans/fake_project_refresh.md) sends Arco's
+The Export macro (step 10 of docs/plans/completed/fake_project_refresh.md) sends Arco's
 input datasets and methods. Two kinds of Arco value never reach ResQ through it:
 
 - **ResQ-stored triangles** (``source`` ``resq_triangle``, ``source_kind``

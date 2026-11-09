@@ -1,8 +1,8 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8, 13 and 9 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); production now holds the refreshed project; step 10 done 2026-11-09 (decisions 12-14); step 11 is next.
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8, 13 and 9 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); production now holds the refreshed project; steps 10 and 11 done 2026-11-09 (decisions 12-15; Bootstrap and Stochastic Consolidation dropped from scope); the plan is complete.
 Last updated: 2026-11-09
-Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
+Related: [local_server_root_and_server_switcher.md](local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](../client_smb_retirement.md) (the work that needs this project to test smoothly)
 
 **How this ships.** Steps 1, 5, 7 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles; the project dates rule that lets Origin End follow Development End, decision 9, in the Engine and Gateway): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8, 12 and 13 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
 
@@ -22,18 +22,18 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 8 | Methods whose settings make no sense on the new data are reset | [x] | 2026-11-06 | 60 min | 27 min | Hand-typed factors far from the new data, exclusions on empty cells and deleted candidates are reset, and every result is plausible; eight methods that read a precedent at another period length still refuse and wait on a decision |
 | 9 | The refreshed project and the import fix reach production | [x] | 2026-11-06 | 45 min | 11 min | Production's Fake project is the refreshed one, reading the new source file beside the old one on the ResQ share, with the previous copy kept beside it; the import, refresh and dates fixes are live |
 | 10 | ResQ's Fake project matches Arco's again | [x] | 2026-11-09 | 60 min | 315 min | ResQ's Fake project imports the new data and holds Arco's inputs, priors, adjusted triangles and method selections; the three spot-checked classes agree apart from two ResQ formulas recorded as known |
-| 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
+| 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [x] | 2026-11-09 | 40 min | 9 min | No note or doc presents the old Fake figures as current; the tests and fixtures that name the project hold dated ResQ captures and stay as they are |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
 | 13 | Methods that read another method at a different period length are moved to that length (runs between 8 and 9) | [x] | 2026-11-06 | 55 min | 25 min | The eight methods that refused every refresh now use the period length of the method they read, and every class of the local project refreshes cleanly |
 
-Overall: 12 of 13 steps done. Estimated 710 min, actual so far 566 min.
+Overall: 13 of 13 steps done. Estimated 710 min, actual 575 min.
 
 ## How agents work this plan
 
 - Take the first unticked step in the Progress table. One step is one context (a session or one workflow subagent), one commit.
 - Note the clock before the first file is read and again at the commit, keeping the two parts apart: time spent reading and editing, and time spent running tests, checks and deploys.
 - Read the sections between here and the Plan before starting, then only the files the step names. Do not read ahead into later steps.
-- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](README.md).
+- A step is done when its "Done when" list holds, its tests pass, and the commit is in. In that same commit: tick the Progress row, write the date, the actual minutes and the one-line user note, update the "Overall" count and actual total, append the actual to the step's `Estimate:` line, and update the `Status:` line at the top and this plan's row in the [plans index](../README.md).
 - If a step turns out to need a decision that is not in "Open decisions", stop, record the question there, commit that note alone, and report it rather than guessing.
 - Do not start a step while the previous one is uncommitted.
 
@@ -69,13 +69,12 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 
 ### What depends on it
 
-- `tools/bootstrap_parity_report.py` compares stored Bootstrap and Stochastic Consolidation results with a frozen ResQ fixture; it goes stale once the data changes (step 11).
 - `server-components/tests/test_reserving_class_type_contract.py` reads this project's `field_mapping.json` and `reserving_class_types.json` live from E:. The synthetic source keeps the same keys and columns, so both files survive.
 - The ResQ probe and capture tools (`tools/resq_*`) name this project; their fixtures are frozen and stay green.
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-11 on 2026-11-06; 12-14 on 2026-11-09)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-11 on 2026-11-06; 12-15 on 2026-11-09)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -96,6 +95,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 12. **How ResQ re-imports** (taken 2026-11-09, was open decision 2). ResQ's five saved imports are repointed in the ResQ Import Wizard to `_Fake_3` copies cut from the shared source by `tools/split_fake_source_for_resq.py` (three new SQL Server tables beside the `_Fake_2` ones, two CSVs on the share) and run with their stored settings. Settings are changed only in the wizard; the API only runs a saved import.
 13. **Values the Export macro does not send are written into ResQ directly** (taken 2026-11-09). `tools/push_fake_values_to_resq.py` writes Arco's prior-quarter vectors into the "– Feb 2026" vectors ResQ's x 81 / x 82 formulas read, and the ResQ-stored "Adjusted" triangles. A ResQ formula that is not a single reference (G 42 = F 42 × P 04 B, Rider PD+UMPD Earned Exposure = PD only) stays a known difference.
 14. **ResQ's hand-written triangles are stored at development 1** (taken 2026-11-09, raised by step 10). A ResQ triangle stored at 12/12 puts a May valuation's values at ages 12, 24, …, and a ResQ DFM on it divides the latest value by a spline-interpolated monthly pattern, so the youngest origins differed from Arco (HOPxCAT F 23 C 2026: 3.23M against 1.50M) with identical inputs and factors. Stored at origin 12 / development 1, ResQ reads the same grid at the true ages (5m, 17m, …) as Arco does, and the ultimates agree to the unit. `tools/push_fake_values_to_resq.py` writes the Adjusted triangles that way; imported triangles were already monthly (memory `resq-dfm-mid-period-valuation`).
+15. **Bootstrap and Stochastic Consolidation are out of scope** (taken 2026-11-09, by the user at step 11). The ResQ Bootstrap / Stochastic Consolidation fixture is not recaptured, `tools/bootstrap_parity_report.py` is not re-run against the new data, and the Stochastic Consolidation "F 72B" (step 13) is not repaired. Whatever the earlier steps did to those methods stays as it is.
 
 ## Open decisions
 
@@ -264,7 +264,7 @@ Estimate: code edit 35 min, test/validation 15 min, total 50 min. Actual: code e
 
 ### Step 7 — Recalculate every method
 
-**Goal.** Every DFM, BF, CC, RS, Bootstrap and Stochastic Consolidation in the local project is refreshed on the new data.
+**Goal.** Every DFM, BF, CC and RS in the local project is refreshed on the new data.
 
 **Read first.** Decisions 8 and 9; memory `project-dates-change-job` (the dates move, its pending record and its second run); memory `bulk-method-restatement-hold` (the 423 wait between classes); the restate tools' `_wait_for_class`; memory `refresh-problem-diagnosis-logs`. Memory `blank-csv-row-is-an-empty-origin`: the reader fix for a Result Selection whose oldest origin is unselected (commit 6f70babd, 2026-09-27) must be in the local root's Engine and Gateway before this step, or every such method's dependents fail to read it.
 
@@ -299,7 +299,6 @@ Estimate: code edit 40 min, test/validation 30 min, total 70 min. Actual: code e
 
 **Do.**
 - [x] Manual factor overrides and User Entry rows outside plausible ranges reset to the default average; tails re-selected.
-- [x] Bootstrap and Stochastic Consolidation re-run and checked for sane ranges.
 - [x] Re-run the plausibility report.
 
 **Tests.** None.
@@ -377,17 +376,22 @@ Estimate: code edit 10 min, test/validation 50 min, total 60 min. Actual: code e
 
 **Goal.** Nothing in the repository quotes the old Fake numbers as current.
 
-**Read first.** `tools/bootstrap_parity_report.py`; `tools/resq_bootstrap_capture.py`; the agent-memory notes that name the project.
+**Read first.** The agent-memory notes and docs that name the project. Decision 15: Bootstrap and Stochastic Consolidation fixtures are out of scope.
 
 **Do.**
-- [ ] Recapture the Bootstrap / Stochastic Consolidation ResQ fixture and re-run the parity report.
-- [ ] Update or mark as historical every memory note and doc that quotes the old counts.
+- [x] Update or mark as historical every memory note and doc that quotes the old counts.
 
-**Tests.** The suites that read the fixtures.
+**Tests.** None; no test reads the project's data.
 
-**Done when.** The parity report passes against the new fixture and no note presents the old figures as current.
+**Done when.** No note presents the old figures as current.
 
-Estimate: code edit 25 min, test/validation 15 min, total 40 min.
+Estimate: code edit 25 min, test/validation 15 min, total 40 min. Actual: code edit 8 min, test/validation 1 min, total 9 min (the Bootstrap fixture work was dropped, and nearly every note already dated its figures).
+
+**Outcome (2026-11-09).**
+
+- **Memory notes.** Of the 32 notes that name the project, three read as current and were changed: `fake-ma-bi-total-f63-test-class` (NY BI Total has no F 63 since step 3, and its P 06 is quarterly since step 12, checked on production), `blank-csv-row-is-an-empty-origin` (the leading-blank fix is deployed; its HOL example predates the refresh) and `resq-custom-average-api` (its HOL row example is dated before the re-export). The rest record a dated probe, profile or incident, or describe structure the refresh kept (classes, dataset types, ResQ API behaviour).
+- **Docs and fixtures.** `docs/reference/resq_stored_and_display_lengths.md`, `python-api/docs/resq_reserving_class_export.md`, the ResQ captures `dfm_curves_resq_c12.json` and `resq_cape_cod_d53.json`, and the tests that name the project all state the date of their capture and describe ResQ's behaviour, not the data; they stay. Completed plans and release notes are history.
+- **Not done (decision 15).** The Bootstrap / Stochastic Consolidation fixture `resq_bootstrap_f72a.json` and `tools/bootstrap_parity_report.py` still reflect the old data.
 
 ### Step 12 — Rescale the prior inputs
 
@@ -430,7 +434,6 @@ Appended 2026-11-06 (decision 11); runs after step 8 and before step 9.
 **Do.**
 - [x] A one-off tool that finds every method reading a method output it cannot read at its own length and moves it through the app's saves.
 - [x] Walk every class (step 7's driver), re-run step 12's `--check` and the rescale where it fails, and the plausibility report against step 8's bar.
-- [x] Stochastic Consolidation F 72B: repair it if its missing segment Bootstrap is a data slip, otherwise list it.
 
 **Tests.** The tool's tests on fixture sidecars and payloads; step 12's tool gains a test for a yearly counterpart read quarterly.
 
@@ -447,5 +450,5 @@ Estimate: code edit 30 min, test/validation 25 min, total 55 min. Actual: code e
 - **Walks.** All 22 classes succeed (step 8: 16).
 - **Plausibility** (561 methods): step 8's bar holds (no selected factor above 10 past the second column, no origin past its third year over 20 times its latest). First DFM factor median 2.56, 90th percentile 23.5, maximum 220; Result Selection loss ratios on earned premium median 0.55 over 33, the same 7 outside 0.3-1.5 as step 8.
 - **Left behind.** C 91 keeps its old 3-month and 6-month files beside the 12-month one; nothing reads them now (memory `calculated-walk-reads-stale-sibling-views` describes the risk if a reader is added).
-- **F 72B not repaired.** All five of its segments name "F 72B - Bootstrap Net Incurred no PV", which exists only in All States MP+PIP; BI Total, CMPxCAT, COL and PD+UMPD have only "F 72 A ... with PV". Repairing it means creating four "no PV" Bootstraps or repointing the segments at the "with PV" ones, which changes what the consolidation means; left for a later decision. It has never run and holds no result.
+- **F 72B not repaired.** All five of its segments name "F 72B - Bootstrap Net Incurred no PV", which exists only in All States MP+PIP; BI Total, CMPxCAT, COL and PD+UMPD have only "F 72 A ... with PV". Repairing it means creating four "no PV" Bootstraps or repointing the segments at the "with PV" ones, which changes what the consolidation means. It has never run and holds no result; out of scope since decision 15.
 - **Scan and production.** The scan reports nothing after the 22 lock files were deleted. No file under production's `NJ_Annual_Prod_202605_Fake` changed after the step started (5,841 files checked).
