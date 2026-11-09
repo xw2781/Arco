@@ -11,8 +11,9 @@ metadata:
 For GUI or offline tests of F 63 (`P 06 * (Earned Premium + Remaining Budget Premium)`), use
 `NJ_Annual_Prod_202605_Fake` class `PRNJ - PA\PA\MA\Direct Group\BI Total`: P 06 is a quarterly
 input (sidecar names `@3`), both premiums are annual Engine vectors (`@12`, stored 1), F 63 is
-quarterly. NY MP+PIP and Penn+CT BI Total look the same. Fake **NY BI Total** does not: its P 06
-is annual only and F 63 has no CSV, so a quarterly F 63 cannot be built there at all.
+quarterly. NY MP+PIP and Penn+CT BI Total look the same. Fake **NY BI Total** does not: it has
+no F 63 at all (its CSV-less F 63 sidecar was deleted in the 2026-11 refresh; its P 06 is now
+stored quarterly), so F 63 cannot be tested there.
 
 **How to apply:** in Arco, change the path bar's state to MA and the last segment to BI Total
 (the list scrolls; drag its scrollbar). Saving P 06 with no edit forces the walk. Before the

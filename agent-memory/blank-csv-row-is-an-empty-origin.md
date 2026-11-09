@@ -24,10 +24,10 @@ Cape Cod, Bootstrap, Berquist-Sherman, Result Selection, calculated datasets,
 dataset service, runtime roll-up). `skip_blank_lines=False` is a no-op on a
 file with no blank rows and never invents a row from the final newline.
 
-**Leading blank (2026-09-27, commit 6f70babd, not yet deployed):** pandas sizes the
+**Leading blank (2026-09-27, commit 6f70babd, Engine + Gateway deployed by 2026-11-06):** pandas sizes the
 frame from the first line, so a file whose **first** origin is empty raised
 *"No columns to parse from file"* — a Result Selection with nothing selected for
-its oldest year (Fake project HOL `F 91 - Current Qtr Indicated`) broke every
+its oldest year (Fake project HOL `F 91 - Current Qtr Indicated`, before the 2026-11 data refresh) broke every
 dependent (G 23, F 92, G 12, then G 91/G 92). The helper now passes
 `names=range(widest line)` when the first line is blank; a file starting with
 data reads exactly as before. The ResQ import writes such origins as `0.0`
