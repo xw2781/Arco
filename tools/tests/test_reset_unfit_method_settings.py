@@ -34,6 +34,13 @@ class ResetTests(unittest.TestCase):
         self.assertEqual(tool.reset_user_entries(_dfm(2.2, 2.0, [[2.1, 1.1], [1.9]])), [])
         self.assertEqual(tool.reset_user_entries(_dfm(9.0, 1.0, [[None, 1.1], [None]])), [])
 
+    def test_column_with_ratios_and_no_selection_gets_the_default(self) -> None:
+        method = _dfm(1.0, 2.0, [[2.1, None], [1.9]])
+        method["ratios_tab"]["average_formulas"]["selected"] = [[0, 0, 0], [0, 0, 1]]
+        self.assertEqual(tool.select_unselected(method), ["1: no row -> Volume - all"])
+        # Column 2 has no ratio and column 3 is the tail, so both stay as they were.
+        self.assertEqual(method["ratios_tab"]["average_formulas"]["selected"], [[1, 0, 0], [0, 0, 1]])
+
     def test_exclusions_follow_the_walk_report(self) -> None:
         walks = [{"reserving_class": "A/B", "message": "Method refresh failure(s): C 22 - CWOP: 422: DFM input values "
                   "are missing for previously excluded ratio cells. Update; F 13: 422: other"}]

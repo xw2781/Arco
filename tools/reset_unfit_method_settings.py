@@ -17,6 +17,9 @@ so the dependent walk runs:
   hand-typed User Entry more than 25% away from the column's default average
   ("Volume - all", else the first calculated average) selects that average;
   a column the new data has no ratio in keeps its typed factor.
+- **Unselected columns.** A development column with ratios but no selected row
+  selects the default average, which Arco already computes it from; without a
+  row the Export macro leaves ResQ's old selection in place.
 - **Tails.** A Curves-tab tail taken from a column whose tail is outside
   1.0-1.5 goes back to the Ratios tab's own tail.
 
@@ -130,6 +133,31 @@ def reset_user_entries(method: dict[str, Any]) -> list[str]:
     return moved
 
 
+def select_unselected(method: dict[str, Any]) -> list[str]:
+    """Select the default average in a column that has ratios but no selected row; returns the columns.
+
+    Arco already computes such a column from the default average, but the export
+    sends no selection for it, so ResQ keeps whatever row it had selected before.
+    """
+
+    formulas = (method.get("ratios_tab") or {}).get("average_formulas") or {}
+    selected = formulas.get("selected") or []
+    default = default_average_row(formulas)
+    if default is None or default >= len(selected):
+        return []
+    ratios = ((method.get("ratios_tab") or {}).get("ratio_triangle") or {}).get("ratio_values") or []
+    width = max((len(row) for row in selected), default=0)
+    moved = []
+    for column in range(max(0, width - 1)):
+        if any(column < len(flags) and flags[column] for flags in selected):
+            continue
+        if not any(column < len(cells) and _number(cells[column]) is not None for cells in ratios):
+            continue
+        selected[default][column] = 1
+        moved.append(f"{column + 1}: no row -> {formulas['label'][default]}")
+    return moved
+
+
 def reset_tail(method: dict[str, Any]) -> str:
     curves = method.get("curves_tab") or {}
     if not curves or int(curves.get("selected_tail_factor") or 1) == 1:
@@ -199,6 +227,7 @@ def plan_project(project_dir: Path, walks: list[dict[str, Any]], parts: tuple[st
                     reset.changes.append("cleared exclusions")
                 if "selections" in parts:
                     reset.changes += [f"column {text}" for text in reset_user_entries(reset.method)]
+                    reset.changes += [f"column {text}" for text in select_unselected(reset.method)]
                     tail = reset_tail(reset.method)
                     if tail:
                         reset.changes.append(tail)

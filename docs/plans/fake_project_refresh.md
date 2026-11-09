@@ -1,7 +1,7 @@
 # Fake Project Refresh: Realistic Data and Current File Formats
 
-Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8, 13 and 9 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); production now holds the refreshed project; step 10 (the user's ResQ re-import) is next.
-Last updated: 2026-11-06
+Status: Investigated and planned 2026-09-26; decisions taken the same day (fix on the local test root first, then publish; one new synthetic source file that both ResQ and Arco import; repair file formats in place). 13 session-sized steps (step 12 appended 2026-11-06, run between 7 and 8; step 13 appended 2026-11-06, run between 8 and 9); steps 1-4 done 2026-11-04, step 5 done 2026-11-05, steps 6, 7, 12, 8, 13 and 9 done 2026-11-06 (decisions 8 and 9 taken in step 7, 10 and 11 after step 8); production now holds the refreshed project; step 10 done 2026-11-09 (decisions 12-14); step 11 is next.
+Last updated: 2026-11-09
 Related: [local_server_root_and_server_switcher.md](completed/local_server_root_and_server_switcher.md) (the local root this work runs on), [client_smb_retirement.md](client_smb_retirement.md) (the work that needs this project to test smoothly)
 
 **How this ships.** Steps 1, 5, 7 and 9 change code a server component bundles (the ResQ import's sidecar writer, run by the Bridge; the Engine's source refresh skipping ResQ-stored triangles; the project dates rule that lets Origin End follow Development End, decision 9, in the Engine and Gateway): additive fixes, safe for the released app, deployed to production in step 9. Everything else is tools and data. Steps 2-8, 12 and 13 write only to the local root. Step 9 replaces production's copy of the Fake project and adds a source file on the Server PC share; step 10 is ResQ-side work on the Server PC.
@@ -21,12 +21,12 @@ Plain-language tracking. The agent that finishes a step ticks its box, fills in 
 | 7 | Every method in the local Fake project is recalculated on the new data | [x] | 2026-11-06 | 70 min | 42 min | The local project is valued at May 2026 again, Origin End may now fall after Development End, and every method that can refresh on the new data has; the ones that cannot are listed for step 8 |
 | 8 | Methods whose settings make no sense on the new data are reset | [x] | 2026-11-06 | 60 min | 27 min | Hand-typed factors far from the new data, exclusions on empty cells and deleted candidates are reset, and every result is plausible; eight methods that read a precedent at another period length still refuse and wait on a decision |
 | 9 | The refreshed project and the import fix reach production | [x] | 2026-11-06 | 45 min | 11 min | Production's Fake project is the refreshed one, reading the new source file beside the old one on the ResQ share, with the previous copy kept beside it; the import, refresh and dates fixes are live |
-| 10 | ResQ's Fake project matches Arco's again | [ ] | | 60 min | | |
+| 10 | ResQ's Fake project matches Arco's again | [x] | 2026-11-09 | 60 min | 315 min | ResQ's Fake project imports the new data and holds Arco's inputs, priors, adjusted triangles and method selections; the three spot-checked classes agree apart from two ResQ formulas recorded as known |
 | 11 | Tests, fixtures and notes that quoted the old numbers are brought up to date | [ ] | | 40 min | | |
 | 12 | Prior-quarter, BF prior and expected loss ratio inputs sit on the same scale as the recalculated results (runs between 7 and 8) | [x] | 2026-11-06 | 60 min | 16 min | Every prior-quarter figure, BF prior and expected ratio now follows the recalculated results, and the MA MP+PIP selections refresh again |
 | 13 | Methods that read another method at a different period length are moved to that length (runs between 8 and 9) | [x] | 2026-11-06 | 55 min | 25 min | The eight methods that refused every refresh now use the period length of the method they read, and every class of the local project refreshes cleanly |
 
-Overall: 11 of 13 steps done. Estimated 710 min, actual so far 251 min.
+Overall: 12 of 13 steps done. Estimated 710 min, actual so far 566 min.
 
 ## How agents work this plan
 
@@ -75,7 +75,7 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 - About ten agent-memory notes quote its counts (step 11).
 - The Engine-to-ResQ parity validation already targets another project.
 
-## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-11 on 2026-11-06)
+## Decisions (taken 2026-09-26; 5 on 2026-11-05; 6-11 on 2026-11-06; 12-14 on 2026-11-09)
 
 1. **Local first.** Every change is made and checked on `C:\Arco Server` (`tools/local_server.py`), and production's copy is replaced only in step 9.
 2. **One shared source file.** A new synthetic source table replaces `_Fake_2.csv` as the import source for both ResQ and Arco, so the two stay comparable; the input vectors are exported to ResQ.
@@ -93,10 +93,13 @@ The project was imported from `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_C
 9. **Origin End may fall after Development End** (taken 2026-11-06, raised by step 7: the dates job refused 201701 / 202612 / 202605). Production and ResQ both hold that pair, and a mid-year valuation keeping the year's later (empty) origins is the normal layout; moving origin end to 202605 instead would have dropped 7 monthly origins from 104 imported datasets and left ResQ's grid. The project dates contract's rule now checks only Origin Start ≤ Origin End; the Project Dates panel's pre-check drops the same comparison. Deployed to the local root in step 7, to production's Engine and Gateway with step 9; the panel's pre-check reaches users with the next app release (until then the released panel still refuses that pair before submitting).
 10. **The new source file goes beside the old one on the share** (taken 2026-11-06, was open decision 1): `\\NE7SASWPN02\E\ResQ\IBNR_SQL_Codes\202605\ResQ_Channel_202605_Fake_3.csv`, with `_Fake_2.csv` kept for rollback. Step 9 writes it.
 11. **Methods that read another method at a different origin length are moved to that length** (taken 2026-11-06, was open decision 3, raised by step 8), not published refusing. Each of the eight methods takes its precedent's origin length: the four Cape Cods and the NY BI Total and Penn+CT BI Total DFMs F 13 become 3-month, the NY MP+PIP DFM F 13 and the Result Selection C 91 become 12-month (and C 92, which reads C 91, follows). Done in step 13.
+12. **How ResQ re-imports** (taken 2026-11-09, was open decision 2). ResQ's five saved imports are repointed in the ResQ Import Wizard to `_Fake_3` copies cut from the shared source by `tools/split_fake_source_for_resq.py` (three new SQL Server tables beside the `_Fake_2` ones, two CSVs on the share) and run with their stored settings. Settings are changed only in the wizard; the API only runs a saved import.
+13. **Values the Export macro does not send are written into ResQ directly** (taken 2026-11-09). `tools/push_fake_values_to_resq.py` writes Arco's prior-quarter vectors into the "– Feb 2026" vectors ResQ's x 81 / x 82 formulas read, and the ResQ-stored "Adjusted" triangles. A ResQ formula that is not a single reference (G 42 = F 42 × P 04 B, Rider PD+UMPD Earned Exposure = PD only) stays a known difference.
+14. **ResQ's hand-written triangles are stored at development 1** (taken 2026-11-09, raised by step 10). A ResQ triangle stored at 12/12 puts a May valuation's values at ages 12, 24, …, and a ResQ DFM on it divides the latest value by a spline-interpolated monthly pattern, so the youngest origins differed from Arco (HOPxCAT F 23 C 2026: 3.23M against 1.50M) with identical inputs and factors. Stored at origin 12 / development 1, ResQ reads the same grid at the true ages (5m, 17m, …) as Arco does, and the ultimates agree to the unit. `tools/push_fake_values_to_resq.py` writes the Adjusted triangles that way; imported triangles were already monthly (memory `resq-dfm-mid-period-valuation`).
 
 ## Open decisions
 
-2. **How ResQ re-imports** (step 10). The ResQ data load is a Server PC procedure the user runs; the step records it once the user describes it.
+None.
 
 Two smaller choices carry a recommended answer the step applies unless told otherwise: the synthetic model keeps every existing key combination, the 34 columns, the origin range and the 202605 valuation, so field mapping, rules, reserving classes and dataset types stay valid (step 4); and "Prior Qtr" inputs are the new current results with a small random deviation, not a genuine re-run at an earlier valuation (step 6).
 
@@ -349,15 +352,26 @@ Estimate: code edit 20 min, test/validation 25 min, total 45 min. Actual: code e
 **Read first.** `python-api/macros/README.md`; the Export macro; memories `resq-com-probe`, `resq-com-probe-dont-call-blindly`.
 
 **Do.**
-- [ ] The user re-imports ResQ's Fake project from the new file on the Server PC (user's time).
-- [ ] Export the input vectors and methods from Arco to ResQ with the Export macro.
-- [ ] Spot-check three classes, Arco against ResQ.
+- [x] ResQ's Fake project re-imports the new file on the Server PC (decision 12).
+- [x] Export the input vectors and methods from Arco to ResQ with the Export macro.
+- [x] Spot-check three classes, Arco against ResQ.
 
 **Tests.** None.
 
 **Done when.** The spot-checked classes agree at two decimals.
 
-Estimate: code edit 10 min, test/validation 50 min, total 60 min.
+Estimate: code edit 10 min, test/validation 50 min, total 60 min. Actual: code edit 60 min, test/validation 255 min, total 315 min (five ResQ imports of 1-36 minutes, two re-runs after the mapping fix, four batch exports of about 7 minutes, and the young-origin diagnosis).
+
+**Outcome (2026-11-09).**
+
+- **Re-import (decision 12).** `py -3.10 tools/split_fake_source_for_resq.py --source <_Fake_3.csv> --suffix Fake_3` reproduces the `_Fake_2` pieces row for row from `_Fake_2.csv`, and wrote `ResQ_Channel_{Loss,Reported_Counts,Closed_Counts}_202605_Fake_3` (186,478 rows each) on `CO1ADBWPV01` / `Actuarial_NJ` and `EP_EEX_NJ_2026May_channel_Fake_3.csv` / `Budget EEX and EP 2026 May_Fake_3.csv` (38,397 / 1,518 rows) beside the `_Fake_2` ones. All five imports were repointed in the wizard and run (Loss 36 min, counts 12-15 min each).
+- **Import mapping fixed.** The saved Closed Counts import sent `CWP_ex_50k/100k/1000k` into "Claim Counts--Reported Excess of …", overwriting the Reported Counts import, and "CWP Excess of …" had not been imported since June. Remapped to "Claim Counts--CWP Excess of 50K/100K/1M" in the wizard; Closed Counts then Reported Counts re-run. The excess-count triangles now agree.
+- **Export.** "Export Reserving Classes to ResQ" for the 17 default classes: 582 items written, 24 saved, 135 skipped (124 calculated in ResQ, 8 HOL items on "Net Loss--Incurred Adjusted*" which ResQ's HOL lacks, 3 Arco-only inputs), 0 failed. Run twice; the second changed nothing in the spot check.
+- **Direct writes (decision 13).** `tools/push_fake_values_to_resq.py --apply` wrote the prior-quarter vectors and 21 Adjusted triangles across the 17 classes. Re-storing a "– Feb 2026" vector at Arco's period needs `ClearData` first (it moves the store to the display period); a triangle write reloads the class, so each target is looked up again.
+- **Development stored monthly (decision 14).** The young-origin DFM and BF differences came from ResQ triangles stored at 12/12; re-stored at 12/1 by the tool, ResQ's DFMs read 5m, 17m, … like Arco's.
+- **Unselected DFM columns.** Five Arco DFMs had development columns with ratios but no selected row (HOPxCAT F 18 and F 28 columns 1-3, NJ BIx51+UMBIx51 C 42 column 1, NJ BI Total's two quarterly count DFMs columns 35-37); Arco computed them from "Volume - all", while the export left ResQ's old row ("Aug 2024") selected. `reset_unfit_method_settings.py --part selections` now selects the default average in such a column; applied on production through the hosted method save (Arco's ultimates unchanged), then exported.
+- **Spot check** (`combined_side_by_side_review.py`, NJ MP+PIP, HOPxCAT, Rider PD+UMPD): every DFM Method Note and every dataset and Result Selection agrees at two decimals except decision 13's ResQ formulas (NJ MP+PIP G 42 and the G 91 that reads it; Rider PD+UMPD Earned Exposure, the 8 per-exposure datasets on it, and F 31) and the ResQ-only "– Feb 2026" helper vectors.
+- **Seen on the way.** HOPxCAT F 91 still selects 20,651 for 2022 and 18,138 for 2024 (old-data overrides, both sides agree); step 8 did not reset Result Selection overrides.
 
 ### Step 11 — Fixtures, tests and notes
 
