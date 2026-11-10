@@ -1,7 +1,7 @@
 # Client SMB Retirement: Remaining Rollout and Follow-ups
 
-Status: Implementation and server deployment are complete. Remaining: desktop release, compatible macro publication, fresh-profile validation, installer-supplied Gateway address, and server config permissions.
-Last updated: 2026-09-29
+Status: Implementation, server deployment, the desktop release and macro publication are complete. Remaining: validation without share access, fresh-profile validation, installer-supplied Gateway address, and server config permissions.
+Last updated: 2026-11-09
 Completed work: [implementation, decisions and validation record](completed/client_smb_retirement_implementation.md)
 Related: [hosted save transport](hosted_save_http_transport.md), [hosted workspace transport](hosted_workspace_http_transport.md)
 
@@ -9,17 +9,18 @@ This file owns the outstanding work. The completed record owns the original 24 s
 
 ## 1. Release the desktop app
 
-- [ ] Build and validate a desktop release containing the September 29 fixes, then publish it and verify the installed app.
+- [x] Build and validate a desktop release containing the September 29 fixes, then publish it and verify the installed app.
 - [ ] With client share access unavailable, check Project Instance JSON previews, active DFM macro reads/saves, dataset loads after a Gateway restart, and adding a server. Check that ordinary Arcode file editing still works.
 
-The server additions are already deployed. Keep them ahead of the desktop release, and record the released version and installed-client validation here.
+The server additions are already deployed. The September 29 fixes shipped in Arco 2.0.0 (2026-10-06) and are in 2.0.1 (2026-10-22). The check without share access has not been recorded.
 
 ## 2. Publish compatible macros
 
-- [ ] Verify the installed app recognizes `resq_import_request_publish`, `resq_review_request_publish` and `resq_class_inventory` before publishing the macros that call them.
-- [ ] Publish the active shared macro library and update the local macro copies following [the macro deployment rules](../../python-api/macros/README.md). Validate the import and review flows using the released app.
+- [x] Verify the installed app recognizes `resq_import_request_publish`, `resq_review_request_publish` and `resq_class_inventory` before publishing the macros that call them.
+- [x] Publish the active shared macro library following [the macro deployment rules](../../python-api/macros/README.md).
+- [ ] Validate the import and review flows using the released app.
 
-At the September 29 check, the shared single-class import was 1.13.1 while its source was 1.15.0. The source review macro is 1.2.0 and the batch import macro is 1.10.1. Their source changes are complete; publishing them before a compatible app would make clients reject the new request kinds.
+On 2026-11-09 every active macro in the shared library matched its source version: the single-class import is 1.15.1, the batch import 1.10.1 and the review 1.2.0. The three request kinds are in the contracts released with Arco 2.0.0. Local copies update when users load them from the Macro Library window.
 
 ## 3. Validate a fresh Windows profile
 
