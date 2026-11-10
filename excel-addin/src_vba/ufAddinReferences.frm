@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} ufAddinReferences
-   Caption         =   "Reset Add-in References - Arco"
+   Caption         =   "Reset Add-in References"
    ClientHeight    =   6156
    ClientLeft      =   108
    ClientTop       =   456
@@ -18,14 +18,21 @@ Option Explicit
 Private book As Workbook
 Private requested As Boolean
 Private selectedTarget As Long
-Private WithEvents targetButton As MSForms.CommandButton
-Private WithEvents targetArrow As MSForms.Label
-Private WithEvents arcoOption As MSForms.CommandButton
-Private WithEvents resqOption As MSForms.CommandButton
-Private targetMenu As MSForms.Frame
+' Each target is a row: a bordered card behind an option button and the
+' add-in's path. A click anywhere on the row picks it.
+Private WithEvents arcoCard As MSForms.Label
+Private WithEvents arcoRadio As MSForms.OptionButton
+Private WithEvents arcoPath As MSForms.Label
+Private WithEvents resqCard As MSForms.Label
+Private WithEvents resqRadio As MSForms.OptionButton
+Private WithEvents resqPath As MSForms.Label
 Private WithEvents applyButton As MSForms.CommandButton
-Private pathLabel As MSForms.Label
+Private WithEvents closeButton As MSForms.CommandButton
 Private summary As MSForms.TextBox
+Private selecting As Boolean
+
+Private Const SELECTED_BORDER As Long = &H417C10   ' Excel green
+Private Const IDLE_BORDER As Long = &HC4C4C4
 
 Private Function AddControl(ByVal kind As String, ByVal controlName As String, _
                             ByVal left As Single, ByVal top As Single, _
@@ -42,90 +49,102 @@ Private Function AddControl(ByVal kind As String, ByVal controlName As String, _
 End Function
 
 Private Sub UserForm_Initialize()
-    Me.width = 510
-    Me.height = 268
-    Me.caption = "Reset Add-in References - Arco"
+    Me.width = 360
+    Me.height = 188
+    Me.caption = "Reset Add-in References"
     Set book = ActiveWorkbook
-    AddControl "Label", "lblWorkbook", 12, 12, 474, 18, "Workbook: " & book.Name
-    AddControl "Label", "lblTarget", 12, 42, 474, 18, "Target Add-in"
-    ' MSForms ComboBox cannot disable a single item. This small dropdown uses
-    ' native disabled buttons so the unavailable ResQ choice stays muted.
-    Set targetButton = AddControl("CommandButton", "cmdTarget", 12, 62, 474, 24)
-    targetButton.BackColor = vbWhite
-    Set targetArrow = AddControl("Label", "lblTargetArrow", 470, 67, 12, 14, ChrW(&H25BE))
-    targetArrow.BackColor = vbWhite
-    Set pathLabel = AddControl("Label", "lblPath", 12, 92, 474, 30)
-    pathLabel.WordWrap = True
-    Set summary = AddControl("TextBox", "txtSummary", 12, 128, 474, 52)
+    AddControl "Label", "lblIntro", 12, 10, 324, 14, "Point " & book.Name & " at"
+
+    Set arcoCard = AddControl("Label", "lblArcoCard", 12, 28, 324, 36)
+    Set arcoRadio = AddControl("OptionButton", "optArco", 20, 31, 200, 16, "Arco")
+    Set arcoPath = AddControl("Label", "lblArcoPath", 36, 48, 294, 12, ReferenceTargetPath(0))
+    StyleRow arcoCard, arcoRadio, arcoPath
+
+    Set resqCard = AddControl("Label", "lblResQCard", 12, 70, 324, 36)
+    Set resqRadio = AddControl("OptionButton", "optResQ", 20, 73, 200, 16, "ResQ (64-bit)")
+    Set resqPath = AddControl("Label", "lblResQPath", 36, 90, 294, 12, ReferenceTargetPath(1))
+    StyleRow resqCard, resqRadio, resqPath
+    If Not CanUseResQ() Then
+        resqRadio.Enabled = False
+        resqPath.caption = "Only available on " & RESQ_COMPUTER
+    End If
+
+    Set summary = AddControl("TextBox", "txtSummary", 12, 114, 152, 34)
     summary.MultiLine = True
     summary.Locked = True
     summary.WordWrap = True
     summary.ScrollBars = fmScrollBarsVertical
     summary.BorderStyle = fmBorderStyleNone
+    summary.SpecialEffect = fmSpecialEffectFlat
     summary.BackColor = Me.BackColor
     summary.TabStop = False
-    Set applyButton = AddControl("CommandButton", "cmdApply", 352, 192, 134, 26, "Update workbook")
+    Set applyButton = AddControl("CommandButton", "cmdApply", 172, 119, 100, 24, "Update workbook")
     applyButton.Default = True
-    Set targetMenu = AddControl("Frame", "fraTargets", 12, 87, 474, 78)
-    targetMenu.BackColor = vbWhite
-    Set arcoOption = targetMenu.Controls.Add("Forms.CommandButton.1", "cmdArco", True)
-    Set resqOption = targetMenu.Controls.Add("Forms.CommandButton.1", "cmdResQ", True)
-    With arcoOption
-        .Caption = "Arco Excel add-in"
-        .Left = 3: .Top = 3: .Width = 466: .Height = 24
-    End With
-    With resqOption
-        .Caption = "64-bit ResQ add-in"
-        .Left = 3: .Top = 29: .Width = 466: .Height = 24
-        .Enabled = CanUseResQ()
-    End With
-    With targetMenu.Controls.Add("Forms.Label.1", "lblResQHint", True)
-        .Caption = "Only available on " & RESQ_COMPUTER
-        .Left = 8: .Top = 57: .Width = 450: .Height = 16
-        .ForeColor = &H808080
-        .BackColor = vbWhite
-        .Visible = Not CanUseResQ()
-    End With
-    targetMenu.Visible = False
+    Set closeButton = AddControl("CommandButton", "cmdClose", 278, 119, 58, 24, "Close")
+    closeButton.Cancel = True
     SelectTarget 0
+End Sub
+
+Private Sub StyleRow(ByVal card As MSForms.Label, ByVal radio As MSForms.OptionButton, _
+                     ByVal pathText As MSForms.Label)
+    card.BorderStyle = fmBorderStyleSingle
+    radio.Font.Bold = True
+    pathText.ForeColor = &H555555
+End Sub
+
+Private Sub PaintRow(ByVal card As MSForms.Label, ByVal radio As MSForms.OptionButton, _
+                     ByVal pathText As MSForms.Label, ByVal picked As Boolean)
+    Dim fill As Long
+    fill = IIf(picked, vbWhite, Me.BackColor)
+    card.BackColor = fill
+    card.BorderColor = IIf(picked, SELECTED_BORDER, IDLE_BORDER)
+    radio.BackColor = fill
+    pathText.BackColor = fill
 End Sub
 
 Private Sub SelectTarget(ByVal index As Long)
     If index = 1 And Not CanUseResQ() Then Exit Sub
     selectedTarget = index
-    targetMenu.Visible = False
-    pathLabel.caption = ReferenceTargetPath(index)
+    selecting = True
+    arcoRadio.Value = (index = 0)
+    resqRadio.Value = (index = 1)
+    selecting = False
+    PaintRow arcoCard, arcoRadio, arcoPath, index = 0
+    PaintRow resqCard, resqRadio, resqPath, index = 1
     If index = 1 Then
-        targetButton.Caption = resqOption.Caption
-        summary.Value = "Updates paths and function names to ResQ. ResQ formulas run only on " & RESQ_COMPUTER & "."
+        summary.Value = "Formulas will use ResQ names. They calculate only on " & RESQ_COMPUTER & "."
     Else
-        targetButton.Caption = arcoOption.Caption
-        summary.Value = "Updates paths and function names to Arco. Save the workbook after updating."
+        summary.Value = "Formulas will use Arco names."
     End If
 End Sub
 
-Private Sub targetButton_Click()
-    targetMenu.Visible = Not targetMenu.Visible
-    If targetMenu.Visible Then
-        targetMenu.ZOrder 0
-        arcoOption.SetFocus
-    End If
+Private Sub arcoRadio_Click()
+    If Not selecting Then SelectTarget 0
 End Sub
 
-Private Sub targetArrow_Click()
-    targetButton_Click
-End Sub
-
-Private Sub arcoOption_Click()
+Private Sub arcoCard_Click()
     SelectTarget 0
 End Sub
 
-Private Sub resqOption_Click()
+Private Sub arcoPath_Click()
+    SelectTarget 0
+End Sub
+
+Private Sub resqRadio_Click()
+    If Not selecting Then SelectTarget 1
+End Sub
+
+Private Sub resqCard_Click()
     SelectTarget 1
 End Sub
 
-Private Sub UserForm_Click()
-    targetMenu.Visible = False
+Private Sub resqPath_Click()
+    SelectTarget 1
+End Sub
+
+Private Sub closeButton_Click()
+    requested = False
+    Me.Hide
 End Sub
 
 ' Run the update outside the modal Show call so ufProgressBar can be modeless.

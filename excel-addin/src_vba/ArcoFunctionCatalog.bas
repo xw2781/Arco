@@ -9,7 +9,8 @@ Option Explicit
 ' declaration in ArcRhoFunctions.bas.
 '
 ' Argument kinds decide the input a page shows:
-'   path, triangle, vector, project  a list read from the Arco Server
+'   path, triangle, vector, project, folder
+'                                    a list read from the Arco Server
 '   bool, length, period_type        a short fixed list
 '   number                           typed
 '   hidden                           kept for ResQ workbooks; never shown
@@ -107,6 +108,11 @@ Private Sub BuildCatalog()
     AddFunction "ArcoProjectSettings", "Project", _
         "Returns a project's settings, such as its dates and period lengths, as a two-column table."
     AddArg "ProjectName", "project", False, """Default""", "Project to read. Default is the workbook's default project."
+
+    AddFunction "ArcoProjectNames", "Project", _
+        "Lists the projects on the Arco Server, one name per row."
+    AddArg "Folder", "folder", False, "", "Folder of the Arco project list, such as Legacy. Blank lists every project."
+    AddArg "ShowFullPath", "bool", False, "FALSE", "TRUE puts each project's folder in front of its name, such as Legacy\My Project."
 End Sub
 
 Private Sub AddFunction(ByVal functionName As String, ByVal group As String, ByVal summary As String)

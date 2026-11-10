@@ -15,18 +15,23 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 
-' The Insert Function panel: pick an Arco function on the left, fill in its
-' arguments on the right, and insert the formula into the selected cell. Each
-' function has its own page of arguments, built from ArcoFunctionCatalog.
+' The Insert Function panel: pick an Arco function at the top, fill in its
+' arguments below, and insert the formula into the selected cell. Each
+' function has its own page of arguments, built from ArcoFunctionCatalog, and
+' the panel is as tall as that page needs. Beside each argument is what it
+' puts into the formula; the help box describes the argument being filled in.
 ' Paths, dataset names, and projects are offered from the lists ArcoChoices
 ' reads from the Arco Server. Opened on a cell that already holds an Arco
 ' formula, the panel loads that formula so it can be changed.
 
-Private Const RIGHT_X As Single = 196
-Private Const RIGHT_W As Single = 506
-Private Const ROW_PITCH As Single = 40
-Private Const BOX_X As Single = 130
-Private Const BOX_W As Single = 350
+Private Const CONTENT_X As Single = 12
+Private Const CONTENT_W As Single = 510
+Private Const PAGE_TOP As Single = 64
+Private Const ROW_PITCH As Single = 22
+Private Const NAME_W As Single = 112
+Private Const BOX_X As Single = 124
+Private Const BOX_W As Single = 230
+Private Const ENTRY_TIP As String = "Pick from the list or type a value, a cell such as B2, or = and any other expression."
 Private Const HINT_COLOR As Long = &H707070
 Private Const ERROR_COLOR As Long = &H1C1CB0
 ' A fixed choice reads "12 - Annual"; the formula takes the part before this.
@@ -35,15 +40,19 @@ Private Const CHOICE_SEPARATOR As String = " - "
 Private Const PICK_CELL_ITEM As String = "Select a cell..."
 
 Private WithEvents App As Excel.Application
-Private WithEvents functionList As MSForms.ListBox
+Private WithEvents functionList As MSForms.ComboBox
 Private WithEvents insertButton As MSForms.CommandButton
 Private WithEvents closeButton As MSForms.CommandButton
 Private WithEvents refreshButton As MSForms.CommandButton
 Private WithEvents loadButton As MSForms.CommandButton
-Private titleLabel As MSForms.Label
-Private signatureLabel As MSForms.Label
 Private summaryLabel As MSForms.Label
 Private listsLabel As MSForms.Label
+Private WithEvents matchList As MSForms.ListBox
+Private matchInput As ArcoArgumentInput  ' the box the match list is showing for, or Nothing
+Private matchTotal As Long               ' how many items that box's whole list holds
+Private helpBack As MSForms.Label
+Private helpLabel As MSForms.Label
+Private frameHeight As Single    ' the window frame around the panel's inside
 Private targetLabel As MSForms.Label
 Private statusLabel As MSForms.Label
 Private formulaBox As MSForms.TextBox
@@ -82,8 +91,8 @@ Private Sub UserForm_Initialize()
     Dim fn As Object, owner As Range
 
     Me.caption = "Insert Arco Function"
-    Me.width = 720
-    Me.height = 520 + (Me.height - Me.InsideHeight)
+    Me.width = 540
+    frameHeight = Me.height - Me.InsideHeight
     Set pages = CreateObject("Scripting.Dictionary")
     Set pageInputs = CreateObject("Scripting.Dictionary")
     BuildLayout
@@ -109,49 +118,76 @@ End Sub
 Private Sub BuildLayout()
     Dim fn As Object
 
-    AddControl Me, "Label", "lblFunctions", 12, 10, 170, 14, "Function"
+    AddControl Me, "Label", "lblFunctions", CONTENT_X, 13, 60, 14, "Function"
     ' One column only: a list or dropdown given a second column at run time is
     ' drawn with a stray white block when Excel runs under display scaling.
-    Set functionList = AddControl(Me, "ListBox", "lstFunctions", 12, 28, 172, 112)
+    Set functionList = AddControl(Me, "ComboBox", "cboFunctions", CONTENT_X + 64, 10, CONTENT_W - 64, 18)
+    functionList.Style = fmStyleDropDownList
+    functionList.ListRows = 12
     For Each fn In ArcoFunctions()
         functionList.AddItem fn("Name")
     Next fn
-
-    Set listsLabel = AddHint(Me, "lblLists", 12, 150, 172, 52, "")
-    Set refreshButton = AddControl(Me, "CommandButton", "cmdRefresh", 12, 204, 96, 22, "Refresh lists")
-    refreshButton.ControlTipText = "Read the projects, reserving classes, and datasets from the Arco Server again"
-    AddHint Me, "lblTip", 12, 240, 172, 150, _
-        "Pick from a list or type a value. To take a value from the worksheet, type a cell such as B2 " & _
-        "or choose " & PICK_CELL_ITEM & " at the top of the list. Start with = to type any other " & _
-        "expression." & vbLf & vbLf & _
-        "Load from cell reads the Arco formula in the selected cell, so you can change it and insert " & _
-        "it again." & vbLf & vbLf & _
-        "Arguments in bold are required; a blank optional argument uses its default."
-
-    Set titleLabel = AddControl(Me, "Label", "lblTitle", RIGHT_X, 8, RIGHT_W, 20)
-    titleLabel.Font.Size = 12
-    titleLabel.Font.Bold = True
-    Set signatureLabel = AddHint(Me, "lblSignature", RIGHT_X, 29, RIGHT_W, 14, "")
-    Set summaryLabel = AddControl(Me, "Label", "lblSummary", RIGHT_X, 45, RIGHT_W, 28)
+    Set summaryLabel = AddControl(Me, "Label", "lblSummary", CONTENT_X, 34, CONTENT_W, 26)
     summaryLabel.WordWrap = True
 
-    AddControl Me, "Label", "lblFormula", RIGHT_X, 416, 80, 14, "Formula"
-    Set loadButton = AddControl(Me, "CommandButton", "cmdLoad", RIGHT_X + RIGHT_W - 110, 412, 110, 18, "Load from cell")
-    loadButton.ControlTipText = "Read the Arco formula in the selected cell into the panel"
-    loadButton.TakeFocusOnClick = False
-    Set formulaBox = AddControl(Me, "TextBox", "txtFormula", RIGHT_X, 431, RIGHT_W, 34)
+    ' Everything from here down is placed by ArrangeBelow, under the page shown.
+    Set listsLabel = AddHint(Me, "lblLists", CONTENT_X, 0, CONTENT_W - 96, 24, "")
+    Set refreshButton = AddControl(Me, "CommandButton", "cmdRefresh", CONTENT_X + CONTENT_W - 90, 0, 90, 20, "Refresh lists")
+    refreshButton.ControlTipText = "Read the projects, reserving classes, and datasets from the Arco Server again"
+
+    Set helpBack = AddControl(Me, "Label", "lblHelpBack", CONTENT_X, 0, CONTENT_W, 44)
+    helpBack.BackColor = vbWhite
+    helpBack.BorderStyle = fmBorderStyleSingle
+    helpBack.BorderColor = &HC8C8C8
+    Set helpLabel = AddControl(Me, "Label", "lblHelp", CONTENT_X + 6, 0, CONTENT_W - 12, 36)
+    helpLabel.BackColor = vbWhite
+    helpLabel.WordWrap = True
+
+    Set formulaBox = AddControl(Me, "TextBox", "txtFormula", CONTENT_X, 0, CONTENT_W, 34)
     formulaBox.MultiLine = True
     formulaBox.WordWrap = True
     formulaBox.Locked = True
     formulaBox.BackColor = Me.BackColor
     formulaBox.TabStop = False
 
-    Set targetLabel = AddControl(Me, "Label", "lblTarget", RIGHT_X, 474, 316, 14)
-    Set statusLabel = AddHint(Me, "lblStatus", RIGHT_X, 490, 316, 26, "")
-    Set insertButton = AddControl(Me, "CommandButton", "cmdInsert", 526, 476, 84, 26, "Insert")
+    Set targetLabel = AddControl(Me, "Label", "lblTarget", CONTENT_X, 0, 232, 14)
+    Set loadButton = AddControl(Me, "CommandButton", "cmdLoad", CONTENT_X + 238, 0, 90, 24, "Load from cell")
+    loadButton.ControlTipText = "Read the Arco formula in the selected cell into the panel"
+    loadButton.TakeFocusOnClick = False
+    Set insertButton = AddControl(Me, "CommandButton", "cmdInsert", CONTENT_X + 334, 0, 84, 24, "Insert")
     insertButton.Default = True
-    Set closeButton = AddControl(Me, "CommandButton", "cmdClose", 618, 476, 84, 26, "Close")
+    Set closeButton = AddControl(Me, "CommandButton", "cmdClose", CONTENT_X + 426, 0, 84, 24, "Close")
     closeButton.Cancel = True
+    Set statusLabel = AddHint(Me, "lblStatus", CONTENT_X, 0, CONTENT_W, 24, "")
+
+    ' The matches for what is being typed, drawn under that box. The box's own
+    ' dropdown is not used for this: refilled while open, it draws a blank block.
+    ' Wider than the box, out to the page's right edge, so long paths fit.
+    Set matchList = AddControl(Me, "ListBox", "lstMatches", 0, 0, CONTENT_W - BOX_X - 12, 0)
+    matchList.Visible = False
+    matchList.TabStop = False
+End Sub
+
+' Put the lists line, the help box, the formula, and the buttons under the
+' page shown, and make the panel just tall enough for them.
+Private Sub ArrangeBelow(ByVal page As MSForms.Frame)
+    Dim y As Single
+    y = page.top + page.height + 6
+    listsLabel.top = y
+    refreshButton.top = y
+    y = y + 28
+    helpBack.top = y
+    helpLabel.top = y + 4
+    y = y + 50
+    formulaBox.top = y
+    y = y + 40
+    targetLabel.top = y + 5
+    loadButton.top = y
+    insertButton.top = y
+    closeButton.top = y
+    y = y + 28
+    statusLabel.top = y
+    Me.height = y + 28 + frameHeight
 End Sub
 
 ' One page per function: a row for every argument a user sets, in the
@@ -162,7 +198,7 @@ Private Sub BuildPage(ByVal fn As Object)
     Dim top As Single, i As Long, prefix As String
 
     prefix = fn("Name") & "_"
-    Set page = AddControl(Me, "Frame", "fra" & fn("Name"), RIGHT_X, 78, RIGHT_W, 332, "Arguments")
+    Set page = AddControl(Me, "Frame", "fra" & fn("Name"), CONTENT_X, PAGE_TOP, CONTENT_W, 0, fn("Name"))
     page.Visible = False
     top = 6
     For Each arg In fn("Args")
@@ -171,15 +207,20 @@ Private Sub BuildPage(ByVal fn As Object)
         Set argInput.Arg = arg
         Set argInput.Panel = Me
         If arg("Kind") <> "hidden" Then
-            Set nameLabel = AddControl(page, "Label", "lbl" & prefix & i, 8, top + 3, 118, 14, arg("Name"))
-            nameLabel.Font.Bold = arg("Required")
+            Set nameLabel = AddControl(page, "Label", "lbl" & prefix & i, 6, top + 3, NAME_W, 14, arg("Name"))
+            nameLabel.TextAlign = fmTextAlignRight
+            ' Only ever turned on: turning bold off on a new label leaves it bold.
+            If arg("Required") Then nameLabel.Font.Bold = True
             Set argInput.Box = AddControl(page, "ComboBox", "cbo" & prefix & i, BOX_X, top, BOX_W, 18)
             ConfigureBox argInput
-            AddHint page, "hint" & prefix & i, BOX_X, top + 20, BOX_W, 18, HintText(arg)
+            Set argInput.Preview = AddHint(page, "pre" & prefix & i, BOX_X + BOX_W + 6, top + 3, _
+                                           CONTENT_W - BOX_X - BOX_W - 18, 12, "")
+            argInput.Preview.WordWrap = False
             top = top + ROW_PITCH
         End If
         items.Add argInput
     Next arg
+    page.height = top + 10
     pages.Add fn("Name"), page
     pageInputs.Add fn("Name"), items
 End Sub
@@ -215,29 +256,22 @@ Private Sub ConfigureBox(ByVal argInput As ArcoArgumentInput)
 End Sub
 
 Private Function IsServerList(ByVal kind As String) As Boolean
-    IsServerList = (kind = "path" Or kind = "triangle" Or kind = "vector" Or kind = "project")
+    IsServerList = (kind = "path" Or kind = "triangle" Or kind = "vector" Or kind = "project" Or kind = "folder")
 End Function
 
 ' ---- Pages ----
 
 Private Sub ShowFunction(ByVal functionName As String)
-    Dim fn As Object, arg As Object, signature As String, i As Long
+    Dim fn As Object, argInput As ArcoArgumentInput, i As Long
     Dim previous As String
 
+    HideMatches
     Set fn = ArcoFunctionByName(functionName)
     previous = currentFunction
     If Len(previous) > 0 Then pages(previous).Visible = False
     currentFunction = fn("Name")
+    ArrangeBelow pages(currentFunction)
     pages(currentFunction).Visible = True
-
-    For Each arg In fn("Args")
-        If arg("Kind") <> "hidden" Then
-            If Len(signature) > 0 Then signature = signature & ", "
-            If arg("Required") Then signature = signature & arg("Name") Else signature = signature & "[" & arg("Name") & "]"
-        End If
-    Next arg
-    titleLabel.caption = currentFunction
-    signatureLabel.caption = currentFunction & "(" & signature & ")"
     summaryLabel.caption = fn("Summary")
 
     updating = True
@@ -246,8 +280,20 @@ Private Sub ShowFunction(ByVal functionName As String)
     Next i
     If Len(previous) > 0 And previous <> currentFunction Then CarryValues previous, currentFunction
     updating = False
+    For Each argInput In pageInputs(currentFunction)
+        If Not argInput.Box Is Nothing Then
+            ShowHelp argInput
+            Exit For
+        End If
+    Next argInput
     EnsureLists
     UpdateFormula
+End Sub
+
+' Describe one argument in the help box.
+Private Sub ShowHelp(ByVal argInput As ArcoArgumentInput)
+    helpLabel.caption = argInput.Arg("Name") & IIf(argInput.Arg("Required"), "", " (optional)") & ": " & _
+                        Replace(HintText(argInput.Arg), "&", "&&") & vbLf & ENTRY_TIP
 End Sub
 
 ' Keep what was typed on the previous page for the arguments both share.
@@ -266,7 +312,7 @@ Private Sub CarryValues(ByVal fromFunction As String, ByVal toFunction As String
     Next target
 End Sub
 
-Private Sub functionList_Click()
+Private Sub functionList_Change()
     If updating Or functionList.ListIndex < 0 Then Exit Sub
     statusIsResult = False
     ShowFunction functionList.List(functionList.ListIndex, 0)
@@ -274,20 +320,52 @@ End Sub
 
 ' ---- Argument events, raised by ArcoArgumentInput ----
 
+Public Sub ArgumentEntered(ByVal argInput As ArcoArgumentInput)
+    If Not argInput Is matchInput Then HideMatches
+    ShowHelp argInput
+End Sub
+
+' A key pressed in a box while its match list shows: the arrows move through
+' the matches, Enter takes the highlighted one, Esc puts the list away. True
+' when the key was used here and the box must not act on it.
+Public Function ArgumentKey(ByVal argInput As ArcoArgumentInput, ByVal keyCode As Integer) As Boolean
+    If Not argInput Is matchInput Then Exit Function
+    ArgumentKey = True
+    Select Case keyCode
+        Case vbKeyDown
+            If matchList.ListIndex < matchList.ListCount - 1 Then matchList.ListIndex = matchList.ListIndex + 1
+        Case vbKeyUp
+            If matchList.ListIndex > 0 Then matchList.ListIndex = matchList.ListIndex - 1
+        Case vbKeyReturn
+            If matchList.ListIndex >= 0 Then PickMatch Else HideMatches
+        Case vbKeyEscape
+            HideMatches
+        Case Else
+            ArgumentKey = False
+    End Select
+End Function
+
 Public Sub ArgumentChanged(ByVal argInput As ArcoArgumentInput)
     If argInput.Box.text = PICK_CELL_ITEM Then Exit Sub
     argInput.LastText = argInput.Box.text
     If updating Then Exit Sub
-    If argInput.Typed And IsServerList(argInput.Arg("Kind")) Then FilterList argInput
-    If argInput.Arg("Kind") = "project" Then EnsureLists
+    ' A project name is checked once it is picked, not while it is being typed.
+    If argInput.Typed And IsServerList(argInput.Arg("Kind")) Then
+        ShowMatches argInput
+    Else
+        HideMatches
+        If argInput.Arg("Kind") = "project" Then EnsureLists
+    End If
     statusIsResult = False
     UpdateFormula
 End Sub
 
 Public Sub ArgumentDropDown(ByVal argInput As ArcoArgumentInput)
+    HideMatches
+    ShowHelp argInput
     If Not IsServerList(argInput.Arg("Kind")) Then Exit Sub
     EnsureLists
-    FillList argInput, ""
+    FillList argInput
 End Sub
 
 ' Choosing the cell entry puts back what the box held, then asks for the cell.
@@ -330,16 +408,82 @@ End Function
 
 ' ---- Lists from the Arco Server ----
 
-' Offer the server list items containing what was typed, and open the list.
-Private Sub FilterList(ByVal argInput As ArcoArgumentInput)
-    Dim typed As String
-    typed = argInput.Box.text
-    EnsureLists
-    FillList argInput, typed
-    If argInput.Box.ListCount > 0 Then argInput.Box.DropDown
+' Show, under the box, the server list items that contain every word typed.
+Private Sub ShowMatches(ByVal argInput As ArcoArgumentInput)
+    Dim items As Variant, words() As String, typed As String, i As Long
+    Dim page As MSForms.Frame, edge As Single
+
+    typed = Trim$(argInput.Box.text)
+    If Len(typed) > 0 And Left$(typed, 1) <> "=" Then
+        If argInput.Arg("Kind") <> "project" Then EnsureLists
+        items = ServerList(argInput.Arg("Kind"))
+    End If
+    matchList.Clear
+    If IsArray(items) Then
+        words = Split(typed, " ")
+        For i = LBound(items) To UBound(items)
+            If HasWords(items(i), words) Then matchList.AddItem items(i)
+        Next i
+        matchTotal = UBound(items) - LBound(items) + 1
+    End If
+    ' Nothing to offer, or the one match is what the box already holds.
+    If matchList.ListCount = 1 Then
+        If StrComp(matchList.List(0, 0), typed, vbTextCompare) = 0 Then matchList.Clear
+    End If
+    If matchList.ListCount = 0 Then
+        HideMatches
+        Exit Sub
+    End If
+
+    Set page = pages(currentFunction)
+    edge = (page.width - page.InsideWidth) / 2
+    matchList.left = page.left + edge + argInput.Box.left
+    matchList.top = page.top + (page.height - page.InsideHeight - edge) + argInput.Box.top + argInput.Box.height
+    matchList.height = IIf(matchList.ListCount < 8, matchList.ListCount, 8) * 11 + 3
+    matchList.ZOrder 0
+    matchList.Visible = True
+    Set matchInput = argInput
+    ' Enter and Esc belong to the match list while it shows.
+    insertButton.Default = False
+    closeButton.Cancel = False
 End Sub
 
-Private Sub FillList(ByVal argInput As ArcoArgumentInput, ByVal typed As String)
+Private Function HasWords(ByVal item As String, ByRef words() As String) As Boolean
+    Dim i As Long
+    For i = LBound(words) To UBound(words)
+        If Len(words(i)) > 0 And InStr(1, item, words(i), vbTextCompare) = 0 Then Exit Function
+    Next i
+    HasWords = True
+End Function
+
+Private Sub HideMatches()
+    Dim shown As ArcoArgumentInput
+    If matchInput Is Nothing Then Exit Sub
+    Set shown = matchInput
+    Set matchInput = Nothing
+    matchList.Visible = False
+    insertButton.Default = True
+    closeButton.Cancel = True
+    shown.Preview.caption = PreviewText(shown)
+End Sub
+
+' Put the highlighted match into its box.
+Private Sub PickMatch()
+    Dim argInput As ArcoArgumentInput, text As String
+    If matchInput Is Nothing Or matchList.ListIndex < 0 Then Exit Sub
+    Set argInput = matchInput
+    text = matchList.List(matchList.ListIndex, 0)
+    argInput.Box.SetFocus
+    HideMatches
+    argInput.Typed = False
+    argInput.Box.text = text
+End Sub
+
+Private Sub matchList_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    PickMatch
+End Sub
+
+Private Sub FillList(ByVal argInput As ArcoArgumentInput)
     Dim items As Variant, i As Long, keep As String
     items = ServerList(argInput.Arg("Kind"))
     keep = argInput.Box.text
@@ -348,7 +492,7 @@ Private Sub FillList(ByVal argInput As ArcoArgumentInput, ByVal typed As String)
     argInput.Box.AddItem PICK_CELL_ITEM
     If IsArray(items) Then
         For i = LBound(items) To UBound(items)
-            If Len(typed) = 0 Or InStr(1, items(i), typed, vbTextCompare) > 0 Then argInput.Box.AddItem items(i)
+            argInput.Box.AddItem items(i)
         Next i
     End If
     argInput.Box.text = keep
@@ -378,7 +522,22 @@ Private Function ServerList(ByVal kind As String) As Variant
             End If
             out(0) = "Default"
             ServerList = out
+        Case "folder"
+            ServerList = ProjectFolderList()
     End Select
+End Function
+
+' Each folder of the Arco project list that holds a project, once.
+Private Function ProjectFolderList() As Variant
+    Dim folders As Variant, seen As Object, i As Long
+    folders = ChoiceProjectFolders()
+    If Not IsArray(folders) Then Exit Function
+    Set seen = CreateObject("Scripting.Dictionary")
+    seen.CompareMode = vbTextCompare
+    For i = LBound(folders) To UBound(folders)
+        If Len(folders(i)) > 0 Then seen(folders(i)) = True
+    Next i
+    If seen.Count > 0 Then ProjectFolderList = seen.Keys
 End Function
 
 ' Read the lists for the project the current page names, once per project;
@@ -461,8 +620,15 @@ End Sub
 ' ---- The formula ----
 
 Private Sub UpdateFormula()
-    Dim problem As String
+    Dim problem As String, argInput As ArcoArgumentInput
     formulaBox.text = BuildFormula(problem)
+    For Each argInput In pageInputs(currentFunction)
+        If argInput Is matchInput Then
+            argInput.Preview.caption = matchList.ListCount & " of " & matchTotal
+        ElseIf Not argInput.Box Is Nothing Then
+            argInput.Preview.caption = PreviewText(argInput)
+        End If
+    Next argInput
     insertButton.Enabled = (Len(problem) = 0) And Not TargetCell() Is Nothing
     If Len(problem) > 0 Then
         SetStatus problem, False
@@ -470,6 +636,20 @@ Private Sub UpdateFormula()
         SetStatus "", False
     End If
 End Sub
+
+' What an argument puts into the formula: what was entered, or its default.
+Private Function PreviewText(ByVal argInput As ArcoArgumentInput) As String
+    Dim text As String
+    text = Trim$(argInput.Box.text)
+    If Len(text) > 0 Then
+        EncodeArgument argInput.Arg("Kind"), text
+    ElseIf Len(argInput.Arg("Default")) > 0 Then
+        text = argInput.Arg("Default") & " (default)"
+    Else
+        Exit Function
+    End If
+    PreviewText = "= " & Replace(text, "&", "&&")
+End Function
 
 ' The formula the current page describes. Blank optional arguments after the
 ' last one set are left out; blank ones before it stay empty slots, so every

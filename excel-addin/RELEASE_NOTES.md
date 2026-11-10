@@ -3,6 +3,35 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.4.1 - 2026-11-10
+
+- Insert Arco Function: typing in a path, dataset, project, or folder box now
+  shows the matches in a list under the box, without the blank block the
+  dropdown used to draw. The arrow keys move through the matches, Enter or a
+  click takes one, and Esc puts the list away.
+- Typing several words finds the names that contain all of them, such as
+  `2026 jul`, and the count of matches shows beside the box.
+- A half-typed project name no longer raises the "not on the project list"
+  message; the name is checked once it is picked.
+
+## 4.4.0 - 2026-11-10
+
+- Insert Arco Function has a new, narrower layout: the function is a dropdown
+  at the top, each argument shows beside it what goes into the formula or the
+  default it falls back to, and one help box describes the argument you are in.
+- The window is only as tall as the chosen function's arguments need.
+- `ArcoProjectNames` is in the Insert Arco Function list, with the project
+  folders offered for its `Folder` argument.
+
+## 4.3.4 - 2026-11-10
+
+- Reset Add-in References shows Arco and ResQ as two rows to pick from, each
+  with its add-in path, instead of a dropdown. It also has a Close button.
+
+## 4.3.3 - 2026-11-10
+
+- The Reset Add-in References window is smaller.
+
 ## 4.3.2 - 2026-11-10
 
 - Connect and Login no longer writes the project names into column B of the

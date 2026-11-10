@@ -17,6 +17,8 @@ Public Arg As Object
 Public Panel As Object
 Public WithEvents Box As MSForms.ComboBox
 Attribute Box.VB_VarHelpID = -1
+' Beside the box: what the argument puts into the formula.
+Public Preview As MSForms.Label
 ' True between a key typed into the box and the change it makes, so a list is
 ' filtered by typing but not by picking an item from it.
 Public Typed As Boolean
@@ -26,6 +28,20 @@ Public LastText As String
 
 Private Sub Box_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
     Typed = True
+End Sub
+
+' A box built at run time raises no Enter event, so a click, or the key that
+' brought the focus here, tells the panel which argument is being filled in.
+Private Sub Box_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    Panel.ArgumentEntered Me
+End Sub
+
+Private Sub Box_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If Panel.ArgumentKey(Me, CInt(KeyCode)) Then KeyCode = 0
+End Sub
+
+Private Sub Box_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    Panel.ArgumentEntered Me
 End Sub
 
 Private Sub Box_Change()
