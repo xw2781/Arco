@@ -394,7 +394,7 @@ test("a completed job opens, updates, and closes the shell progress window", asy
 
 test("a missing Engine is reported as unavailable so the caller can fall back", async () => {
   const harness = featureHarness({
-    submit: async () => response({ detail: "The ArcRho Engine service is not available." }, 503),
+    submit: async () => response({ detail: "The Arco Engine service is not available." }, 503),
   });
   const outcome = await harness.feature.runJob("Demo Project", {
     importSource: true,

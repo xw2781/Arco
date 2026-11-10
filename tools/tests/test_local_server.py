@@ -41,9 +41,9 @@ class LocalServerTests(unittest.TestCase):
         self.production = base / "production"
         (self.production / "config").mkdir(parents=True)
         (self.production / "config" / "username_index.json").write_text("{}", encoding="utf-8")
-        orchestrator = self.production / "apps" / "ArcRho Orchestrator"
+        orchestrator = self.production / "apps" / "Arco Orchestrator"
         orchestrator.mkdir(parents=True)
-        (orchestrator / "ArcRho Orchestrator.exe").write_bytes(b"exe")
+        (orchestrator / "Arco Orchestrator.exe").write_bytes(b"exe")
         self.credential = base / "appdata" / "arcrho_gateway.local.json"
 
     def tearDown(self) -> None:
@@ -81,7 +81,7 @@ class LocalServerTests(unittest.TestCase):
         self.assertEqual(credential["url"], "http://127.0.0.1:28767")
         self.assertEqual(registry["users"]["tester"], credential["secret"])
         self.assertTrue((self.root / "config" / "username_index.json").is_file())
-        self.assertTrue((self.root / "apps" / "ArcRho Orchestrator" / "ArcRho Orchestrator.exe").is_file())
+        self.assertTrue((self.root / "apps" / "Arco Orchestrator" / "Arco Orchestrator.exe").is_file())
 
     def test_init_again_keeps_the_same_credential(self) -> None:
         self._init()

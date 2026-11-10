@@ -37,7 +37,7 @@ from arcrho_server_component_status import is_on_local_fixed_disk, list_instance
 SUPERVISED_ROLES = ("orchestrator", "engine", "gateway")
 # Pinned to server-components' component table by
 # python-api/tests/test_server_control.py.
-ORCHESTRATOR_APP_NAME = "ArcRho Orchestrator"
+ORCHESTRATOR_APP_NAME = "Arco Orchestrator"
 # Every override that could point a child process at another root. The caller
 # sets the one it means; nothing inherited survives, so an app session launched
 # against one server can never hand its Gateway credential or root to another.

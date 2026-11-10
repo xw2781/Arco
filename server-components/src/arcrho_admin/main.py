@@ -714,7 +714,7 @@ class StartupSplash:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArcRho Admin Control</title>
+  <title>Arco Admin Control</title>
   <style>
     :root {{
       color-scheme: light;
@@ -812,7 +812,7 @@ class StartupSplash:
     <div class="brand">
       <div class="mark" aria-hidden="true"></div>
       <div>
-        <h1>ArcRho Admin Control</h1>
+        <h1>Arco Admin Control</h1>
         <p>Starting the local admin server.</p>
       </div>
     </div>
@@ -938,9 +938,9 @@ def wait_for_port_clear(port, timeout_seconds=3.0):
 def clear_existing_admin_port(port):
     if is_admin_server(port):
         if request_admin_shutdown(port) and wait_for_admin_shutdown(port):
-            print(f"Closed previous ArcRho Admin Control server on port {port}")
+            print(f"Closed previous Arco Admin Control server on port {port}")
             return
-        print(f"Previous ArcRho Admin Control server on port {port} did not close gracefully")
+        print(f"Previous Arco Admin Control server on port {port} did not close gracefully")
 
     pids = kill_port_listeners(port)
     if pids:
@@ -950,7 +950,7 @@ def clear_existing_admin_port(port):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run ArcRho Admin Control in a local browser.")
+    parser = argparse.ArgumentParser(description="Run Arco Admin Control in a local browser.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--no-splash", action="store_true")
@@ -975,7 +975,7 @@ def main():
         start_admin_heartbeat(server, server.admin_instance_path)
         url = f"http://127.0.0.1:{server.server_port}/"
         log_event(f"server ready pid={os.getpid()} url={url}")
-        print(f"ArcRho Admin Control: {url}")
+        print(f"Arco Admin Control: {url}")
 
         if not args.no_browser and splash is None:
             webbrowser.open(url)

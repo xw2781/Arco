@@ -1,4 +1,4 @@
-"""Repository sources the ArcRho Bridge freezes into its executable.
+"""Repository sources the Arco Bridge freezes into its executable.
 
 The Bridge runs this frozen copy rather than the working tree, so an edit to any
 of these roots does not reach a running ResQ import until the Bridge is rebuilt.

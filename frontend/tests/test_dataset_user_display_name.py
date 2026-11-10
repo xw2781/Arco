@@ -75,7 +75,7 @@ class DatasetUserDisplayNameTests(unittest.TestCase):
 
 
 class HostedSaveUserDisplayNameTests(unittest.TestCase):
-    """A save hosted on ArcRho Engine stamps the user, not the instance.
+    """A save hosted on Arco Engine stamps the user, not the instance.
 
     Engine instances run under their own service profiles, so before the
     acting identity existed the same edit could be attributed to a different

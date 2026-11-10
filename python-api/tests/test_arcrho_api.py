@@ -743,7 +743,7 @@ class ServerRootResolutionTests(unittest.TestCase):
                     self.assertEqual(get_server_root(), self.env_root)
 
     def test_env_override_applies_after_a_root_is_already_cached(self) -> None:
-        """The ArcRho Bridge exports its runtime root into a running process."""
+        """The Arco Bridge exports its runtime root into a running process."""
 
         self._write_host_config(self.file_root)
         with patch.dict(os.environ, self._env(), clear=True):

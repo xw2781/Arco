@@ -44,7 +44,7 @@ test("desktop setup reads the configured workspace before drive-name scanning", 
 test("desktop setup starts only an already-installed local deployment", () => {
   assert.match(
     frontendInstaller,
-    /Function ArcRho_DetectDataEngineInstalled[\s\S]*ArcRho Launcher\\ArcRho Launcher\.exe/
+    /Function ArcRho_DetectDataEngineInstalled[\s\S]*Arco Launcher\\Arco Launcher\.exe/
   );
   assert.match(
     frontendInstaller,

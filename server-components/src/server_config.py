@@ -114,7 +114,7 @@ def _persisted_json_text(payload: dict[str, Any]) -> str:
     """Return the canonical on-disk text for this configuration payload.
 
     ``arcrho_api.io`` owns that text, but it is imported here rather than at
-    module scope because the frozen ArcRho Bridge must load ``arcrho_api`` from
+    module scope because the frozen Arco Bridge must load ``arcrho_api`` from
     its staged ResQ migration bundle instead of its own import graph.  Every
     Bridge process reads the server configuration through ``utils``, so a
     module-scope import here loaded a second ``arcrho_api`` into the worker

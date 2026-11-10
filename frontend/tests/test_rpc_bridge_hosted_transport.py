@@ -1,6 +1,6 @@
 """Gateway transport for the DFM RPC bridge routes.
 
-The ArcRho Bridge that answers these requests runs on the server host, where
+The Arco Bridge that answers these requests runs on the server host, where
 the request folder and the method files are local disk; only the Client PC half
 of the exchange crosses SMB. These tests pin the wiring that moves that half to
 the Gateway: the registered kinds, the arguments each route sends, that a

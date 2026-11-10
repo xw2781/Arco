@@ -164,13 +164,13 @@ class ResqDataMigrationEngineTests(unittest.TestCase):
         self.assertEqual(
             describe_import_mismatch(differs),
             "1 cell(s) differ from ResQ at 2 decimal places; first at origin 1, development 1: "
-            "ResQ 1.00, ArcRho Engine 1.01.",
+            "ResQ 1.00, Arco Engine 1.01.",
         )
 
         shape = compare_import_values([[1.0, 2.0]], [[1.0]])
         self.assertEqual(
             describe_import_mismatch(shape),
-            "ResQ holds 1 x 2 cells but ArcRho Engine produced 1 x 1.",
+            "ResQ holds 1 x 2 cells but Arco Engine produced 1 x 1.",
         )
 
     # -- unreviewed datasets --------------------------------------------------
@@ -414,10 +414,10 @@ class ResqDataMigrationEngineTests(unittest.TestCase):
         self.assertEqual(preflight_roots, [self.root])
         self.assertTrue((self.datasets_dir / "Paid Loss@12@12@cum@dev.csv").is_file())
         messages = [str(event.get("message") or "") for event in events]
-        self.assertIn("Submitting 2 generated dataset(s) to ArcRho Engine...", messages)
+        self.assertIn("Submitting 2 generated dataset(s) to Arco Engine...", messages)
         self.assertIn("Submitted generated dataset 2 of 2: Generated Premium", messages)
-        self.assertIn("Waiting for ArcRho Engine result 1 of 2: Paid Loss", messages)
-        self.assertIn("Waiting for ArcRho Engine result 2 of 2: Generated Premium", messages)
+        self.assertIn("Waiting for Arco Engine result 1 of 2: Paid Loss", messages)
+        self.assertIn("Waiting for Arco Engine result 2 of 2: Generated Premium", messages)
 
     def test_resq_inventory_reports_live_discovered_counts_before_total(self) -> None:
         events = []
@@ -474,7 +474,7 @@ class ResqDataMigrationEngineTests(unittest.TestCase):
         self.assertEqual(
             warning["message"],
             "2 cell(s) differ from ResQ at 2 decimal places; first at origin 2, development 1: "
-            "ResQ 300.01, ArcRho Engine 300.00.",
+            "ResQ 300.01, Arco Engine 300.00.",
         )
         finish = [e for e in events if e.get("event") == "finish"][0]
         self.assertEqual(finish["status"], "warning")

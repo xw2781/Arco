@@ -3,7 +3,7 @@
 ## Release artifact
 
 `ArcRho-Server-Setup-<version>.exe` is the offline, per-user companion installer
-for ArcRho Engine, Orchestrator, Bridge, Launcher, and Admin Control. Its version
+for Arco Engine, Orchestrator, Bridge, Launcher, and Admin Control. Its version
 must match `frontend/package.json`. It is published beside the matching
 `Arco-v<version>` frontend release with a SHA-256 checksum and is also copied
 to `releases/server-installers` in the ArcRho Server release share.

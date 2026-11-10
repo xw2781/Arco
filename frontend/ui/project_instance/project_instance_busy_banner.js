@@ -1,4 +1,4 @@
-// Advisory reserving-class busy watch: while ArcRho Engine runs a dependent
+// Advisory reserving-class busy watch: while Arco Engine runs a dependent
 // walk for the selected reserving class -- this app instance's save or another
 // user's -- Project Instance pauses its own dataset edit actions. There is no
 // visible banner; live propagation updates stream inside the saving window's

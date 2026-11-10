@@ -1,4 +1,4 @@
-"""Build, atomically deploy, and restart ArcRho Gateway."""
+"""Build, atomically deploy, and restart Arco Gateway."""
 
 from __future__ import annotations
 

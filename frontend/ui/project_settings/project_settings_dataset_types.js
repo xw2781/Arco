@@ -1885,7 +1885,7 @@ export function createDatasetTypesFeature(deps = {}) {
    * nothing outside the table is written by the app server and confirmed here.
    * Anything that touches names, formulas or formats comes back first as a
    * plan naming the reserving classes it reaches; the user confirms that
-   * list, the confirming request submits the ArcRho Engine job that holds
+   * list, the confirming request submits the Arco Engine job that holds
    * exactly those classes, and this module then follows the job to its end.
    *
    * ``confirmed`` is the plan the user accepted, passed by the dialog's own

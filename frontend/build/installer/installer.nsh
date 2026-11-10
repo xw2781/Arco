@@ -297,7 +297,7 @@ ShowUninstDetails show
   Function ArcRho_DetectDataEngineInstalled
     StrCpy $ArcRhoDataEngineInstalled "0"
     ${If} $ArcRhoServerRoot != ""
-      ${If} ${FileExists} "$ArcRhoServerRoot\apps\ArcRho Launcher\ArcRho Launcher.exe"
+      ${If} ${FileExists} "$ArcRhoServerRoot\apps\Arco Launcher\Arco Launcher.exe"
       ${OrIf} ${FileExists} "$ArcRhoServerRoot\apps\ADAS Shell\ADAS Shell.exe"
         StrCpy $ArcRhoDataEngineInstalled "1"
       ${EndIf}
@@ -525,7 +525,7 @@ ShowUninstDetails show
     ; Arco Launcher owns the startup registration and service launch: it
     ; recreates its own shortcut in the user's Startup folder and then starts
     ; the orchestrator and bridge, so the installer only needs to run it.
-    StrCpy $0 "$ArcRhoServerRoot\apps\ArcRho Launcher\ArcRho Launcher.exe"
+    StrCpy $0 "$ArcRhoServerRoot\apps\Arco Launcher\Arco Launcher.exe"
     ${IfNot} ${FileExists} "$0"
       StrCpy $0 "$ArcRhoServerRoot\apps\ADAS Shell\ADAS Shell.exe"
     ${EndIf}

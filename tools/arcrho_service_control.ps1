@@ -65,10 +65,10 @@ if ($driveInfo.DriveType -ne 3) {
 # Stop order is the reverse of start order: the Orchestrator supervises the
 # rest, so it goes down first and comes up last.
 $Components = @(
-    @{ Name = 'ArcRho Orchestrator'; Exe = 'ArcRho Orchestrator\ArcRho Orchestrator.exe'; Instance = 'arcrho_orchestrator' },
-    @{ Name = 'ArcRho Gateway';      Exe = 'ArcRho Gateway\ArcRho Gateway.exe';           Instance = 'arcrho_gateway' },
-    @{ Name = 'ArcRho Bridge';       Exe = 'ArcRho Bridge\ArcRho Bridge.exe';             Instance = 'arcrho_bridge' },
-    @{ Name = 'ArcRho Engine';       Exe = 'ArcRho Engine\ArcRho Engine.exe';             Instance = 'arcrho_engine' }
+    @{ Name = 'Arco Orchestrator'; Exe = 'Arco Orchestrator\Arco Orchestrator.exe'; Instance = 'arcrho_orchestrator' },
+    @{ Name = 'Arco Gateway';      Exe = 'Arco Gateway\Arco Gateway.exe';           Instance = 'arcrho_gateway' },
+    @{ Name = 'Arco Bridge';       Exe = 'Arco Bridge\Arco Bridge.exe';             Instance = 'arcrho_bridge' },
+    @{ Name = 'Arco Engine';       Exe = 'Arco Engine\Arco Engine.exe';             Instance = 'arcrho_engine' }
 )
 
 $ListenerScript = 'arcrho_build_manager.py'
@@ -159,14 +159,14 @@ switch ($Action) {
     'start' {
         # Only the Orchestrator is launched -- it brings up the components it
         # supervises itself.
-        $orchestrator = $Components | Where-Object { $_.Name -eq 'ArcRho Orchestrator' }
+        $orchestrator = $Components | Where-Object { $_.Name -eq 'Arco Orchestrator' }
         $path = Join-Path $Root $orchestrator.Exe
         if (-not (Test-Path $path)) {
             Write-Error ("Not found: {0}" -f $path)
             exit 1
         }
         if ((Get-Running $orchestrator.Name).Count -gt 0) {
-            Write-Output 'ArcRho Orchestrator is already running.'
+            Write-Output 'Arco Orchestrator is already running.'
         }
         else {
             Start-Process -FilePath $path | Out-Null

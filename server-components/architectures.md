@@ -9,14 +9,14 @@ explicit `ARCRHO_ROOT` remains the highest-precedence override.
 
 Five components ship as one versioned server release:
 
-- **ArcRho Engine** processes calculation, propagation, duplication, and other
+- **Arco Engine** processes calculation, propagation, duplication, and other
   durable workspace requests. The Orchestrator normally maintains five workers.
-- **ArcRho Orchestrator** supervises Engine and Bridge processes.
-- **ArcRho Bridge** provides per-interactive-user ResQ automation. Its worker
+- **Arco Orchestrator** supervises Engine and Bridge processes.
+- **Arco Bridge** provides per-interactive-user ResQ automation. Its worker
   needs that user's ResQ GUI and COM session, so it is not a Windows service.
-- **ArcRho Launcher** registers per-user login startup and starts Orchestrator
+- **Arco Launcher** registers per-user login startup and starts Orchestrator
   and Bridge.
-- **ArcRho Admin Control** exposes local component/configuration administration.
+- **Arco Admin Control** exposes local component/configuration administration.
 
 The offline companion installer and lifecycle contract are documented in
 [Server Components Deployment](docs/server-components-deployment.md). The

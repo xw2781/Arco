@@ -2564,7 +2564,7 @@ function applyMethodPayload(payload) {
 
 // The page open is one registered workspace read. `/berquist-sherman/load`
 // returns the method JSON and the output sidecar together, so a Client PC pays
-// a single workspace visit — served by the ArcRho Gateway when it is available
+// a single workspace visit — served by the Arco Gateway when it is available
 // — instead of reading the sidecar and then the method file one after the
 // other. Reading the method through the host API could never use that
 // transport, because a host-API file read does not enter the app server.

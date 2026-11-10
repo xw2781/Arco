@@ -34,7 +34,7 @@ Give the same statement again in the final response when the implementation chan
 | Component | Bundle owner to read | Stopping it costs | Verify after deploy |
 | --- | --- | --- | --- |
 | **Bridge** | `arcrho_bridge/bundled_sources.py` — `BUNDLED_SOURCES`, `CANONICAL_MODULE_ROOT`, `CANONICAL_HIDDEN_IMPORTS` | Every ResQ import blocks while it is down | The Orchestrator relaunches it only when `apps.bridge.auto_create_instance` is true — that flag has flipped before, so check it and start the deployed exe manually if it is false. Bridges are per interactive user session |
-| **Engine** | `arcrho_engine/bundled_sources.py` — `ENGINE_BUNDLED_SOURCES`, plus `build_exe.py`'s `--paths` and hidden imports | Every pending calculation, dependent-propagation, and project-duplication job pauses until instances return | Fresh heartbeats under `runtime\instances\arcrho_engine\`; if the Orchestrator is not running, start `apps\ArcRho Engine\ArcRho Engine.exe` manually |
+| **Engine** | `arcrho_engine/bundled_sources.py` — `ENGINE_BUNDLED_SOURCES`, plus `build_exe.py`'s `--paths` and hidden imports | Every pending calculation, dependent-propagation, and project-duplication job pauses until instances return | Fresh heartbeats under `runtime\instances\arcrho_engine\`; if the Orchestrator is not running, start `apps\Arco Engine\Arco Engine.exe` manually |
 | **Gateway** | `arcrho_gateway/build_exe.py` — its `--paths` and `--hidden-import` list (it bundles `ENGINE_BUNDLED_SOURCES`) | Hosted saves fail for enrolled users; a save in flight during the swap must be retried | Fresh heartbeat under `runtime\instances\arcrho_gateway\` and `GET <client_url>/api/health` → `{"ok": true}` |
 | **Orchestrator** | `arcrho_orchestrator/build_exe.py` — its imports, PyInstaller paths, and deployment logic | Component replenishment pauses; Engine, Bridge, Gateway, and ResQ keep running | Fresh heartbeat under `runtime\instances\arcrho_orchestrator\`. When the task changed its supervision of another component, verify that component's readiness signal too |
 | **Admin Control** | `server-components/src/arcrho_admin/` | Local administration UI is unavailable | `GET http://127.0.0.1:28766/api/health` → `{"ok": true}` and the process is running |
@@ -46,9 +46,9 @@ An Orchestrator deploy relaunches at least one Orchestrator. Other users' per-se
 
 It is the one component the deploy cannot fully cycle on its own:
 
-1. Shut the running server down through `POST http://127.0.0.1:28766/api/shutdown` and wait for the listener to exit. If it does not respond but the process remains, terminate only the identified `ArcRho Admin Control.exe` so the folder can be replaced.
+1. Shut the running server down through `POST http://127.0.0.1:28766/api/shutdown` and wait for the listener to exit. If it does not respond but the process remains, terminate only the identified `Arco Admin Control.exe` so the folder can be replaced.
 2. Deploy it.
-3. Launch `apps\ArcRho Admin Control\ArcRho Admin Control.exe` with a hidden process window so the browser UI reopens.
+3. Launch `apps\Arco Admin Control\Arco Admin Control.exe` with a hidden process window so the browser UI reopens.
 4. Verify health as in the table.
 
 ## Fallback: building from a client machine

@@ -326,7 +326,7 @@ not the machine ArcRho runs on. The macro therefore owns no ResQ session and
 reads no reserving-class file: it publishes an `export` request to the same
 Bridge queue the sync macro uses (`SyncResQReservingClass`, contract version
 4, under `requests\RPC bridge\resq_reserving_class_sync\`), and a
-ResQ-connected ArcRho Bridge worker on the Server PC runs
+ResQ-connected Arco Bridge worker on the Server PC runs
 `resq_migration.sync_session.export_reserving_class` on its behalf. The
 worker takes the reserving-class job lease a ResQ import and a sync apply
 take, so no two of them write one reserving class at the same time, and
@@ -374,7 +374,7 @@ the writer relies on:
   `Set<Property>(indices..., value)` (e.g. `SetValuesByIndex`,
   `SetSelectedRatios`); it appears nowhere in the ResQ documentation but is
   proven by `python-api/migration/references/ResQToolBox2.py`, the API example
-  notebook, and the ArcRho Bridge `SyncDFM` implementation.
+  notebook, and the Arco Bridge `SyncDFM` implementation.
 - **ResQ names carry stray whitespace.** Real objects exist with trailing or
   doubled spaces, while ArcRho normalized all names on import. A plain
   `collection.Item(name)` misses those objects, so every lookup falls back to

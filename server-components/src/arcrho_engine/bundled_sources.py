@@ -1,4 +1,4 @@
-"""Repository sources the ArcRho Engine freezes into its executable.
+"""Repository sources the Arco Engine freezes into its executable.
 
 The Engine runs dependent propagation through the canonical
 ``frontend/app_server`` services, loaded from this frozen copy rather than the

@@ -1,4 +1,4 @@
-"""Build and deploy the ArcRho Credential helper.
+"""Build and deploy the Arco Credential helper.
 
 Modelled on the Gateway's build script, minus the stopped window: nothing
 supervises this helper, so there is no instance to stop before the swap. A

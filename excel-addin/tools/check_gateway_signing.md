@@ -41,7 +41,7 @@ project data.
 COM, add-in version 2.4.0, against the Gateway on `NE7SASWPN02`.
 
 ```
-ArcRho Gateway check, add-in 2.4.0
+Arco Gateway check, add-in 2.4.0
 vector digest    match    bede0538b3ba1824f3572ce81a492868099b0bfc4ba90b1ce9c105cb3cfc5656
 vector signature match    3a81facfc86c05784d7978f8a2f2de06b6172b513c9f75d496777aff6008d2d0
 credential       xwei at http://NE7SASWPN02.PRCINS.NET:28767

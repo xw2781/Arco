@@ -1,0 +1,10 @@
+{
+  "type": "improvement",
+  "scope": "server",
+  "audience": "user",
+  "summary": "The server components are now named Arco Engine, Arco Bridge, Arco Gateway, Arco Orchestrator, Arco Launcher, Arco Admin Control, and Arco Credential.",
+  "details": [
+    "On the PC that hosts the Arco Server folder, setup starts Arco Launcher, which replaces the old ArcRho Launcher entry in your Startup folder.",
+    "Saves that wait on the Engine now recognise the \"Arco Engine service is not available\" message again."
+  ]
+}

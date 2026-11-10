@@ -676,7 +676,7 @@ class ExcelLinkRetargetTests(ExcelLinkSaveFixture):
     def test_retarget_requires_a_live_engine_before_any_write(self) -> None:
         self.write_json(self.sidecars / "Manual Paid.json", self.linked_sidecar())
         before = (self.sidecars / "Manual Paid.json").read_bytes()
-        self.engine.side_effect = HTTPException(503, "No ArcRho Engine instance is available.")
+        self.engine.side_effect = HTTPException(503, "No Arco Engine instance is available.")
         with self.assertRaises(HTTPException) as ctx:
             self.run_retarget()
         self.assertEqual(ctx.exception.status_code, 503)

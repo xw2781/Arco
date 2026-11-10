@@ -11,7 +11,7 @@ helper; these checks exercise real enrollment.
 - The beta add-in built from this clone:
   `powershell -NoProfile -ExecutionPolicy Bypass -File excel-addin\tools\build_xlam.ps1`
 - The helper deployed on the share at
-  `<workspace>\apps\ArcRho Credential\ArcRho Credential.exe`
+  `<workspace>\apps\Arco Credential\Arco Credential.exe`
 - A credential of your own at `%APPDATA%\ArcRho\arcrho_gateway.json` to copy
   aside and put back at the end, so the check leaves the PC as it found it.
 
@@ -26,7 +26,7 @@ part of an array formula.
 ## The four checks
 
 1. **The helper runs from the share.** Move the credential aside and start
-   `ArcRho Credential.exe` the way the add-in does — through `WScript.Shell`,
+   `Arco Credential.exe` the way the add-in does — through `WScript.Shell`,
    hidden, waiting for it — handing it the workspace root as its one argument.
    It must exit 0 with no warning dialog and the credential must be back.
 2. **Excel sets the PC up on its own.** Move the credential aside again, open

@@ -124,9 +124,11 @@ def start_app_exe(exe_path: str | os.PathLike) -> None:
 
 
 def main():
-    removed_lnk = remove_startup_shortcut("ADAS Shell")
-    if removed_lnk:
-        print("\n> Removed old startup shortcut:", removed_lnk); time.sleep(0.5)
+    # The Launcher was "ADAS Shell", then "ArcRho Launcher" until 2026-11-09.
+    for old_name in ("ADAS Shell", "ArcRho Launcher"):
+        removed_lnk = remove_startup_shortcut(old_name)
+        if removed_lnk:
+            print("\n> Removed old startup shortcut:", removed_lnk); time.sleep(0.5)
 
     lnk = install_startup_shortcut(
         resolve_app_exe("launcher"),

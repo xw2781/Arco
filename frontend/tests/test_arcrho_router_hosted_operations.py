@@ -338,7 +338,7 @@ class HostedDatasetCsvTests(unittest.TestCase):
             "ok": False,
             "status": "timeout",
             "request_file": "r.json",
-            "message": "Timed out waiting for the ArcRho Engine.",
+            "message": "Timed out waiting for the Arco Engine.",
         }
         with patch.object(
             engine_calculation_service, "run_engine_calculation", return_value=timeout
@@ -466,7 +466,7 @@ class HostedProjectLevelCsvTests(unittest.TestCase):
             "ok": False,
             "status": "timeout",
             "request_file": "r.json",
-            "message": "Timed out waiting for the ArcRho Engine.",
+            "message": "Timed out waiting for the Arco Engine.",
         }
         with patch.object(
             engine_calculation_service, "run_engine_calculation", return_value=timeout

@@ -1,4 +1,4 @@
-"""One appender for every ArcRho Engine runtime log.
+"""One appender for every Arco Engine runtime log.
 
 The Engine is packaged with ``--noconsole``, so a bare ``print`` is lost on
 every deployed machine: whatever a job does not write here leaves no trace at

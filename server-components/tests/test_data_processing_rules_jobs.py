@@ -351,7 +351,7 @@ class DurableDataProcessingRulesJobTests(unittest.TestCase):
                     "datasets_regenerated": 0,
                     "datasets_failed": 1,
                     "methods_updated": 0,
-                    "failures": ["A\\Two: Paid: the ArcRho Engine did not return values."],
+                    "failures": ["A\\Two: Paid: the Arco Engine did not return values."],
                 },
             }
 
@@ -364,7 +364,7 @@ class DurableDataProcessingRulesJobTests(unittest.TestCase):
             status["message"],
             "The rules were saved, but 1 dataset(s) could not be refreshed; "
             "1 reserving class(es) were not refreshed. "
-            "First problem: A\\Two: Paid: the ArcRho Engine did not return values.",
+            "First problem: A\\Two: Paid: the Arco Engine did not return values.",
         )
         self.assertFalse(self.request_path.exists())
 

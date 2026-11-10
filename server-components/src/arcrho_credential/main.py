@@ -1,4 +1,4 @@
-"""Give this PC its own ArcRho Gateway credential.
+"""Give this PC its own Arco Gateway credential.
 
 The Excel add-in starts this helper the first time it finds no credential on
 the machine, so an Excel-only user is never set up by hand. The work itself is
@@ -33,7 +33,7 @@ from arcrho_hosted_save_http_contract import CLIENT_CONFIG_FILE_NAME  # noqa: E4
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Install this Windows user's ArcRho Gateway credential."
+        description="Install this Windows user's Arco Gateway credential."
     )
     # The add-in still passes the workspace folder; the helper no longer reads it.
     parser.add_argument("workspace_root", nargs="?", help=argparse.SUPPRESS)

@@ -104,7 +104,7 @@ RESQ_IMPORT_ORPHANED_STATUS_MESSAGE = (
 
 # A reserving-class import is intentionally isolated from both the legacy RPC
 # queue and the data-engine's top-level ``requests`` queue. The latter is
-# watched by ArcRho Engine workers, which must never claim a ResQ import.
+# watched by Arco Engine workers, which must never claim a ResQ import.
 RESQ_IMPORT_FUNCTION = RESQ_IMPORT_CONTRACT["function"]
 RESQ_IMPORT_CONTRACT_VERSION = RESQ_IMPORT_CONTRACT["contract_version"]
 _RESQ_IMPORT_REQUIRED_FIELDS = RESQ_IMPORT_CONTRACT["required_request_fields"]

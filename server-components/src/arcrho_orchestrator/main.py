@@ -54,7 +54,7 @@ def kill_extra_python_processes():
     for proc in psutil.process_iter(['pid', 'name', 'exe', 'create_time']):
         try:
             proc_name = proc.info['name'].lower() if proc.info['name'] else ''
-            if any(name.lower() in proc_name for name in ('ADAS Master.exe', 'ArcRho Master.exe', 'ArcRho Orchestrator.exe')):
+            if any(name.lower() in proc_name for name in ('ADAS Master.exe', 'ArcRho Master.exe', 'Arco Orchestrator.exe')):
                 py_procs.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass

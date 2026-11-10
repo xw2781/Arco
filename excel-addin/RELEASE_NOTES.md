@@ -3,6 +3,11 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.2.6 - 2026-11-09
+
+- First-time sign-in starts the helper under its new name, `Arco Credential`,
+  after the server components were renamed from `ArcRho` to `Arco`.
+
 ## 4.2.5 - 2026-11-09
 
 - The add-in is now `Arco.xlam` in `E:\Arco Server\Excel Add-ins`, after the

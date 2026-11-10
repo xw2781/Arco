@@ -1,1 +1,1 @@
-"""ArcRho Gateway credential helper package."""
+"""Arco Gateway credential helper package."""

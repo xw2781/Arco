@@ -2,7 +2,7 @@
 
 Generated datasets use the same file request contract as the Excel add-in:
 the migration atomically publishes JSON under ``<server_root>/requests`` and an
-ArcRho Engine worker writes the requested CSV.  Each request writes to a unique
+Arco Engine worker writes the requested CSV.  Each request writes to a unique
 staging path first.  The migration moves a completed staging CSV into its
 canonical cache path, so a failed or timed-out request cannot damage an existing
 cache.  Status-aware workers also publish an atomic processing/success/error JSON
@@ -54,7 +54,7 @@ class EngineGenerationError(RuntimeError):
 
 
 class EngineUnavailableError(EngineGenerationError):
-    """Raised when no recently active ArcRho Engine worker is available."""
+    """Raised when no recently active Arco Engine worker is available."""
 
 
 @dataclass(frozen=True)
@@ -389,7 +389,7 @@ def generate_engine_csv(
     poll_interval_sec: float = ENGINE_REQUEST_POLL_INTERVAL_SEC,
     on_poll: Callable[[], None] | None = None,
 ) -> None:
-    """Generate one dataset CSV through an external ArcRho Engine worker."""
+    """Generate one dataset CSV through an external Arco Engine worker."""
 
     job = create_engine_request_job(
         project_name=project_name,

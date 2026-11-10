@@ -1,7 +1,7 @@
 const PROJECT_READ_TOOL = {
   type: "function",
   name: "arco_project_read",
-  description: "Read methods and datasets through the ArcRho Gateway. Call with kind=catalog first to discover read kinds and their arguments. project_name defaults to the project open in the UI; pass it only when the user asks about another project (kind=project_names lists them all). reserving_class defaults to the class open in the UI when omitted. No saves or mutations are available.",
+  description: "Read methods and datasets through the Arco Gateway. Call with kind=catalog first to discover read kinds and their arguments. project_name defaults to the project open in the UI; pass it only when the user asks about another project (kind=project_names lists them all). reserving_class defaults to the class open in the UI when omitted. No saves or mutations are available.",
   inputSchema: {
     type: "object", properties: {
       kind: { type: "string" },

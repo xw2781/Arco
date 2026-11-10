@@ -124,7 +124,7 @@ def wait_for_orchestrator_shutdown():
             return
         if time.monotonic() >= deadline:
             raise RuntimeError(
-                f"The live ArcRho Orchestrator did not stop within "
+                f"The live Arco Orchestrator did not stop within "
                 f"{ORCHESTRATOR_SHUTDOWN_TIMEOUT_SECONDS}s ({remaining} heartbeat(s) "
                 "still present). Deploy aborted; the deployed Orchestrator was left "
                 "untouched."
@@ -134,7 +134,7 @@ def wait_for_orchestrator_shutdown():
 
 def start_orchestrator():
     if live_orchestrator_instance_count():
-        print("\n>>> An ArcRho Orchestrator is already running; not starting another.")
+        print("\n>>> An Arco Orchestrator is already running; not starting another.")
         return
 
     exe = DEPLOY_APP_DIR / f"{APP_NAME}.exe"
@@ -159,13 +159,13 @@ def orchestrator_stopped():
     """
 
     previous = get_config_value(ORCHESTRATOR_KILL_ALL_KEY, False)
-    print(f"\n>>> Stopping the live ArcRho Orchestrator ({ORCHESTRATOR_KILL_ALL_KEY} = True)")
+    print(f"\n>>> Stopping the live Arco Orchestrator ({ORCHESTRATOR_KILL_ALL_KEY} = True)")
     set_config_value(ORCHESTRATOR_KILL_ALL_KEY, True)
     try:
         wait_for_orchestrator_shutdown()
         yield
     finally:
-        print(f"\n>>> Releasing the ArcRho Orchestrator ({ORCHESTRATOR_KILL_ALL_KEY} = {previous})")
+        print(f"\n>>> Releasing the Arco Orchestrator ({ORCHESTRATOR_KILL_ALL_KEY} = {previous})")
         set_config_value(ORCHESTRATOR_KILL_ALL_KEY, previous)
         start_orchestrator()
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 <!-- MANUAL:BEGIN -->
-Run the expensive workspace reads a Client PC performs — the reserving-class dataset/method index, a cached-dataset load, a method-window load, and the Project Settings table summary — on the ArcRho Server host over HTTP instead of over the mapped drive. This is a transport, not a domain of its own: the canonical `app_server` service function still owns each read, and it runs unchanged either locally or inside the machine-wide ArcRho Gateway, which freezes the same `frontend/app_server` and `python-api/src` trees the Engine does.
+Run the expensive workspace reads a Client PC performs — the reserving-class dataset/method index, a cached-dataset load, a method-window load, and the Project Settings table summary — on the ArcRho Server host over HTTP instead of over the mapped drive. This is a transport, not a domain of its own: the canonical `app_server` service function still owns each read, and it runs unchanged either locally or inside the machine-wide Arco Gateway, which freezes the same `frontend/app_server` and `python-api/src` trees the Engine does.
 - Project Instance Help JSON views use `project_instance_json`, which reads the raw method or sidecar on the server and rejects filenames outside the selected class folder. The batch ResQ import uses `resq_class_inventory` for its class counts.
 <!-- MANUAL:END -->
 

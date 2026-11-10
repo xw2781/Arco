@@ -66,7 +66,7 @@ test("the rows signature distinguishes a changed table", () => {
 
 test("a finished job resolves with its terminal status and reports progress", async () => {
   const responses = [
-    jsonResponse({ ok: true, status: "queued", updated_at: "t0", progress: { stage: "queued", completed: 0, total: 0, label: "Queued for ArcRho Engine" } }),
+    jsonResponse({ ok: true, status: "queued", updated_at: "t0", progress: { stage: "queued", completed: 0, total: 0, label: "Queued for Arco Engine" } }),
     jsonResponse(processingStatus()),
     jsonResponse({
       ok: true,
@@ -93,7 +93,7 @@ test("a finished job resolves with its terminal status and reports progress", as
   });
   assert.equal(terminal.status, "success");
   assert.deepEqual(labels, [
-    "Queued for ArcRho Engine",
+    "Queued for Arco Engine",
     "Rebuilding graphs",
     "Dataset type change complete",
   ]);
@@ -149,7 +149,7 @@ test("a queued job is allowed to sit longer than a processing one", async () => 
     ok: true,
     status: "queued",
     updated_at: "t0",
-    progress: { stage: "queued", completed: 0, total: 0, label: "Queued for ArcRho Engine" },
+    progress: { stage: "queued", completed: 0, total: 0, label: "Queued for Arco Engine" },
   });
   let polls = 0;
   await assert.rejects(

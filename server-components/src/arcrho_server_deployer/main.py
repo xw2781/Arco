@@ -705,26 +705,26 @@ def _create_shortcut(
 
 
 def _register_shortcuts(root: Path) -> None:
-    launcher = root / "apps" / "ArcRho Launcher" / "ArcRho Launcher.exe"
-    admin = root / "apps" / "ArcRho Admin Control" / "ArcRho Admin Control.exe"
+    launcher = root / "apps" / "Arco Launcher" / "Arco Launcher.exe"
+    admin = root / "apps" / "Arco Admin Control" / "Arco Admin Control.exe"
     _create_shortcut(
         launcher,
-        _shortcut_folder("startup") / "ArcRho Launcher.lnk",
+        _shortcut_folder("startup") / "Arco Launcher.lnk",
         arguments="--silent",
         description="Start ArcRho Server components at login",
     )
     _create_shortcut(
         admin,
-        _shortcut_folder("programs") / "ArcRho Admin Control.lnk",
-        description="Open ArcRho Admin Control",
+        _shortcut_folder("programs") / "Arco Admin Control.lnk",
+        description="Open Arco Admin Control",
     )
 
 
 def _remove_shortcuts() -> None:
     for path in (
-        _shortcut_folder("startup") / "ArcRho Launcher.lnk",
+        _shortcut_folder("startup") / "Arco Launcher.lnk",
         _shortcut_folder("startup") / "ADAS Shell.lnk",
-        _shortcut_folder("programs") / "ArcRho Admin Control.lnk",
+        _shortcut_folder("programs") / "Arco Admin Control.lnk",
     ):
         try:
             path.unlink()
@@ -737,7 +737,7 @@ def _remove_shortcuts() -> None:
 
 
 def _start_launcher(root: Path) -> None:
-    launcher = root / "apps" / "ArcRho Launcher" / "ArcRho Launcher.exe"
+    launcher = root / "apps" / "Arco Launcher" / "Arco Launcher.exe"
     if not launcher.is_file():
         raise DeploymentError(f"Installed launcher was not found: {launcher}")
     subprocess.Popen(
@@ -769,7 +769,7 @@ def _wait_for_startup(root: Path, timeout_seconds: float = STARTUP_TIMEOUT_SECON
             return
         if time.monotonic() >= deadline:
             raise DeploymentError(
-                "ArcRho Launcher started, but fresh Orchestrator and Engine heartbeats "
+                "Arco Launcher started, but fresh Orchestrator and Engine heartbeats "
                 f"did not both appear within {timeout_seconds:g}s."
             )
         time.sleep(POLL_SECONDS)

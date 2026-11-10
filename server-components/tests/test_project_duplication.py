@@ -185,7 +185,7 @@ class ProjectDuplicationTests(unittest.TestCase):
                     "stage": "queued",
                     "completed": 0,
                     "total": 0,
-                    "label": "Queued for ArcRho Engine",
+                    "label": "Queued for Arco Engine",
                 },
             )
 
@@ -206,7 +206,7 @@ class ProjectDuplicationTests(unittest.TestCase):
                 "stage": "queued",
                 "completed": 0,
                 "total": 0,
-                "label": "Queued for ArcRho Engine",
+                "label": "Queued for Arco Engine",
             },
             updated_at="2026-08-01T12:00:00+00:00",
         )
@@ -221,7 +221,7 @@ class ProjectDuplicationTests(unittest.TestCase):
                     "stage": "queued",
                     "completed": 0,
                     "total": 0,
-                    "label": "Queued for ArcRho Engine",
+                    "label": "Queued for Arco Engine",
                 },
             },
         )

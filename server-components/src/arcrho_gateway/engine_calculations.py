@@ -1,4 +1,4 @@
-"""Server-hosted execution of ArcRho Engine calculation requests.
+"""Server-hosted execution of Arco Engine calculation requests.
 
 A Client PC that needs an ``ArcRhoTri`` / ``ArcRhoVec`` / ``ArcRhoHeaders``
 result posts the logical request here instead of writing the request file over

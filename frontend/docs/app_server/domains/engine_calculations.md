@@ -2,7 +2,7 @@
 
 ## Purpose
 <!-- MANUAL:BEGIN -->
-Run the legacy ArcRho Engine calculation exchange — publish one `request-*.json` into the workspace `requests` root and wait for the CSV the Engine writes — and the whole dataset run built around it on the ArcRho Server host over HTTP instead of over the mapped drive. This is a transport around the unchanged `ArcoTri` / `ArcoVec` / `ArcoHeaders` file contract and the unchanged `arcrho_runtime_service` routes: the Engine still claims the same request file and writes the same CSV to the same location, and the cache validation, sidecar write, dependent enqueue, and index refresh are the same service code; only the process that runs them moves from the Client PC to the machine-wide ArcRho Gateway, where every step is a local-disk operation.
+Run the legacy Arco Engine calculation exchange — publish one `request-*.json` into the workspace `requests` root and wait for the CSV the Engine writes — and the whole dataset run built around it on the ArcRho Server host over HTTP instead of over the mapped drive. This is a transport around the unchanged `ArcoTri` / `ArcoVec` / `ArcoHeaders` file contract and the unchanged `arcrho_runtime_service` routes: the Engine still claims the same request file and writes the same CSV to the same location, and the cache validation, sidecar write, dependent enqueue, and index refresh are the same service code; only the process that runs them moves from the Client PC to the machine-wide Arco Gateway, where every step is a local-disk operation.
 <!-- MANUAL:END -->
 
 ## Entry Points

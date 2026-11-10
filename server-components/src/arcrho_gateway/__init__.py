@@ -1,1 +1,1 @@
-"""ArcRho Gateway server component."""
+"""Arco Gateway server component."""

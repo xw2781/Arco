@@ -30,7 +30,7 @@ export function dependentPropagationStatusUrl(jobId) {
 
 export function isEngineUnavailableSaveError(error) {
   if (Number(error?.status) === 503) return true;
-  return /ArcRho Engine service is not available/iu.test(String(error?.message || error || ""));
+  return /Arco Engine service is not available/iu.test(String(error?.message || error || ""));
 }
 
 async function readStatusResponseError(response) {

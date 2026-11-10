@@ -154,12 +154,12 @@ test("an Engine save reports the datasets and methods it refreshed", () => {
         datasets_regenerated: 1,
         datasets_failed: 1,
         methods_updated: 0,
-        failures: ["A\\Two: Paid: the ArcRho Engine did not return values."],
+        failures: ["A\\Two: Paid: the Arco Engine did not return values."],
       },
     }),
     {
       text: "Refreshed 1 dataset(s) and 0 method(s) in 1 reserving class(es). "
-        + "1 problem(s) during the refresh; first: A\\Two: Paid: the ArcRho Engine did not return values.",
+        + "1 problem(s) during the refresh; first: A\\Two: Paid: the Arco Engine did not return values.",
       failed: true,
     },
   );

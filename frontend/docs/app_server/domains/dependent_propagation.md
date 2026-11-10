@@ -2,7 +2,7 @@
 
 ## Purpose
 <!-- MANUAL:BEGIN -->
-Engine-hosted dependent propagation job domain: saves write only the saved object, then enqueue one durable `ArcRhoRefreshDependents` job that ArcRho Engine executes on the server host.
+Engine-hosted dependent propagation job domain: saves write only the saved object, then enqueue one durable `ArcRhoRefreshDependents` job that Arco Engine executes on the server host.
 <!-- MANUAL:END -->
 
 ## Entry Points

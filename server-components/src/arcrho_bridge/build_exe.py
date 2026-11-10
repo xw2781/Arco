@@ -223,7 +223,7 @@ def wait_for_bridge_shutdown():
             return
         if time.monotonic() >= deadline:
             raise RuntimeError(
-                f"The live ArcRho Bridge did not stop within "
+                f"The live Arco Bridge did not stop within "
                 f"{BRIDGE_SHUTDOWN_TIMEOUT_SECONDS}s ({remaining} heartbeat(s) still "
                 "present). Deploy aborted; the deployed Bridge was left untouched."
             )
@@ -241,13 +241,13 @@ def bridge_stopped():
     """
 
     previous = get_config_value(BRIDGE_KILL_ALL_KEY, False)
-    print(f"\n>>> Stopping the live ArcRho Bridge ({BRIDGE_KILL_ALL_KEY} = True)")
+    print(f"\n>>> Stopping the live Arco Bridge ({BRIDGE_KILL_ALL_KEY} = True)")
     set_config_value(BRIDGE_KILL_ALL_KEY, True)
     try:
         wait_for_bridge_shutdown()
         yield
     finally:
-        print(f"\n>>> Releasing the ArcRho Bridge ({BRIDGE_KILL_ALL_KEY} = {previous})")
+        print(f"\n>>> Releasing the Arco Bridge ({BRIDGE_KILL_ALL_KEY} = {previous})")
         set_config_value(BRIDGE_KILL_ALL_KEY, previous)
 
 

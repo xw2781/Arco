@@ -172,7 +172,7 @@ class BuildStampTests(unittest.TestCase):
 
 class RollbackEligibilityTests(unittest.TestCase):
     def _row(self, live: dict | None, slot: dict | None) -> dict:
-        return {"role": "engine", "app_name": "ArcRho Engine", "live": live, "slot": slot}
+        return {"role": "engine", "app_name": "Arco Engine", "live": live, "slot": slot}
 
     def test_a_parked_previous_build_can_be_rolled_back(self):
         row = self._row(

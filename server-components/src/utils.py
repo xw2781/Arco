@@ -17,35 +17,35 @@ DEFAULT_DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", rf"E:\{PROJECT_R
 COMPONENTS = {
     "admin": {
         "dirs": ("arcrho_admin",),
-        "apps": ("ArcRho Admin Control",),
+        "apps": ("Arco Admin Control",),
     },
     "engine": {
-        "dirs": ("arcrho_engine", "ArcRho Engine", "ADAS Agent"),
-        "apps": ("ArcRho Engine", "ADAS Agent"),
+        "dirs": ("arcrho_engine", "Arco Engine", "ADAS Agent"),
+        "apps": ("Arco Engine", "ADAS Agent"),
     },
     "orchestrator": {
-        "dirs": ("arcrho_orchestrator", "ArcRho Orchestrator", "ADAS Master"),
-        "apps": ("ArcRho Orchestrator", "ADAS Master"),
+        "dirs": ("arcrho_orchestrator", "Arco Orchestrator", "ADAS Master"),
+        "apps": ("Arco Orchestrator", "ADAS Master"),
     },
     "launcher": {
-        "dirs": ("arcrho_launcher", "ArcRho Launcher", "ADAS Shell"),
-        "apps": ("ArcRho Launcher", "ADAS Shell"),
+        "dirs": ("arcrho_launcher", "Arco Launcher", "ADAS Shell"),
+        "apps": ("Arco Launcher", "ADAS Shell"),
     },
     "bridge": {
         "dirs": ("arcrho_bridge",),
-        "apps": ("ArcRho Bridge",),
+        "apps": ("Arco Bridge",),
     },
     "bridge_worker": {
         "dirs": ("arcrho_bridge_worker",),
-        "apps": ("ArcRho Bridge Worker",),
+        "apps": ("Arco Bridge Worker",),
     },
     "gateway": {
         "dirs": ("arcrho_gateway",),
-        "apps": ("ArcRho Gateway",),
+        "apps": ("Arco Gateway",),
     },
     "credential": {
         "dirs": ("arcrho_credential",),
-        "apps": ("ArcRho Credential",),
+        "apps": ("Arco Credential",),
     },
 }
 

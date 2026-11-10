@@ -2,7 +2,7 @@
 Option Private Module
 Option Explicit
 
-Public Const ARCRHO_VERSION As String = "4.2.5"
+Public Const ARCRHO_VERSION As String = "4.2.6"
 
 ' The workbook sheet that carries the default project name. A workbook set up
 ' by an earlier version, or by ResQ itself, holds the ResQ spelling instead.

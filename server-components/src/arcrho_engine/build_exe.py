@@ -223,7 +223,7 @@ def wait_for_engine_shutdown():
             return
         if time.monotonic() >= deadline:
             raise RuntimeError(
-                f"The live ArcRho Engine did not stop within "
+                f"The live Arco Engine did not stop within "
                 f"{ENGINE_SHUTDOWN_TIMEOUT_SECONDS}s ({remaining} heartbeat(s) still "
                 "present). Deploy aborted; the deployed Engine was left untouched."
             )
@@ -241,13 +241,13 @@ def engines_stopped():
     """
 
     previous = get_config_value(ENGINE_KILL_ALL_KEY, False)
-    print(f"\n>>> Stopping live ArcRho Engine instances ({ENGINE_KILL_ALL_KEY} = True)")
+    print(f"\n>>> Stopping live Arco Engine instances ({ENGINE_KILL_ALL_KEY} = True)")
     set_config_value(ENGINE_KILL_ALL_KEY, True)
     try:
         wait_for_engine_shutdown()
         yield
     finally:
-        print(f"\n>>> Releasing the ArcRho Engine ({ENGINE_KILL_ALL_KEY} = {previous})")
+        print(f"\n>>> Releasing the Arco Engine ({ENGINE_KILL_ALL_KEY} = {previous})")
         set_config_value(ENGINE_KILL_ALL_KEY, previous)
 
 

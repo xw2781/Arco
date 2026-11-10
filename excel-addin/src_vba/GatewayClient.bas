@@ -1,7 +1,7 @@
 Option Private Module
 Option Explicit
 
-' The add-in's client for the ArcRho Gateway: the user's credential, one
+' The add-in's client for the Arco Gateway: the user's credential, one
 ' signed POST, and the two unauthenticated GET routes.
 '
 ' The signature is owned by python-api/src/arcrho_hosted_save_http_contract.py.
@@ -67,7 +67,7 @@ Private Const HEADER_SIGNATURE As String = "X-ArcRho-Signature"
 Private Const GATEWAY_CONFIG_FILE As String = "ArcRho\arcrho_gateway.json"
 ' The helper on the ArcRho Server that gives this PC its own credential. The
 ' share is what proves who is asking, so the work happens there and not here.
-Private Const CREDENTIAL_HELPER As String = "apps\ArcRho Credential\ArcRho Credential.exe"
+Private Const CREDENTIAL_HELPER As String = "apps\Arco Credential\Arco Credential.exe"
 
 Private gatewayConfigRead As Boolean
 Private gatewayEnabled As Boolean

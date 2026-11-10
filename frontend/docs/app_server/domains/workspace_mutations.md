@@ -3,7 +3,7 @@
 ## Purpose
 <!-- MANUAL:BEGIN -->
 - The ResQ review macro publishes through `resq_review_request_publish` into the existing sync queue. It shares the import publisher's identity checks, signed-user stamping and idempotence by request id; Gateway failures never cause a client request-file write.
-Run reserving-class file mutations that a Client PC would otherwise perform one SMB round trip at a time on the ArcRho Server host over HTTP. Like [`workspace_reads`](workspace_reads.md) this is a transport, not a domain of its own: the canonical `app_server` service function still owns the operation and runs unchanged either locally or inside the machine-wide ArcRho Gateway.
+Run reserving-class file mutations that a Client PC would otherwise perform one SMB round trip at a time on the ArcRho Server host over HTTP. Like [`workspace_reads`](workspace_reads.md) this is a transport, not a domain of its own: the canonical `app_server` service function still owns the operation and runs unchanged either locally or inside the machine-wide Arco Gateway.
 
 It is a separate registry and a separate route from workspace reads because the reasoning that makes a read safe does not carry over. A read is a pure function of the workspace, so an uncertain answer may simply be asked again or answered locally instead; a mutation may not. Every registered mutation kind must either be **idempotent** — running it twice leaves the same end state as running it once, so a lost answer is safe to ask about again — or be marked `receipt`, in which case the Gateway keeps the first run's outcome under the signed user and request id and answers a repeat from it (see "Receipts" below). Anything that needs an Engine claim or the reserving-class lease belongs on the hosted-save path (`arcrho_hosted_save_http_contract`).
 <!-- MANUAL:END -->
@@ -121,7 +121,7 @@ release that registers the kind; the released app's contract does not know it.
 
 The RPC-bridge kinds are the one family whose work is not finished when the
 service returns from local disk: `sync` and `update-remote` publish a request
-file and then wait for the ArcRho Bridge to answer. The Bridge runs on the
+file and then wait for the Arco Bridge to answer. The Bridge runs on the
 server host, so hosting these puts both halves of that exchange on local disk,
 where the wait is a file-system event rather than a poll that must write and
 delete a probe file to defeat the SMB redirector's cached "not found". Their

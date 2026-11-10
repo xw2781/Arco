@@ -201,7 +201,7 @@ class ServerDeploymentTests(unittest.TestCase):
             custom.parent.mkdir()
             custom.write_text("unrelated", encoding="utf-8")
             upgraded = self._deploy(root, second_payload, second_manifest)
-            engine = root / "apps" / "ArcRho Engine" / "ArcRho Engine.exe"
+            engine = root / "apps" / "Arco Engine" / "Arco Engine.exe"
             engine.write_bytes(b"corrupt")
             repaired = self._deploy(root, second_payload, second_manifest)
 
@@ -242,11 +242,11 @@ class ServerDeploymentTests(unittest.TestCase):
         corrupt_payload, corrupt_manifest = _build_payload(self.base, "3.1.0", "bad")
         with self._runtime_patches():
             self._deploy(root, new_payload, new_manifest)
-            engine = root / "apps" / "ArcRho Engine" / "ArcRho Engine.exe"
+            engine = root / "apps" / "Arco Engine" / "Arco Engine.exe"
             before = engine.read_bytes()
             with self.assertRaisesRegex(deployer.DeploymentError, "Downgrade blocked"):
                 self._deploy(root, old_payload, old_manifest)
-            (corrupt_payload / "apps" / "ArcRho Engine" / "ArcRho Engine.exe").write_bytes(
+            (corrupt_payload / "apps" / "Arco Engine" / "Arco Engine.exe").write_bytes(
                 b"tampered"
             )
             with self.assertRaisesRegex(deployer.DeploymentError, "checksum mismatch"):
@@ -289,7 +289,7 @@ class ServerDeploymentTests(unittest.TestCase):
         new_payload, new_manifest = _build_payload(self.base, "2.0.0", "new")
         with self._runtime_patches():
             self._deploy(root, old_payload, old_manifest)
-            engine = root / "apps" / "ArcRho Engine" / "ArcRho Engine.exe"
+            engine = root / "apps" / "Arco Engine" / "Arco Engine.exe"
             config_path = root / "config" / "config.json"
             receipt_path = root / INSTALL_METADATA_RELATIVE_DIR / RECEIPT_FILE_NAME
             before = (engine.read_bytes(), config_path.read_bytes(), receipt_path.read_bytes())
@@ -324,7 +324,7 @@ class ServerDeploymentTests(unittest.TestCase):
                     verify_startup=True,
                 )
 
-        engine = root / "apps" / "ArcRho Engine" / "ArcRho Engine.exe"
+        engine = root / "apps" / "Arco Engine" / "Arco Engine.exe"
         self.assertIn(b"1.0.0:old:engine", engine.read_bytes())
         receipt = json.loads(
             (root / INSTALL_METADATA_RELATIVE_DIR / RECEIPT_FILE_NAME).read_text(
@@ -476,7 +476,7 @@ class ServerContractTests(unittest.TestCase):
         self.assertEqual(compare_versions("2.0.0+build.2", "2.0.0+build.1"), 0)
 
     def test_frozen_layout_infers_root_without_a_reserved_folder_name(self):
-        fake_exe = Path(r"Q:\Selected By User\apps\ArcRho Engine\ArcRho Engine.exe")
+        fake_exe = Path(r"Q:\Selected By User\apps\Arco Engine\Arco Engine.exe")
         with patch.object(utils.sys, "frozen", True, create=True), patch.object(
             utils.sys, "executable", str(fake_exe)
         ), patch.dict(os.environ, {"ARCRHO_ROOT": ""}, clear=False):
@@ -486,7 +486,7 @@ class ServerContractTests(unittest.TestCase):
             )
 
     def test_explicit_root_overrides_the_frozen_layout(self):
-        fake_exe = Path(r"Q:\Selected By User\apps\ArcRho Engine\ArcRho Engine.exe")
+        fake_exe = Path(r"Q:\Selected By User\apps\Arco Engine\Arco Engine.exe")
         explicit = Path(r"R:\Operator Override")
         with patch.object(utils.sys, "frozen", True, create=True), patch.object(
             utils.sys, "executable", str(fake_exe)

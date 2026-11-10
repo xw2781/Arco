@@ -60,7 +60,7 @@ def remove_current_user_startup() -> bool:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Provision one user for the ArcRho Gateway pilot."
+        description="Provision one user for the Arco Gateway pilot."
     )
     parser.add_argument("--server-root")
     parser.add_argument("--user", default=os.environ.get("USERNAME", ""))

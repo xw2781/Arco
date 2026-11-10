@@ -69,7 +69,7 @@ test("engine-unavailable detection matches status code and message text", () => 
   assert.ok(isEngineUnavailableSaveError({ status: 503 }));
   assert.ok(
     isEngineUnavailableSaveError(
-      new Error("The ArcRho Engine service is not available. Please try again later or contact the administrator."),
+      new Error("The Arco Engine service is not available. Please try again later or contact the administrator."),
     ),
   );
   assert.ok(!isEngineUnavailableSaveError(new Error("HTTP 500")));

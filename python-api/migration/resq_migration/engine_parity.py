@@ -1,4 +1,4 @@
-"""Compare an ArcRho Engine dataset with the ResQ copy of the same dataset.
+"""Compare an Arco Engine dataset with the ResQ copy of the same dataset.
 
 Two callers share this: the offline parity validation under ``validation/``,
 which compares at floating-point precision and writes a report, and the ResQ

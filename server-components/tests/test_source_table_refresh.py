@@ -544,7 +544,7 @@ class DurableSourceRefreshTests(unittest.TestCase):
                 "classes_total": 2,
                 "classes_refreshed": 1,
                 "datasets_failed": 1,
-                "failures": ["HPPREF\\NJ: Paid: the ArcRho Engine did not return values."],
+                "failures": ["HPPREF\\NJ: Paid: the Arco Engine did not return values."],
             }
         )
 
@@ -907,7 +907,7 @@ class GeneratedFormulaScopeTests(unittest.TestCase):
         def regenerate(root, project, reserving_class, dataset_name):
             if dataset_name == failing_dataset:
                 raise source_table_refresh.SourceRefreshJobError(
-                    f"{dataset_name}: the ArcRho Engine did not return values."
+                    f"{dataset_name}: the Arco Engine did not return values."
                 )
             self.regenerated.append((reserving_class, dataset_name))
             return True

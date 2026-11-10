@@ -3,7 +3,7 @@
 This module owns every step of a synchronization that touches ResQ COM or
 reserving-class files: the two inventories, the plan comparison, and the
 apply pass that writes each accepted row.  It deliberately owns no user
-interface.  The only supported host is a ResQ-connected ArcRho Bridge worker,
+interface.  The only supported host is a ResQ-connected Arco Bridge worker,
 which runs it from the shared request queue on behalf of a client macro that
 may sit on a machine without ResQ installed at all.
 
