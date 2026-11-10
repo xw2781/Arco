@@ -29,7 +29,7 @@ End Sub
 Sub SetAddinDescription()
     With ThisWorkbook.BuiltinDocumentProperties
         .item("Title").Value = "Arco"
-        .item("Comments").Value = "Arco actuarial data and analytics system"
+        .item("Comments").Value = "Actuarial Reserving Co-intelligence"
         .item("Subject").Value = "Actuarial Utilities"
     End With
     ThisWorkbook.Save
