@@ -451,7 +451,7 @@ class DurableDatasetTypesChangeTests(unittest.TestCase):
 
     def test_a_raised_job_publishes_a_redacted_error(self) -> None:
         def explode(*args, **kwargs):
-            raise OSError(r"E:\ArcRho Server\projects\Demo\dataset_types.json")
+            raise OSError(r"E:\Arco Server\projects\Demo\dataset_types.json")
 
         self.assertFalse(self._process(explode))
         status = read_dataset_types_change_status(self.root, self.REQUEST_ID)

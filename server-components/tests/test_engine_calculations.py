@@ -144,7 +144,7 @@ class EngineCalculationContractTests(unittest.TestCase):
 
     def test_validation_rejects_machine_local_locations(self) -> None:
         with self.assertRaises(EngineCalculationContractError):
-            _request([pair if pair[0] != "Path" else ["Path", "E:\\ArcRho Server\\x"] for pair in TRI_PAIRS])
+            _request([pair if pair[0] != "Path" else ["Path", "E:\\Arco Server\\x"] for pair in TRI_PAIRS])
         with self.assertRaises(EngineCalculationContractError):
             _request([pair if pair[0] != "ProjectName" else ["ProjectName", "CON"] for pair in TRI_PAIRS])
         with self.assertRaises(EngineCalculationContractError):
@@ -439,7 +439,7 @@ class EngineCalculationExecutorTests(unittest.TestCase):
 
     def test_service_refusal_keeps_its_status_and_redacts_paths(self) -> None:
         def refuse(pairs, timeout_sec, output_variant="canonical", operation="exchange", options=None):
-            raise HTTPException(404, "Project folder not found under E:\\ArcRho Server\\projects")
+            raise HTTPException(404, "Project folder not found under E:\\Arco Server\\projects")
 
         with patch.object(engine_calculation_service, engine_calculations.EXECUTOR_FUNCTION, refuse):
             with self.assertRaises(engine_calculations.WorkspaceReadRefusal) as caught:

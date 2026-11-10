@@ -44,7 +44,7 @@ from arcrho_api.dataset_link_contract import (  # noqa: E402
 )
 from arcrho_api.io import persisted_json_text  # noqa: E402
 
-DEFAULT_WORKSPACE = r"E:\ArcRho Server"
+DEFAULT_WORKSPACE = r"E:\Arco Server"
 
 
 def sidecar_files(workspace: Path, projects: list[str]) -> Iterator[Path]:

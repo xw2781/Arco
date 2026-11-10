@@ -72,7 +72,7 @@ class DependentPropagationRequestContractTests(unittest.TestCase):
     def test_extra_fields_including_machine_paths_are_rejected(self) -> None:
         for extra_field in ("DataPath", "StatusPath", "ServerRoot", "Extra"):
             with self.subTest(extra_field=extra_field):
-                payload = _valid_request(**{extra_field: r"E:\ArcRho Server"})
+                payload = _valid_request(**{extra_field: r"E:\Arco Server"})
                 with self.assertRaises(
                     contract.DependentPropagationContractError
                 ) as raised:
@@ -89,7 +89,7 @@ class DependentPropagationRequestContractTests(unittest.TestCase):
 
     def test_path_rejects_machine_local_forms(self) -> None:
         for bad_path in (
-            r"E:\ArcRho Server\projects",
+            r"E:\Arco Server\projects",
             r"\\server\share\projects",
             "//server/share",
             "..\\HOL",
@@ -176,7 +176,7 @@ class DependentPropagationStatusContractTests(unittest.TestCase):
         )
         with self.assertRaises(contract.DependentPropagationContractError):
             contract.validate_dependent_propagation_status(
-                {**payload, "server_root": "E:/ArcRho Server"}
+                {**payload, "server_root": "E:/Arco Server"}
             )
         with self.assertRaises(contract.DependentPropagationContractError):
             contract.validate_dependent_propagation_status(

@@ -21,7 +21,7 @@ def run(excel, name, *args):
 
 
 def parser_checks(excel):
-    target = r"E:\ArcRho Server\Excel Add-ins\ArcRho.xlam"
+    target = r"E:\Arco Server\Excel Add-ins\Arco.xlam"
     qualified = f"'{target}'!ArcoVec"
     examples = [
         ('=ArcRho.xlam!ArcRhoVec($A$2,C6)', f'={qualified}($A$2,C6)'),
@@ -29,7 +29,7 @@ def parser_checks(excel):
          f"='{target}'!ArcoTri(A1,B1)"),
         (r"='C:\Program Files\Willis Towers Watson\ResQ\Addins\ResQ.xlam'!ResQVec(A1,B1)",
          f'={qualified}(A1,B1)'),
-        (r"='\\Ne7saswpn02\E\ArcRho Server\Excel Add-ins\ArcRho.xlam'!ArcoVec(A1,B1)",
+        (r"='\\Ne7saswpn02\E\Arco Server\Excel Add-ins\ArcRho.xlam'!ArcoVec(A1,B1)",
          f'={qualified}(A1,B1)'),
         ('=SUM(ARCRHO_BETA.xlam!ArcRhoVec(A1,B1))+ResQVec(A2,B2)',
          f'=SUM({qualified}(A1,B1))+{qualified}(A2,B2)'),
@@ -94,7 +94,7 @@ def fake_addin(excel, path, prefix):
 
 def workbook_checks(excel, directory):
     old = fake_addin(excel, directory / "ResQ.xlam", "ResQ")
-    target = directory / "ArcRho.xlam"
+    target = directory / "Arco.xlam"
     new = fake_addin(excel, target, "Arco")
     excel.Calculation = -4135
     report = excel.Workbooks.Add()
@@ -141,7 +141,7 @@ def workbook_checks(excel, directory):
     check(other.Worksheets(1).Range("A1").Formula2 == untouched, "another open workbook is unchanged")
     remaining = run(excel, "ScanRepair", report.Name, str(target))
     check(remaining == 0, "a repaired workbook needs no second repair: " + run(excel, "RepairStatuses"))
-    check(run(excel, "ScanRepair", report.Name, str(directory / "another" / "ArcRho.xlam")) == -1
+    check(run(excel, "ScanRepair", report.Name, str(directory / "another" / "Arco.xlam")) == -1
           and "already loaded" in run(excel, "ScanError"), "conflicting loaded paths give actionable feedback")
     report.SaveAs(str(directory / "repaired.xlsx"), 51)
     report.Close(False)
@@ -158,7 +158,7 @@ def blocked_checks(excel, directory):
     sheet = report.Worksheets(1)
     sheet.Range("A1").Formula2 = "=ArcRhoVec(1)"
     sheet.Protect("test")
-    found = run(excel, "ScanRepair", report.Name, str(directory / "ArcRho.xlam"))
+    found = run(excel, "ScanRepair", report.Name, str(directory / "Arco.xlam"))
     status = run(excel, "RepairStatuses")
     check(run(excel, "ApplyRepair", report.Name) == 0 and "unprotect" in status,
           f"protected formulas are reported without changes ({found}): {status}; {sheet.Range('A1').Formula2}")
@@ -166,7 +166,7 @@ def blocked_checks(excel, directory):
     sheet.Cells.Clear()
     sheet.Range("B1:C1").FormulaArray = '=IF(TRUE,ArcRhoVec(1),"' + 'x' * 170 + '")'
     original = sheet.Range("B1").FormulaArray
-    run(excel, "ScanRepair", report.Name, str(directory / "ArcRho.xlam"))
+    run(excel, "ScanRepair", report.Name, str(directory / "Arco.xlam"))
     check(run(excel, "ApplyRepair", report.Name) == 0 and sheet.Range("B1").FormulaArray == original
           and "255-character" in run(excel, "RepairStatuses"), "long legacy arrays remain intact and report the Excel limit")
     report.Activate()
@@ -175,7 +175,7 @@ def blocked_checks(excel, directory):
     controls = run(excel, "FormControls").split("|")
     check(not set(controls) & {"cmdPreview", "cmdClose", "cmdLoaded", "lstChanges", "txtBefore", "txtAfter", "txtPath", "cmdBrowse"},
           "the form has no preview, Close button, developer shortcut or editable path")
-    check(run(excel, "FormTarget", 0).startswith("Arco Excel add-in|E:\\ArcRho Server"), "Arco target uses the mapped release path")
+    check(run(excel, "FormTarget", 0).startswith("Arco Excel add-in|E:\\Arco Server"), "Arco target uses the mapped release path")
     allowed = os.environ["COMPUTERNAME"].upper() == "NE7SASWPN02"
     check(run(excel, "HostAllowsResQ") == allowed and run(excel, "FormResQEnabled") == allowed,
           "ResQ option availability follows the actual computer name")
@@ -209,7 +209,7 @@ def progress_checks(excel, directory, runtime_book):
         sheet.Range("A1:BH1000").Formula = "=ROW()+COLUMN()"
         sheet.Range("BJ1:CC1000").FormulaArray = "=ArcRhoVec(1)"
         sheet.Range("A1002").Formula = "=ArcRhoVecCell(1)"
-    target_path = directory / "ArcRho.xlam"
+    target_path = directory / "Arco.xlam"
     run(excel, "StartProgressCheck", "Finding add-in formulas", 0)
     result = run(excel, "UpdateReferences", book.Name, str(target_path), "Arco")
     check(result == "Update cancelled; no references were changed."
@@ -263,7 +263,7 @@ def form_update_checks(excel, directory, runtime_book):
     book.Close(False)
     replace_procedure(module, "ReferenceTargetPath", "\r\n".join((
         "Public Function ReferenceTargetPath(ByVal targetIndex As Long) As String",
-        f'    If targetIndex = 1 Then ReferenceTargetPath = "{directory / "ResQ.xlam"}" Else ReferenceTargetPath = "{directory / "ArcRho.xlam"}"',
+        f'    If targetIndex = 1 Then ReferenceTargetPath = "{directory / "ResQ.xlam"}" Else ReferenceTargetPath = "{directory / "Arco.xlam"}"',
         "End Function",
     )))
     book = excel.Workbooks.Add()

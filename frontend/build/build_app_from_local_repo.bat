@@ -103,7 +103,7 @@ set "ARCRHO_LOCAL_RELEASE_WORK_DIR=%WORK_DIR%"
 set "VERSION_OUT=%WORK_DIR%\last_built_%ARCRHO_BUILD_PRODUCT%_version.txt"
 set "ARCRHO_BUILD_LOG_DIR=%WORK_DIR%\logs\%COMPUTERNAME%"
 
-if not defined PYTHON_API_PACKAGE_DIR set "PYTHON_API_PACKAGE_DIR=E:\ArcRho Server\packages"
+if not defined PYTHON_API_PACKAGE_DIR set "PYTHON_API_PACKAGE_DIR=E:\Arco Server\packages"
 
 if not defined PYTHON_EXE (
     for /f "usebackq delims=" %%I in (`py -3.10 -c "import sys; print(sys.executable)" 2^>nul`) do set "PYTHON_EXE=%%I"

@@ -357,7 +357,7 @@ Backend route behavior:
 Path rules:
 
 1. Use `app_server.config` for root, projects, and requests locations.
-2. Do not hard-code `E:\ArcRho Server`.
+2. Do not hard-code `E:\Arco Server`.
 3. Create `requests\RPC bridge` and `methods\RPC bridge` if needed.
 4. Use existing DFM filename sanitization rules with the standardized filename order `@<origin_length>@<development_length>`.
 5. Update existing local DFM filename helpers to use the same standardized order. Do not add migration fallback for old filenames.

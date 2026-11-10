@@ -17,12 +17,12 @@ dfm.set_selected_average_cell_note(1, "Selected before adjustments.", clear_colu
 dfm.save()
 ```
 
-The package resolves the same server root the ArcRho host app uses, in this order: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, the host config file `%APPDATA%\ArcRho\workspace_paths.json`, the workspace root reported by the running ArcRho desktop app, and finally the packaged default `E:\ArcRho Server` when it exists and holds a `projects` folder. The last two steps are tried once per process; call `reload_server_root()` to retry them. Because the host config file is only written when a user saves ArcRho Server Connection, a fresh client install resolves through the running app instead of failing. You can still pass a root explicitly, or update the shared host config from Python:
+The package resolves the same server root the ArcRho host app uses, in this order: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, the host config file `%APPDATA%\ArcRho\workspace_paths.json`, the workspace root reported by the running ArcRho desktop app, and finally the packaged default `E:\Arco Server` when it exists and holds a `projects` folder. The last two steps are tried once per process; call `reload_server_root()` to retry them. Because the host config file is only written when a user saves ArcRho Server Connection, a fresh client install resolves through the running app instead of failing. You can still pass a root explicitly, or update the shared host config from Python:
 
 ```python
 from arcrho_api import ArcRhoClient, get_server_root, set_server_root
 
-set_server_root(r"E:\ArcRho Server")
+set_server_root(r"E:\Arco Server")
 print(get_server_root())
 client = ArcRhoClient()
 ```
@@ -30,7 +30,7 @@ client = ArcRhoClient()
 The package is read/write by default, but writes are explicit: mutations stay in memory until `save()` is called. Use `read_only=True` for audit/exploration workflows.
 
 ```python
-client = ArcRhoClient(r"E:\ArcRho Server", read_only=True)
+client = ArcRhoClient(r"E:\Arco Server", read_only=True)
 ```
 
 For legacy notebook migration, `ArcRhoSession` provides a context-bound style with familiar names:
@@ -38,7 +38,7 @@ For legacy notebook migration, `ArcRhoSession` provides a context-bound style wi
 ```python
 from arcrho_api.migration import ArcRhoSession
 
-session = ArcRhoSession(r"E:\ArcRho Server")
+session = ArcRhoSession(r"E:\Arco Server")
 session.set_project("Current Reserve Review")
 session.set_reserving_class(r"Auto\Private Passenger")
 
@@ -127,7 +127,7 @@ API-only releases can publish the wheel to the shared ArcRho Server packages fol
 
 ```powershell
 python-api\tools\publish_package.bat --version 0.1.1
-py -3.10 -m pip install --upgrade "E:\ArcRho Server\packages\arcrho_api-latest.whl"
+py -3.10 -m pip install --upgrade "E:\Arco Server\packages\arcrho_api-latest.whl"
 ```
 
-Set `PYTHON_API_PACKAGE_DIR` or pass `--package-dir` to publish somewhere other than `E:\ArcRho Server\packages`.
+Set `PYTHON_API_PACKAGE_DIR` or pass `--package-dir` to publish somewhere other than `E:\Arco Server\packages`.

@@ -158,8 +158,8 @@ ShowUninstDetails show
 !ifndef BUILD_UNINSTALLER
   !macro ArcRho_CheckServerRoot DRIVE
     ${If} $ArcRhoServerRoot == ""
-    ${AndIf} ${FileExists} "${DRIVE}\ArcRho Server\*.*"
-      StrCpy $ArcRhoServerRoot "${DRIVE}\ArcRho Server"
+    ${AndIf} ${FileExists} "${DRIVE}\Arco Server\*.*"
+      StrCpy $ArcRhoServerRoot "${DRIVE}\Arco Server"
       StrCpy $ArcRhoServerRootDetected "1"
     ${EndIf}
   !macroend
@@ -168,7 +168,7 @@ ShowUninstDetails show
     ${If} ${FileExists} "${DRIVE}\*.*"
       ${NSD_CB_AddString} $ArcRhoServerDriveDropList "${DRIVE}"
       ${If} $ArcRhoServerRoot == ""
-        StrCpy $ArcRhoServerRoot "${DRIVE}\ArcRho Server"
+        StrCpy $ArcRhoServerRoot "${DRIVE}\Arco Server"
         ${NSD_CB_SelectString} $ArcRhoServerDriveDropList "${DRIVE}"
       ${EndIf}
     ${EndIf}
@@ -306,7 +306,7 @@ ShowUninstDetails show
 
   Function ArcRho_SetExcelAddInPath
     ${If} $ArcRhoServerRoot != ""
-      StrCpy $ArcRhoExcelAddInPath "$ArcRhoServerRoot\Excel Add-ins\ArcRho.xlam"
+      StrCpy $ArcRhoExcelAddInPath "$ArcRhoServerRoot\Excel Add-ins\Arco.xlam"
     ${Else}
       StrCpy $ArcRhoExcelAddInPath ""
     ${EndIf}
@@ -372,7 +372,7 @@ ShowUninstDetails show
       !insertmacro ArcRho_AddDriveOption "X:"
       !insertmacro ArcRho_AddDriveOption "Y:"
       !insertmacro ArcRho_AddDriveOption "Z:"
-      ${NSD_CreateLabel} 0 44u 100% 10u "Add-in path: <drive>\ArcRho Server\Excel Add-ins\ArcRho.xlam"
+      ${NSD_CreateLabel} 0 44u 100% 10u "Add-in path: <drive>\Arco Server\Excel Add-ins\Arco.xlam"
       Pop $1
     ${EndIf}
 
@@ -419,7 +419,7 @@ ShowUninstDetails show
     ${If} $ArcRhoServerRootDetected != "1"
       ${NSD_GetText} $ArcRhoServerDriveDropList $0
       ${If} $0 != ""
-        StrCpy $ArcRhoServerRoot "$0\ArcRho Server"
+        StrCpy $ArcRhoServerRoot "$0\Arco Server"
       ${EndIf}
     ${EndIf}
   FunctionEnd

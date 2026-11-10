@@ -13,7 +13,7 @@ from .core import _normalize_import_name
 DEFAULT_NUMBER_FORMAT = "0,000"
 DEFAULT_DECIMAL_PLACES = 0
 NUMBER_FORMATS_PATH_ENV = "ARCRHO_DATASET_NUMBER_FORMATS_PATH"
-DEFAULT_NUMBER_FORMATS_PATH = Path(r"E:\ArcRho Server\config\dataset_number_formats.json")
+DEFAULT_NUMBER_FORMATS_PATH = Path(r"E:\Arco Server\config\dataset_number_formats.json")
 _configured_number_formats_path: Path | None = None
 
 

@@ -107,7 +107,7 @@ class WorkspaceReadContractTests(unittest.TestCase):
 
     def test_validation_rejects_machine_local_locations(self) -> None:
         with self.assertRaises(WorkspaceReadContractError):
-            _request(reserving_class="E:\\ArcRho Server\\projects\\Demo")
+            _request(reserving_class="E:\\Arco Server\\projects\\Demo")
         with self.assertRaises(WorkspaceReadContractError):
             _request(project_name="CON")
 
@@ -201,7 +201,7 @@ class WorkspaceReadExecutorTests(unittest.TestCase):
 
     def test_service_refusal_keeps_its_status_and_redacts_paths(self) -> None:
         def refuse(**_kwargs):
-            raise HTTPException(404, "DFM method not found under E:\\ArcRho Server\\x")
+            raise HTTPException(404, "DFM method not found under E:\\Arco Server\\x")
 
         with _FakeReadRuntime("dfm_method_load", refuse):
             with self.assertRaises(workspace_reads.WorkspaceReadRefusal) as caught:

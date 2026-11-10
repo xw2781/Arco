@@ -61,7 +61,7 @@ function response(body, status = 200) {
   };
 }
 
-function pendingRecord(workspaceRoot = "E:\\ArcRho Server", overrides = {}) {
+function pendingRecord(workspaceRoot = "E:\\Arco Server", overrides = {}) {
   return {
     version: 3,
     sourceKey: "project_map",
@@ -80,7 +80,7 @@ function pendingRecord(workspaceRoot = "E:\\ArcRho Server", overrides = {}) {
 function makeFeature({
   fetchImpl,
   storage = new MemoryStorage(),
-  workspaceRoot = "E:\\ArcRho Server",
+  workspaceRoot = "E:\\Arco Server",
   requestId = "job-123",
   projectPaths,
   saveFolderStructure,
@@ -281,25 +281,25 @@ test("request IDs and workspace scopes are safe and deterministic", () => {
     duplicateJobHelpers.createDuplicateRequestId({ randomUUID: () => "01234567-89ab-cdef-0123-456789abcdef" }),
     "psdup_01234567-89ab-cdef-0123-456789abcdef",
   );
-  const defaultScope = duplicateJobHelpers.createDuplicateWorkspaceScope("E:\\ArcRho Server");
+  const defaultScope = duplicateJobHelpers.createDuplicateWorkspaceScope("E:\\Arco Server");
   assert.equal(
     defaultScope,
     duplicateJobHelpers.createDuplicateWorkspaceScope({
-      workspace_root: "e:/arcrho server/",
+      workspace_root: "e:/arco server/",
       paths: { projects_dir: "PROJECTS", requests_dir: "requests" },
     }),
   );
   assert.notEqual(
     defaultScope,
     duplicateJobHelpers.createDuplicateWorkspaceScope({
-      workspace_root: "E:\\ArcRho Server",
+      workspace_root: "E:\\Arco Server",
       paths: { projects_dir: "project-data", requests_dir: "requests" },
     }),
   );
   assert.notEqual(
     defaultScope,
     duplicateJobHelpers.createDuplicateWorkspaceScope({
-      workspace_root: "E:\\ArcRho Server",
+      workspace_root: "E:\\Arco Server",
       paths: { projects_dir: "projects", requests_dir: "engine-requests" },
     }),
   );
@@ -540,7 +540,7 @@ test("recovery records reject absolute server paths", () => {
   assert.throws(
     () => duplicateJobHelpers.savePendingDuplicateJob(
       storage,
-      pendingRecord(undefined, { sourceFolderPath: "E:\\ArcRho Server\\projects" }),
+      pendingRecord(undefined, { sourceFolderPath: "E:\\Arco Server\\projects" }),
     ),
     /unavailable/u,
   );

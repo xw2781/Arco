@@ -42,7 +42,7 @@ class GatewayCredentialHelperTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         base = Path(self.temporary.name)
         # The add-in passes the share folder; it does not exist here, so any read would fail.
-        self.workspace = base / "ArcRho Server"
+        self.workspace = base / "Arco Server"
         self.appdata = base / "AppData"
         self.local_path = self.appdata / "ArcRho" / CLIENT_CONFIG_FILE_NAME
 

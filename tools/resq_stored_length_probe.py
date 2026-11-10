@@ -38,7 +38,7 @@ RC_PATH = r"HPPREF\HO+DF\NJ\Legacy\HOL"
 TRIANGLE_TYPE = "Net Loss - ad hoc"          # non-unique, not calculated, triangle-only
 VECTOR_TYPE = "F 00 - Ultimate Net Loss "    # non-unique, not calculated, origin vector
 PREFIX = "ArcRho probe "
-CONFIG = r"E:/ArcRho Server/config/config.json"
+CONFIG = r"E:/Arco Server/config/config.json"
 
 # The 10x10 annual cumulative triangle of the GUI walk-through, rounded to whole
 # numbers. Rows are origin years 2017..2026 of the fake project.

@@ -71,7 +71,7 @@ from arcrho_api.sidecar_core_contract import finalize_sidecar
 from arcrho_reserving_class_type_contract import reserving_class_path_is_known
 
 
-SERVER_ROOT = Path(r"E:\ArcRho Server")
+SERVER_ROOT = Path(r"E:\Arco Server")
 PROJECT_NAME = "NJ_Annual_Prod_202605_Fake"
 RS_JSON_FORMAT = "arcrho-result-selection-v4"
 INDEX_FILE_NAME = DATASET_INDEX_FILE_NAME

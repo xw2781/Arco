@@ -39,7 +39,7 @@ class BridgePerUserScopingTests(unittest.TestCase):
     def setUp(self):
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -183,10 +183,10 @@ class AdminFolderAccessTests(unittest.TestCase):
         cls.admin_main = admin_main
 
     def test_parse_icacls_entries(self):
-        folder = r"E:\ArcRho Server"
+        folder = r"E:\Arco Server"
         output = "\n".join(
             [
-                r"E:\ArcRho Server BUILTIN\Users:(OI)(CI)(M)",
+                r"E:\Arco Server BUILTIN\Users:(OI)(CI)(M)",
                 r"                 NT AUTHORITY\SYSTEM:(I)(OI)(CI)(F)",
                 r"                 PRCINS\xwei:(I)(OI)(CI)(RX)",
                 "",

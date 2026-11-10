@@ -58,9 +58,9 @@ Page custom WorkspacePageShow WorkspacePageLeave
 Function .onInit
   StrCpy $ConfigureFrontend "0"
   ${If} ${FileExists} "E:\*.*"
-    StrCpy $WorkspaceRoot "E:\ArcRho Server"
+    StrCpy $WorkspaceRoot "E:\Arco Server"
   ${Else}
-    StrCpy $WorkspaceRoot "$PROFILE\ArcRho Server"
+    StrCpy $WorkspaceRoot "$PROFILE\Arco Server"
   ${EndIf}
 
   ${If} ${FileExists} "$APPDATA\ArcRho\workspace_paths.json"

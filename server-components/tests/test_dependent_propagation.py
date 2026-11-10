@@ -351,7 +351,7 @@ class DependentPropagationEngineTests(unittest.TestCase):
 
     def test_contract_invalid_request_publishes_rejected_status_and_is_consumed(self) -> None:
         path, request = self._publish_request()
-        request = {**request, "DataPath": r"E:\ArcRho Server\file.csv"}
+        request = {**request, "DataPath": r"E:\Arco Server\file.csv"}
         path.write_text(json.dumps(request), encoding="utf-8")
         completed = dependent_propagation.process_durable_dependent_propagation_request(
             self.root, path, request

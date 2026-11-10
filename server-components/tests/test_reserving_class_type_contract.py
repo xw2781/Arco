@@ -25,7 +25,7 @@ from arcrho_engine.data_processing_rules import (  # noqa: E402
 )
 from arcrho_reserving_class_type_contract import reserving_class_path_is_known  # noqa: E402
 
-FAKE_PROJECT_DIR = Path(r"E:\ArcRho Server\projects\NJ_Annual_Prod_202605_Fake")
+FAKE_PROJECT_DIR = Path(r"E:\Arco Server\projects\NJ_Annual_Prod_202605_Fake")
 DIRECT_GROUP = "PRNJ - PA\\PA\\All States\\Direct Group"
 SEGMENTS = ("BI Total", "CMPxCAT", "COL", "MP+PIP", "PD+UMPD")
 

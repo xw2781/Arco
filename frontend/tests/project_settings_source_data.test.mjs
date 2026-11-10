@@ -942,7 +942,7 @@ test("used server/database pairs are remembered in the server-shared config", ()
     /get_root_path\(\), "config", source_table_contract\.MSSQL_CONNECTIONS_FILE/,
   );
   assert.ok(
-    !/E:\\\\ArcRho Server/.test(appServerConfig.split("def get_mssql_connections_path")[1] || ""),
+    !/E:\\\\Arco Server/.test(appServerConfig.split("def get_mssql_connections_path")[1] || ""),
     "the shared connections path hardcodes a server root",
   );
 

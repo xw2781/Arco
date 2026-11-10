@@ -1,7 +1,7 @@
 """Durable, server-local ArcRho source-table refresh.
 
 The Engine imports a project's source table and then rebuilds everything
-derived from it, on the machine where ``E:\\ArcRho Server`` is a local drive.
+derived from it, on the machine where ``E:\\Arco Server`` is a local drive.
 A Client PC doing the same work copies the external CSV *through* itself --
 read from one share, written to another -- reads the whole master copy back to
 count its rows, and then pays one SMB round trip per dataset and per method for

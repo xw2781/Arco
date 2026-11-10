@@ -100,7 +100,7 @@ under `backup/`.
 ## Shared macro library
 
 `publish_macro_library.py` publishes active macros from this folder to the
-official shared server macro library (default `E:\ArcRho Server\shared\macros`,
+official shared server macro library (default `E:\Arco Server\shared\macros`,
 override with `--library-dir` or `ARCRHO_MACRO_LIBRARY_DIR`). The ArcRho app's
 Macro Library window reads that folder so users can copy ("load") macros into
 their local macro folder; macros never run from the share directly. Once a
@@ -109,7 +109,7 @@ whenever the library holds a strictly newer `Version`, both when the Macros
 panel lists macros and again just before one runs, so bumping the version here
 and publishing is all it takes to put a fix in front of every user. The same
 command also publishes the canonical `python-api/migration` Python modules as
-an immutable release under `E:\ArcRho Server\shared\python-api\releases` and
+an immutable release under `E:\Arco Server\shared\python-api\releases` and
 atomically switches `shared\python-api\current.json`; ResQ macros load this
 read-only support bundle on Client PCs without a development checkout.
 

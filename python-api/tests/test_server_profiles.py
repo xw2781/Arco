@@ -58,6 +58,25 @@ class ServerProfileTests(unittest.TestCase):
         self.assertEqual(credential, self.settings / "arcrho_gateway.json")
         self.assertEqual(self.config_path.read_bytes(), before)
 
+    def test_a_saved_root_under_the_old_folder_name_is_renamed_and_saved_once(self) -> None:
+        self.settings.mkdir(parents=True)
+        self.config_path.write_text(json.dumps({
+            "workspace_root": r"E:\ArcRho Server",
+            "profiles": [
+                {"id": "default", "name": "Production", "root": "\\\\NE7SASWPN02\\E\\arcrho server\\"},
+                {"id": "local", "name": "Local", "root": str(self.local)},
+            ],
+        }), encoding="utf-8")
+
+        cfg = api_config.load_workspace_config()
+        saved = self.config_path.read_bytes()
+
+        self.assertEqual(cfg["workspace_root"], "\\\\NE7SASWPN02\\E\\Arco Server\\")
+        self.assertEqual(cfg["profiles"][1]["root"], str(self.local))
+        self.assertEqual(json.loads(saved)["workspace_root"], cfg["workspace_root"])
+        self.assertEqual(api_config.load_workspace_config(), cfg)
+        self.assertEqual(self.config_path.read_bytes(), saved)
+
     def test_missing_file_leaves_the_root_unconfigured_and_writes_nothing(self) -> None:
         cfg = api_config.load_workspace_config()
 

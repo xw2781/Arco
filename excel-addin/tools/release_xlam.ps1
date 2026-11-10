@@ -1,6 +1,6 @@
 param(
     [string]$BetaPath = (Join-Path $PSScriptRoot "..\beta\ARCRHO_BETA.xlam"),
-    [string]$ReleasePath = "E:\ArcRho Server\Excel Add-ins\ArcRho.xlam",
+    [string]$ReleasePath = "E:\Arco Server\Excel Add-ins\Arco.xlam",
     [string]$CustomUIPath = (Join-Path $PSScriptRoot "customUI.xml"),
     [string]$SignatureDir = (Join-Path $PSScriptRoot "..\signature"),
     [string]$ArchiveDir = (Join-Path $PSScriptRoot "..\beta\Archive"),

@@ -169,7 +169,7 @@ class LocalServerTests(unittest.TestCase):
         self.assertEqual([path.name for path in (self.production / "projects").iterdir()], ["Fake"])
 
     def test_builds_get_the_local_root_and_none_of_the_inherited_overrides(self) -> None:
-        inherited = {"ARCRHO_SERVER_ROOT": r"E:\ArcRho Server", "ARCRHO_RUNTIME_SERVER_ROOT": r"E:\ArcRho Server"}
+        inherited = {"ARCRHO_SERVER_ROOT": r"E:\Arco Server", "ARCRHO_RUNTIME_SERVER_ROOT": r"E:\Arco Server"}
         with patch.dict(local_server.os.environ, inherited), patch.object(local_server.subprocess, "run") as run:
             run.return_value.returncode = 0
             local_server.deploy(self.root, ["engine"])

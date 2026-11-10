@@ -1148,7 +1148,7 @@ def module_specs() -> Dict[str, ModuleDocSpec]:
     frontend_manual = {
         "shell": {
             "purpose": "Shell-level tab/iframe host for all feature pages.",
-            "external": "- Communicates with child iframes via `arcrho:*` postMessage events.\n- Invokes app-server endpoints for workflow import helpers and configuration endpoints.\n- Uses Electron host bridge for Server Connection folder browsing and first-time `ArcRho Server` drive detection.",
+            "external": "- Communicates with child iframes via `arcrho:*` postMessage events.\n- Invokes app-server endpoints for workflow import helpers and configuration endpoints.\n- Uses Electron host bridge for Server Connection folder browsing and first-time `Arco Server` drive detection.",
             "data": "- Persists tab state, zoom, and toggles in `localStorage`.\n- Tracks popped-out tabs via `BroadcastChannel`.",
             "tasks": "1. Add a new tab type: update tab creation + iframe source logic in `ui_shell.js`.\n2. Add shell menu action: wire menu item + action handler + hotkey map.",
             "risks": "- DOM replacement in shell can invalidate iframe references.\n- Unsaved-state handling must stay consistent for close/close-all flows.",
@@ -1479,7 +1479,7 @@ def module_specs() -> Dict[str, ModuleDocSpec]:
         title="Runtime: Config and Path Resolution",
         manual_sections={
             "Purpose": "Document path/config setup, AppData-backed workspace path persistence, and runtime path refresh behavior.",
-            "External Interfaces": "- Frontend shell settings modal calls `/workspace_paths` routes.\n- App-server modules import `app_server.config` for runtime path resolution.\n- On first-time setup, the Electron shell searches `D:\\ArcRho Server` through `Z:\\ArcRho Server` and fills the Server Connection root path when found.",
+            "External Interfaces": "- Frontend shell settings modal calls `/workspace_paths` routes.\n- App-server modules import `app_server.config` for runtime path resolution.\n- On first-time setup, the Electron shell searches `D:\\Arco Server` through `Z:\\Arco Server` and fills the Server Connection root path when found.",
             "Data/State/Caches": "- `%APPDATA%\\ArcRho\\workspace_paths.json` is the persistent user-local source-of-truth for workspace root/path mapping.\n- If the AppData workspace path file does not exist yet, the app uses built-in defaults until the Server Connection setting is saved.\n- Runtime globals in `app_server/config.py` are refreshed from config.\n- User-local fixed paths are also refreshed in `app_server/config.py`, including workflow export path (`~/Documents/ArcRho/workflows`), scripting notebook path (`~/Documents/ArcRho/scripts`), and Macro window path (`~/Documents/ArcRho/macros`).",
             "Common Change Tasks": "1. Add a new configurable path: update the AppData `workspace_paths.json` contract + `app_server/config.py` getters.\n2. Change path refresh behavior: validate all services that depend on runtime globals.",
             "Known Risks": "- Path changes affect every filesystem-backed domain.\n- Environment-specific path assumptions can break packaged deployments.",

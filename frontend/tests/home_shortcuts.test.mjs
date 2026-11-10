@@ -21,7 +21,7 @@ import {
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 const PI_TARGET = { tabType: "project_instance", title: "NJ_Annual", projectName: "NJ_Annual" };
-const WORKSPACE_TARGET = { tabType: "file_explorer", title: "Rates", path: "E:\\ArcRho Server\\rates" };
+const WORKSPACE_TARGET = { tabType: "file_explorer", title: "Rates", path: "E:\\Arco Server\\rates" };
 
 function seedGroup(title = "Q3 Close") {
   const created = addGroup(createEmptyHomeShortcuts(), title);
@@ -38,7 +38,7 @@ test("a card target is a browsing-history descriptor without the activity timest
 test("File Browser targets keep the folder they were pinned from", () => {
   const target = normalizeCardTarget(WORKSPACE_TARGET);
   assert.equal(target.tabType, "file_explorer");
-  assert.equal(target.path, "E:\\ArcRho Server\\rates");
+  assert.equal(target.path, "E:\\Arco Server\\rates");
 });
 
 test("a target the shell cannot reopen is rejected", () => {

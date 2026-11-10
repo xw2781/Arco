@@ -2,8 +2,8 @@ Attribute VB_Name = "ReferenceRepair"
 Option Private Module
 Option Explicit
 
-Public Const REFERENCE_ADDIN_FILE As String = "ArcRho.xlam"
-Public Const DEFAULT_REFERENCE_PATH As String = "E:\ArcRho Server\Excel Add-ins\" & REFERENCE_ADDIN_FILE
+Public Const REFERENCE_ADDIN_FILE As String = "Arco.xlam"
+Public Const DEFAULT_REFERENCE_PATH As String = "E:\Arco Server\Excel Add-ins\" & REFERENCE_ADDIN_FILE
 Public Const RESQ_REFERENCE_PATH As String = "C:\Program Files\Willis Towers Watson\ResQ\Addins\ResQ.xlam"
 Public Const RESQ_COMPUTER As String = "NE7SASWPN02"
 Private repairing As Boolean

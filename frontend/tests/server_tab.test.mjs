@@ -48,7 +48,7 @@ const LISTING = {
     {
       id: "default",
       name: "Production",
-      root: "E:\\ArcRho Server",
+      root: "E:\\Arco Server",
       gateway_config: "C:\\AppData\\ArcRho\\arcrho_gateway.json",
       gateway_url: "http://NE7SASWPN02:28767",
       user: "alice",

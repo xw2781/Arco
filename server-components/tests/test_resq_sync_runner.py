@@ -132,7 +132,7 @@ class ResQSyncRunnerPhaseTests(unittest.TestCase):
     def setUp(self):
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
         self.server_root.mkdir(parents=True, exist_ok=True)
         self.lease = object()
         self.session = _StubSession()

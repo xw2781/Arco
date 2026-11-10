@@ -38,7 +38,7 @@ MANIFEST_SCHEMA_VERSION = 1
 VERSION_SNAPSHOT_SCHEMA_VERSION = 1
 DEFAULT_RECENT_RELEASE_LIMIT = 20
 MAX_RELEASE_HISTORY_LIMIT = 100
-DEFAULT_PYTHON_API_PACKAGE_DIR = Path(r"E:\ArcRho Server\packages")
+DEFAULT_PYTHON_API_PACKAGE_DIR = Path(r"E:\Arco Server\packages")
 
 # These are the only files version_manager.update_version_metadata owns.  Keeping
 # the list here makes the temporary build-only version change reversible without

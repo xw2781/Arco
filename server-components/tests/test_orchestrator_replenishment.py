@@ -164,38 +164,38 @@ class BuildWorkspaceAlignmentTests(unittest.TestCase):
         self.assertEqual(environment, {})
 
     def test_deploy_root_sets_the_workspace_root(self):
-        environment = {"ARCRHO_DEPLOY_ROOT": r"\\devpc\arcrho\ArcRho Server"}
+        environment = {"ARCRHO_DEPLOY_ROOT": r"\\devpc\arcrho\Arco Server"}
 
         resolved = build_runtime.align_workspace_root_env(environment)
 
-        self.assertEqual(str(resolved), r"\\devpc\arcrho\ArcRho Server")
-        self.assertEqual(environment["ARCRHO_ROOT"], r"\\devpc\arcrho\ArcRho Server")
+        self.assertEqual(str(resolved), r"\\devpc\arcrho\Arco Server")
+        self.assertEqual(environment["ARCRHO_ROOT"], r"\\devpc\arcrho\Arco Server")
 
     def test_a_matching_workspace_root_is_kept(self):
         environment = {
-            "ARCRHO_DEPLOY_ROOT": r"E:\ArcRho Server",
-            "ARCRHO_ROOT": r"e:\arcrho server",
+            "ARCRHO_DEPLOY_ROOT": r"E:\Arco Server",
+            "ARCRHO_ROOT": r"e:\arco server",
         }
 
         resolved = build_runtime.align_workspace_root_env(environment)
 
-        self.assertEqual(str(resolved), r"E:\ArcRho Server")
-        self.assertEqual(environment["ARCRHO_ROOT"], r"e:\arcrho server")
+        self.assertEqual(str(resolved), r"E:\Arco Server")
+        self.assertEqual(environment["ARCRHO_ROOT"], r"e:\arco server")
 
     def test_conflicting_roots_stop_the_build(self):
         environment = {
-            "ARCRHO_DEPLOY_ROOT": r"\\devpc\arcrho\ArcRho Server",
-            "ARCRHO_ROOT": r"E:\ArcRho Server",
+            "ARCRHO_DEPLOY_ROOT": r"\\devpc\arcrho\Arco Server",
+            "ARCRHO_ROOT": r"E:\Arco Server",
         }
 
         with self.assertRaises(RuntimeError):
             build_runtime.align_workspace_root_env(environment)
 
     def test_a_unc_workspace_is_not_a_local_disk(self):
-        self.assertFalse(build_runtime.is_local_fixed_path(r"\\devpc\arcrho\ArcRho Server"))
+        self.assertFalse(build_runtime.is_local_fixed_path(r"\\devpc\arcrho\Arco Server"))
 
     def test_a_relative_path_is_not_treated_as_a_local_disk(self):
-        self.assertFalse(build_runtime.is_local_fixed_path("ArcRho Server"))
+        self.assertFalse(build_runtime.is_local_fixed_path("Arco Server"))
 
 
 if __name__ == "__main__":

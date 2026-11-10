@@ -30,7 +30,7 @@ class ResqDataMigrationGraphTests(unittest.TestCase):
     def setUp(self) -> None:
         _TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
-        self.root = Path(self.tmp.name) / "ArcRho Server"
+        self.root = Path(self.tmp.name) / "Arco Server"
         self.project_dir = self.root / "projects" / "Demo"
         self.rc_dir = self.project_dir / "data" / "Auto_%5C_PP"
         self.datasets_dir = self.rc_dir / "datasets"
@@ -1630,7 +1630,7 @@ class ResqMigrationGeneratedFormulaGraphTests(unittest.TestCase):
     def setUp(self) -> None:
         _TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
-        self.root = Path(self.tmp.name) / "ArcRho Server"
+        self.root = Path(self.tmp.name) / "Arco Server"
         self.project_dir = self.root / "projects" / "Demo"
         self.rc_dir = self.project_dir / "data" / "Auto_%5C_PP"
         self.datasets_dir = self.rc_dir / "datasets"

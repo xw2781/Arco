@@ -1193,7 +1193,7 @@ ipcMain.handle("find-arcrho-server-root", async () => {
   if (process.platform !== "win32") return { found: false, path: "" };
   for (let code = 68; code <= 90; code++) {
     const drive = `${String.fromCharCode(code)}:\\`;
-    const candidate = path.join(drive, "ArcRho Server");
+    const candidate = path.join(drive, "Arco Server");
     try {
       if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
         return { found: true, path: candidate };

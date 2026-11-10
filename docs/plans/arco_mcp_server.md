@@ -14,7 +14,7 @@ The `Reserve Ranges - High` study (`Documents\Agent Projects\Reserve Ranges - Hi
 | :--- | :--- | :--- |
 | Read and save methods | `arcrho_api.gateway.GatewayClient` imported from the clone | Needs the clone and Python 3.10 on every agent machine |
 | Recalculate a DFM before saving | `arcrho_api.dfm_contract.preview_dfm_method`, run locally | Calculation code runs on the client, at whatever version the clone has |
-| Compare High with the regular project, dry runs | `make_report.py`, `dryrun.py`, `ue_check.py`, `pd_dry.py` open method JSON on `E:\ArcRho Server\projects` | Reads project data over SMB, against [Server-Hosted Project Data I/O](../../AGENT_GUIDELINES.md#server-hosted-project-data-io-must) |
+| Compare High with the regular project, dry runs | `make_report.py`, `dryrun.py`, `ue_check.py`, `pd_dry.py` open method JSON on `E:\Arco Server\projects` | Reads project data over SMB, against [Server-Hosted Project Data I/O](../../AGENT_GUIDELINES.md#server-hosted-project-data-io-must) |
 | Import a ResQ class | `import_resq_reserving_class.create_import_request` from `python-api/macros`, then `wait_for_import_result`, which polls status files under the server root | Polls the share directly for the result |
 
 The only thing stopping a save to the wrong project is an `assert` in the study's own `gw.py`. The Gateway authenticates a user but does not limit which projects or method types that user may change.
@@ -27,7 +27,7 @@ One tool layer, owned in `python-api`, served two ways.
 
 1. **The tool layer** is a new package, `python-api/src/arcrho_mcp/`. It defines every tool once: its name, input schema, scope it needs, and the Gateway reads, mutations and saves it calls. Generic tools are generated from `WORKSPACE_READ_KINDS`, `WORKSPACE_MUTATION_KINDS` and `SAVE_JOB_KINDS`, so a new registered read becomes a tool with no MCP change.
 2. **Hosted first-class transport: the Gateway serves `/mcp`** (Streamable HTTP) on the Server PC. The tools run beside the data, so there is no SMB, no client Python, and one deploy updates every agent. This is the target.
-3. **Local stdio transport** (`python -m arcrho_mcp`, also frozen to `arco_mcp.exe` and published to `E:\ArcRho Server\shared\tools`) runs the same tools through the caller's own `GatewayClient` credential. It ships first because it needs no Gateway change, and it stays for desktop agents afterwards.
+3. **Local stdio transport** (`python -m arcrho_mcp`, also frozen to `arco_mcp.exe` and published to `E:\Arco Server\shared\tools`) runs the same tools through the caller's own `GatewayClient` credential. It ships first because it needs no Gateway change, and it stays for desktop agents afterwards.
 
 ArcBot's per-turn tools then become a filtered view of the same layer (read-only, skill-scoped), so `arcbot_project_read.js` stops carrying its own Python policy script.
 
@@ -78,7 +78,7 @@ The server resolves labels against the method it just loaded, so an agent cannot
 
 ### Prompts and resources
 
-- Each team skill under `E:\ArcRho Server\shared\agent-skills` (already read by `agent_skills`) is offered as an MCP prompt, so the same skill reaches ArcBot and outside agents.
+- Each team skill under `E:\Arco Server\shared\agent-skills` (already read by `agent_skills`) is offered as an MCP prompt, so the same skill reaches ArcBot and outside agents.
 - Large payloads (a full triangle, a method JSON) are MCP resources an agent opens on request; tools return the compact summary first.
 
 ## Safety and identity

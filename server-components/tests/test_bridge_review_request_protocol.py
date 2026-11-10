@@ -242,7 +242,7 @@ class BridgeReviewWorkbookTests(unittest.TestCase):
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
         self.addCleanup(self.temp_dir.cleanup)
-        self.server_root = (Path(self.temp_dir.name) / "ArcRho Server").resolve()
+        self.server_root = (Path(self.temp_dir.name) / "Arco Server").resolve()
         (self.server_root / "projects" / "Demo").mkdir(parents=True)
 
     def test_the_workbook_goes_under_the_asking_persons_project_folder(self):
@@ -341,7 +341,7 @@ class BridgeReviewRequestValidationTests(unittest.TestCase):
             with self.subTest(field=key):
                 with self.assertRaisesRegex(ValueError, "must not supply path field"):
                     self.handler._validate_resq_review_request(
-                        _review_request(**{key: r"E:\ArcRho Server"})
+                        _review_request(**{key: r"E:\Arco Server"})
                     )
 
     def test_an_escaping_reserving_class_path_is_refused(self):

@@ -55,7 +55,7 @@ class SourceTableLayoutParityTests(unittest.TestCase):
         self.assertNotIn("table_path", body)
 
     def test_master_table_path_is_fixed_under_the_project_folder(self) -> None:
-        project_dir = str(Path("C:/ArcRho Server/projects/Demo"))
+        project_dir = str(Path("C:/Arco Server/projects/Demo"))
         self.assertEqual(
             source_table_contract.master_table_path(project_dir),
             str(Path(project_dir) / "source" / "master_table.csv"),

@@ -1,5 +1,5 @@
 param(
-    [string]$AddInPath = "E:\ArcRho Server\Excel Add-ins\ArcRho.xlam",
+    [string]$AddInPath = "E:\Arco Server\Excel Add-ins\Arco.xlam",
     [string]$UserGuidePath = ""
 )
 
@@ -68,6 +68,26 @@ try {
     }
 
     $addIns = $excel.AddIns
+    # The add-in was ArcRho.xlam until 2026-11-09; its registration points at
+    # a file that no longer exists, so Excel would report it on every start.
+    for ($index = 1; $index -le $addIns.Count; $index++) {
+        $candidate = $null
+        try {
+            $candidate = $addIns.Item($index)
+            if ([string]::Equals([string]$candidate.Name, "ArcRho.xlam", [System.StringComparison]::OrdinalIgnoreCase) -and $candidate.Installed) {
+                $candidate.Installed = $false
+                Write-Host "Turned off the old ArcRho.xlam add-in registration."
+            }
+        }
+        catch {
+            Write-Warning "Could not turn off the old ArcRho.xlam add-in registration: $($_.Exception.Message)"
+        }
+        finally {
+            Release-ComObject $candidate
+            $candidate = $null
+        }
+    }
+
     $installedAddInPath = $null
     $registeredButDisabledPath = $null
     for ($index = 1; $index -le $addIns.Count; $index++) {

@@ -40,7 +40,7 @@ from resq_migration import core as migration  # noqa: E402
 import import_resq_reserving_classes as batch_import  # noqa: E402
 
 PROJECT = "NJ_Annual_Prod_202605_Fake"
-SERVER_ROOT = Path(r"E:\ArcRho Server")
+SERVER_ROOT = Path(r"E:\Arco Server")
 CONFIG = SERVER_ROOT / "config" / "config.json"
 SINGLE_REFERENCE = re.compile(r'^\s*"([^"]+)"\s*$')
 

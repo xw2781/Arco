@@ -15,7 +15,7 @@ _SOURCE_ROOT = _MODULE_ROOT.parent
 _PRODUCT_ROOT = _SOURCE_ROOT.parent
 _BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", _MODULE_ROOT)).resolve()
 _EXE_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
-_DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\ArcRho Server"))
+_DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\Arco Server"))
 
 if "ARCRHO_ROOT" not in os.environ and "ADAS_ROOT" not in os.environ:
     if _EXE_DIR and _EXE_DIR.name.lower() == "apps":

@@ -295,8 +295,8 @@ class EngineFormulaLinkParityTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         # Two spellings of the same reserving class, so a path can never leak
         # into either payload and still let them compare equal.
-        self.runtime_rc = self.root / "R" / "ArcRho Server" / "projects" / "Demo" / "data" / "Auto_%5C_PP"
-        self.migration_root = self.root / "a much longer server root" / "ArcRho Server"
+        self.runtime_rc = self.root / "R" / "Arco Server" / "projects" / "Demo" / "data" / "Auto_%5C_PP"
+        self.migration_root = self.root / "a much longer server root" / "Arco Server"
         self.migration_rc = self.migration_root / "projects" / "Demo" / "data" / "Auto_%5C_PP"
         for rc_dir in (self.runtime_rc, self.migration_rc):
             (rc_dir / "datasets").mkdir(parents=True)

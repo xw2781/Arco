@@ -435,7 +435,7 @@ def sanitize_reserving_class_folder(value: Any, fallback: str = "ReservingClass"
 
 
 def _find_existing_project_dir(project_name: str) -> Optional[str]:
-    """Find an existing project folder under E:\\ArcRho Server\\projects by name (case-insensitive)."""
+    """Find an existing project folder under E:\\Arco Server\\projects by name (case-insensitive)."""
     target = _sanitize_folder_name(project_name or "").strip()
     if not target:
         return None

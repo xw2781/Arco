@@ -1,6 +1,6 @@
 # Arco Excel Add-in
 
-`ArcRho.xlam` is loaded from the Arco Server share, so every user runs the
+`Arco.xlam` is loaded from the Arco Server share, so every user runs the
 version that is on the share. Version 4.0.0 reads saved Arco results from the
 workbook and loads missing results when a formula is entered or edited. Server
 requests use HTTP; no worksheet function reads project data from the share.
@@ -237,9 +237,9 @@ publication or a class currently being refreshed by the frontend.
 Moving project data to the server did not remove the drive mapping. These are
 still opened directly, so a PC that cannot reach the share loses them:
 
-- the add-in itself, `Excel Add-ins\ArcRho.xlam` and the beta beside it;
+- the add-in itself, `Excel Add-ins\Arco.xlam` and the beta beside it;
 - `apps\Arco Credential\Arco Credential.exe`, the first-run helper;
-- `Excel Add-ins\ArcRho Release Notes.md`, opened by the About window and
+- `Excel Add-ins\Arco Release Notes.md`, opened by the About window and
   published from [`RELEASE_NOTES.md`](RELEASE_NOTES.md) by each release;
 - `Team Profile\Actuarial_NJ.xlsm`, the default team profile in Settings.
 
@@ -269,7 +269,7 @@ cancellation using synthetic add-ins and disposable workbooks in the same test r
 
 [`agent-instructions/excel-addin-build-and-release.md`](../agent-instructions/excel-addin-build-and-release.md)
 owns the procedure. `tools/build_xlam.ps1` builds the beta add-in;
-`tools/release_xlam.ps1` publishes `ArcRho.xlam` to the share, where every user
+`tools/release_xlam.ps1` publishes `Arco.xlam` to the share, where every user
 picks it up on the next Excel launch. The scripts require the existing beta
 workbook and signature files. When invoking the required server-clone scripts
 from another working clone, pass that clone's current `SourceDir` and

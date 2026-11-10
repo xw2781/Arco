@@ -298,7 +298,7 @@ set "NODE_HOME=%APP_ROOT%\node-portable"
 set "PATH=%NODE_HOME%;%PATH%"
 set "APP_BUILDER_EXE=node_modules\app-builder-bin\win\x64\app-builder.exe"
 set "APP_VERSION="
-if not defined PYTHON_API_PACKAGE_DIR set "PYTHON_API_PACKAGE_DIR=E:\ArcRho Server\packages"
+if not defined PYTHON_API_PACKAGE_DIR set "PYTHON_API_PACKAGE_DIR=E:\Arco Server\packages"
 set "PYTHON_API_WHEEL="
 
 echo Validating bundled Node, npm, and Codex runtime...

@@ -103,7 +103,7 @@ class AdminKillSwitchTests(unittest.TestCase):
     KEY = "apps.admin.kill_all"
 
     def test_the_switch_is_a_documented_default(self) -> None:
-        apps = default_server_config(r"C:\ArcRho Server")["apps"]
+        apps = default_server_config(r"C:\Arco Server")["apps"]
         self.assertIn("admin", apps)
         self.assertIs(apps["admin"]["kill_all"], False)
 

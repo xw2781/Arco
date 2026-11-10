@@ -38,7 +38,7 @@ class ProjectDuplicationTests(unittest.TestCase):
     def setUp(self) -> None:
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
         self.projects_dir = self.server_root / "projects"
         self.projects_dir.mkdir(parents=True)
 

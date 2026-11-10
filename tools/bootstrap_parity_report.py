@@ -192,7 +192,7 @@ def _number(label: str, value: float) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
-    parser.add_argument("--server-root", default=r"E:\ArcRho Server")
+    parser.add_argument("--server-root", default=r"E:\Arco Server")
     parser.add_argument("--project", default="NJ_Annual_Prod_202605_Fake")
     args = parser.parse_args(argv)
 

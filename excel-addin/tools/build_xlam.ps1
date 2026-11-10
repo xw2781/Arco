@@ -257,8 +257,8 @@ if ((Get-ReleaseNotesVersion $notesPathFull) -ne $version) {
 }
 
 $targetName = Split-Path -Leaf $targetPathFull
-if ([string]::Compare($targetName, "ArcRho.xlam", $true) -eq 0) {
-    throw "Refusing to update ArcRho.xlam. This script updates ARCRHO_BETA.xlam only."
+if ([string]::Compare($targetName, "Arco.xlam", $true) -eq 0) {
+    throw "Refusing to update Arco.xlam. This script updates ARCRHO_BETA.xlam only."
 }
 
 $targetDir = Split-Path -Parent $targetPathFull

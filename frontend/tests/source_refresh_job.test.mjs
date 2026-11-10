@@ -57,7 +57,7 @@ function memoryStorage() {
 }
 
 const immediatePoll = () => Promise.resolve();
-const WORKSPACE_ROOT = "E:/ArcRho Server";
+const WORKSPACE_ROOT = "E:/Arco Server";
 const WORKSPACE_SCOPE = `ws_${WORKSPACE_ROOT}`;
 
 test("the status URL names both the project and the job", () => {

@@ -37,7 +37,7 @@ from win32com.client import gencache
 PROJECT = "NJ_Annual_Prod_202605_Fake"
 RC_PATH = r"PRNJ - PA\PA\All States\Direct Group\COL"
 PREFIX = "ZZ Probe "
-CONFIG = r"E:/ArcRho Server/config/config.json"
+CONFIG = r"E:/Arco Server/config/config.json"
 STATE_FILE = os.path.join("temp", "resq_method_config_probe_gui.json")
 
 TRI_ANNUAL = "Gross Loss--Incurred"          # stored O12/D12

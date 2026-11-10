@@ -58,7 +58,7 @@ class DatasetIndexCrossComponentContractTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(_TEST_TEMP_ROOT))
         self.addCleanup(self.temp_dir.cleanup)
 
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
         self.projects_dir = self.server_root / "projects"
         self.project_dir = self.projects_dir / self.project_name
         self.rc_dir = self.project_dir / "data" / "Auto_%5C_PP"

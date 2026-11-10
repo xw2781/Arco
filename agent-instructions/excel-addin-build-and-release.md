@@ -6,7 +6,7 @@ Every release is a new version with its own notes:
 
 - Raise `ARCRHO_VERSION` in `excel-addin/src_vba/Core.bas` (patch for fixes, minor for new features) once per release, not once per edit.
 - Add a `## <version> - <yyyy-mm-dd>` entry at the top of `excel-addin/RELEASE_NOTES.md` with one plain-English bullet per change a user would notice. If the version has not been released yet, add to its existing entry instead.
-- The build refuses to run when the newest notes entry is not `ARCRHO_VERSION`, and the release refuses a version that is already on the share. The release publishes the notes beside the add-in as `ArcRho Release Notes.md`, which the About window opens.
+- The build refuses to run when the newest notes entry is not `ARCRHO_VERSION`, and the release refuses a version that is already on the share. The release publishes the notes beside the add-in as `Arco Release Notes.md`, which the About window opens.
 
 Run the scripts from the clone you edited. The beta workbook, the signature files, and the rollback archive exist only in the Server PC clone `E:\XWSpace\Repos\ArcRho`, so point the scripts there:
 

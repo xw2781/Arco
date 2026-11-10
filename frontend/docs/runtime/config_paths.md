@@ -84,7 +84,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
 <!-- MANUAL:BEGIN -->
 - Frontend shell settings modal calls `/workspace_paths` routes.
 - App-server modules import `app_server.config` for runtime path resolution.
-- On first-time setup, the Electron shell searches `D:\ArcRho Server` through `Z:\ArcRho Server` and fills the Server Connection root path when found.
+- On first-time setup, the Electron shell searches `D:\Arco Server` through `Z:\Arco Server` and fills the Server Connection root path when found.
 - Saving Server Connection hot-applies the new config by refreshing `app_server.config` runtime globals and notifying open UI frames; app restart is not required for new server requests.
 - ArcRho startup and Server Connection saves attempt first-run Gateway sign-up when the local credential is absent. The address comes from `ARCRHO_GATEWAY_URL` or the active profile's `gateway_url` (the Server Connection dialog and the Server tab ask for it); the app probes it, signs up through the Gateway's Windows-authenticated `POST /api/enroll`, and writes `%APPDATA%\ArcRho\arcrho_gateway.json` with the secret the Gateway returned. The shared registry is never read from a client.
 - DFM RPC Bridge writes request files under `<workspace_root>/<requests_dir>/RPC bridge` and expects remote DFM/SyncDFM JSON files under `<workspace_root>/<projects_dir>/<project>/data/<ReservingClassFolder>/methods/tmp_rpc`.

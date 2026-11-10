@@ -59,7 +59,7 @@ TOTAL_CLASS = "Total"
 CONSOLIDATION = "F 72 A - Bootstrap Consolidation Net Incurred with PV"
 TARGET_VECTOR = "F 92 - Current Qtr Selected "
 DFM_VECTOR = "F 25 - Incurred DFM Bootstrap"
-CONFIG = r"E:/ArcRho Server/config/config.json"
+CONFIG = r"E:/Arco Server/config/config.json"
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "python-api" / "tests" / "fixtures" / "resq_bootstrap_consolidation_total.json.gz"
 

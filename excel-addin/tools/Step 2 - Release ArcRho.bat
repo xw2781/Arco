@@ -3,8 +3,8 @@ setlocal
 
 cd /d "%~dp0"
 
-echo Step 2: Releasing beta\ARCRHO_BETA.xlam to E:\ArcRho Server\Excel Add-ins\ArcRho.xlam...
-echo This archives the existing ArcRho.xlam and overwrites it from the beta add-in.
+echo Step 2: Releasing beta\ARCRHO_BETA.xlam to E:\Arco Server\Excel Add-ins\Arco.xlam...
+echo This archives the existing Arco.xlam and overwrites it from the beta add-in.
 echo.
 choice /C YN /N /M "Continue with release? [Y/N] "
 if errorlevel 2 (

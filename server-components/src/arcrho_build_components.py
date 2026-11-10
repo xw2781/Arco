@@ -23,13 +23,13 @@ from pathlib import Path
 # being reported as stale here.
 from arcrho_bridge.bundled_sources import BUNDLED_SOURCE_ROOTS
 from arcrho_engine.bundled_sources import ENGINE_BUNDLED_SOURCES
-from utils import DEPLOYED_COMPONENT_ROLES, component_app_name
+from utils import DEFAULT_DEPLOY_ROOT, DEPLOYED_COMPONENT_ROLES, component_app_name
 
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVER_COMPONENTS_ROOT = BASE_DIR.parent
 REPOSITORY_ROOT = SERVER_COMPONENTS_ROOT.parent
-DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\ArcRho Server"))
+DEPLOY_ROOT = DEFAULT_DEPLOY_ROOT
 APPS_DIR = DEPLOY_ROOT / "apps"
 INSTANCES_DIR = DEPLOY_ROOT / "runtime" / "instances"
 

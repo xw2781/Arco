@@ -3,7 +3,7 @@ resq_data_migration.py
 
 Migrate ResQ triangles, vectors, Result Selections, Bornhuetter Ferguson methods, Cape Cod methods, Bootstrap methods, Stochastic Consolidations, and DFM methods to ArcRho dataset files.
 Scope: ProjectName = '{PROJECT_NAME}'
-Output: E:\\ArcRho Server\\projects\\{PROJECT_NAME}\\data\\<ReservingClassFolder>\\
+Output: E:\\Arco Server\\projects\\{PROJECT_NAME}\\data\\<ReservingClassFolder>\\
 
 Run:
   python resq_data_migration.py
@@ -225,7 +225,7 @@ CONNECTION_NAME = "JGO_CO1SQLWPV22"
 USER_NAME = ""
 PASSWORD = ""
 
-SERVER_ROOT = Path(r"E:\ArcRho Server")
+SERVER_ROOT = Path(r"E:\Arco Server")
 PROJECT_DATA_DIR = SERVER_ROOT / "projects" / PROJECT_NAME / "data"
 RS_JSON_FORMAT = "arcrho-result-selection-v4"
 INDEX_FILE_NAME = DATASET_INDEX_FILE_NAME

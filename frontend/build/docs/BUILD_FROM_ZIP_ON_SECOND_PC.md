@@ -32,7 +32,7 @@ Source PC repository
 | Arcode local build workspace | `%USERPROFILE%\Documents\build_arcode_app` on the build PC | Separate disposable extraction and build directory for Arcode. |
 | Local installer output | `%USERPROFILE%\Documents\build_arcrho_app\frontend\dist` | Installer produced by the local build. |
 | Published release | GitHub Releases in the repository named by `frontend\build\release\release_channel.json` | Installer and checksum published after a successful build. This is the only publication target and the only durable record of what has shipped. |
-| Retired installer feed | `E:\ArcRho Server\releases\installers` and `E:\Arcode Server\releases\arcode-installers` | No longer written by the build. Kept for clients installed before the GitHub update checker shipped; publish to it manually with `build\release\publish_update_feed.ps1` when a migration build is needed. |
+| Retired installer feed | `E:\Arco Server\releases\installers` and `E:\Arcode Server\releases\arcode-installers` | No longer written by the build. Kept for clients installed before the GitHub update checker shipped; publish to it manually with `build\release\publish_update_feed.ps1` when a migration build is needed. |
 | Shared build logs | `E:\XWSpace\Build ArcRho App\logs\<COMPUTERNAME>` | Timestamped ZIP-creation and application-build logs from both PCs. |
 
 This workflow assumes that `E:` on the build PC is permanently mapped to `E:` on the source PC. The default ZIP and wrapper paths already use that mapping, so `ARCRHO_LOCAL_BUILD_SOURCE_ZIP` does not need to be set.
@@ -70,7 +70,7 @@ Before starting a full build, confirm that the build PC has:
 - Permission to install missing Python build dependencies, or all required dependencies already installed.
 - Permission to execute files from the local workspace, including portable Node, `app-builder.exe`, PyInstaller, and NSIS.
 - Read access to the source-PC share and write access to the local workspace.
-- Write access through the mapped `E:` drive to `E:\ArcRho Server\packages`, or an appropriate `PYTHON_API_PACKAGE_DIR` override for the Python package destination.
+- Write access through the mapped `E:` drive to `E:\Arco Server\packages`, or an appropriate `PYTHON_API_PACKAGE_DIR` override for the Python package destination.
 - The `gh` CLI installed and authenticated (`gh auth login`, or a `GH_TOKEN` environment variable) with permission to create releases on the target GitHub repository. This is now required twice: the version step reads the published release history to decide the next version, and the publish step creates the release the packaged app's update checker reads. An unauthenticated `gh` fails the build at Step 1 rather than after a full package.
 - Enough local disk space for the copied ZIP, its expanded contents, PyInstaller work files, Electron output, and the installer.
 
@@ -227,7 +227,7 @@ A successful build reports exit code `0` and produces:
 - `%ARCRHO_LOCAL_BUILD_ROOT%\frontend\dist\Arco-Setup-<version>.exe`
 - A GitHub Release tagged `Arco-v<version>` with `Arco-Setup-<version>.exe` and `Arco-Setup-<version>.exe.sha256` attached — the history the next build's version number is derived from.
 - `Arco-update.json` rewritten on the `update-feed` prerelease by `publish_update_manifest.ps1` — the only file the packaged app's update checker reads.
-- `E:\ArcRho Server\packages\arcrho_api-latest.whl`, unless `PYTHON_API_PACKAGE_DIR` overrides that destination.
+- `E:\Arco Server\packages\arcrho_api-latest.whl`, unless `PYTHON_API_PACKAGE_DIR` overrides that destination.
 
 The tag name, target repository, and update feed names come from `frontend\build\release\release_channel.json`, which `publish_github_release.ps1`, `publish_update_manifest.ps1`, `version_manager.py`, and the installed app read. Change them there rather than in any script.
 

@@ -3,7 +3,7 @@ setlocal
 
 cd /d "%~dp0"
 
-echo Step 1+2: Build beta\ARCRHO_BETA.xlam, then release it to E:\ArcRho Server\Excel Add-ins\ArcRho.xlam.
+echo Step 1+2: Build beta\ARCRHO_BETA.xlam, then release it to E:\Arco Server\Excel Add-ins\Arco.xlam.
 echo This updates the beta add-in, archives the existing release add-in, and overwrites it from beta.
 echo.
 choice /C YN /N /M "Continue with build and release? [Y/N] "
@@ -29,7 +29,7 @@ if errorlevel 1 (
 echo.
 echo Step 1 completed successfully.
 echo.
-echo Step 2: Releasing beta\ARCRHO_BETA.xlam to E:\ArcRho Server\Excel Add-ins\ArcRho.xlam...
+echo Step 2: Releasing beta\ARCRHO_BETA.xlam to E:\Arco Server\Excel Add-ins\Arco.xlam...
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0release_xlam.ps1"
 if errorlevel 1 (

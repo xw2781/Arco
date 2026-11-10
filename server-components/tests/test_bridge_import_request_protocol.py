@@ -44,7 +44,7 @@ class BridgeImportRequestProtocolTests(unittest.TestCase):
     def setUp(self):
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -365,7 +365,7 @@ class BridgeImportRequestProtocolTests(unittest.TestCase):
 
     def test_status_writer_is_atomic_and_never_uses_request_status_path(self):
         request = _import_request(
-            StatusPath=r"Q:\ArcRho Server\not-allowed.json",
+            StatusPath=r"Q:\Arco Server\not-allowed.json",
         )
         with patch.object(bridge_main, "get_project_root", return_value=self.server_root):
             self.assertTrue(
@@ -395,7 +395,7 @@ class BridgeImportRequestProtocolTests(unittest.TestCase):
             handler._validate_resq_import_request(_import_request(ContractVersion=99))
         with self.assertRaisesRegex(ValueError, "must not supply path"):
             handler._validate_resq_import_request(
-                _import_request(StatusPath=r"Z:\ArcRho Server\status.json")
+                _import_request(StatusPath=r"Z:\Arco Server\status.json")
             )
         with self.assertRaisesRegex(ValueError, "ExportMode must be one of"):
             handler._validate_resq_import_request(
@@ -415,7 +415,7 @@ class BridgeImportRequestProtocolTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(ValueError, "relative Windows Arco"):
             handler._validate_resq_import_request(
-                _import_request(Path=r"C:\ArcRho Server\projects\Demo")
+                _import_request(Path=r"C:\Arco Server\projects\Demo")
             )
         with self.assertRaisesRegex(ValueError, "without '..'"):
             handler._validate_resq_import_request(

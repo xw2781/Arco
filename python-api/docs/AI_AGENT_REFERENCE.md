@@ -25,7 +25,7 @@ rc = project.reserving_class(r"Segment\Path")
 dfm = rc.dfm("Method Name")
 ```
 
-`ArcRhoClient()` uses the default server root resolved by `arcrho_api.config`, the canonical owner of that resolution: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, then the ArcRho host app config file `%APPDATA%\ArcRho\workspace_paths.json`, then the running ArcRho desktop app's own workspace root, then the packaged default `E:\ArcRho Server` when it holds a `projects` folder. Use `set_server_root(path)` to update that shared host config, `get_server_root()` to inspect it, `reload_server_root()` to retry app discovery, or pass `ArcRhoClient(path)` for a one-off explicit root.
+`ArcRhoClient()` uses the default server root resolved by `arcrho_api.config`, the canonical owner of that resolution: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, then the ArcRho host app config file `%APPDATA%\ArcRho\workspace_paths.json`, then the running ArcRho desktop app's own workspace root, then the packaged default `E:\Arco Server` when it holds a `projects` folder. Use `set_server_root(path)` to update that shared host config, `get_server_root()` to inspect it, `reload_server_root()` to retry app discovery, or pass `ArcRhoClient(path)` for a one-off explicit root.
 
 Legacy migration:
 

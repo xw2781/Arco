@@ -94,7 +94,7 @@ class ResqSyncQueueServiceTests(unittest.TestCase):
             ("Demo", r"Auto\PP", REQUEST_ID, "rollback"),
             ("Demo", r"Auto\PP", REQUEST_ID, "export", [{"id": "x", "signature": {}}]),
             ("Demo", r"Auto\PP", "../escape", "preview"),
-            ("Demo", r"C:\ArcRho Server\projects\Demo", REQUEST_ID, "preview"),
+            ("Demo", r"C:\Arco Server\projects\Demo", REQUEST_ID, "preview"),
         ):
             with self.subTest(args=args):
                 with self.assertRaises(HTTPException) as refused:

@@ -112,7 +112,7 @@ class DatasetTypesChangeContractTests(unittest.TestCase):
 
         with self.assertRaises(DatasetTypesChangeContractError):
             validate_dataset_types_change_request(
-                {**request, "TablePath": "E:\\ArcRho Server\\x.json"}
+                {**request, "TablePath": "E:\\Arco Server\\x.json"}
             )
 
     def test_rows_must_keep_the_transport_shape(self) -> None:

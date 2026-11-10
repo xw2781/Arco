@@ -11,7 +11,7 @@ from pathlib import Path
 from build_wheel import ROOT, build_wheel
 
 
-DEFAULT_PACKAGE_DIR = Path(r"E:\ArcRho Server\packages")
+DEFAULT_PACKAGE_DIR = Path(r"E:\Arco Server\packages")
 LATEST_WHEEL_NAME = "arcrho_api-latest.whl"
 
 
@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--package-dir",
         default=str(_default_package_dir()),
-        help="Shared folder for published wheels. Defaults to PYTHON_API_PACKAGE_DIR or E:\\ArcRho Server\\packages.",
+        help="Shared folder for published wheels. Defaults to PYTHON_API_PACKAGE_DIR or E:\\Arco Server\\packages.",
     )
     parser.add_argument(
         "--version",

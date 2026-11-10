@@ -14,7 +14,7 @@ the index carries no link field. A file whose lists are already right is not
 written at all, so a second run writes nothing and no method is moved to
 Needs Review by the repair.
 
-Run it on the Server PC (``NE7SASWPN02``), where ``E:\ArcRho Server`` is local
+Run it on the Server PC (``NE7SASWPN02``), where ``E:\Arco Server`` is local
 disk: it walks every sidecar of every reserving class, which over the share is
 one network round trip per file. Nothing in the code checks which machine it
 is on. Nothing is written without ``--apply``; each class is held under the

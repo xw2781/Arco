@@ -37,7 +37,7 @@ from resq_migration import dfm as migration_dfm  # noqa: E402
 
 PROJECT = "NJ_Annual_Prod_202605_Fake"
 BASE = r"PRNJ - PA\PA\All States\Direct Group"
-CONFIG = r"E:/ArcRho Server/config/config.json"
+CONFIG = r"E:/Arco Server/config/config.json"
 DEFAULT_OUT = REPO / "python-api" / "tests" / "fixtures" / "resq_dfm_mp_pip_f25.json.gz"
 
 

@@ -19,7 +19,10 @@ from .gateway_test_guard import isolate_test_run
 from .io import persisted_json_text
 
 WORKSPACE_PATHS_FILE_NAME = "workspace_paths.json"
-DEFAULT_WORKSPACE_ROOT = r"E:\ArcRho Server"
+DEFAULT_WORKSPACE_ROOT = r"E:\Arco Server"
+# The server folder was renamed from "ArcRho Server" on 2026-11-09; a saved
+# root still naming the old folder is read, and saved once, under the new name.
+_RENAMED_ROOT_PATTERN = re.compile(r"(?i)(^|[\\/])ArcRho Server([\\/]?)$")
 DEFAULT_WORKSPACE_PATHS = {
     "projects_dir": "projects",
     "requests_dir": "requests",
@@ -126,6 +129,10 @@ def _text(value: object, default: str = "") -> str:
     return value.strip() if isinstance(value, str) and value.strip() else default
 
 
+def _root_text(value: object) -> str:
+    return _RENAMED_ROOT_PATTERN.sub(r"\1Arco Server\2", _text(value))
+
+
 def normalize_workspace_config(raw: dict) -> dict:
     """Return the canonical workspace config: server profiles, the active one, and paths.
 
@@ -142,7 +149,7 @@ def normalize_workspace_config(raw: dict) -> dict:
         if not isinstance(item, dict):
             continue
         profile_id = _text(item.get("id")).lower()
-        root = _text(item.get("root"))
+        root = _root_text(item.get("root"))
         if not profile_id or not root or any(p["id"] == profile_id for p in profiles):
             continue
         profile = {"id": profile_id, "name": _text(item.get("name"), profile_id), "root": root}
@@ -154,7 +161,7 @@ def normalize_workspace_config(raw: dict) -> dict:
         profiles = [{
             "id": DEFAULT_PROFILE_ID,
             "name": DEFAULT_PROFILE_NAME,
-            "root": _text(raw.get("workspace_root")),
+            "root": _root_text(raw.get("workspace_root")),
         }]
     active = _text(raw.get("active_profile")).lower()
     if not any(p["id"] == active for p in profiles):
@@ -172,7 +179,14 @@ def normalize_workspace_config(raw: dict) -> dict:
 def load_workspace_config(path: Path | None = None) -> dict:
     """Read the host workspace config file; a missing file reads as the in-memory default."""
 
-    return normalize_workspace_config(_read_workspace_config(path))
+    raw = _read_workspace_config(path)
+    cfg = normalize_workspace_config(raw)
+    saved_roots = [raw.get("workspace_root")] + [
+        item.get("root") for item in raw.get("profiles") or [] if isinstance(item, dict)
+    ]
+    if any(_RENAMED_ROOT_PATTERN.search(_text(root)) for root in saved_roots):
+        cfg = save_workspace_config(cfg, path)
+    return cfg
 
 
 def save_workspace_config(payload: dict, path: Path | None = None) -> dict:

@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$InstallerPath,
 
-    [string]$FeedDir = "E:\ArcRho Server\releases\installers",
+    [string]$FeedDir = "E:\Arco Server\releases\installers",
 
     [string]$ReleaseNotes = "",
 

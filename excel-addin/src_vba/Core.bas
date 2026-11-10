@@ -2,7 +2,7 @@
 Option Private Module
 Option Explicit
 
-Public Const ARCRHO_VERSION As String = "4.2.4"
+Public Const ARCRHO_VERSION As String = "4.2.5"
 
 ' The workbook sheet that carries the default project name. A workbook set up
 ' by an earlier version, or by ResQ itself, holds the ResQ spelling instead.
@@ -74,7 +74,7 @@ Public Function ProductRootPath() As String
         Exit Function
     End If
 
-    ProductRootPath = "\\Ne7saswpn02\e\ArcRho Server"
+    ProductRootPath = "\\Ne7saswpn02\e\Arco Server"
 End Function
 
 Private Function EndsWithText(ByVal value As String, ByVal suffix As String) As Boolean

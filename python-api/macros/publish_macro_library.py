@@ -2,7 +2,7 @@
 
 Copies active ``*.py`` macros in this folder to the shared library that the
 ArcRho app's "Macro Library" window reads (default
-``E:\\ArcRho Server\\shared\\macros``, override with ``--library-dir`` or the
+``E:\\Arco Server\\shared\\macros``, override with ``--library-dir`` or the
 ``ARCRHO_MACRO_LIBRARY_DIR`` environment variable). Use ``--only`` to publish
 selected macros.
 
@@ -38,7 +38,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-DEFAULT_LIBRARY_DIR = r"E:\ArcRho Server\shared\macros"
+DEFAULT_LIBRARY_DIR = r"E:\Arco Server\shared\macros"
 LIBRARY_DIR_ENV = "ARCRHO_MACRO_LIBRARY_DIR"
 ARCHIVE_DIR_NAME = "archive"
 META_BEGIN = "# <arcrho-macro>"

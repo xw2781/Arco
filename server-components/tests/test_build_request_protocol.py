@@ -220,7 +220,7 @@ class ServerListenerStartTests(unittest.TestCase):
                 patch.object(deploy.time, "sleep"), \
                 patch.object(deploy, "require_live_listener",
                              side_effect=[contract.BuildListenerUnavailable("none"), live]):
-            self.assertEqual(deploy._start_server_listener(Path("E:/ArcRho Server")), live)
+            self.assertEqual(deploy._start_server_listener(Path("E:/Arco Server")), live)
         command = popen.call_args.args[0]
         self.assertEqual(Path(command[-1]), Path("E:/Repos/ArcRho-buildbot/server-components/build_manager.bat"))
 
@@ -230,7 +230,7 @@ class ServerListenerStartTests(unittest.TestCase):
                     patch.object(deploy, "workspace_drive_is_local", return_value=local), \
                     patch.object(deploy, "build_clones", return_value=clones), \
                     patch.object(deploy.subprocess, "Popen") as popen:
-                self.assertEqual(deploy._start_server_listener(Path("E:/ArcRho Server")), [])
+                self.assertEqual(deploy._start_server_listener(Path("E:/Arco Server")), [])
                 popen.assert_not_called()
 
 
@@ -649,7 +649,7 @@ class AutoListenDecisionTests(unittest.TestCase):
         if marked:
             (git_dir / self.components.BUILD_CLONE_MARKER).write_text("", encoding="utf-8")
         with patch.object(self.components, "workspace_drive_is_local", return_value=local):
-            return self.components.auto_listen_decision(self.root, Path(r"E:\ArcRho Server"))
+            return self.components.auto_listen_decision(self.root, Path(r"E:\Arco Server"))
 
     def test_the_server_pc_in_the_listeners_own_clone_listens_unasked(self) -> None:
         allowed, reason = self._decide(local=True, marked=True)
@@ -683,7 +683,7 @@ class AutoListenDecisionTests(unittest.TestCase):
 
     def test_a_directory_that_is_not_a_plain_clone_is_refused(self) -> None:
         with patch.object(self.components, "workspace_drive_is_local", return_value=True):
-            allowed, reason = self.components.auto_listen_decision(self.root, Path(r"E:\ArcRho Server"))
+            allowed, reason = self.components.auto_listen_decision(self.root, Path(r"E:\Arco Server"))
 
         self.assertFalse(allowed)
         self.assertIn("plain git clone", reason)

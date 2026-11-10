@@ -162,7 +162,7 @@ class ResqBerquistShermanMigrationTests(unittest.TestCase):
     def setUp(self):
         _TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
-        self.root = Path(self.tmp.name) / "ArcRho Server"
+        self.root = Path(self.tmp.name) / "Arco Server"
         self.project_dir = self.root / "projects" / "Demo"
         self.rc_dir = self.project_dir / "data" / "Auto_%5C_PP"
         for folder in ("datasets", "methods", "sidecars"):

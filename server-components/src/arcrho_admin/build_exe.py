@@ -31,6 +31,7 @@ from build_runtime import (
 align_workspace_root_env()
 
 from utils import (  # noqa: E402
+    DEFAULT_DEPLOY_ROOT,
     component_app_name,
     get_config_value,
     resolve_app_path,
@@ -38,7 +39,7 @@ from utils import (  # noqa: E402
 )
 
 BUILD_ROOT = PROJECT_ROOT / "builds" / BASE_DIR.name
-DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\ArcRho Server"))
+DEPLOY_ROOT = DEFAULT_DEPLOY_ROOT
 DEPLOY_ROOT_IS_LOCAL = is_local_fixed_path(DEPLOY_ROOT)
 APPS_DIR = DEPLOY_ROOT / "apps"
 VENV_PYTHON = PROJECT_ROOT / "venvs" / BASE_DIR.name / "Scripts" / "python.exe"

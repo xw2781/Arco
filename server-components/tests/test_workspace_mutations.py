@@ -117,7 +117,7 @@ class WorkspaceMutationContractTests(unittest.TestCase):
 
     def test_validation_rejects_machine_local_locations(self) -> None:
         with self.assertRaises(WorkspaceMutationContractError):
-            _request(reserving_class="E:\\ArcRho Server\\projects\\Demo")
+            _request(reserving_class="E:\\Arco Server\\projects\\Demo")
         with self.assertRaises(WorkspaceMutationContractError):
             _request(project_name="CON")
 
@@ -195,7 +195,7 @@ class WorkspaceMutationExecutorTests(unittest.TestCase):
                 409,
                 {
                     "error": "dataset_has_dependents",
-                    "message": "Blocked while reading E:\\ArcRho Server\\projects\\Demo",
+                    "message": "Blocked while reading E:\\Arco Server\\projects\\Demo",
                     "blocked_datasets": [
                         {
                             "dataset_name": "Paid Loss",

@@ -11,8 +11,8 @@ from typing import Any
 from server_config import resolve_server_config_path, write_server_config
 
 
-PROJECT_ROOT_NAMES = ("ArcRho Server", "ArcRho", "ADAS")
-DEFAULT_DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\ArcRho Server")).expanduser()
+PROJECT_ROOT_NAME = "Arco Server"
+DEFAULT_DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", rf"E:\{PROJECT_ROOT_NAME}")).expanduser()
 
 COMPONENTS = {
     "admin": {
@@ -109,9 +109,7 @@ def _frozen_project_root() -> Path | None:
     return None
 
 
-def find_project_root(start_path: Path, root_name: str | tuple[str, ...] = PROJECT_ROOT_NAMES) -> Path:
-    root_names = (root_name,) if isinstance(root_name, str) else root_name
-    root_names_lower = {name.lower() for name in root_names}
+def find_project_root(start_path: Path) -> Path:
     configured_root = _configured_root()
     if configured_root:
         return configured_root.resolve()
@@ -122,30 +120,12 @@ def find_project_root(start_path: Path, root_name: str | tuple[str, ...] = PROJE
         # workspace folder name.  Do not fall back to a drive/name heuristic.
         return frozen_root.resolve()
 
-    starts = []
-    starts.append(DEFAULT_DEPLOY_ROOT)
-    starts.append(start_path)
-
-    seen = set()
-    for start in starts:
+    for start in (DEFAULT_DEPLOY_ROOT, start_path):
         current = start.resolve()
-        if current in seen:
-            continue
-        seen.add(current)
-
         for candidate in (current, *current.parents):
-            if candidate.name.lower() in root_names_lower:
+            if candidate.name.lower() == PROJECT_ROOT_NAME.lower():
                 return candidate
-            if (
-                (candidate / "core" / "utils.py").exists()
-                and (
-                    (candidate / "config" / "config.json").exists()
-                    or (candidate / "core" / "config.json").exists()
-                )
-            ):
-                return candidate
-    names = ", ".join(root_names)
-    raise RuntimeError(f'Could not find parent folder named one of [{names}] from: {start_path}')
+    raise RuntimeError(f'Could not find a parent folder named "{PROJECT_ROOT_NAME}" from: {start_path}')
 
 
 PROJECT_ROOT = find_project_root(Path(__file__).resolve().parent)

@@ -59,7 +59,7 @@ from arcrho_api.sidecar_core_contract import (
     validate_sidecar_core,
 )
 
-DEFAULT_WORKSPACE = r"E:\ArcRho Server"
+DEFAULT_WORKSPACE = r"E:\Arco Server"
 SIDECAR_DIR_NAME = "sidecars"
 STAGING_DIR_NAME = ".arcrho-resq-import-staging"
 ENGINE_SOURCE_KIND = "engine"

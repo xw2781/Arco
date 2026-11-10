@@ -80,7 +80,7 @@ class ServerControlTests(unittest.TestCase):
 
     def test_start_clears_the_switches_and_launches_the_orchestrator_outside_the_callers_tree(self) -> None:
         exe = self._install_orchestrator()
-        inherited = {"ARCRHO_SERVER_ROOT": r"E:\ArcRho Server", "ARCRHO_GATEWAY_CONFIG": r"C:\cred.json"}
+        inherited = {"ARCRHO_SERVER_ROOT": r"E:\Arco Server", "ARCRHO_GATEWAY_CONFIG": r"C:\cred.json"}
         with patch.dict(os.environ, inherited), patch.object(control.subprocess, "Popen") as popen:
             self.assertTrue(control.start_server(self.root))
 

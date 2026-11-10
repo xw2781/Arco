@@ -42,7 +42,7 @@ from arcrho_dependent_propagation_contract import (  # noqa: E402
     engine_instances_directory as _canonical_engine_instances_directory,
 )
 
-_DEFAULT_SERVER_ROOT = r"E:\ArcRho Server"
+_DEFAULT_SERVER_ROOT = r"E:\Arco Server"
 ENGINE_HEARTBEAT_MAX_AGE_SEC = _CANONICAL_HEARTBEAT_MAX_AGE_SEC
 ENGINE_REQUEST_TIMEOUT_SEC = 60.0
 ENGINE_REQUEST_POLL_INTERVAL_SEC = 0.05

@@ -203,12 +203,12 @@ class ResQImportRunnerTests(unittest.TestCase):
                 "error_details": [{
                     "kind": "vector",
                     "name": "G 41 - BF Paid",
-                    "message": r"Input is unavailable at E:\ArcRho Server\projects\Demo\data\missing.csv",
+                    "message": r"Input is unavailable at E:\Arco Server\projects\Demo\data\missing.csv",
                 }],
                 "engine_parity_warnings": [{
                     "kind": "triangle",
                     "name": "Paid Loss",
-                    "message": r"Could not be compared with ResQ: E:\ArcRho Server\x.csv is unreadable",
+                    "message": r"Could not be compared with ResQ: E:\Arco Server\x.csv is unreadable",
                 }],
             }
 

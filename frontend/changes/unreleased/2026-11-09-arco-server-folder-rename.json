@@ -1,0 +1,11 @@
+{
+  "type": "breaking",
+  "scope": "server",
+  "audience": "user",
+  "summary": "The server folder is now E:\\Arco Server and the Excel add-in is Arco.xlam; update to keep working.",
+  "details": [
+    "Arco Workspace moves your saved server folder from E:\\ArcRho Server to E:\\Arco Server the first time it starts.",
+    "Setup registers the Excel add-in from its new place, E:\\Arco Server\\Excel Add-ins\\Arco.xlam, and turns off the old ArcRho.xlam entry so Excel no longer reports it missing.",
+    "Workbooks that still name ArcRho.xlam are pointed at the new add-in with Reset Add-in References."
+  ]
+}

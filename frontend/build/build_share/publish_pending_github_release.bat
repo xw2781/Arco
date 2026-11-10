@@ -33,7 +33,7 @@ if not defined PRODUCT_NAME set "PRODUCT_NAME=Arco"
 
 if /i "%PRODUCT_NAME%"=="Arco" (
     set "DEFAULT_LOCAL_ROOT=%USERPROFILE%\Documents\build_arcrho_app"
-    set "FEED_DIR=E:\ArcRho Server\releases\installers"
+    set "FEED_DIR=E:\Arco Server\releases\installers"
 ) else if /i "%PRODUCT_NAME%"=="Arcode" (
     set "DEFAULT_LOCAL_ROOT=%USERPROFILE%\Documents\build_arcode_app"
     set "FEED_DIR=E:\Arcode Server\releases\arcode-installers"

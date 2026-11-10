@@ -98,7 +98,7 @@ class ServerComponentStatusTests(unittest.TestCase):
         self.assertFalse(any(read_stop_switches(self.root).values()))
 
     def test_network_paths_are_never_local(self) -> None:
-        self.assertFalse(is_on_local_fixed_disk(r"\\NE7SASWPN02\E\ArcRho Server"))
+        self.assertFalse(is_on_local_fixed_disk(r"\\NE7SASWPN02\E\Arco Server"))
         self.assertFalse(is_on_local_fixed_disk("relative\\folder"))
         self.assertTrue(is_on_local_fixed_disk(self.root))
 

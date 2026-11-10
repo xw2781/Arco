@@ -124,7 +124,7 @@ class ArcRhoApiTests(unittest.TestCase):
         test_log("SETUP_STEP create_temporary_directory")
         self.tmp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
         test_log(f"SETUP_STEP temporary_directory_created={self.tmp.name}")
-        self.root = Path(self.tmp.name) / "ArcRho Server"
+        self.root = Path(self.tmp.name) / "Arco Server"
         self.project_dir = self.root / "projects" / "Demo"
         self.data_dir = self.project_dir / "data"
         self.rc_data_dir = self.data_dir / "Auto_%5C_PP"

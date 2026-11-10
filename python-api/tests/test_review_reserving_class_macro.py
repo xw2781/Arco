@@ -295,9 +295,9 @@ class ReviewMacroTests(unittest.TestCase):
     def test_the_workbook_is_reached_through_this_computers_own_server_root(self):
         """The Bridge names the file under the root, never by its own drive."""
 
-        path = self.module.workbook_path(r"\\server\share\ArcRho Server", _result())
+        path = self.module.workbook_path(r"\\server\share\Arco Server", _result())
 
-        self.assertEqual(path, Path(r"\\server\share\ArcRho Server") / _WORKBOOK_RELATIVE)
+        self.assertEqual(path, Path(r"\\server\share\Arco Server") / _WORKBOOK_RELATIVE)
 
     def test_a_result_without_a_workbook_is_refused(self):
         with self.assertRaisesRegex(self.module.BridgeRequestError, "where it wrote"):

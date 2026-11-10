@@ -125,7 +125,7 @@ class ArcRhoDevControlRuntimeTests(unittest.TestCase):
             self.assertEqual(discover.call_count, 2)
 
     def test_unreachable_workspace_share_warns_without_failing_state(self) -> None:
-        denied = PermissionError(5, "Access is denied", r"E:\ArcRho Server\projects")
+        denied = PermissionError(5, "Access is denied", r"E:\Arco Server\projects")
 
         with (
             patch.object(runtime, "_load_frontend_config", side_effect=denied),

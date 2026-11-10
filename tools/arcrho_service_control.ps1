@@ -30,12 +30,12 @@ param(
     [ValidateSet('status', 'stop', 'start', 'listener-stop', 'listener-start', 'clear-stale-heartbeats')]
     [string]$Action,
 
-    [string]$Root = 'E:\ArcRho Server\apps',
+    [string]$Root = 'E:\Arco Server\apps',
 
     # The clone the build listener owns. Never a clone anyone edits.
     [string]$ListenerRepo = 'E:\XWSpace\Repos\ArcRho-buildbot',
 
-    [string]$ServerRoot = 'E:\ArcRho Server',
+    [string]$ServerRoot = 'E:\Arco Server',
 
     # A heartbeat older than this, with no process behind it, is an orphan
     # left by a forced stop. The Engine writes one every few seconds.

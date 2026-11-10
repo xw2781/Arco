@@ -2,7 +2,7 @@
 
 A project's dataset-type table defines what every dataset instance in that
 project is, which of them are calculated, and what each formula refers to. The
-Engine applies a change to it on the machine where ``E:\\ArcRho Server`` is a
+Engine applies a change to it on the machine where ``E:\\Arco Server`` is a
 local drive, because rebuilding what the change re-derives means visiting every
 sidecar of every reserving class -- one SMB round trip each from a Client PC,
 inside a request the user is waiting on.

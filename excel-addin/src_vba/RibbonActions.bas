@@ -173,7 +173,7 @@ Sub UnloadAddIn()
     Dim addIn As addIn
     
     For Each addIn In AddIns
-        If StrComp(addIn.Name, "ArcRho.xlam", vbTextCompare) = 0 _
+        If StrComp(addIn.Name, "Arco.xlam", vbTextCompare) = 0 _
            Or StrComp(addIn.Name, "ARCRHO_BETA.xlam", vbTextCompare) = 0 Then
             addIn.Installed = False
             Exit For

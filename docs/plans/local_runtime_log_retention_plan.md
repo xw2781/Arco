@@ -24,7 +24,7 @@ In scope:
 - Files explicitly written by the ArcRho/Arcode Electron host or its packaged
   Python app server on a client computer.
 - ArcBot diagnostic files written under the user's local Documents folder.
-- Files written by deployed data-engine components under `E:\ArcRho Server`.
+- Files written by deployed data-engine components under `E:\Arco Server`.
 - Retained request/status artifacts that are not conventional logs but have the
   same indefinite disk-growth characteristic.
 - Build packaging that seeds a deployed runtime with existing debug logs.
@@ -54,7 +54,7 @@ runtime file.
 | `Documents\ArcRho\ArcBot\request_logs` | 53 | 837,947 | 2026-05-20 | One JSON timing/event log per ArcBot request. |
 | Deployed Bridge `resq_data_migration_debug.log` | 1 | 4,746,525 | Deployed 2026-08-09 | The build copied an existing 8,128-line source log into the deployed app. |
 | Source migration `resq_data_migration_debug.log` | 1 | 4,746,525 | 2026-06-19 | Ignored working-tree artifact that the Bridge build currently includes. |
-| `E:\ArcRho Server\runtime\logs\arcrho_admin.log` | 1 | 28,225 | 2026-05-24 | Append-only Admin Control log. |
+| `E:\Arco Server\runtime\logs\arcrho_admin.log` | 1 | 28,225 | 2026-05-24 | Append-only Admin Control log. |
 | Deployed Admin Control `arcrho_admin.log` | 1 | 3,304 | 2026-08-07 | Duplicate destination for the same Admin events. |
 
 The normal runtime-owned log footprint is currently under 10 MiB when the
@@ -70,7 +70,7 @@ The server request tree also contained 544 retained protocol files totaling
 - 4 project-duplication status files (1,354 bytes).
 - 8 project-duplication submission/receipt files (1,533 bytes).
 
-Bridge staging under `E:\ArcRho Server\r` was empty, confirming that the normal
+Bridge staging under `E:\Arco Server\r` was empty, confirming that the normal
 transactional cleanup path was functioning at the time of the audit.
 
 ## Findings
@@ -152,7 +152,7 @@ application data, and the deployed file remains the live append target.
 Owner: `server-components/src/arcrho_admin/main.py:12-23,123-124,197-225,281-299`.
 
 Admin Control appends every event to both its deployed application directory
-and `E:\ArcRho Server\runtime\logs\arcrho_admin.log`. Neither destination has
+and `E:\Arco Server\runtime\logs\arcrho_admin.log`. Neither destination has
 rotation or retention. Normal event volume is low, but a persistent heartbeat
 write failure records a traceback on every retry and can amplify growth.
 
@@ -227,7 +227,7 @@ entire age allowance before cleanup runs.
    before pruning it.
 4. Enumerate each network-drive folder once, classify entries from that listing,
    and delete in bounded batches. Do not perform sequential per-file re-stat
-   loops on `E:\ArcRho Server`.
+   loops on `E:\Arco Server`.
 5. Delete oldest eligible files first, with deterministic name ordering as a
    tie-breaker.
 6. Status cleanup must parse and validate only candidate terminal status files.
@@ -266,7 +266,7 @@ entire age allowance before cleanup runs.
 ### Phase 3: Bridge and Admin logging
 
 - Move Bridge migration diagnostics to
-  `E:\ArcRho Server\runtime\logs\resq_data_migration_debug.log`.
+  `E:\Arco Server\runtime\logs\resq_data_migration_debug.log`.
 - Replace append-only writes with rotation driven by the canonical policy.
 - Exclude the migration `logs` and `validation` folders from the Bridge bundle.
 - Consolidate Admin Control onto its server runtime log and add rotation.

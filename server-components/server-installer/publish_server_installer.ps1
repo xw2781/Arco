@@ -4,7 +4,7 @@ param(
 
     [string]$Repo = "xw2781/ArcRho",
 
-    [string]$FeedDir = "E:\ArcRho Server\releases\server-installers"
+    [string]$FeedDir = "E:\Arco Server\releases\server-installers"
 )
 
 $ErrorActionPreference = "Stop"

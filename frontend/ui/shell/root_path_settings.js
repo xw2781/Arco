@@ -1,7 +1,7 @@
 import { $, shell } from "./shell_context.js?v=20260510a";
 
 let rootPathModalWired = false;
-const DEFAULT_ROOT_PATH = "E:\\ArcRho Server";
+const DEFAULT_ROOT_PATH = "E:\\Arco Server";
 
 function setRootPathSetupMessage(text, isError = false) {
   const msg = $("rootPathSetupMessage");

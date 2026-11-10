@@ -366,7 +366,7 @@ class GatewayTests(unittest.TestCase):
 
     def test_absolute_reserving_class_path_is_rejected_before_acceptance(self) -> None:
         request = self._request("absolute-path-request")
-        request["Path"] = r"E:\ArcRho Server\projects\Demo"
+        request["Path"] = r"E:\Arco Server\projects\Demo"
         with self.assertRaises(gateway_main.GatewayHttpError) as raised:
             self.gateway.submit("alice", request)
         self.assertEqual(raised.exception.status_code, 400)

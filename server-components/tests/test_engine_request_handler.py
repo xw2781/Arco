@@ -29,10 +29,10 @@ def _request(**overrides):
         "Cumulative": True,
         "Transposed": False,
         "Calendar": False,
-        "DataPath": r"E:\ArcRho Server\output.csv",
+        "DataPath": r"E:\Arco Server\output.csv",
         "UserName": "tester",
         "RequestId": "request-123",
-        "StatusPath": r"E:\ArcRho Server\status.json",
+        "StatusPath": r"E:\Arco Server\status.json",
     }
     payload.update(overrides)
     return payload
@@ -173,7 +173,7 @@ class EngineRequestHandlerTests(unittest.TestCase):
             "TargetProjectName": "Target",
             "UserName": "tester",
         }
-        server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        server_root = Path(self.temp_dir.name) / "Arco Server"
 
         with (
             patch.object(engine_main, "read_json", return_value=request),
@@ -640,7 +640,7 @@ class EngineRequestHandlerTests(unittest.TestCase):
             patch.object(engine_main, "write_json", return_value=True),
             patch.object(engine_main, "_remove_instance_heartbeat") as remove_heartbeat,
         ):
-            engine_main.start_monitoring(r"E:\ArcRho Server\requests")
+            engine_main.start_monitoring(r"E:\Arco Server\requests")
 
         observer.schedule.assert_called_once()
         observer.start.assert_called_once_with()

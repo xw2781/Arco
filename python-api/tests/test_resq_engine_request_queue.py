@@ -23,7 +23,7 @@ class ResqEngineRequestQueueTests(unittest.TestCase):
     def setUp(self) -> None:
         _TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
-        self.root = Path(self.tmp.name) / "ArcRho Server"
+        self.root = Path(self.tmp.name) / "Arco Server"
         self.requests_dir = self.root / "requests"
         self.instances_dir = (
             self.root / "runtime" / "instances" / "arcrho_engine"

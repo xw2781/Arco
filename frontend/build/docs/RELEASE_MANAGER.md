@@ -63,7 +63,7 @@ rechecks the installer and fragment hashes before it creates the GitHub Release,
 changed installer or release fragment must be rebuilt rather than silently published.
 
 For ArcRho, the stored Python API wheel is published to the destination recorded during
-the build (normally `E:\ArcRho Server\packages`) only after the GitHub Release succeeds.
+the build (normally `E:\Arco Server\packages`) only after the GitHub Release succeeds.
 Then the existing repository bookkeeping workflow writes version metadata, release notes,
 and the matching fragment archive. The **Commit bookkeeping** setting is
 enabled by default; it never pushes a branch.

@@ -21,6 +21,7 @@ from arcrho_bridge.bundled_sources import (
 )
 from build_runtime import ensure_python_310_venv, stage_deploy, swap_deploy
 from utils import (
+    DEFAULT_DEPLOY_ROOT,
     component_app_name,
     get_config_value,
     resolve_app_path,
@@ -28,7 +29,7 @@ from utils import (
 )
 
 BUILD_ROOT = PROJECT_ROOT / "builds" / BASE_DIR.name
-DEPLOY_ROOT = Path(os.environ.get("ARCRHO_DEPLOY_ROOT", r"E:\ArcRho Server"))
+DEPLOY_ROOT = DEFAULT_DEPLOY_ROOT
 APPS_DIR = DEPLOY_ROOT / "apps"
 VENV_PYTHON = PROJECT_ROOT / "venvs" / BASE_DIR.name / "Scripts" / "python.exe"
 REQ_FILE = BASE_DIR / "requirements.txt"

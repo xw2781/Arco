@@ -137,7 +137,7 @@ class BridgeSyncQueuePathTests(unittest.TestCase):
     def setUp(self):
         TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self.temp_dir = tempfile.TemporaryDirectory(dir=str(TEST_TMP_ROOT))
-        self.server_root = Path(self.temp_dir.name) / "ArcRho Server"
+        self.server_root = Path(self.temp_dir.name) / "Arco Server"
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -457,7 +457,7 @@ class BridgeSyncRequestValidationTests(unittest.TestCase):
         for field in bridge_main._RESQ_IMPORT_FORBIDDEN_PATH_FIELDS:
             with self.subTest(field=field):
                 self._assert_rejected(
-                    _sync_request(**{field: r"E:\ArcRho Server"}),
+                    _sync_request(**{field: r"E:\Arco Server"}),
                     "must not supply path field",
                 )
 

@@ -64,7 +64,7 @@ one-step build-and-publish sequence.
 - Valid release fragments under `changes\unreleased`.
 
 An ArcRho publish additionally needs a reachable `PYTHON_API_PACKAGE_DIR` (default:
-`E:\ArcRho Server\packages`). Build-only mode retains the wheel locally, so it can run while
+`E:\Arco Server\packages`). Build-only mode retains the wheel locally, so it can run while
 that mapped workspace is unavailable.
 
 ## Build, Test, And Publish
@@ -118,7 +118,7 @@ frontend\build\build_app_from_local_repo.bat --build-only 1.3.0
 | --- | --- | --- |
 | `ARCRHO_BUILD_PRODUCT` | `arco` | Select `arco` or `arcode`. |
 | `ARCRHO_LOCAL_RELEASE_WORK_DIR` | `%USERPROFILE%\Documents\ArcRho Local Build` | Build logs and pending-release records, outside the repository. |
-| `PYTHON_API_PACKAGE_DIR` | `E:\ArcRho Server\packages` | Shared Python API wheel destination used at ArcRho publish time. |
+| `PYTHON_API_PACKAGE_DIR` | `E:\Arco Server\packages` | Shared Python API wheel destination used at ArcRho publish time. |
 | `PYTHON_EXE` | resolved via `py -3.10` | Python 3.10 interpreter used for packaging and workflow actions. |
 
 ## What Each Stage Writes

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run a private Arco Server on this PC for testing, next to production.
 
-The production server root (``E:\ArcRho Server``, the Server PC's share) is
+The production server root (``E:\Arco Server``, the Server PC's share) is
 shared by every user. This tool keeps a second, independent root on a local
 fixed disk -- ``C:\Arco Server`` by default, ``E:\XWSpace\Arco Server`` on the
 Server PC -- so server-component changes can

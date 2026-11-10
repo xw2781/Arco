@@ -48,13 +48,13 @@ test("localDayKey names the local calendar day and rejects a missing timestamp",
 test("a File Browser folder opened again today keeps its record from yesterday", () => {
   localStorage.clear();
   const { pushWorkspaceHistoryEntry, getWorkspaceHistoryEntries } = workspaceHistory;
-  pushWorkspaceHistoryEntry({ path: "E:\\ArcRho Server\\shared\\macros", ts: YESTERDAY });
-  pushWorkspaceHistoryEntry({ path: "E:\\ArcRho Server\\shared\\macros", ts: TODAY });
+  pushWorkspaceHistoryEntry({ path: "E:\\Arco Server\\shared\\macros", ts: YESTERDAY });
+  pushWorkspaceHistoryEntry({ path: "E:\\Arco Server\\shared\\macros", ts: TODAY });
   let entries = getWorkspaceHistoryEntries();
   assert.deepEqual(entries.map((entry) => entry.ts), [TODAY, YESTERDAY]);
 
   // Opening it once more today replaces only today's record, however the path is spelled.
-  pushWorkspaceHistoryEntry({ path: "e:/arcrho server/shared/macros", ts: TODAY + 1000 });
+  pushWorkspaceHistoryEntry({ path: "e:/arco server/shared/macros", ts: TODAY + 1000 });
   entries = getWorkspaceHistoryEntries();
   assert.deepEqual(entries.map((entry) => entry.ts), [TODAY + 1000, YESTERDAY]);
 });

@@ -53,38 +53,38 @@ from app_server.services import workspace_read_client
 class RebaseWorkspacePathsTests(unittest.TestCase):
     def test_server_paths_move_under_the_client_root(self) -> None:
         payload = {
-            "path": "E:\\ArcRho Server\\projects\\Demo\\data\\COL\\datasets\\Paid.csv",
-            "folder_paths": {"data": "e:/arcrho server/projects/Demo/data/COL"},
-            "values": [[1.0, None], ["E:\\ArcRho Server", "unrelated E:\\Other\\x"]],
+            "path": "E:\\Arco Server\\projects\\Demo\\data\\COL\\datasets\\Paid.csv",
+            "folder_paths": {"data": "e:/arco server/projects/Demo/data/COL"},
+            "values": [[1.0, None], ["E:\\Arco Server", "unrelated E:\\Other\\x"]],
             "count": 3,
         }
         rebased = workspace_read_client.rebase_workspace_paths(
-            payload, "E:\\ArcRho Server\\", "\\\\NE7SASWPN02\\e\\ArcRho Server"
+            payload, "E:\\Arco Server\\", "\\\\NE7SASWPN02\\e\\Arco Server"
         )
         self.assertEqual(
             rebased["path"],
-            "\\\\NE7SASWPN02\\e\\ArcRho Server\\projects\\Demo\\data\\COL\\datasets\\Paid.csv",
+            "\\\\NE7SASWPN02\\e\\Arco Server\\projects\\Demo\\data\\COL\\datasets\\Paid.csv",
         )
         self.assertEqual(
             rebased["folder_paths"]["data"],
-            "\\\\NE7SASWPN02\\e\\ArcRho Server\\projects\\Demo\\data\\COL",
+            "\\\\NE7SASWPN02\\e\\Arco Server\\projects\\Demo\\data\\COL",
         )
         self.assertEqual(rebased["values"][0], [1.0, None])
-        self.assertEqual(rebased["values"][1][0], "\\\\NE7SASWPN02\\e\\ArcRho Server")
+        self.assertEqual(rebased["values"][1][0], "\\\\NE7SASWPN02\\e\\Arco Server")
         self.assertEqual(rebased["values"][1][1], "unrelated E:\\Other\\x")
         self.assertEqual(rebased["count"], 3)
 
     def test_same_root_is_a_no_op(self) -> None:
-        payload = {"path": "E:\\ArcRho Server\\x"}
+        payload = {"path": "E:\\Arco Server\\x"}
         self.assertIs(
-            workspace_read_client.rebase_workspace_paths(payload, "E:\\ArcRho Server", "e:\\arcrho server\\"),
+            workspace_read_client.rebase_workspace_paths(payload, "E:\\Arco Server", "e:\\arco server\\"),
             payload,
         )
 
     def test_missing_roots_leave_payload_alone(self) -> None:
-        payload = {"path": "E:\\ArcRho Server\\x"}
+        payload = {"path": "E:\\Arco Server\\x"}
         self.assertIs(workspace_read_client.rebase_workspace_paths(payload, "", "C:\\x"), payload)
-        self.assertIs(workspace_read_client.rebase_workspace_paths(payload, "E:\\ArcRho Server", ""), payload)
+        self.assertIs(workspace_read_client.rebase_workspace_paths(payload, "E:\\Arco Server", ""), payload)
 
 
 class CapabilityTests(unittest.TestCase):

@@ -3,6 +3,14 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.2.5 - 2026-11-09
+
+- The add-in is now `Arco.xlam` in `E:\Arco Server\Excel Add-ins`, after the
+  server folder was renamed from `ArcRho Server`. Updating Arco Workspace
+  registers it in Excel and turns off the old `ArcRho.xlam` entry.
+- Reset Add-in References points workbooks that still name `ArcRho.xlam` at
+  the new add-in.
+
 ## 4.2.4 - 2026-10-28
 
 - Cells skipped by Refresh Workbook because their dataset is not in Arco keep

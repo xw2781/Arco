@@ -50,7 +50,7 @@ INPUT_FOLDER = r""   # folder holding the ResQ-connected workbooks
 OUTPUT_FOLDER = r""  # new folder that receives the Arco copies
 # ---------------------------------------------------------------------------
 
-ADDIN_PATH = r"E:\ArcRho Server\Excel Add-ins\ArcRho.xlam"
+ADDIN_PATH = r"E:\Arco Server\Excel Add-ins\Arco.xlam"
 REVIEW_PATH = Path.home() / "Downloads" / f"ResQ_vs_Arco_Review_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
 WORKBOOK_SUFFIXES = {".xlsx", ".xlsm", ".xlsb", ".xls"}
 SNAPSHOT_SHEET = "_ArcRhoCache"  # the add-in's hidden result store, never compared
@@ -188,7 +188,7 @@ def compare(dataset: Dataset) -> None:
 
 
 def run(excel, name: str, *args):
-    return excel.Run(f"'ArcRho.xlam'!{name}", *args)
+    return excel.Run(f"'Arco.xlam'!{name}", *args)
 
 
 def process_book(excel, target_path: str, result: BookResult) -> None:

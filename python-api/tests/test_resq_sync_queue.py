@@ -107,7 +107,7 @@ class QueueRequestTests(unittest.TestCase):
             ("..", r"Auto\PP"),
             ("De:mo", r"Auto\PP"),
             ("Demo", ""),
-            ("Demo", r"C:\ArcRho Server\projects\Demo"),
+            ("Demo", r"C:\Arco Server\projects\Demo"),
             ("Demo", r"Auto\..\PP"),
             ("Demo", r"\Auto\PP"),
         ):
@@ -226,7 +226,7 @@ class QueueBridgeAvailabilityTests(unittest.TestCase):
     def setUp(self):
         _TMP_ROOT.mkdir(parents=True, exist_ok=True)
         self._temp = tempfile.TemporaryDirectory(dir=str(_TMP_ROOT))
-        self.server_root = Path(self._temp.name) / "ArcRho Server"
+        self.server_root = Path(self._temp.name) / "Arco Server"
         # A missing Bridge is judged after a silence, not a look; keep it short here.
         self._patches = [
             patch.object(queue, "BRIDGE_SILENCE_LIMIT_SEC", 0.05),

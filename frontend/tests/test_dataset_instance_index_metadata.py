@@ -88,10 +88,10 @@ class DatasetInstanceIndexMetadataTests(unittest.TestCase):
 
     def _rebuild_patches(self, write_side_effect: OSError):
         folder_paths = {
-            "data": r"E:\ArcRho Server\projects\Example\data\Paid",
-            "datasets": r"E:\ArcRho Server\projects\Example\data\Paid\datasets",
-            "methods": r"E:\ArcRho Server\projects\Example\data\Paid\methods",
-            "sidecars": r"E:\ArcRho Server\projects\Example\data\Paid\sidecars",
+            "data": r"E:\Arco Server\projects\Example\data\Paid",
+            "datasets": r"E:\Arco Server\projects\Example\data\Paid\datasets",
+            "methods": r"E:\Arco Server\projects\Example\data\Paid\methods",
+            "sidecars": r"E:\Arco Server\projects\Example\data\Paid\sidecars",
         }
         payload = {
             "ok": True,
@@ -153,10 +153,10 @@ class DatasetInstanceIndexMetadataTests(unittest.TestCase):
         self.assertEqual([item["name"] for item in result["files"]], ["Paid Loss"])
         self.assertFalse(result["index_persisted"])
         self.assertEqual(result["folder_paths"], {
-            "data": r"E:\ArcRho Server\projects\Example\data\Paid",
-            "datasets": r"E:\ArcRho Server\projects\Example\data\Paid\datasets",
-            "methods": r"E:\ArcRho Server\projects\Example\data\Paid\methods",
-            "sidecars": r"E:\ArcRho Server\projects\Example\data\Paid\sidecars",
+            "data": r"E:\Arco Server\projects\Example\data\Paid",
+            "datasets": r"E:\Arco Server\projects\Example\data\Paid\datasets",
+            "methods": r"E:\Arco Server\projects\Example\data\Paid\methods",
+            "sidecars": r"E:\Arco Server\projects\Example\data\Paid\sidecars",
         })
         self.assertIn("Dataset table loaded from the dataset folder", result["index_warning"])
         self.assertIn("The network path was not found", result["index_warning"])

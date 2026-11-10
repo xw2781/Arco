@@ -18,7 +18,7 @@
   <h2>Connect</h2>
   <pre><code>from arcrho_api import ArcRhoClient
 
-client = ArcRhoClient(r"E:\ArcRho Server")
+client = ArcRhoClient(r"E:\Arco Server")
 print(client.list_projects())</code></pre>
 
   <h2>Open A DFM</h2>
@@ -51,7 +51,7 @@ dfm.save()</code></pre>
   <h2>Migrate Legacy Notebook Style</h2>
   <pre><code>from arcrho_api.migration import ArcRhoSession
 
-session = ArcRhoSession(r"E:\ArcRho Server")
+session = ArcRhoSession(r"E:\Arco Server")
 session.set_project("Current Reserve Review")
 session.set_reserving_class(r"Auto\Private Passenger")
 

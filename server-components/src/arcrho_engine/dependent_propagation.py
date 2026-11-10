@@ -2,7 +2,7 @@
 
 The Engine runs the canonical dependent cascade
 (``app_server.services.calculated_dataset_service.recalculate_dependents``)
-where ``E:\\ArcRho Server`` is a local drive. Requests queue under
+where ``E:\\Arco Server`` is a local drive. Requests queue under
 ``requests/dependent_propagation/requests`` and are retained until a validated
 terminal status exists; the reserving-class lease serializes Engine instances
 per class; concurrent queued requests for the same class are drained and
