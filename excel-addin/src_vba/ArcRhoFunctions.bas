@@ -315,6 +315,37 @@ Public Function ArcoProjectSettings(Optional ProjectName As String = "Default")
         
 End Function
 
+' The projects on the Arco Server, one name per row: all of them, or only
+' those in one folder of the Arco project tree, such as "Legacy\2025".
+' ShowFullPath puts each project's folder in front of its name. Reads the list
+' the add-in already holds for this Excel session; Connect and Login asks
+' again.
+Public Function ArcoProjectNames(Optional ByVal Folder As String = "", _
+                                 Optional ByVal ShowFullPath As Boolean = False) As Variant
+    Dim message As String, names As Variant, folders As Variant
+    Dim picked() As String, i As Long, n As Long
+
+    If Not LoadChoices("", message) Then
+        ArcoProjectNames = message
+        Exit Function
+    End If
+    names = ChoiceProjectNames()
+    folders = ChoiceProjectFolders()
+    Folder = Trim$(Replace(Folder, "/", "\"))
+    ReDim picked(1 To UBound(names))
+    For i = 1 To UBound(names)
+        If Len(Folder) = 0 Or StrComp(folders(i), Folder, vbTextCompare) = 0 Then
+            n = n + 1
+            picked(n) = names(i)
+            If ShowFullPath And Len(folders(i)) > 0 Then picked(n) = folders(i) & "\" & names(i)
+        End If
+    Next i
+    ArcoProjectNames = ""
+    If n = 0 Then Exit Function
+    ReDim Preserve picked(1 To n)
+    ArcoProjectNames = Application.WorksheetFunction.Transpose(picked)
+End Function
+
 Function ArcoReservingClasses(Optional Level, Optional WithDataOnly, Optional ProjectName) As Variant
     ArcoReservingClasses = ""
 End Function

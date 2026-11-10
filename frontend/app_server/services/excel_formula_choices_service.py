@@ -47,10 +47,14 @@ def _latest_project(projects: List[str]) -> str:
 
 
 def list_formula_choices(project_name: str = "") -> Dict[str, Any]:
-    projects = [item["name"] for item in project_settings_service._read_project_index()["projects"]]
+    folders = {item["name"]: item["folder"] for item in project_settings_service._read_project_index()["projects"]}
+    projects = list(folders)
+    names = sorted(projects, key=str.casefold)
     payload: Dict[str, Any] = {
         "ok": True,
-        "projects": sorted(projects, key=str.casefold),
+        "projects": names,
+        # Each project's folder in the project tree, in the order of "projects".
+        "project_folders": [folders[name] for name in names],
         "latest_project": _latest_project(projects),
         "project_name": "",
         "reserving_classes": [],

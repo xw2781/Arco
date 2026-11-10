@@ -86,6 +86,7 @@ class ExcelFormulaChoicesTests(unittest.TestCase):
             {
                 "ok": True,
                 "projects": ["A project", "A project copy", "b project"],
+                "project_folders": ["Team", "Backup", ""],
                 "latest_project": "A project",
                 "project_name": PROJECT,
                 "reserving_classes": [CLASS_PATH],

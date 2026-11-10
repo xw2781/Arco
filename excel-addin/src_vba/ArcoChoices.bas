@@ -9,7 +9,8 @@ Option Explicit
 ' session, so a picker opened again fills at once. Refresh asks again.
 
 Private projectNames As Variant   ' 1-based String array, or Empty until read
-Private latestProject As String   ' the server's latest project, for a new workbook's default
+Private projectFolders As Variant ' each project's folder in the Arco project tree, beside projectNames
+Private latestProject As String  ' the server's latest project, for a new workbook's default
 Private projectLists As Object    ' project name -> Dictionary of Classes and DatasetTypes
 
 ' Read the lists for projectName, or only the project names when it is "".
@@ -33,6 +34,7 @@ Public Function LoadChoices(ByVal projectName As String, ByRef outMessage As Str
 
     If Not GatewayFormulaChoices(projectName, reply, outMessage) Then Exit Function
     projectNames = StringArray(reply("projects"))
+    projectFolders = StringArray(reply("project_folders"))
     latestProject = CStr(reply("latest_project"))
     If Len(projectName) > 0 Then
         Set entry = CreateObject("Scripting.Dictionary")
@@ -45,6 +47,10 @@ End Function
 
 Public Function ChoiceProjectNames() As Variant
     ChoiceProjectNames = projectNames
+End Function
+
+Public Function ChoiceProjectFolders() As Variant
+    ChoiceProjectFolders = projectFolders
 End Function
 
 ' The project's reserving classes that hold data, or Empty.
@@ -86,34 +92,28 @@ Public Function WorkbookDefaultProject(ByVal book As Workbook) As String
     WorkbookDefaultProject = Mid$(projectValue, InStrRev(projectValue, "\") + 1)
 End Function
 
-' List the Arco Server's projects under the settings sheet's Project Names
-' heading and offer them as the Default Project Name cell's dropdown. A blank
-' Default Project Name becomes the latest project. Asks the server again, so
-' Connect and Login also refreshes the project list.
+' List the Arco Server's projects on the settings sheet with ArcoProjectNames
+' in A11, clearing column A from there down to make room, and offer that list
+' as the Default Project Name cell's dropdown. A blank Default Project Name
+' becomes the latest project. Asks the server again, so Connect and Login also
+' refreshes the project list.
 Public Sub OfferProjectDropdown(ByVal ws As Worksheet)
-    Dim names As Variant, message As String, rows() As String
-    Dim i As Long, lastRow As Long
+    Dim message As String
 
     If Not LoadChoices("", message, True) Then
         Application.StatusBar = "Arco: the project list could not be read. " & message
         Exit Sub
     End If
-    names = ChoiceProjectNames()
-    If IsEmpty(names) Then Exit Sub
+    If IsEmpty(ChoiceProjectNames()) Then Exit Sub
 
-    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).Row
-    If lastRow >= 9 Then ws.Range("B9:B" & lastRow).ClearContents
-    ReDim rows(1 To UBound(names), 1 To 1)
-    For i = 1 To UBound(names)
-        rows(i, 1) = names(i)
-    Next i
-    ws.Range("B9").Resize(UBound(names), 1).Value = rows
+    ws.Range("A11:A" & ws.Rows.Count).ClearContents
+    ws.Range("A11").Formula2 = "=ArcoProjectNames()"
 
     If Len(Trim$(CStr(ws.Range("B7").Value))) = 0 Then ws.Range("B7").Value = latestProject
     With ws.Range("B7").Validation
         .Delete
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertInformation, _
-             Formula1:="=$B$9:$B$" & (8 + UBound(names))
+             Formula1:="=$A$11#"
         .InCellDropdown = True
         .ErrorTitle = "Arco"
         .ErrorMessage = "That project is not on the Arco Server's project list."

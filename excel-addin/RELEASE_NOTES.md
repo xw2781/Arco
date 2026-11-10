@@ -3,6 +3,26 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.3.2 - 2026-11-10
+
+- Connect and Login no longer writes the project names into column B of the
+  `Arco Settings` sheet. The Default Project Name dropdown reads the
+  `ArcoProjectNames` list in A11 instead.
+
+## 4.3.1 - 2026-11-10
+
+- `ArcoProjectNames` takes an optional `Folder` and lists only the projects in
+  that folder of the Arco project list, such as `=ArcoProjectNames("Legacy")`.
+- Its optional `ShowFullPath`, when TRUE or 1, puts each project's folder in front
+  of its name, such as `Legacy\My Project`.
+
+## 4.3.0 - 2026-11-10
+
+- New function `ArcoProjectNames()` lists every project on the Arco Server,
+  one name per row.
+- Connect and Login puts that formula in cell A11 of the `Arco Settings`
+  sheet, clearing column A from row 11 down to make room.
+
 ## 4.2.7 - 2026-11-10
 
 - Connect and Login renames a workbook's `ResQ Settings` sheet to

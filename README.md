@@ -142,3 +142,4 @@ All functions use the `Arco` prefix.
 | `ArcoVecCell` | Vector | Returns a single element from a vector by 1-based index | `Path`, `VectorName`, `Index`, `[ProjectName]`, `[PeriodLength]` |
 | `ArcoHeaders` | Utility | Returns axis labels for triangle headers. `periodType = 0` = origin labels; `1` = development age labels | `periodType`, `Transposed`, `[PeriodLength]`, `[ProjectName]` |
 | `ArcoProjectSettings` | Utility | Returns project details: name, origin type, start/end dates, development end date, period lengths | `[ProjectName]` |
+| `ArcoProjectNames` | Utility | Returns every project name on the Arco Server as a spilled column. `Folder` keeps only the projects in that project-tree folder; `ShowFullPath = TRUE` puts each project's folder in front of its name | `[Folder]`, `[ShowFullPath]` |
