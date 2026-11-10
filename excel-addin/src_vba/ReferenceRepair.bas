@@ -186,6 +186,9 @@ Public Function UpdateWorkbookReferences(ByVal book As Workbook, ByVal targetPat
         GoTo Finish
     End If
     updated = ApplyReferenceEdits(book, edits, True)
+    If Not cancelUpdate And Not book.ProtectStructure Then
+        NameSettingsSheet book, IIf(functionPrefix = "ResQ", LEGACY_SETTINGS_SHEET_NAME, SETTINGS_SHEET_NAME)
+    End If
     If cancelUpdate Then
         UpdateWorkbookReferences = "Update cancelled. " & updated & " updated; " & edits.Count - updated & " not updated."
     ElseIf edits.Count = 0 Then

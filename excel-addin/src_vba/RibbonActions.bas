@@ -118,7 +118,8 @@ Public Sub SetupConnection2()
         Set sheet1 = ActiveWorkbook.Worksheets.Add(Before:=ActiveWorkbook.Sheets(1))
         sheet1.Name = SETTINGS_SHEET_NAME
     End If
-    
+    NameSettingsSheet ActiveWorkbook, SETTINGS_SHEET_NAME
+
     If Not SheetExists("Project Details") Then
         Set Sheet2 = ActiveWorkbook.Worksheets.Add(Before:=ActiveWorkbook.Sheets(2))
         Sheet2.Name = "Project Details"

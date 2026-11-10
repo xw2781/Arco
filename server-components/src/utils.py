@@ -250,7 +250,7 @@ def normalize_function_name(function_name: Any) -> str:
 
 
 def function_brand(function_name: Any) -> str:
-    return "ArcRho" if str(function_name).lower().startswith("arcrho") else "ADAS"
+    return "Arco" if str(function_name).lower().startswith("arcrho") else "ADAS"
 
 
 def is_vector_function(function_name: Any) -> bool:

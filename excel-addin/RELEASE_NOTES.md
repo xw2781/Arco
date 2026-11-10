@@ -3,6 +3,14 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.2.7 - 2026-11-10
+
+- Connect and Login renames a workbook's `ResQ Settings` sheet to
+  `Arco Settings`.
+- Reset Add-in References does the same when it points a workbook at Arco, and
+  renames the sheet back to `ResQ Settings` when it points a workbook at ResQ.
+- `ArcoProjectSettings` shows the folder as `Arco Virtual Project`.
+
 ## 4.2.6 - 2026-11-09
 
 - First-time sign-in starts the helper under its new name, `Arco Credential`,

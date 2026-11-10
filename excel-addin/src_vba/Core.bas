@@ -2,10 +2,11 @@
 Option Private Module
 Option Explicit
 
-Public Const ARCRHO_VERSION As String = "4.2.6"
+Public Const ARCRHO_VERSION As String = "4.2.7"
 
 ' The workbook sheet that carries the default project name. A workbook set up
-' by an earlier version, or by ResQ itself, holds the ResQ spelling instead.
+' by an earlier version, or by ResQ itself, holds the ResQ spelling instead,
+' and ResQ's own add-in reads only that spelling.
 ' VBA honours module-level declarations only above the first procedure, so
 ' these stay here rather than beside SettingsSheet.
 Public Const SETTINGS_SHEET_NAME As String = "Arco Settings"
@@ -256,6 +257,17 @@ Public Function SettingsSheet(ByVal book As Workbook) As Worksheet
     If SettingsSheet Is Nothing Then Set SettingsSheet = book.Worksheets(LEGACY_SETTINGS_SHEET_NAME)
     On Error GoTo 0
 End Function
+
+' Renames the workbook's settings sheet to the spelling the add-in in use reads.
+Public Sub NameSettingsSheet(ByVal book As Workbook, ByVal sheetName As String)
+    Dim ws As Worksheet
+    On Error Resume Next
+    Set ws = book.Worksheets(sheetName)
+    On Error GoTo 0
+    If Not ws Is Nothing Then Exit Sub
+    Set ws = SettingsSheet(book)
+    If Not ws Is Nothing Then ws.Name = sheetName
+End Sub
 
 Public Function SetDefaultProject(ByVal ProjectName As String)
     Dim tmpName As String

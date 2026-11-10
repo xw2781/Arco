@@ -7,6 +7,16 @@ requests use HTTP; no worksheet function reads project data from the share.
 
 The VBA source of record is [`src_vba/`](src_vba); the `.xlam` is built from it.
 
+## Installing on a PC
+
+Run `Arco Add-in Setup.exe`, which sits beside `Arco.xlam` on the share, and
+click **Install** with Excel closed. It adds that `Arco.xlam` to the current
+user's Excel add-in list in the registry and removes an older `Arco.xlam` or
+`ArcRho.xlam` entry. It never starts Excel or runs a macro, so the user's macro
+settings do not affect it. `/silent` installs without a window and exits 0 on
+success. The source is [`setup_app/`](setup_app); `tools/build_addin_setup.ps1`
+compiles it onto the share.
+
 ## Saved workbook results
 
 Use **Refresh Worksheet** or **Refresh Workbook** to fetch current results,
@@ -83,6 +93,9 @@ sheet-scoped defined names. It replaces supported `ResQ`, `ArcRho`, and `ADAS`
 function names with `Arco` names, and retargets ResQ's 32/64-bit installation
 paths, old UNC links, and beta links. Arguments, quoted text, table columns,
 unrelated workbook links, and unsupported function names stay intact.
+The settings sheet follows the target: `Arco Settings` for Arco, `ResQ Settings`
+for ResQ, whose add-in reads only that name. **Connect and Login** also renames
+a `ResQ Settings` sheet to `Arco Settings`.
 `ReferenceFormulaRepair.bas` owns the supported rename mapping;
 `ReferenceRepair.bas` owns the default target and workbook update flow.
 
