@@ -5,10 +5,12 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e5c82069-8544-44ee-aebf-2c2de9a79a83
-  modified: 2026-11-10T02:55:49.538Z
+  modified: 2026-11-10T03:36:11.119Z
 ---
 
 On 2026-11-09 the live server root moved to `E:\Arco Server` by copy (the old `E:\ArcRho Server` stays, its projects folder renamed `projects - backup`). Copied: projects, config, shared, Excel Add-ins, user-guide, packages, library, r, users, releases, archive, backups, apps, runtime\logs. Not copied: `requests`, `runtime\instances`, `runtime\locks`. All seven components were rebuilt into the new root and Arco.xlam 4.2.5 was released there.
+
+The same night the visible component names changed from `ArcRho X` to `Arco X` (app folders, exe and process names, shortcuts): `apps\Arco Engine\Arco Engine.exe` and likewise Bridge, Gateway, Orchestrator, Launcher, Admin Control, Credential. Internal names stayed: `arcrho_*` source and heartbeat folders, config keys, `ARCRHO_*` variables, icon files. The Launcher removes the old `ArcRho Launcher` Startup shortcut. Add-in 4.2.6 starts `Arco Credential`.
 
 **Why:** the old folder could not be renamed because another user's session (jhou, session 16) ran `ArcRho Gateway.exe` from it, holding port 28767.
 
