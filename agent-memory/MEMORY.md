@@ -11,6 +11,7 @@
 - [Engine in-process calculator](engine-in-process-calculator.md) — 2026-09-05: the Engine runs its own jobs' calculations in-process; job messages carry the
 - [Persisted JSON v4 progress](persisted-json-v4-progress.md) — plan closed 2026-09-06; only NJ_Annual_Prod_202605_Fake was converted, the rest re-import
 - [All users run the latest app version](all-users-run-latest-app-version.md) — no release markers, no old-client compatibility, no forced-update steps in plans
+- [Arco Server root move](arco-server-root-move.md) — 2026-11-09: live root copied to E:\Arco Server; listener must restart on new code; folder permissions and old Gateway need the user
 - [Commit authorship](commit-authorship.md) — commits are authored by xw2781 with no Claude co-author trailer
 - [Agent memory lives in the repo](agent-memory-in-repo.md) — memories tracked in agent-memory/, reached through a junction from
 - [Dev PC and Client PC identity](dev-pc-and-client-pc-identity.md) — run hostname first: L-H2MQ6280FVP is the Client PC (E:\ mapped), NE7SASWPN02 is the Server
