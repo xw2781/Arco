@@ -35,6 +35,17 @@ Two known causes seen 2026-09-27 (source NJ_Annual_Prod_2026 Q3-Aug):
   `os.replace` retries (~1.1 s) to the app polling the status file every 750 ms,
   and any progress-write failure aborts the whole copy.
 
+A third cause, seen 2026-11-11 (source IBNR_Allocation_2026 Sep), was a real
+MAX_PATH hit with a *fixed* stop point (class 2,859 of 3,614, every attempt):
+the staging folder name is 36 characters longer than that project's name, which
+carried a 224-character cache-provenance file to exactly 260, and the Server PC
+has `LongPathsEnabled=0` (the user cannot change it). The log shows it as
+`[Errno 2] No such file or directory` on the *staging* path, not as a length
+error. Fixed the same day: the copy addresses the projects folder as `\\?\...`.
+Only the copy job does this; the rest of the server code still uses plain
+paths, so a class whose own files pass 259 characters still cannot be saved.
+That project's longest file was 231 characters that day.
+
 **How to apply:** read the status JSON history *before* theorizing. Client PCs
 reach the server over a mapped network drive (`\\NE7SASWPN02\E`), so every
 duplication byte crosses SMB and transient sharing violations / session drops
