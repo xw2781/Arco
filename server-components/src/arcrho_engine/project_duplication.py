@@ -287,7 +287,23 @@ def _verified_projects_directory_path(
                 "reparse point."
             )
         current = candidate
-    return current
+    return _extended_length_path(current)
+
+
+def _extended_length_path(path: Path) -> Path:
+    """Return an absolute ``path`` in the form Windows exempts from MAX_PATH.
+
+    A long reserving-class folder under the staging name passes 260
+    characters, and the machine-wide long-path setting is off on the Server
+    PC. Every path the copy derives from the projects folder inherits this.
+    """
+
+    text = str(path)
+    if text.startswith("\\\\?\\"):
+        return path
+    if text.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + text[2:])
+    return Path("\\\\?\\" + text)
 
 
 def _find_child_case_insensitive(parent: Path, segment: str) -> Path | None:

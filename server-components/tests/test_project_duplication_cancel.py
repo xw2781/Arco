@@ -12,7 +12,7 @@ from unittest.mock import patch
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_SRC = REPOSITORY_ROOT / "server-components" / "src"
 CANONICAL_SRC = REPOSITORY_ROOT / "python-api" / "src"
-TEST_TMP_ROOT = Path(__file__).resolve().parent / "logs" / "tmp"
+TEST_TMP_ROOT = REPOSITORY_ROOT / "test"
 for source_root in (ENGINE_SRC, CANONICAL_SRC):
     if str(source_root) not in sys.path:
         sys.path.insert(0, str(source_root))
@@ -112,7 +112,8 @@ class ProjectDuplicationCancelTests(unittest.TestCase):
             result = real_copytree(source, target, *args, **kwargs)
             # copytree recurses through this same patched name, so only the
             # top-level project and reserving-class copies are recorded.
-            if Path(source).parent in (self.projects_dir, self.projects_dir / "Source" / "data"):
+            projects_dir = project_duplication._extended_length_path(self.projects_dir)
+            if Path(source).parent in (projects_dir, projects_dir / "Source" / "data"):
                 copied.append(Path(source).name)
             # The user presses Cancel while the first reserving class copies.
             if Path(source).name == "RC A":

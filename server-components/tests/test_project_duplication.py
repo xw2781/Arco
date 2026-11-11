@@ -13,7 +13,7 @@ from unittest.mock import patch
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ENGINE_SRC = REPOSITORY_ROOT / "server-components" / "src"
 CANONICAL_SRC = REPOSITORY_ROOT / "python-api" / "src"
-TEST_TMP_ROOT = Path(__file__).resolve().parent / "logs" / "tmp"
+TEST_TMP_ROOT = REPOSITORY_ROOT / "test"
 for source_root in (ENGINE_SRC, CANONICAL_SRC):
     if str(source_root) not in sys.path:
         sys.path.insert(0, str(source_root))
@@ -307,6 +307,29 @@ class ProjectDuplicationTests(unittest.TestCase):
         lock_dir = self.server_root / "requests" / "project_duplication" / "locks"
         self.assertEqual(list(lock_dir.glob("*.lock")), [])
 
+    def test_duplicate_copies_a_class_whose_staged_path_passes_max_path(self):
+        source = self._create_source()
+        tail = Path("datasets") / "paid.csv"
+        # 250 characters fits Windows' 260 limit in the source and the target;
+        # the longer staging folder name carries the same file past it.
+        long_class = "L" * (250 - len(str(source / "data" / "L" / tail)) + 1)
+        (source / "data" / long_class / "datasets").mkdir(parents=True)
+        (source / "data" / long_class / tail).write_text("3,4\n", encoding="utf-8")
+
+        total = project_duplication.duplicate_project(
+            self.server_root,
+            self._request(),
+            progress_callback=lambda _event: None,
+        )
+
+        self.assertEqual(total, 3)
+        self.assertEqual(
+            (self.projects_dir / "Target" / "data" / long_class / tail).read_text(
+                encoding="utf-8"
+            ),
+            "3,4\n",
+        )
+
     def test_existing_target_is_never_modified(self):
         self._create_source()
         target = self.projects_dir / "Target"
@@ -357,7 +380,7 @@ class ProjectDuplicationTests(unittest.TestCase):
                 return False
 
         def manifest_with_reparse(path, *, include_transient=False):
-            if Path(path) == source:
+            if Path(path) == project_duplication._extended_length_path(source):
                 with patch.object(
                     project_duplication.os,
                     "scandir",
@@ -1298,7 +1321,7 @@ class ProjectDuplicationTests(unittest.TestCase):
         inspect_path = project_duplication._path_is_link_or_reparse
 
         def mark_target_as_reparse(path):
-            if Path(path) == target:
+            if Path(path) == project_duplication._extended_length_path(target):
                 return True
             return inspect_path(path)
 
