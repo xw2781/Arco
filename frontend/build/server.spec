@@ -14,7 +14,7 @@ for import_root in (python_api_src, repo_root):
 
 # Collect served frontend assets and app-server data files.
 static_files = []
-for asset_dir_name in ('ui', 'icons', 'app_server/default_preferences'):
+for asset_dir_name in ('ui', 'icons', 'app_server/default_preferences', 'app_server/default_dashboards'):
     asset_dir = repo_root / asset_dir_name
     if asset_dir.exists():
         for f in asset_dir.rglob('*'):

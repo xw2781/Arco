@@ -70,6 +70,8 @@ No new browser-facing route. These existing routes select the transport per requ
 | `POST /scripting/macro-library/install`, and the check before `POST /scripting/run-macro` | `macro_library_file` | `macro_library_service.read_library_file` |
 | `GET /arcbot/prompt-files` (called by the Electron host's ArcBot) | `arcbot_prompt_files` | `arcbot_prompt_service.read_arcbot_prompt_files` |
 | `GET /arcbot/agent-skills` (called by the Electron host's ArcBot; also read by the Show Diagnostic Triangle macro) | `agent_skills` | `agent_skill_service.read_agent_skills` |
+| `POST /dashboard/source/load` for an Arco Datasets source, once per project | `dashboard_dataset_table` | `dashboard_data_service.read_dataset_table` |
+| `POST /dashboard/source/load` and `POST /dashboard/source/fields` for an Arco Source Table source, once per project | `dashboard_source_table` | `dashboard_data_service.read_source_table` |
 
 The project configuration reads from `project_settings_sources` down were added by step 7 of [client_smb_retirement.md](../../../../docs/plans/client_smb_retirement.md). Each was Gateway-required from the start (since step 18 every read is), so a Client PC answers `401` or `503` rather than reading the share, and each service returns the route's whole answer, refusals included, so the two transports answer alike.
 

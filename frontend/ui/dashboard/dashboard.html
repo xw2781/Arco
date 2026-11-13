@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/ui/shared/services/color_theme.js?v=20260923c"></script>
+  <title>Dashboards</title>
+  <link rel="stylesheet" href="/ui/shared/styles/scrollbars.css?v=20260516a"/>
+  <link rel="stylesheet" href="/ui/dashboard/icons/dashboard_icons.css?v=20261113a"/>
+  <link rel="stylesheet" href="/ui/dashboard/dashboard.css?v=20261113a"/>
+  <link rel="stylesheet" href="/ui/shared/styles/themes/light.css?v=20260923c">
+  <link rel="stylesheet" href="/ui/shared/styles/themes/dark.css?v=20260923c">
+  <link rel="stylesheet" href="/ui/shared/styles/themes/revolutionary.css?v=20260923c">
+</head>
+<body id="dbPage">
+  <div id="dbGallery" class="dbGallery">
+    <header class="dbGalleryHeader">
+      <h1>Dashboards</h1>
+    </header>
+    <main class="dbGalleryMain">
+      <div id="dbGalleryMessage" class="dbGalleryMessage" role="status" aria-live="polite"></div>
+      <section class="dbGalleryGroup">
+        <div class="dbSectionLabel">My Dashboards</div>
+        <div id="dbMyDashboards" class="dbCards"></div>
+      </section>
+      <section id="dbSamplesGroup" class="dbGalleryGroup" hidden>
+        <div class="dbSectionLabel">Samples</div>
+        <div id="dbSamples" class="dbCards"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="dbWorkbook" class="dbWorkbook" hidden>
+    <header class="dbTopbar">
+      <button id="dbBack" class="dbBtn" type="button">All Dashboards</button>
+      <div class="dbNameBlock">
+        <span id="dbName" class="dbName"></span>
+        <span id="dbSampleChip" class="dbStatusChip" hidden>Sample</span>
+        <span id="dbDirtyChip" class="dbStatusChip dbStatusChipDirty" hidden>Unsaved</span>
+      </div>
+      <span id="dbStatus" class="dbStatus" role="status" aria-live="polite"></span>
+      <div class="dbTopActions">
+        <div class="dbSegment" role="group" aria-label="Mode">
+          <button id="dbModeView" type="button">View</button>
+          <button id="dbModeEdit" type="button">Edit</button>
+        </div>
+        <button id="dbUndo" class="dbBtn" type="button">Undo</button>
+        <button id="dbRedo" class="dbBtn" type="button">Redo</button>
+        <button id="dbRefresh" class="dbBtn" type="button"><span class="dbIcon" data-db-icon="refresh" aria-hidden="true"></span><span>Refresh Data</span></button>
+        <button id="dbAsk" class="dbBtn" type="button"><span class="dbIcon" data-db-icon="assistant" aria-hidden="true"></span><span>Ask ArcBot</span></button>
+        <button id="dbSave" class="dbBtn primary" type="button">Save</button>
+        <button id="dbMore" class="dbBtn" type="button" aria-haspopup="listbox">More</button>
+      </div>
+    </header>
+    <div id="dbPages" class="dbPages" role="tablist"></div>
+    <div class="dbBody">
+      <aside id="dbLeft" class="dbSide" hidden>
+        <div class="dbSegment dbSideTabs" role="group" aria-label="Panel">
+          <button id="dbTabLibrary" type="button">Library</button>
+          <button id="dbTabData" type="button">Data</button>
+        </div>
+        <div id="dbLeftBody" class="dbSideBody"></div>
+      </aside>
+      <main class="dbMain">
+        <div id="dbFilterBar" class="dbFilterBar" hidden></div>
+        <div class="dbCanvasScroll">
+          <div id="dbCanvas" class="dbCanvas"></div>
+        </div>
+      </main>
+      <aside id="dbRight" class="dbSide dbInspector" hidden></aside>
+    </div>
+  </div>
+  <script type="module" src="./dashboard_main.js?v=20261113a"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "type": "feature",
+  "scope": "dashboards",
+  "audience": "user",
+  "summary": "Added Dashboards: build interactive charts over Arco projects, CSV files and SQL queries without code.",
+  "details": [
+    "A new Dashboards card on Home opens your dashboards and four ready-made samples.",
+    "Drag charts from a library, pick fields from lists, and save your own widgets to the library for reuse.",
+    "One dashboard can read several projects at once and chart what changed between two valuations.",
+    "Clicking a bar or a cell filters the other charts on the page; every chart can also be shown as a table.",
+    "ArcBot can summarize what a dashboard shows and add or change charts from a chat request."
+  ]
+}

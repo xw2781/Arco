@@ -92,6 +92,7 @@ const TAB_OPENERS = {
   workflow: () => shell.openWorkflowTab?.(),
   file_explorer: () => shell.openFileExplorerTab?.(),
   browsing_history: () => shell.openBrowsingHistoryTab?.(),
+  dashboard: (args) => shell.openDashboardTab?.({ ...(args.options || {}) }),
   agent_guide: () => shell.openAgentGuideTab?.(),
   task_designer: (args) => shell.openTaskDesigner?.({ ...(args.options || {}) }),
 };

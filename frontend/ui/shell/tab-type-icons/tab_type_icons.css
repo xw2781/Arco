@@ -85,6 +85,10 @@
   -webkit-mask-image: url("task_designer.svg?v=20260821a");
   mask-image: url("task_designer.svg?v=20260821a");
 }
+.tabTypeIcon[data-tab-type="dashboard"] {
+  -webkit-mask-image: url("dashboard.svg?v=20261113a");
+  mask-image: url("dashboard.svg?v=20261113a");
+}
 .tabTypeIcon[data-tab-type="server"] {
   -webkit-mask-image: url("server.svg?v=20260926a");
   mask-image: url("server.svg?v=20260926a");

@@ -17,6 +17,10 @@ const ICON_PATHS = {
   shortcut: '<path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7l-1.2 1.2"></path><path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.2-1.2"></path>',
 };
 
+// Kinds whose artwork is a file in `home-card-icons/`, applied as a mask by that folder's
+// stylesheet. New cards are added here rather than to `ICON_PATHS` above.
+const FILE_ICON_KINDS = new Set(["dashboard"]);
+
 // Restorable tab type -> icon kind. Types absent here fall back to the generic shortcut glyph.
 const TAB_TYPE_ICON_KINDS = {
   file_explorer: "files",
@@ -29,6 +33,7 @@ const TAB_TYPE_ICON_KINDS = {
   project_instance: "projectInstance",
   agent_guide: "agentGuide",
   server: "server",
+  dashboard: "dashboard",
 };
 
 export function homeCardIconKind(tabType) {
@@ -36,6 +41,9 @@ export function homeCardIconKind(tabType) {
 }
 
 export function homeCardIcon(kind) {
+  if (FILE_ICON_KINDS.has(kind)) {
+    return `<div class="homeIconBox ${kind}" aria-hidden="true"><span class="homeIcon homeCardFileIcon" data-home-icon="${kind}"></span></div>`;
+  }
   const safeKind = ICON_PATHS[kind] ? kind : "shortcut";
   return `<div class="homeIconBox ${safeKind}" aria-hidden="true"><svg class="homeIcon" viewBox="0 0 24 24">${ICON_PATHS[safeKind]}</svg></div>`;
 }

@@ -78,6 +78,8 @@ notebook's session plus Python built-ins. Streamed and non-streamed execution
 share `?name` help and final-expression behavior; help never calls the target.
 See [scripting intelligence](../app_server/domains/scripting.md).
 
+A dashboard reads project data only through the registered `dashboard_dataset_table` and `dashboard_source_table` workspace reads, once per project a data source names; both are reads that build and write nothing, and a Client PC never opens a dataset or the imported table over the share for one. `dashboard_data_service.table_payload` owns the one table shape every source kind returns. A cumulative triangle column is marked semi-additive and totals by its newest development period per origin, never across development periods. Dashboard files and library items are per-user files outside the project workspace. See [the dashboard domain](../app_server/domains/dashboard.md).
+
 ## Before Finishing
 
 1. State which business-logic area changed, or state "no business-logic impact."

@@ -236,6 +236,14 @@ def _get_workflow_dir() -> str:
     return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "workflows")
 
 
+def _get_dashboard_dir() -> str:
+    """This user's saved dashboards. `ARCRHO_DASHBOARD_DIR` moves it for a test."""
+    configured = str(os.environ.get("ARCRHO_DASHBOARD_DIR") or "").strip()
+    if configured:
+        return configured
+    return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "dashboards")
+
+
 def _get_scripting_dir() -> str:
     if _is_arcode_mode():
         configured = str(os.environ.get("ARCODE_DATA_DIR") or "").strip()
@@ -280,6 +288,12 @@ PROJECT_SETTINGS_SOURCES = {
 }
 
 WORKFLOW_EXT = ".arcwf"
+DASHBOARD_EXT = ".arcdash"
+# Saved widgets and chart templates a user added to the dashboard library.
+DASHBOARD_LIBRARY_SUBDIR = "library"
+# The sample dashboards and the built-in library that ship with the app.
+DEFAULT_DASHBOARDS_DIR = PROJECT_ROOT / "app_server" / "default_dashboards"
+DEFAULT_DASHBOARD_LIBRARY_FILE = "library.json"
 
 # ---------------------------------------------------------------------------
 # Mutable runtime paths — refreshed from config
@@ -288,6 +302,7 @@ WORKFLOW_EXT = ".arcwf"
 DATA_DIR: str = ""
 PROJECT_SETTINGS_DIR: str = ""
 WORKFLOW_DIR: str = ""
+DASHBOARD_DIR: str = ""
 SCRIPTING_DIR: str = ""
 MACRO_DIR: str = ""
 MACRO_LIBRARY_DIR: str = ""
@@ -298,9 +313,10 @@ REQUEST_DIR: str = ""
 def refresh_runtime_paths() -> None:
     """Refresh runtime directories from workspace path config."""
     global DATA_DIR, PROJECT_SETTINGS_DIR, WORKFLOW_DIR, SCRIPTING_DIR, MACRO_DIR
-    global MACRO_LIBRARY_DIR, ALLOWED_BOOK_DIRS, REQUEST_DIR
+    global MACRO_LIBRARY_DIR, ALLOWED_BOOK_DIRS, REQUEST_DIR, DASHBOARD_DIR
     PROJECT_SETTINGS_DIR = _get_project_map_dir()
     WORKFLOW_DIR = _get_workflow_dir()
+    DASHBOARD_DIR = _get_dashboard_dir()
     SCRIPTING_DIR = _get_scripting_dir()
     MACRO_DIR = _get_macro_dir()
     MACRO_LIBRARY_DIR = _get_macro_library_dir()

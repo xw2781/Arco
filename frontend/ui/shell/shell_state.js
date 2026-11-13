@@ -108,6 +108,7 @@ export function loadState() {
       projectTablePath: t.type === "project_instance" ? String(t.projectTablePath || "").trim() : undefined,
       projectInstanceState: t.type === "project_instance" ? normalizeProjectInstanceState(t.projectInstanceState || null) || undefined : undefined,
       fileExplorerPath: t.type === "file_explorer" ? String(t.fileExplorerPath || "").trim() || undefined : undefined,
+      dashboardPath: t.type === "dashboard" ? String(t.dashboardPath || "").trim() || undefined : undefined,
       projectSettingsRibbon: t.type === "project_settings"
         ? (String(t.projectSettingsRibbon || "").trim().toLowerCase() || "summary")
         : undefined,
@@ -185,6 +186,7 @@ export function buildShellStateSnapshot() {
       projectTablePath: t.type === "project_instance" ? String(t.projectTablePath || "").trim() : undefined,
       projectInstanceState: t.type === "project_instance" ? normalizeProjectInstanceState(t.projectInstanceState || null) || undefined : undefined,
       fileExplorerPath: t.type === "file_explorer" ? String(t.fileExplorerPath || "").trim() || undefined : undefined,
+      dashboardPath: t.type === "dashboard" ? String(t.dashboardPath || "").trim() || undefined : undefined,
       projectSettingsRibbon: t.type === "project_settings"
         ? String(t.projectSettingsRibbon || "").trim().toLowerCase()
         : undefined,

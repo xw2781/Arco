@@ -574,6 +574,22 @@ WORKSPACE_READ_KINDS: dict[str, WorkspaceReadKind] = {
         (),
         ("skill_id",),
     ),
+    # A dashboard's project data as one flat table: the datasets of several
+    # reserving classes side by side, or the imported table grouped by the
+    # fields a dashboard charts. One request answers for every class it names,
+    # where a Client PC would otherwise load each dataset on its own.
+    "dashboard_dataset_table": WorkspaceReadKind(
+        "dashboard_data_service",
+        "read_dataset_table",
+        ("project_name", "reserving_classes", "dataset_names"),
+        ("level_names",),
+    ),
+    "dashboard_source_table": WorkspaceReadKind(
+        "dashboard_data_service",
+        "read_source_table",
+        ("project_name",),
+        ("dimensions", "measures"),
+    ),
 }
 
 HTTP_WORKSPACE_READ_KINDS: tuple[str, ...] = tuple(sorted(WORKSPACE_READ_KINDS))

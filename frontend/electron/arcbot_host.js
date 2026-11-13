@@ -342,6 +342,46 @@ function getClaudeCommand() {
   return findExecutableOnPath(["claude"]) || "";
 }
 
+// A dashboard page sends its whole document (without its saved tables), how to
+// edit it, and the numbers its charts show. A Claude turn has no file to edit,
+// so in Edit Mode it returns the edited document in its reply instead and the
+// host hands that to the page exactly as a Codex edit is handed over.
+const CLAUDE_DASHBOARD_JSON_LIMIT = 120000;
+const JSON_FENCE = "```";
+
+function isArcBotDashboardContext(activeContext) {
+  return String(activeContext?.pageType || "").trim().toLowerCase() === "dashboard";
+}
+
+function buildClaudeDashboardPrompt(mode, activeContext, activeJson) {
+  const parts = [];
+  if (activeContext?.assistantGuide) parts.push(String(activeContext.assistantGuide));
+  if (activeContext?.dashboardPage) {
+    const shown = JSON.stringify(activeContext.dashboardPage).slice(0, 40000);
+    parts.push(["What the open dashboard page shows now:", `${JSON_FENCE}json`, shown, JSON_FENCE].join("\n"));
+  }
+  const jsonText = activeJson && !activeJson.error ? JSON.stringify(activeJson) : "";
+  if (!jsonText) return parts;
+  parts.push(["The dashboard document:", `${JSON_FENCE}json`, jsonText.slice(0, CLAUDE_DASHBOARD_JSON_LIMIT), JSON_FENCE].join("\n"));
+  // An edit replaces the whole document, so it is offered only when the whole document was sent.
+  if (mode === "edit" && jsonText.length <= CLAUDE_DASHBOARD_JSON_LIMIT) {
+    parts.push([
+      "To change the dashboard, reply with one JSON object and nothing else:",
+      '{"action":"edited","reply":"<short summary for the user>","dashboard":{...the complete updated dashboard document...}}',
+      "Return the whole document, not a fragment. When the request needs no change, answer in plain text instead.",
+    ].join("\n"));
+  }
+  return parts;
+}
+
+// The edited dashboard a Claude reply carries, or null when the reply is an answer.
+function extractClaudeDashboardEdit(rawText) {
+  const structured = extractJsonObject(rawText);
+  const dashboard = structured?.action === "edited" ? structured.dashboard : null;
+  if (!dashboard || typeof dashboard !== "object" || !Array.isArray(dashboard.pages)) return null;
+  return { reply: String(structured.reply || "").trim(), dashboard };
+}
+
 // A skill needs the whole ratio triangle, so a skill turn lifts the active-data cap.
 function buildClaudeSystemPrompt(mode, activeContext, activeJson, skill = null) {
   const parts = [
@@ -355,7 +395,9 @@ function buildClaudeSystemPrompt(mode, activeContext, activeJson, skill = null) 
     parts.push(`Current app context: ${tabLabel}${activeContext.tabType ? ` (${activeContext.tabType})` : ""}.`);
     if (activeContext.targetPath) parts.push(`Active file: ${withFileNamesOnly(activeContext.targetPath)}`);
   }
-  if (activeJson && typeof activeJson === "object" && !activeJson.error) {
+  if (isArcBotDashboardContext(activeContext)) {
+    parts.push(...buildClaudeDashboardPrompt(mode, activeContext, activeJson));
+  } else if (activeJson && typeof activeJson === "object" && !activeJson.error) {
     const jsonStr = JSON.stringify(activeJson, null, skill ? 0 : 2).slice(0, skill ? 150000 : 12000);
     parts.push(`Active page data:\n\`\`\`json\n${jsonStr}\n\`\`\``);
   }
@@ -2105,7 +2147,7 @@ function getAssistantTargetJsonPath(activeContext) {
 
 function isArcBotEditableTarget(targetPath) {
   const extension = path.extname(String(targetPath || "").trim()).toLowerCase();
-  return [".json", ".ipynb", ".arcnb"].includes(extension);
+  return [".json", ".ipynb", ".arcnb", ".arcdash"].includes(extension);
 }
 
 // ArcBot never reads or writes the target file. It edits the JSON the open
@@ -3435,6 +3477,24 @@ ipcMain.handle("codex-assistant-send", async (event, payload) => {
           usage,
         });
       }
+    }
+    const dashboardEdit = !editSession && isArcBotDashboardContext(activeContext) && isArcBotEditableTarget(targetPath)
+      ? extractClaudeDashboardEdit(rawText)
+      : null;
+    if (dashboardEdit) {
+      sendArcBotActivity(event, requestId, "activity", "Handing the edit to the page...");
+      requestLog.mark("edit_handed_to_page", { targetPath, pendingApproval: false, replyFromStructuredOutput: true });
+      return finishArcBotRequest({
+        ok: true,
+        text: dashboardEdit.reply || "Prepared the edit.",
+        editProposed: true,
+        editPendingApproval: false,
+        targetPath,
+        originalJson: activeJson,
+        proposedJson: dashboardEdit.dashboard,
+        proposedText: formatJsonForArcBot(dashboardEdit.dashboard),
+        usage,
+      });
     }
     const structured = extractJsonObject(rawText);
     if (structured?.action === "answer" || structured?.action === "edited" || structured?.action === "no_edit") {

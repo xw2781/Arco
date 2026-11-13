@@ -1,0 +1,118 @@
+{
+  "format": "arco-dashboard-library",
+  "version": 1,
+  "assets": [
+    {
+      "id": "bar",
+      "name": "Bar Chart",
+      "category": "Charts",
+      "description": "Compare a number across categories.",
+      "widget": {"type": "bar", "title": "Bar Chart"}
+    },
+    {
+      "id": "stacked_bar",
+      "name": "Stacked Bar Chart",
+      "category": "Charts",
+      "description": "Show how a total splits across a second field.",
+      "widget": {"type": "bar", "title": "Stacked Bar Chart", "options": {"stacked": true}}
+    },
+    {
+      "id": "ranked_bar",
+      "name": "Ranked Bars",
+      "category": "Charts",
+      "description": "Horizontal bars, largest first.",
+      "widget": {"type": "bar", "title": "Ranked Bars", "options": {"horizontal": true}, "sort": {"by": "value", "dir": "desc"}, "limit": 12, "layout": {"w": 5, "h": 6}}
+    },
+    {
+      "id": "line",
+      "name": "Line Chart",
+      "category": "Charts",
+      "description": "Follow a number across an ordered field.",
+      "widget": {"type": "line", "title": "Line Chart"}
+    },
+    {
+      "id": "area",
+      "name": "Area Chart",
+      "category": "Charts",
+      "description": "A line with a light fill down to zero.",
+      "widget": {"type": "area", "title": "Area Chart"}
+    },
+    {
+      "id": "scatter",
+      "name": "Scatter Plot",
+      "category": "Charts",
+      "description": "Plot two numbers against each other, one point per category.",
+      "widget": {"type": "scatter", "title": "Scatter Plot"}
+    },
+    {
+      "id": "heatmap",
+      "name": "Heat Map",
+      "category": "Charts",
+      "description": "Shade a grid of two fields by a number.",
+      "widget": {"type": "heatmap", "title": "Heat Map"}
+    },
+    {
+      "id": "share",
+      "name": "Share Bar",
+      "category": "Charts",
+      "description": "One whole split into its largest parts.",
+      "widget": {"type": "share", "title": "Share"}
+    },
+    {
+      "id": "kpi",
+      "name": "Number Tile",
+      "category": "Widgets",
+      "description": "One headline number.",
+      "widget": {"type": "kpi", "title": "Total"}
+    },
+    {
+      "id": "table",
+      "name": "Table",
+      "category": "Widgets",
+      "description": "The numbers behind a chart, as rows.",
+      "widget": {"type": "table", "title": "Table"}
+    },
+    {
+      "id": "text",
+      "name": "Text",
+      "category": "Widgets",
+      "description": "A heading or a note.",
+      "widget": {"type": "text", "title": "Notes", "text": "# Heading\nA line of text"}
+    },
+    {
+      "id": "triangle_heatmap",
+      "name": "Development Triangle",
+      "category": "Reserving Templates",
+      "description": "Origin by development period, shaded by the triangle's values.",
+      "widget": {"type": "heatmap", "title": "Development Triangle", "category": "Origin", "series": "Development", "layout": {"w": 7, "h": 6}}
+    },
+    {
+      "id": "development_curves",
+      "name": "Development Curves",
+      "category": "Reserving Templates",
+      "description": "One line per origin period across development periods.",
+      "widget": {"type": "line", "title": "Development By Origin", "category": "Development", "series": "Origin", "layout": {"w": 6, "h": 6}}
+    },
+    {
+      "id": "latest_by_origin",
+      "name": "Latest By Origin",
+      "category": "Reserving Templates",
+      "description": "The latest diagonal of a triangle for each origin period.",
+      "widget": {"type": "bar", "title": "Latest By Origin", "category": "Origin"}
+    },
+    {
+      "id": "segment_ranking",
+      "name": "Segment Ranking",
+      "category": "Reserving Templates",
+      "description": "Reserving classes ranked by a number.",
+      "widget": {"type": "bar", "title": "By Segment", "category": "Segment Name", "options": {"horizontal": true}, "sort": {"by": "value", "dir": "desc"}, "layout": {"w": 5, "h": 6}}
+    },
+    {
+      "id": "valuation_movement",
+      "name": "Valuation Movement",
+      "category": "Reserving Templates",
+      "description": "The change in a number between two projects, by origin period.",
+      "widget": {"type": "bar", "title": "Movement Between Valuations", "category": "Origin", "compare": {"field": "Project", "base": "", "target": "", "mode": "delta"}}
+    }
+  ]
+}

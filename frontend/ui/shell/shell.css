@@ -1181,6 +1181,7 @@ iframe.floatingTabIframe {
 .homeIconBox.shortcut { color: #475569; }
 .homeIconBox.theme { color: #6366f1; }
 .homeIconBox.server { color: #0f766e; }
+.homeIconBox.dashboard { color: #2b6df6; }
 .card h3 {
   margin: 1px 0 6px 0;
   color: #202327;

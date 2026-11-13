@@ -9,6 +9,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
 <!-- AUTO-GEN:BEGIN runtime.config_paths.entry_points -->
 - Path/config helper functions in `app_server/config.py`:
   - `_find_existing_project_dir`
+  - `_get_dashboard_dir`
   - `_get_macro_dir`
   - `_get_macro_library_dir`
   - `_get_project_map_dir`

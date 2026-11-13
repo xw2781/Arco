@@ -289,6 +289,7 @@ $requiredSourcePaths = @(
     "frontend\ui\index.html",
     "frontend\icons\icon.png",
     "frontend\app_server\default_preferences",
+    "frontend\app_server\default_dashboards",
     "frontend\changes\unreleased",
     "frontend\docs\releases",
     "frontend\build\transport\run_with_log.ps1",

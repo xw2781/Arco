@@ -13,7 +13,7 @@ Two narrow exceptions, and no others:
 1. **Structural marks that are not artwork** — the two crossing lines of a close button, a focus ring, a caret. There is nothing for a designer to revise. `createTabCloseIcon` in `frontend/ui/shell/tab_strip.js` is the reference example.
 2. **Geometry computed from runtime state** — a sparkline, a gauge arc, a shape whose coordinates come from data.
 
-`frontend/ui/shell/home_card_icons.js` embeds Home launch-card path data in a JavaScript module. It predates this rule and is the known exception; do not copy the pattern, and prefer moving it to files when that area is next touched substantively.
+`frontend/ui/shell/home_card_icons.js` embeds Home launch-card path data in a JavaScript module. It predates this rule and is the known exception; do not copy the pattern. A new Home card's artwork goes in `frontend/ui/shell/home-card-icons/` instead (the Dashboards card is the first), and an older card's drawing moves there when it is next revised.
 
 ## 2. Where A File Goes (MUST)
 

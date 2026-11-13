@@ -3278,6 +3278,19 @@ function openAssistant() {
   setTimeout(() => $("aiAssistantInput")?.focus(), 0);
 }
 
+// A page hands ArcBot a question: the panel opens with the text in the composer, ready to edit.
+// Sending stays the user's own act, as it is for dictated text.
+export function askAiAssistant(text) {
+  const prompt = String(text || "").trim();
+  if (!isAiAssistantLauncherVisible()) setAiAssistantLauncherVisible(true);
+  openAssistant();
+  const input = $("aiAssistantInput");
+  if (!input || !prompt) return;
+  input.value = prompt;
+  autoGrowAssistantInput();
+  setTimeout(() => input.setSelectionRange(prompt.length, prompt.length), 0);
+}
+
 function closeAssistant() {
   assistantVoice?.stop();
   if (isAiAssistantLauncherVisible()) $("aiAssistantLauncher")?.classList.remove("assistant-open");

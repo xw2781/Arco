@@ -1,0 +1,80 @@
+/*
+ * Dashboard icon artwork: widget types, field kinds, and the toolbar glyphs.
+ *
+ * An element gets the `dbIcon` class and a `data-db-icon` attribute; this sheet maps the value
+ * to its drawing. Every icon is a mask over `currentColor`, so one monochrome file follows the
+ * resting, hovered, selected, light and dark states. A value with no rule below shows the bar
+ * chart glyph rather than a solid block.
+ *
+ * Mask URLs are relative to this stylesheet so the set also renders from a page opened off disk.
+ */
+
+.dbIcon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  -webkit-mask-image: url("bar.svg?v=20261113a");
+  mask-image: url("bar.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="line"] {
+  -webkit-mask-image: url("line.svg?v=20261113a");
+  mask-image: url("line.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="area"] {
+  -webkit-mask-image: url("area.svg?v=20261113a");
+  mask-image: url("area.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="scatter"] {
+  -webkit-mask-image: url("scatter.svg?v=20261113a");
+  mask-image: url("scatter.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="heatmap"] {
+  -webkit-mask-image: url("heatmap.svg?v=20261113a");
+  mask-image: url("heatmap.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="share"] {
+  -webkit-mask-image: url("share.svg?v=20261113a");
+  mask-image: url("share.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="kpi"] {
+  -webkit-mask-image: url("kpi.svg?v=20261113a");
+  mask-image: url("kpi.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="table"] {
+  -webkit-mask-image: url("table.svg?v=20261113a");
+  mask-image: url("table.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="text"] {
+  -webkit-mask-image: url("text.svg?v=20261113a");
+  mask-image: url("text.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="source"] {
+  -webkit-mask-image: url("source.svg?v=20261113a");
+  mask-image: url("source.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="dimension"] {
+  -webkit-mask-image: url("dimension.svg?v=20261113a");
+  mask-image: url("dimension.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="measure"] {
+  -webkit-mask-image: url("measure.svg?v=20261113a");
+  mask-image: url("measure.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="assistant"] {
+  -webkit-mask-image: url("assistant.svg?v=20261113a");
+  mask-image: url("assistant.svg?v=20261113a");
+}
+.dbIcon[data-db-icon="refresh"] {
+  -webkit-mask-image: url("refresh.svg?v=20261113a");
+  mask-image: url("refresh.svg?v=20261113a");
+}

@@ -481,6 +481,31 @@ export function initShellMessages() {
       shell.openDFMTab?.({ dfmInputs, dfmTab: msg?.dfmTab });
       return;
     }
+    // A dashboard tab reports the file it has open, its name, and whether it holds unsaved changes.
+    if (msg.type === "arcrho:dashboard-state") {
+      const tab = shell.state.tabs.find(t => t.type === "dashboard" && t.iframe?.contentWindow === e.source);
+      if (!tab) return;
+      const dirty = !!msg.dirty;
+      const dirtyChanged = tab.isDirty !== dirty;
+      tab.dashboardPath = String(msg.path || "").trim();
+      tab.title = String(msg.title || "").trim() || "Dashboards";
+      tab.isDirty = dirty;
+      if (dirty && dirtyChanged) shell.clearSavedStatusOnDirty?.();
+      if (dirtyChanged) refreshDirtyIndicators();
+      shell.render?.();
+      shell.saveState?.();
+      if (shell.state.activeId === tab.id) shell.recordActiveTabHistory?.(tab);
+      return;
+    }
+    if (msg.type === "arcrho:dashboard-open") {
+      shell.openDashboardTab?.({ path: String(msg.path || "").trim() });
+      return;
+    }
+    // A page hands ArcBot a question to put in its composer; the user still sends it.
+    if (msg.type === "arcrho:assistant-ask") {
+      shell.askAiAssistant?.(String(msg.prompt || ""));
+      return;
+    }
     if (msg.type === "arcrho:open-file-explorer-from-history") {
       const path = String(msg.path || "").trim();
       if (path) shell.openFileExplorerTab?.({ path });

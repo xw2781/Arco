@@ -35,6 +35,7 @@ const TAB_TYPE_LABELS = {
   file_explorer: "File Browser",
   browsing_history: "Browsing History",
   server: "Server Connections",
+  dashboard: "Dashboard",
 };
 
 let shortcutsDocument = createEmptyHomeShortcuts();

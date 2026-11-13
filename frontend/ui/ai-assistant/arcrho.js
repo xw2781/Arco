@@ -1,5 +1,6 @@
 import { $, getHostApi, shell } from "../shell/shell_context.js?v=20260510a";
 import {
+  askAiAssistant,
   configureAiAssistant,
   initAiAssistant as initSharedAiAssistant,
   isAiAssistantLauncherVisible,
@@ -67,6 +68,7 @@ export function initAiAssistant() {
 }
 
 export {
+  askAiAssistant,
   isAiAssistantLauncherVisible,
   setAiAssistantLauncherVisible,
   toggleAiAssistantLauncherVisible,

@@ -12,6 +12,7 @@ Frontend module map for page entrypoints, shell orchestration, and feature-speci
 | `ui/index.html` | 2 external scripts | - |
 | `ui/file_explorer/file_explorer.html` | 2 external scripts | - |
 | `ui/server/server.html` | 2 external scripts | - |
+| `ui/dashboard/dashboard.html` | 2 external scripts | - |
 | `ui/dataset_viewer/dataset_viewer.html` | 2 external scripts | 1 inline import |
 | `ui/method_pages/dfm/dfm.html` | 2 external scripts | 4 inline imports |
 | `ui/method_pages/bornhuetter_ferguson/bornhuetter_ferguson.html` | 3 external scripts | - |

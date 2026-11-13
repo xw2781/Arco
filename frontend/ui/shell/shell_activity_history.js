@@ -137,6 +137,9 @@ export function normalizeShellActivityEntry(raw) {
   } else if (tabType === "file_explorer") {
     const path = toText(raw.path || raw.fileExplorerPath);
     if (path) entry.path = path;
+  } else if (tabType === "dashboard") {
+    const path = toText(raw.path || raw.dashboardPath);
+    if (path) entry.path = path;
   } else if (!["workflow", "agent_guide", "browsing_history", "server"].includes(tabType)) {
     return null;
   }
@@ -166,6 +169,7 @@ function getActivityIdentity(entry) {
   }
   if (entry.tabType === "scripting" && entry.path) return `scripting|${entry.path.toLowerCase()}`;
   if (entry.tabType === "file_explorer") return `file_explorer|${normalizeFolderKey(entry.path)}`;
+  if (entry.tabType === "dashboard") return `dashboard|${toText(entry.path).toLowerCase()}`;
   return `${entry.tabType}|${entry.title.toLowerCase()}`;
 }
 
@@ -249,6 +253,6 @@ export function buildRestoreSummary(entry) {
     const d = entry.dfmInputs || {};
     return [d.project, d.reservingClass, d.methodName || d.outputType].map(toText).filter(Boolean).join(" | ");
   }
-  if (entry.tabType === "scripting" || entry.tabType === "file_explorer") return toText(entry.path);
+  if (entry.tabType === "scripting" || entry.tabType === "file_explorer" || entry.tabType === "dashboard") return toText(entry.path);
   return "";
 }

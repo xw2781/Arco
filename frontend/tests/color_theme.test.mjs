@@ -47,6 +47,7 @@ const THEMED_DOCUMENTS = [
   "../ui/shell/browsing_history.html",
   "../ui/agent_guide/agent_guide.html",
   "../ui/server/server.html",
+  "../ui/dashboard/dashboard.html",
   "../ui/task_designer/task_designer.html",
   "../ui/arcode/index.html",
   "../ui/arcode/main.html",

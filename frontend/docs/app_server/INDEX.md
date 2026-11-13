@@ -15,6 +15,7 @@ App-server domain map for FastAPI routers, schemas, and services.
 | `bootstrap` | [`app_server/api/bootstrap_router.py`](../../app_server/api/bootstrap_router.py) | 6 | [`bootstrap.md`](domains/bootstrap.md) |
 | `bornhuetter_ferguson` | [`app_server/api/bornhuetter_ferguson_router.py`](../../app_server/api/bornhuetter_ferguson_router.py) | 3 | [`bornhuetter_ferguson.md`](domains/bornhuetter_ferguson.md) |
 | `cape_cod` | [`app_server/api/cape_cod_router.py`](../../app_server/api/cape_cod_router.py) | 3 | [`cape_cod.md`](domains/cape_cod.md) |
+| `dashboard` | [`app_server/api/dashboard_router.py`](../../app_server/api/dashboard_router.py) | 9 | [`dashboard.md`](domains/dashboard.md) |
 | `data_processing_rules` | [`app_server/api/data_processing_rules_router.py`](../../app_server/api/data_processing_rules_router.py) | 4 | [`data_processing_rules.md`](domains/data_processing_rules.md) |
 | `dataset` | [`app_server/api/dataset_router.py`](../../app_server/api/dataset_router.py) | 18 | [`dataset.md`](domains/dataset.md) |
 | `dataset_types` | [`app_server/api/dataset_types_router.py`](../../app_server/api/dataset_types_router.py) | 4 | [`dataset_types.md`](domains/dataset_types.md) |

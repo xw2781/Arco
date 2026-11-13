@@ -65,6 +65,8 @@ Shared Table Appearance fonts and colors are local-user preferences, never
 method data. Specific section font properties override broader table settings;
 resetting a section's font preserves its colors. See [shell](../ui/shell.md).
 
+A Dashboards tab owns one dashboard file. The page reports its file, name and unsaved state to the shell through `arcrho:dashboard-state`, and that message is the only source of the tab's title, dirty flag and restorable path; the shell sends `arcrho:dashboard-save` and `arcrho:dashboard-save-as` and never writes a dashboard itself. A sample is never overwritten: saving one writes a copy to the user's folder. Editing is undoable step by step, and an ArcBot edit lands as one such step, unsaved. Choosing filter values is using the dashboard and is not an undo step. See [dashboard](../ui/dashboard.md).
+
 ## Before Finishing
 ArcBot prepares an unused read-only CLI thread when entering a chat. Task
 commands and output remain in a collapsible work log; the final response

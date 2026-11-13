@@ -1,0 +1,30 @@
+/*
+ * Home launch-card artwork kept as files.
+ *
+ * `home_card_icons.js` renders a file-backed kind as a `.homeCardFileIcon` span carrying
+ * `data-home-icon`, and this sheet maps that value to its drawing. Each icon is a mask over
+ * `currentColor`, so the card's accent in `shell.css` (`.homeIconBox.<kind>`) colors it and the
+ * themes need no second copy. A kind with no rule below shows the generic shortcut glyph.
+ *
+ * Mask URLs stay relative to this stylesheet so the set also renders from a page opened off disk.
+ */
+
+.homeCardFileIcon {
+  display: block;
+  background-color: currentColor;
+
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+
+  -webkit-mask-image: url("shortcut.svg?v=20261113a");
+  mask-image: url("shortcut.svg?v=20261113a");
+}
+
+.homeCardFileIcon[data-home-icon="dashboard"] {
+  -webkit-mask-image: url("dashboard.svg?v=20261113a");
+  mask-image: url("dashboard.svg?v=20261113a");
+}

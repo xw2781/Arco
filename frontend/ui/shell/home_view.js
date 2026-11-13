@@ -89,6 +89,7 @@ export function renderHomeViewOnce(homeView) {
                 <div class="card clickable" id="cardProjectSettings">${homeCardIcon("project")}<div><h3>Project Explorer</h3><div class="muted">Browse and manage projects.</div></div></div>
                 <div class="card clickable" id="cardBrowsingHistory">${homeCardIcon("history")}<div><h3>Browsing History</h3><div class="muted">Restore recent pages and dataset views.</div></div></div>
                 <div class="card clickable" id="cardColorTheme" role="button" tabindex="0">${homeCardIcon("theme")}<div><h3>Color Theme</h3><div class="muted">Preview table styles and switch between Light and Dark.</div></div></div>
+                <div class="card clickable" id="cardDashboards">${homeCardIcon("dashboard")}<div><h3>Dashboards</h3><div class="muted">Build interactive charts from project data.</div></div></div>
                 <div class="card clickable" id="cardServer">${homeCardIcon("server")}<div><h3>Server Connections</h3><div class="muted">Connect to Arco servers and databases.</div></div></div>
               </div>
             </div>
@@ -113,6 +114,7 @@ export function renderHomeViewOnce(homeView) {
     document.getElementById("cardProjectSettings")?.addEventListener("click", () => shell.openProjectSettingsTab?.());
     document.getElementById("cardBrowsingHistory")?.addEventListener("click", () => shell.openBrowsingHistoryTab?.());
     document.getElementById("cardServer")?.addEventListener("click", () => shell.openServerTab?.());
+    document.getElementById("cardDashboards")?.addEventListener("click", () => shell.openDashboardTab?.());
     document.getElementById("cardScripting")?.addEventListener("click", () => shell.openScriptingTab?.({ forceNew: true }));
     const colorThemeCard = document.getElementById("cardColorTheme");
     colorThemeCard?.addEventListener("click", () => openColorThemeDialog());

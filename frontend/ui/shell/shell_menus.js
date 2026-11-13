@@ -147,6 +147,8 @@ function getActiveTab() { return shell.state.tabs.find(t => t.id === shell.state
 function isStandaloneDFMTab(tab = getActiveTab()) { return !!tab && tab.type === "dfm"; }
 function isProjectInstanceDfmActive(tab = getActiveTab()) { return !!tab && tab.type === "project_instance" && !!tab.piDfmActive; }
 export function isActiveWorkflowTab() { const tab = getActiveTab(); return !!tab && tab.type === "workflow"; }
+export function isActiveDashboardTab() { const tab = getActiveTab(); return !!tab && tab.type === "dashboard"; }
+export function sendDashboardCommand(type) { const tab = getActiveTab(); if (!tab || tab.type !== "dashboard") return; try { tab.iframe?.contentWindow?.postMessage({ type }, "*"); } catch {} }
 export function isActiveDatasetTab() { const tab = getActiveTab(); return !!tab && tab.type === "dataset"; }
 export function isActiveDFMTab() { const tab = getActiveTab(); return isStandaloneDFMTab(tab) || isProjectInstanceDfmActive(tab); }
 function getActiveDFMSubTab() {
@@ -277,7 +279,7 @@ export function updateFileMenuState() {
   applyScopedMenuVisibility(fileMenuDropdown);
   updateFileSaveMenuLabels();
   refreshRecentNotebookMenu();
-  const saveEnabled = isActiveWorkflowTab() || isActiveDatasetTab() || isActiveDFMTab() || isActiveProjectInstanceTab() || isActiveScriptingTab() || isActiveProjectSettingsReservingClassTypesTab() || isActiveProjectSettingsDatasetTypesTab();
+  const saveEnabled = isActiveWorkflowTab() || isActiveDashboardTab() || isActiveDatasetTab() || isActiveDFMTab() || isActiveProjectInstanceTab() || isActiveScriptingTab() || isActiveProjectSettingsReservingClassTypesTab() || isActiveProjectSettingsDatasetTypesTab();
   fileMenuDropdown.querySelectorAll(".menuItem").forEach((el) => {
     if (recentNotebookSubmenu?.contains(el)) return;
     if (el.hidden) { el.classList.remove("disabled"); return; }
@@ -438,6 +440,7 @@ export function initShellMenus() {
     }
     else if (action === "save") {
       if (isActiveWorkflowTab()) { shell.updateStatusBar?.("Saving..."); sendWorkflowCommand("arcrho:workflow-save"); }
+      else if (isActiveDashboardTab()) sendDashboardCommand("arcrho:dashboard-save");
       else if (isActiveDatasetTab()) { shell.updateStatusBar?.("Saving dataset..."); sendDatasetCommand("arcrho:dataset-save"); }
       else if (isActiveDFMTab()) { shell.updateStatusBar?.("Saving..."); sendDFMCommand("arcrho:dfm-save"); }
       else if (isActiveProjectInstanceTab()) { shell.updateStatusBar?.("Saving..."); sendProjectInstanceCommand("arcrho:dfm-save"); }
@@ -446,6 +449,7 @@ export function initShellMenus() {
       else if (isActiveProjectSettingsDatasetTypesTab()) { shell.updateStatusBar?.("Saving dataset types to local file..."); sendProjectSettingsCommand("arcrho:project-settings-dataset-types-save-local"); }
     } else if (action === "save-as") {
       if (isActiveWorkflowTab()) { shell.updateStatusBar?.("Saving as..."); sendWorkflowCommand("arcrho:workflow-save-as"); }
+      else if (isActiveDashboardTab()) sendDashboardCommand("arcrho:dashboard-save-as");
       else if (isActiveDatasetTab()) { shell.updateStatusBar?.("Saving dataset..."); sendDatasetCommand("arcrho:dataset-save"); }
       else if (isActiveDFMTab()) { shell.updateStatusBar?.(isActiveDFMDetailsTab() ? "Saving template..." : "Saving as..."); sendDFMCommand(isActiveDFMDetailsTab() ? "arcrho:dfm-save-template" : "arcrho:dfm-save-as"); }
       else if (isActiveProjectInstanceTab()) { shell.updateStatusBar?.("Saving as..."); sendProjectInstanceCommand("arcrho:dfm-save-as"); }

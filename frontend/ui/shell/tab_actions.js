@@ -27,6 +27,7 @@ const RESTORABLE_ACTIVITY_TYPES = new Set([
   "file_explorer",
   "browsing_history",
   "server",
+  "dashboard",
 ]);
 const TASK_DESIGNER_TYPE = "task_designer";
 let activeHistorySaveTimer = 0;
@@ -54,6 +55,8 @@ export function buildShellActivityEntry(tab) {
     entry.path = String(tab.scPath || tab.scOpenPath || "").trim() || undefined;
   } else if (tab.type === "file_explorer") {
     entry.path = String(tab.fileExplorerPath || "").trim() || undefined;
+  } else if (tab.type === "dashboard") {
+    entry.path = String(tab.dashboardPath || "").trim() || undefined;
   }
   return normalizeShellActivityEntry(entry);
 }
@@ -411,6 +414,7 @@ export function openShellActivityHistoryEntry(entry) {
   if (normalized.tabType === "browsing_history") return openBrowsingHistoryTab();
   if (normalized.tabType === "file_explorer") return openFileExplorerTab({ path: normalized.path || "" });
   if (normalized.tabType === "server") return openServerTab();
+  if (normalized.tabType === "dashboard") return openDashboardTab({ path: normalized.path || "" });
   return null;
 }
 
@@ -487,6 +491,25 @@ export function openServerTab() {
   }
   const id = `sv_${shell.state.nextId++}`;
   const tab = { id, title: "Server Connections", type: "server", iframe: null, layout: "docked" };
+  shell.state.tabs.push(tab);
+  setDockedActive(id);
+  shell.render?.();
+  shell.saveState?.();
+  return tab;
+}
+
+// Dashboards are multi-instance and file-keyed: asking for a dashboard file focuses the tab that
+// already has it open, and asking for none focuses a tab still showing the dashboard list.
+export function openDashboardTab(options = {}) {
+  const path = String(options.path || "").trim();
+  const fileKey = path.toLowerCase();
+  const existing = shell.state.tabs.find(t => t.type === "dashboard" && String(t.dashboardPath || "").trim().toLowerCase() === fileKey);
+  if (existing) {
+    setActive(existing.id);
+    return existing;
+  }
+  const id = `db_${shell.state.nextId++}`;
+  const tab = { id, title: "Dashboards", type: "dashboard", dashboardPath: path, iframe: null, layout: "docked", isDirty: false };
   shell.state.tabs.push(tab);
   setDockedActive(id);
   shell.render?.();
