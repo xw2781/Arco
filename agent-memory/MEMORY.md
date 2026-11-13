@@ -126,3 +126,4 @@
 - [ABC demo project build](abc-demo-project-build.md) — 2026-11-04: demo is ABC_Group_Quarterly_Review_202608, built by tools/build_abc_group_demo_project.py; template-copy pitfalls
 - [ResQ import: set up in GUI, run via API](resq-import-settings-gui-run-via-api.md) — wizard owns transforms/mappings; COM only runs or repoints a saved import; the Fake project's five imports
 - [ResQ triangle stored at development 12](resq-dfm-mid-period-valuation.md) — at a May valuation its DFM interpolates a monthly pattern and young origins differ from Arco; store it 12/1 so both read 5m/17m
+- [Fake 202608 is a roll-forward of 202605](fake-202608-is-a-roll-forward-of-202605.md) — since 2026-11-13 its source continues the 202605 table by three months; methods and prior-quarter inputs were not rebuilt
