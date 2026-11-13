@@ -87,6 +87,18 @@ offered the deleted installer. It intentionally leaves repository bookkeeping an
 release-note history intact: undoing a published release commit or re-opening archived
 fragments can conflict with later releases and must be handled deliberately.
 
+The local record is marked revoked as soon as deletion succeeds. If rebuilding the feed
+fails (for example, a GitHub TLS timeout), rerun the command below with the same version.
+An absent release with a matching published or revoked local record resumes feed cleanup
+without deleting again. Unknown versions and builds never published remain rejected.
+
+```bat
+py -3.10 frontend\build\release\release_workflow.py revoke --product Arco --version 2.1.0 --confirm-version 2.1.0
+```
+
+If there is no local record, rebuild the feed directly from `frontend/build/release`:
+`powershell -NoProfile -ExecutionPolicy Bypass -File publish_update_manifest.ps1 -ProductName Arco`.
+
 ## Command-Line Equivalent
 
 Release Manager runs the same commands available to automation:

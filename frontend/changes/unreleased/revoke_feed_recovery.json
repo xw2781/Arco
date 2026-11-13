@@ -1,0 +1,6 @@
+{
+  "type": "fix",
+  "scope": "build",
+  "audience": "internal",
+  "summary": "Release revocation can resume update-feed cleanup after a network failure and records successful deletion immediately."
+}

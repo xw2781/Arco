@@ -18,7 +18,9 @@ import release_workflow
 
 class ReleaseWorkflowTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.temp_dir = tempfile.TemporaryDirectory()
+        test_root = Path(__file__).resolve().parents[2] / "test"
+        test_root.mkdir(parents=True, exist_ok=True)
+        self.temp_dir = tempfile.TemporaryDirectory(dir=test_root)
         self.root = Path(self.temp_dir.name)
         self.work_dir = self.root / "work"
         self.installer = self.root / "Arco-Setup-1.2.13.exe"
@@ -254,6 +256,57 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("Arco-v1.2.13", commands[0])
         self.assertIn(str(release_workflow.UPDATE_MANIFEST_SCRIPT), commands[1])
         self.assertEqual(commands[1][-2:], ["-ProductName", "Arco"])
+
+    def test_revoke_can_resume_after_feed_failure(self) -> None:
+        with mock.patch.object(release_workflow.release_notes, "load_unreleased_fragments", return_value=[]):
+            path, manifest = release_workflow.capture_built_release(
+                "Arco", "1.2.13", self.installer, work_dir=self.work_dir,
+            )
+        manifest["status"] = "published"
+        release_workflow._write_json(path, manifest)
+        with mock.patch.object(release_workflow, "list_release_history", return_value=[{"tag": "Arco-v1.2.13"}]), mock.patch.object(
+            release_workflow, "_gh_path", return_value="gh",
+        ), mock.patch.object(
+            release_workflow, "_run_checked", side_effect=["", release_workflow.ReleaseWorkflowError("TLS handshake timeout")],
+        ):
+            with self.assertRaisesRegex(release_workflow.ReleaseWorkflowError, "update feed still needs rebuilding"):
+                release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
+        revoked = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(revoked["status"], "revoked")
+        with mock.patch.object(release_workflow, "list_release_history", return_value=[]), mock.patch.object(
+            release_workflow, "_run_checked", return_value="",
+        ) as run_checked:
+            release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
+        run_checked.assert_called_once()
+        self.assertIn(str(release_workflow.UPDATE_MANIFEST_SCRIPT), run_checked.call_args.args[0])
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["revoked_at"], revoked["revoked_at"])
+
+    def test_revoke_resumes_old_published_record_without_deleting_again(self) -> None:
+        with mock.patch.object(release_workflow.release_notes, "load_unreleased_fragments", return_value=[]):
+            path, manifest = release_workflow.capture_built_release(
+                "Arco", "1.2.13", self.installer, work_dir=self.work_dir,
+            )
+        manifest["status"] = "published"
+        release_workflow._write_json(path, manifest)
+        with mock.patch.object(release_workflow, "list_release_history", return_value=[]), mock.patch.object(
+            release_workflow, "_run_checked", return_value="",
+        ) as run_checked:
+            release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
+        run_checked.assert_called_once()
+        self.assertIn(str(release_workflow.UPDATE_MANIFEST_SCRIPT), run_checked.call_args.args[0])
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["status"], "revoked")
+
+    def test_revoke_rejects_unknown_or_never_published_missing_release(self) -> None:
+        with mock.patch.object(release_workflow, "list_release_history", return_value=[]), mock.patch.object(
+            release_workflow, "_run_checked",
+        ) as run_checked:
+            with self.assertRaisesRegex(release_workflow.ReleaseWorkflowError, "GitHub does not list"):
+                release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
+            with mock.patch.object(release_workflow.release_notes, "load_unreleased_fragments", return_value=[]):
+                release_workflow.capture_built_release("Arco", "1.2.13", self.installer, work_dir=self.work_dir)
+            with self.assertRaisesRegex(release_workflow.ReleaseWorkflowError, "GitHub does not list"):
+                release_workflow.revoke_remote_release("Arco", "1.2.13", work_dir=self.work_dir)
+        run_checked.assert_not_called()
 
 
 if __name__ == "__main__":

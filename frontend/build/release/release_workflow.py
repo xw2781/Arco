@@ -742,52 +742,44 @@ def revoke_remote_release(
     product = normalize_product(product)
     version = validate_version(version)
     repository, tag = resolve_release_channel(product, version)
+    manifest_path = pending_manifest_path(product, version, work_dir)
+    manifest = _load_manifest(product, version, work_dir)[1] if manifest_path.is_file() else None
     history = list_release_history(product, MAX_RELEASE_HISTORY_LIMIT)
-    if not any(item["tag"] == tag for item in history):
+    if any(item["tag"] == tag for item in history):
+        if output:
+            output(f"Revoking GitHub Release {tag} and deleting its tag...")
+        _run_checked(
+            [_gh_path(), "release", "delete", tag, "--repo", repository, "--cleanup-tag", "--yes"],
+            output=output,
+        )
+    elif manifest is None or manifest.get("status") not in {"published", "remote_published", "revoked"}:
         raise ReleaseWorkflowError(f"GitHub does not list a {product} release tagged {tag}.")
+    elif output:
+        output(f"GitHub Release {tag} is already absent; resuming update-feed cleanup.")
 
-    if output:
-        output(f"Revoking GitHub Release {tag} and deleting its tag...")
-    _run_checked(
-        [
-            _gh_path(),
-            "release",
-            "delete",
-            tag,
-            "--repo",
-            repository,
-            "--cleanup-tag",
-            "--yes",
-        ],
-        output=output,
-    )
+    if manifest is not None:
+        manifest["status"] = "revoked"
+        manifest.setdefault("revoked_at", _utc_now())
+        _write_json(manifest_path, manifest)
 
     # Installed apps find their update through the feed, which would otherwise
     # keep offering the installer just deleted.
     if output:
         output(f"Rebuilding the {product} update feed...")
-    _run_checked(
-        [
-            "powershell",
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(UPDATE_MANIFEST_SCRIPT),
-            "-ProductName",
-            product,
-        ],
-        cwd=FRONTEND_ROOT,
-        output=output,
-    )
-
     try:
-        manifest_path, manifest = _load_manifest(product, version, work_dir)
-    except ReleaseWorkflowError:
-        return
-    manifest["status"] = "revoked"
-    manifest["revoked_at"] = _utc_now()
-    _write_json(manifest_path, manifest)
+        _run_checked(
+            [
+                "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                str(UPDATE_MANIFEST_SCRIPT), "-ProductName", product,
+            ],
+            cwd=FRONTEND_ROOT,
+            output=output,
+        )
+    except ReleaseWorkflowError as exc:
+        raise ReleaseWorkflowError(
+            f"{exc}\nRelease {tag} is absent, but the update feed still needs rebuilding. "
+            f"Run publish_update_manifest.ps1 -ProductName {product} again."
+        ) from exc
 
 
 def _print_output(line: str) -> None:
