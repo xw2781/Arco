@@ -196,6 +196,44 @@ class GenerateFakeProjectSourceTest(unittest.TestCase):
         self.assertEqual(again.read_bytes(), self.output.read_bytes())
         self.assertNotEqual(generate(read_template(self.template), seed=1)[:50], generate(read_template(self.template))[:50])
 
+    def test_a_roll_forward_keeps_every_earlier_row_and_adds_the_months_after(self) -> None:
+        rolled_path = Path(self.temp.name) / "rolled.csv"
+        with redirect_stdout(io.StringIO()):
+            main(["--template", str(self.template), "--output", str(rolled_path),
+                  "--roll-forward-from", "202605", "--valuation", "202608"])
+        rolled = read_rows(rolled_path)
+        row_key = lambda row: tuple(row[column] for column in HEADER)
+        is_loss = lambda row: row["sys_yrmo"] != "0"
+        is_premium = lambda row: row["sys_yrmo"] == "0" and row["Earned_Premium"] != ""
+
+        # The earlier table's loss and premium rows are all still there, unchanged.
+        self.assertEqual(
+            sorted(row_key(row) for row in rolled if is_loss(row) and int(row["sys_yrmo"]) <= 202605),
+            sorted(row_key(row) for row in self.rows if is_loss(row)),
+        )
+        self.assertEqual(
+            sorted(row_key(row) for row in rolled if is_premium(row) and float(row["acc_yrmo"]) <= 202605),
+            sorted(row_key(row) for row in self.rows if is_premium(row)),
+        )
+
+        # What is new is the three months after it: development, new accident months, and premium.
+        later = [row for row in rolled if is_loss(row) and int(row["sys_yrmo"]) > 202605]
+        self.assertEqual({row["sys_yrmo"] for row in later}, {"202606", "202607", "202608"})
+        self.assertTrue(any(float(row["acc_yrmo"]) <= 202605 for row in later), "earlier claims keep developing")
+        self.assertEqual({row["acc_yrmo"] for row in later if float(row["acc_yrmo"]) > 202605},
+                         {"202606.0", "202607.0", "202608.0"})
+        self.assertEqual({row["acc_yrmo"] for row in rolled if is_premium(row) and float(row["acc_yrmo"]) > 202605},
+                         {"202606.0", "202607.0", "202608.0"})
+        self.assertEqual(identity_problems(rolled)[:5], [])
+        budget = [row for row in rolled if row["Remaining_Budget_Premium"] != ""]
+        self.assertTrue(all(float(row["Remaining_Budget_Premium"]) == 0 for row in budget
+                            if float(row["acc_yrmo"]) <= 202608))
+        self.assertTrue(all(float(row["Remaining_Budget_Premium"]) > 0 for row in budget
+                            if float(row["acc_yrmo"]) > 202608))
+
+        with self.assertRaises(ValueError):
+            generate(read_template(self.template), valuation_month=202605, roll_forward_from=202608)
+
     def test_loss_ratios_and_first_link_ratios_are_plausible(self) -> None:
         premium, losses = annual_figures(self.rows)
         for year in range(2017, 2024):

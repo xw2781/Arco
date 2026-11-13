@@ -26,6 +26,12 @@ is the projected premium of the keys it adds up, zero up to the valuation.
 
 Run ``py -3.10 tools/generate_fake_project_source.py --template <current csv>
 --output <new csv>``. The same template and seed always write the same file.
+
+``--roll-forward-from 202605 --valuation 202608`` writes the next valuation of
+the same book: every claim of the 202605 table reappears with three more months
+of development, the months after May gain their own new claims and premium, and
+the rows up to May are the 202605 table's rows unchanged. Give it the 202605
+table as the template.
 """
 
 from __future__ import annotations
@@ -252,32 +258,50 @@ def _in_span(span: tuple[int, int] | None, index: int) -> bool:
 
 
 def generate(shapes: dict[tuple, KeyShape], seed: int = DEFAULT_SEED,
-             valuation_month: int = VALUATION_MONTH) -> list[list]:
-    """Every row of the new table, in the template's column order."""
+             valuation_month: int = VALUATION_MONTH, roll_forward_from: int | None = None) -> list[list]:
+    """Every row of the new table, in the template's column order.
+
+    With ``roll_forward_from`` the table is a later valuation of the book that
+    month's table describes. Every random draw the earlier table made is made
+    again in the same order, so its claims are the same claims; only how far
+    they are followed changes. The months after it draw from their own
+    generators, keyed by segment and month, and so disturb nothing before them.
+    """
     rng = random.Random(seed)
     shocks = model.Shocks(seed)
     valuation = model.month_index(valuation_month)
+    # `base` is the valuation whose draws are reproduced; without a roll it is the valuation.
+    base = model.month_index(roll_forward_from) if roll_forward_from else valuation
+    if base > valuation:
+        raise ValueError("--roll-forward-from must not be later than --valuation")
     claim_keys = sorted(key for key, shape in shapes.items() if shape.premium or shape.loss)
     books = {key: make_book(seed, key, shapes[key]) for key in claim_keys}
     cat_months = {}
     for key, book in books.items():
         category = key[4]
         if category in CAT_PARENT.values() or category in CAT_PARENT:
-            months = cat_months.setdefault(key[2], catastrophe_months(seed, key[2], valuation))
+            months = cat_months.setdefault(key[2], catastrophe_months(seed, key[2], base))
             rate_column = 0 if CAT_PARENT.get(category, category) == "CMP" else 1
             book.cats = [(index, rates[rate_column], rates[2] if rate_column == 0 else 1.0)
                          for index, rates in sorted(months.items())]
             # Rates are claims per exposure-year earned in the month.
-            book.cat_load = sum(rate for _i, rate, _m in book.cats) / (valuation + 1) / book.coverage.frequency
+            book.cat_load = sum(rate for _i, rate, _m in book.cats) / (base + 1) / book.coverage.frequency
 
     cells: dict[tuple, tuple[list[float], list[float]]] = {}
+    # What the earlier valuation had posted, which decides the forced claims below.
+    base_cells: dict[tuple, tuple[list[float], list[float]]] = cells if base == valuation else {}
+
+    def post(keys: list[tuple], index: int, claim) -> None:
+        model.post_claim(cells, keys, index, valuation, claim)
+        if base_cells is not cells:
+            model.post_claim(base_cells, keys, index, base, claim)
 
     def simulate(book: Book, index: int, expected: float, multiple: float, keys: list[tuple]) -> None:
         keys = [key for key in keys if _in_span(shapes[key].loss, index)]
         for _ in range(model.poisson(rng, expected)):
             claim = model.claim_events(rng, book.coverage, index, multiple, shocks, book.line)
             if keys:
-                model.post_claim(cells, keys, index, valuation, claim)
+                post(keys, index, claim)
 
     for key in claim_keys:
         book, category = books[key], key[4]
@@ -291,7 +315,7 @@ def generate(shapes: dict[tuple, KeyShape], seed: int = DEFAULT_SEED,
         if shapes[key].loss is None:
             continue
         coverage = book.coverage
-        for index in range(shapes[key].loss[0], min(shapes[key].loss[1], valuation) + 1):
+        for index in range(shapes[key].loss[0], min(shapes[key].loss[1], base) + 1):
             expected = (book.exposure(index) * coverage.frequency * model.frequency_index(coverage, book.line, index)
                         * shocks.frequency(book.line, coverage, STATE_ALIAS.get(key[2], key[2]), index))
             simulate(book, index, expected, 1.0, [key])
@@ -301,19 +325,39 @@ def generate(shapes: dict[tuple, KeyShape], seed: int = DEFAULT_SEED,
             simulate(book, index, book.exposure(index) * rate, multiple, keys)
 
     # A key the template has losses for always gets at least one claim.
-    posted = {cell[:len(KEY_COLUMNS)] for cell in cells}
+    posted = {cell[:len(KEY_COLUMNS)] for cell in base_cells}
     for key in claim_keys:
         span = shapes[key].loss
-        if span is None or key in posted or span[0] > valuation:
+        if span is None or key in posted or span[0] > base:
             continue
         book, index = books[key], span[0]
         parent = (*key[:4], CAT_PARENT.get(key[4], key[4]))
         keys = [key] + ([parent] if parent != key and _in_span(shapes.get(parent, KeyShape()).loss, index) else [])
         while True:
             claim = model.claim_events(rng, book.coverage, index, 1.0, shocks, book.line)
-            if claim[1] <= valuation:
-                model.post_claim(cells, keys, index, valuation, claim)
+            if claim[1] <= base:
+                post(keys, index, claim)
                 break
+
+    # The months after the earlier valuation: new accident months for every
+    # segment still writing business, each from its own generator.
+    writing = {key for key in claim_keys if _writes_after(shapes[key], base)}
+    for key in sorted(writing):
+        book, category = books[key], key[4]
+        if category in CAT_PARENT or shapes[key].loss is None:
+            continue
+        coverage = book.coverage
+        for index in range(base + 1, valuation + 1):
+            month_rng = _keyed_random(seed, "roll", *key, index)
+            expected = (book.exposure(index) * coverage.frequency * model.frequency_index(coverage, book.line, index)
+                        * shocks.frequency(book.line, coverage, STATE_ALIAS.get(key[2], key[2]), index))
+            for _ in range(model.poisson(month_rng, expected)):
+                model.post_claim(cells, [key], index, valuation,
+                                 model.claim_events(month_rng, coverage, index, 1.0, shocks, book.line))
+    if base != valuation:
+        shapes = {key: dataclasses.replace(shape, premium=(shape.premium[0], valuation))
+                  if key in writing and shape.premium else shape
+                  for key, shape in shapes.items()}
 
     rows = _loss_rows(cells)
     for key in claim_keys:
@@ -325,6 +369,12 @@ def generate(shapes: dict[tuple, KeyShape], seed: int = DEFAULT_SEED,
                              round(book.premium(index), 2), round(book.exposure(index), 4), "", ""])
     rows.extend(_budget_rows(shapes, books, seed, valuation))
     return rows
+
+
+def _writes_after(shape: KeyShape, base: int) -> bool:
+    """Whether a segment was still earning premium, or still had losses, at the earlier valuation."""
+    span = shape.premium or shape.loss
+    return span is not None and span[1] >= base
 
 
 _LOSS_WIDTH = len(model.LOSS_COLUMNS) + len(model.COUNT_COLUMNS)
@@ -420,10 +470,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True, help="The CSV to write.")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--valuation", type=int, default=VALUATION_MONTH, help="Last evaluation month, yyyymm.")
+    parser.add_argument("--roll-forward-from", type=int, default=None,
+                        help="An earlier valuation, yyyymm, whose table this one continues.")
     args = parser.parse_args(argv)
     started = time.perf_counter()
     shapes = read_template(args.template)
-    rows = generate(shapes, args.seed, args.valuation)
+    rows = generate(shapes, args.seed, args.valuation, args.roll_forward_from)
     write_table(rows, args.output)
     keys = {tuple(row[:len(KEY_COLUMNS)]) for row in rows}
     print(f"Wrote {len(rows):,} rows for {len(keys)} of {len(shapes)} key combinations to {args.output} "
