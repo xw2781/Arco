@@ -12,7 +12,7 @@ helper; these checks exercise real enrollment.
   `powershell -NoProfile -ExecutionPolicy Bypass -File excel-addin\tools\build_xlam.ps1`
 - The helper deployed on the share at
   `<workspace>\apps\Arco Credential\Arco Credential.exe`
-- A credential of your own at `%APPDATA%\ArcRho\arcrho_gateway.json` to copy
+- A credential of your own at `%APPDATA%\Arco\arcrho_gateway.json` to copy
   aside and put back at the end, so the check leaves the PC as it found it.
 
 Excel is driven over COM. Set `DisplayAlerts`, `EnableEvents` and

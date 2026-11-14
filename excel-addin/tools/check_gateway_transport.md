@@ -220,7 +220,7 @@ which is the same refusal the array block itself has always shown.
 
 ### Without a credential
 
-The credential at `%APPDATA%\ArcRho\arcrho_gateway.json` was renamed aside and
+The credential at `%APPDATA%\Arco\arcrho_gateway.json` was renamed aside and
 the same workbook run again, then the credential was restored. All 2,224 cells
 read
 

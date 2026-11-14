@@ -26,7 +26,7 @@ fixed request, then talks to the Gateway this PC is pointed at.
 | :--- | :--- |
 | `vector digest` | The hash of the request body matches the contract. |
 | `vector signature` | The signature over that body matches the contract. |
-| `credential` | The user name and Gateway address from `%APPDATA%\ArcRho\arcrho_gateway.json`, or `none on this PC`. |
+| `credential` | The user name and Gateway address from `%APPDATA%\Arco\arcrho_gateway.json`, or `none on this PC`. |
 | `health` | `200` — the Gateway is up. |
 | `capabilities` | `200` and the list of what this Gateway serves. |
 | `signed request` | `400` — a deliberately unreadable request the Gateway accepted the signature for and then refused. `401` would mean the signature was refused. |

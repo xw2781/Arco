@@ -2,7 +2,7 @@
 Option Private Module
 Option Explicit
 
-Public Const ARCRHO_VERSION As String = "4.4.1"
+Public Const ARCRHO_VERSION As String = "4.4.2"
 
 ' The workbook sheet that carries the default project name. A workbook set up
 ' by an earlier version, or by ResQ itself, holds the ResQ spelling instead,
@@ -12,7 +12,7 @@ Public Const ARCRHO_VERSION As String = "4.4.1"
 Public Const SETTINGS_SHEET_NAME As String = "Arco Settings"
 Public Const LEGACY_SETTINGS_SHEET_NAME As String = "ResQ Settings"
 
-' User-specific config (C:\Users\...\AppData\Local\ArcRho\config.txt)
+' User-specific config (C:\Users\...\AppData\Local\Arco\config.txt)
 Public configDir As String
 Public configPath As String
 Public disable_ufLoading As Boolean
@@ -92,7 +92,7 @@ Public Function ProductPath(ByVal relativePath As String) As String
 End Function
 
 Private Sub InitConfigPaths()
-    configDir = Environ$("LOCALAPPDATA") & "\ArcRho"
+    configDir = Environ$("LOCALAPPDATA") & "\Arco"
     configPath = configDir & "\config.txt"
 End Sub
 

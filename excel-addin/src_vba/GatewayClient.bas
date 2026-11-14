@@ -64,7 +64,7 @@ Private Const VECTOR_SIGNATURE As String = "3a81facfc86c05784d7978f8a2f2de06b617
 Private Const HEADER_USER As String = "X-ArcRho-User"
 Private Const HEADER_TIMESTAMP As String = "X-ArcRho-Timestamp"
 Private Const HEADER_SIGNATURE As String = "X-ArcRho-Signature"
-Private Const GATEWAY_CONFIG_FILE As String = "ArcRho\arcrho_gateway.json"
+Private Const GATEWAY_CONFIG_FILE As String = "Arco\arcrho_gateway.json"
 ' The helper on the ArcRho Server that gives this PC its own credential. The
 ' share is what proves who is asking, so the work happens there and not here.
 Private Const CREDENTIAL_HELPER As String = "apps\Arco Credential\Arco Credential.exe"

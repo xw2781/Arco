@@ -3,6 +3,12 @@
 Newest first. The About window opens this file from beside the add-in on the
 Arco Server share.
 
+## 4.4.2 - 2026-11-14
+
+- The add-in now reads its sign-in and its own settings from the `Arco`
+  folders the desktop app uses from version 2.2.0. Start the updated Arco app
+  once before using this version: it renames the old `ArcRho` folders.
+
 ## 4.4.1 - 2026-11-10
 
 - Insert Arco Function: typing in a path, dataset, project, or folder box now
