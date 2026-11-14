@@ -122,3 +122,5 @@
 - [ResQ import: set up in GUI, run via API](resq-import-settings-gui-run-via-api.md) — wizard owns transforms/mappings; COM only runs or repoints a saved import; the Fake project's five imports
 - [ResQ triangle stored at development 12](resq-dfm-mid-period-valuation.md) — at a May valuation its DFM interpolates a monthly pattern and young origins differ from Arco; store it 12/1 so both read 5m/17m
 - [Fake 202608 is a roll-forward of 202605](fake-202608-is-a-roll-forward-of-202605.md) — since 2026-11-13 its source continues the 202605 table by three months; methods and prior-quarter inputs were not rebuilt
+- [User folder on the server and the Arco rename](user-folder-on-server-and-arco-rename.md) — 2026-11-14: settings, chats, dashboards under users\<login>; coded, not released; server, then app, then add-in
+- [User-folder tests touch real folders](user-folder-tests-touch-real-folders.md) — pin ARCRHO_RUNTIME_SERVER_ROOT and pass explicit paths; check for stray Arco folders after a suite run
