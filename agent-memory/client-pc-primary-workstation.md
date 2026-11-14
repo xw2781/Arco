@@ -9,7 +9,7 @@ metadata:
 ---
 
 As of 2026-08-15 the user works mainly on the Client PC (`L-H2MQ6280FVP`, repo
-at `c:\Users\xwei\Repos\ArcRho`) rather than the Dev PC, and wants server
+at `c:\Users\xwei\Repos\Arco`) rather than the Dev PC, and wants server
 component builds triggerable from there. See [[dev-pc-and-client-pc-identity]].
 
 **Engine, Bridge, and Save Gateway already build and deploy to

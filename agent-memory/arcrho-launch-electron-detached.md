@@ -21,8 +21,8 @@ What works is creating a fully detached process:
 
 ```powershell
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-  CommandLine = 'cmd.exe /c "E:\XWSpace\Repos\ArcRho\frontend\launch_arcrho_dev_mode.bat"';
-  CurrentDirectory = 'E:\XWSpace\Repos\ArcRho\frontend'
+  CommandLine = 'cmd.exe /c "E:\XWSpace\Repos\Arco\frontend\launch_arcrho_dev_mode.bat"';
+  CurrentDirectory = 'E:\XWSpace\Repos\Arco\frontend'
 }
 ```
 

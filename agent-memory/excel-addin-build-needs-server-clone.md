@@ -1,6 +1,6 @@
 ---
 name: excel-addin-build-needs-server-clone
-description: "the Excel add-in builds and releases from the Client PC by running the working clone's scripts with path arguments into E:\\XWSpace\\Repos\\ArcRho; the beta workbook, signature files, and rollback archive live only in that server clone"
+description: "the Excel add-in builds and releases from the Client PC by running the working clone's scripts with path arguments into E:\\XWSpace\\Repos\\Arco; the beta workbook, signature files, and rollback archive live only in that server clone"
 metadata:
   node_type: memory
   type: project
@@ -8,7 +8,7 @@ metadata:
   modified: 2026-09-28T13:25:00.000Z
 ---
 
-`excel-addin/beta/` and `excel-addin/signature/` are gitignored and exist **only** in the server clone `E:\XWSpace\Repos\ArcRho`. A fresh clone (including the Client PC working clone `C:\Users\xwei\Repos\ArcRho`) has neither, so its own `tools/build_xlam.ps1` stops at "Target XLAM not found" and `tools/release_xlam.ps1` at "Signature folder not found".
+`excel-addin/beta/` and `excel-addin/signature/` are gitignored and exist **only** in the server clone `E:\XWSpace\Repos\Arco`. A fresh clone (including the Client PC working clone `C:\Users\xwei\Repos\Arco`) has neither, so its own `tools/build_xlam.ps1` stops at "Target XLAM not found" and `tools/release_xlam.ps1` at "Signature folder not found".
 
 **Working recipe from the Client PC (since 2026-09-28, 4.2.1):** run the **working clone's** scripts and point their paths at the server clone. The server clone's scripts are stale (it is behind), and since 4.2.1 the build needs `excel-addin/RELEASE_NOTES.md` beside `src_vba` and the release checks the version. Exact commands are in `agent-instructions/excel-addin-build-and-release.md`. The older recipe (server clone's scripts with `-SourceDir`) skips the release-notes check and must not be used.
 

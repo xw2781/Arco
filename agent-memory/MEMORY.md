@@ -13,12 +13,9 @@
 - [All users run the latest app version](all-users-run-latest-app-version.md) — no release markers, no old-client compatibility, no forced-update steps in plans
 - [Arco Server root move](arco-server-root-move.md) — 2026-11-09: live root copied to E:\Arco Server; listener must restart on new code; folder permissions and old Gateway need the user
 - [Desktop release only from the Client PC](desktop-release-only-from-client-pc.md) — the Server PC has no permission to build or publish the app release
-- [Commit authorship](commit-authorship.md) — commits are authored by xw2781 with no Claude co-author trailer
 - [Agent memory lives in the repo](agent-memory-in-repo.md) — memories tracked in agent-memory/, reached through a junction from
 - [Dev PC and Client PC identity](dev-pc-and-client-pc-identity.md) — run hostname first: L-H2MQ6280FVP is the Client PC (E:\ mapped), NE7SASWPN02 is the Server
 - [Client PC as primary workstation](client-pc-primary-workstation.md) — Engine, Bridge, Gateway deploy from the Client PC because the share maps to the same E
-- [Deploy without asking](deploy-without-asking.md) — after editing a component's bundled sources run the deploy yourself; only another session's
-- [Deploy only when the released app is safe](deploy-only-when-released-app-is-safe.md) — 2026-09-20 rule: no-ask deploy only when latest-release users cannot break; plans open with
 - [Remote component deploy](remote-component-deploy.md) — server-components/deploy.py hands the build to the server Build Listener; check its
 - [Prefer the built-in edit tool](prefer-built-in-edit-tool.md) — use Edit/Write so VS Code shows a diff panel; shell rewrites only for bulk work
 - [Bash tool heredoc pitfalls](bash-tool-heredoc-pitfalls.md) — heredocs choke on backticks and doubled backslashes; write scripts with Write and run by
@@ -93,7 +90,6 @@
 - [ResQ double-space type names](resq-double-space-type-names.md) — ResQ carries doubled spaces in 8 of 250 Fake-project type names while files and the add-in
 - [Propagation walk nested cascade cost](propagation-walk-nested-cascade-cost.md) — 2026-09-16: the nested-wave walk rewrote 26 objects 54 times (D 91 subtree x3); fixed the
 - [Share listing blocked, use python](agent-share-listing-blocked-use-python.md) — find/Get-ChildItem under E:\ArcRho Server\projects are denied by the classifier; a py -3.10
-- [Macro must not depend on app arcrho_api](macro-must-not-depend-on-app-arcrho-api.md) — a macro imports arcrho_api from the installed app's build, so never lean on an arcrho_api
 - [Renderer preferences need a host file](renderer-preferences-need-host-file.md) — localStorage is wiped by File > Restart, Clear Cache, and a fallback backend port (new
 - [Installer closes every process and one-click update](installer-close-processes-and-one-click-update.md) — 2026-09-18: "cannot be closed" was a surviving arcrho_server.exe; customCheckAppRunning +
 - [Source refresh job diagnosis](source-refresh-job-diagnosis.md) — status JSON under requests\source_table_refresh\statuses has the full failures list; "claim
@@ -118,7 +114,6 @@
 - [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button at 0-3-0; prefix feature rules with :root or the page id and screenshot both themes
 - [Source column names with spaces](source-column-names-with-spaces.md) — 2026-10-26: Engine accepts spaced columns; a rename touches mapping, dataset_types Source, and rule source_measure
 - [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding an empty vector in the base class, not by editing formulas
-- [resq-invalid-aggregate-trace](resq-invalid-aggregate-trace.md) — How to trace a red "invalid" ResQ aggregate — compare ReservingClass.Formula…
 - [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a page-wide shield; reopen the project tab
 - [Excel-linked cells keep absolute position](excel-linked-cells-keep-absolute-position.md) — on a date reshape, Excel-linked in-cell formulas never shift; hard-coded data follows origin labels
 - [Project dates change job](project-dates-change-job.md) — 2026-11-04: one Engine job moves a project to new dates; its pending record relabels precedent rows until it clears

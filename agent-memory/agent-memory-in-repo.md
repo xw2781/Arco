@@ -16,10 +16,10 @@ The harness memory path is not configurable, so `%USERPROFILE%\.claude\projects\
 is a Windows **directory junction** pointing at `<repo>\agent-memory`. Writes through the
 harness path land in the working tree and show up in `git status`. The `<slug>` is the repo's
 absolute path with the drive letter lowercased and `:\` / `\` collapsed to `-` — for
-`c:\Users\xwei\Repos\ArcRho` that is `c--Users-xwei-Repos-ArcRho`.
+`c:\Users\xwei\Repos\Arco` that is `c--Users-xwei-Repos-Arco`.
 
 Recreate the junction on a new machine or a fresh clone with
-`pwsh tools/link_agent_memory.ps1` (see `AGENTS.md` -> Agent Memory). It is idempotent, needs
+`pwsh tools/link_agent_memory.ps1` (see `AGENT_GUIDELINES.md` -> Agent Memory). It is idempotent, needs
 no elevation, and refuses to clobber a non-empty real memory directory.
 
 Because memories are now shared across machines, a note that depends on one workstation's
