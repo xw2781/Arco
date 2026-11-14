@@ -1,126 +1,127 @@
 # Memory Index
 
-- [Pointer-capture drag fix](pointer-capture-drag-fix.md) — mousemove-on-document drags lose control on fast moves; use setPointerCapture (codex rule
-- [ArcRho dataset-types win over ResQ](arcrho-dataset-types-win-over-resq.md) — "calculated" only when dataset_types.json says so and every quoted name is a type
-- [When a ResQ formula belongs to the type](resq-formula-belongs-to-type.md) — promote an instance-only formula to the type when no instance holds data without it
-- [Instance formula import design](instance-formula-import-design.md) — 2026-08-31: instance formulas import as in-cell links with auto-recalc; 81/82 stay
-- [origin_length is NOT the row count](origin-length-is-not-row-count.md) — origin/development_length are months per period; use origin_count / len(origin_labels)
-- [Adding a project-level Engine job](adding-a-project-level-engine-job.md) — a PS save with no reserving class becomes a durable Engine job (contract + worker + job
-- [Rules save refreshes affected datasets](rules-save-refreshes-affected-datasets.md) — 2026-09-05: the rules job regenerates affected engine datasets and walks dependents
-- [ResQ stored-length rules](resq-stored-length-rules.md) — the store moves only on a display-length change or explicit stored put; case matrix in
-- [Engine in-process calculator](engine-in-process-calculator.md) — 2026-09-05: the Engine runs its own jobs' calculations in-process; job messages carry the
-- [Persisted JSON v4 progress](persisted-json-v4-progress.md) — plan closed 2026-09-06; only NJ_Annual_Prod_202605_Fake was converted, the rest re-import
-- [All users run the latest app version](all-users-run-latest-app-version.md) — no release markers, no old-client compatibility, no forced-update steps in plans
-- [Arco Server root move](arco-server-root-move.md) — 2026-11-09: live root copied to E:\Arco Server; listener must restart on new code; folder permissions and old Gateway need the user
-- [Desktop release only from the Client PC](desktop-release-only-from-client-pc.md) — the Server PC has no permission to build or publish the app release
-- [Agent memory lives in the repo](agent-memory-in-repo.md) — memories tracked in agent-memory/, reached through a junction from
-- [Dev PC and Client PC identity](dev-pc-and-client-pc-identity.md) — run hostname first: L-H2MQ6280FVP is the Client PC (E:\ mapped), NE7SASWPN02 is the Server
-- [Client PC as primary workstation](client-pc-primary-workstation.md) — Engine, Bridge, Gateway deploy from the Client PC because the share maps to the same E
-- [Remote component deploy](remote-component-deploy.md) — server-components/deploy.py hands the build to the server Build Listener; check its
-- [Prefer the built-in edit tool](prefer-built-in-edit-tool.md) — use Edit/Write so VS Code shows a diff panel; shell rewrites only for bulk work
-- [Bash tool heredoc pitfalls](bash-tool-heredoc-pitfalls.md) — heredocs choke on backticks and doubled backslashes; write scripts with Write and run by
-- [frontend/build folder layout](frontend-build-folder-layout.md) — runnable scripts at top level, helpers in subfolders; a bare runtime/ name collides with a
-- [Local release build](arcrho-local-release-build.md) — build_app_from_local_repo.bat builds in place, so the version bump and notes land in the
-- [Shared macro library deploy rule](shared-macro-library-deploy.md) — after editing an active macro publish via publish_macro_library.py; it reads the # Version
-- [Bridge restart after deploy](bridge-restart-after-deploy.md) — only sessions with a live Orchestrator get their Bridge back; a hand-started Bridge stays
-- [ResQ custom-average API](resq-custom-average-api.md) — dfm.CustomAverages(i) gives real type/settings; AverageType 6 = User Calculation; Formula
-- [Benchmark row imports as User Entry](resq-benchmark-row-imports-as-user-entry.md) — 2026-08-31: ResQ User Calculation rows import as live User Entry formula rows; Ex hi/lo
-- [ResQ add-in VBA source](resq-addin-vba-source.md) — ResQ.xlam VBA extracted to E:\XWSpace\ResQ API Doc\vba, a vendor reference for the COM read
-- [ResQ COM probe](resq-com-probe.md) — COM only on the Server PC (py -3.10 + pywin32, gencache.EnsureDispatch); late binding
-- [Migration script local run](migration-script-local-run.md) — the Client PC engine venv runs resq_data_migration.py up to the ResQ connect; real runs
-- [Dev UI cache and restart](arcrho-dev-ui-cache-restart.md) — in-app restart cannot pick up frontend/ui edits; ARCRHO_UI_VERSION is pinned per supervisor
-- [Theme CSS version pins](theme-css-version-pins.md) — tests pin exact ?v= stamps in color_theme.test.mjs and review_table.test.mjs
-- [Launching ArcRho detached](arcrho-launch-electron-detached.md) — Win32_Process.Create + start_electron.bat; poll app_ui_ready.json; crash logs in
-- [Frontend node test suite](frontend-node-test-suite.md) — run with node-portable + glob; 4 tests fail at HEAD, baseline before blaming a change
-- [Python test runner](python-test-runner.md) — pytest only in .pytest-tools (3.14); py -3.10 has fastapi/pandas for frontend unittest runs
-- [Macro tests poisoned by test_resq_dfm_v2](macro-tests-poisoned-by-resq-dfm-v2.md) — the import macro tests fail when test_resq_dfm_v2.py runs first in the same process
-- [DFM save propagation profile](dfm-save-propagation-profile.md) — dependent propagation is ~80% of DFM save I/O; offline profiling harness notes
-- [ResQ PercentageDevelopedType enum](resq-percentage-developed-enum.md) — 4 codes incl. pdCumDevFactorsAdjusted=3; GetCapeCodeMethod for full CC objects
+- [Pointer-capture drag fix](pointer-capture-drag-fix.md) — mousemove-on-document drags lose control on fast moves; use
+- [ArcRho dataset-types win over ResQ](arcrho-dataset-types-win-over-resq.md) — "calculated" only when dataset_types.json says so and every
+- [When a ResQ formula belongs to the type](resq-formula-belongs-to-type.md) — promote an instance-only formula to the type when no
+- [Instance formula import design](instance-formula-import-design.md) — 2026-08-31: instance formulas import as in-cell links with
+- [origin_length is NOT the row count](origin-length-is-not-row-count.md) — origin/development_length are months per period; use
+- [Adding a project-level Engine job](adding-a-project-level-engine-job.md) — a PS save with no reserving class becomes a durable Engine
+- [Rules save refreshes affected datasets](rules-save-refreshes-affected-datasets.md) — 2026-09-05: the rules job regenerates affected engine
+- [ResQ stored-length rules](resq-stored-length-rules.md) — the store moves only on a display-length change or explicit
+- [Engine in-process calculator](engine-in-process-calculator.md) — 2026-09-05: the Engine runs its own jobs' calculations
+- [Persisted JSON v4 progress](persisted-json-v4-progress.md) — plan closed 2026-09-06; only NJ_Annual_Prod_202605_Fake was
+- [All users run the latest app version](all-users-run-latest-app-version.md) — no release markers, no old-client compatibility, no
+- [Arco Server root move](arco-server-root-move.md) — 2026-11-09: live root copied to E:\Arco Server; listener
+- [Desktop release only from the Client PC](desktop-release-only-from-client-pc.md) — the Server PC has no permission to build or publish the app
+- [Agent memory lives in the repo](agent-memory-in-repo.md) — memories tracked in agent-memory/, reached through a
+- [Dev PC and Client PC identity](dev-pc-and-client-pc-identity.md) — run hostname first: L-H2MQ6280FVP is the Client PC (E:\
+- [Client PC as primary workstation](client-pc-primary-workstation.md) — Engine, Bridge, Gateway deploy from the Client PC because
+- [Deploy --ref main builds a stale commit](deploy-ref-main-resolves-stale-branch.md) — the buildbot's local main is stale; deploy by full hash
+- [Remote component deploy](remote-component-deploy.md) — server-components/deploy.py hands the build to the server
+- [Prefer the built-in edit tool](prefer-built-in-edit-tool.md) — use Edit/Write so VS Code shows a diff panel; shell
+- [Bash tool heredoc pitfalls](bash-tool-heredoc-pitfalls.md) — heredocs choke on backticks and doubled backslashes; write
+- [frontend/build folder layout](frontend-build-folder-layout.md) — runnable scripts at top level, helpers in subfolders; a
+- [Local release build](arcrho-local-release-build.md) — build_app_from_local_repo.bat builds in place, so the
+- [Shared macro library deploy rule](shared-macro-library-deploy.md) — after editing an active macro publish via
+- [Bridge restart after deploy](bridge-restart-after-deploy.md) — only sessions with a live Orchestrator get their Bridge
+- [ResQ custom-average API](resq-custom-average-api.md) — dfm.CustomAverages(i) gives real type/settings; AverageType
+- [Benchmark row imports as User Entry](resq-benchmark-row-imports-as-user-entry.md) — 2026-08-31: ResQ User Calculation rows import as live User
+- [ResQ add-in VBA source](resq-addin-vba-source.md) — ResQ.xlam VBA extracted to E:\XWSpace\ResQ API Doc\vba, a
+- [ResQ COM probe](resq-com-probe.md) — COM only on the Server PC (py -3.10 + pywin32
+- [Migration script local run](migration-script-local-run.md) — the Client PC engine venv runs resq_data_migration.py up to
+- [Dev UI cache and restart](arcrho-dev-ui-cache-restart.md) — in-app restart cannot pick up frontend/ui edits
+- [Theme CSS version pins](theme-css-version-pins.md) — tests pin exact ?v= stamps in color_theme.test.mjs and
+- [Launching ArcRho detached](arcrho-launch-electron-detached.md) — Win32_Process.Create + start_electron.bat; poll
+- [Frontend node test suite](frontend-node-test-suite.md) — run with node-portable + glob; 4 tests fail at HEAD
+- [Python test runner](python-test-runner.md) — pytest only in .pytest-tools (3.14); py -3.10 has
+- [Macro tests poisoned by test_resq_dfm_v2](macro-tests-poisoned-by-resq-dfm-v2.md) — the import macro tests fail when test_resq_dfm_v2.py runs
+- [DFM save propagation profile](dfm-save-propagation-profile.md) — dependent propagation is ~80% of DFM save I/O; offline
+- [ResQ PercentageDevelopedType enum](resq-percentage-developed-enum.md) — 4 codes incl. pdCumDevFactorsAdjusted=3; GetCapeCodeMethod
 - [Project duplication diagnostics](project-duplication-diagnostics.md) — the UI error is redacted; read the status JSON history and
-- [Macro method-notes persistence](macro-method-notes-persistence.md) — method notes cross payloads only via the transient method metadata carrier; Save persists
+- [Macro method-notes persistence](macro-method-notes-persistence.md) — method notes cross payloads only via the transient method
 - [Propagation hold and test isolation](propagation-hold-and-test-isolation.md) — saves preflight a 423 hold; service tests that save must use
-- [DFM offline recompute repro](dfm-offline-recompute-repro.md) — import arcrho_api.dfm_contract against live method JSON to diagnose refresh decisions
-- [Gateway deploy swap lock](gateway-deploy-swap-lock.md) — deploys stage into a persistent .<App>.slot and swap with retried renames; first deploy per
-- [PI path-load SMB cost](pi-path-load-smb-cost.md) — share cost is per operation, not per byte; the class path load spends 21 round trips
-- [Engine calculation gateway transport](engine-calculation-gateway-transport.md) — Phase 2 live 2026-08-16: exchange + /arcrho/tri* + GET /dataset/{id} hosted on the Gateway
-- [Adding a hosted workspace read](adding-a-hosted-workspace-read.md) — register the kind in arcrho_workspace_read_contract + service + router, then rebuild the
-- [Adding a hosted save kind](adding-a-hosted-save-kind.md) — one SAVE_JOB_KINDS entry plus save_propagation_roots moves a page's save onto the Engine
-- [Propagation status SMB cache lag](propagation-status-smb-cache-lag.md) — the client polls status over SMB where Windows' 10s cache hides a written terminal status
-- [SMB stat metadata alternation](smb-stat-metadata-alternation.md) — os.stat on E: alternates fresh/~9s-stale after a server write; a stat-only baseline can
-- [Standalone DSV/DFM tabs are legacy](standalone-dsv-dfm-tabs-legacy.md) — PI windows and Workflow steps are the only live hosts to design for
-- [Hung app-server request diagnosis](hung-app-server-request-diagnosis.md) — uvicorn logs an access line only on response; corroborate with file mtimes and the audit log
-- [Build listener request read race](build-listener-request-read-race.md) — "build request could not be read: Permission denied" is a share write/watch race; one retry
-- [Hosted-save fix needs Engine deploy](hosted-save-fix-needs-engine-deploy.md) — method saves run on the Engine's bundled app_server copy; an app_server fix is live only
-- [Bridge worker claim identity](bridge-worker-claim-identity.md) — a queued import runs under whichever user's Bridge worker claims it; the status file's NTFS
-- [Bridge heartbeat false negative](bridge-heartbeat-false-negative.md) — "ArcRho Bridge became unavailable" can be a single-sample SMB false negative; check the
-- [server-components folder rename](server-components-folder-rename.md) — data-engine/ became server-components/ on 2026-08-25; every venv and build tree went with
-- [ResQ export order diagnosis](resq-export-order-diagnosis.md) — the Bridge status JSON records the real write order; replay the walk offline with
-- [Offline dependent-walk replay](offline-dependent-walk-replay.md) — DANGER: mocking load_workspace_paths does not redirect project data (live NJ HOL class
-- [Result Selection unchanged-dependent block](result-selection-unchanged-dependent-block.md) — 2026-08-30, deployed: a status-only RS refresh no longer blocks its DFM/calculated
-- [Bulk method restatement hold](bulk-method-restatement-hold.md) — refreshing many methods in one class needs a 423 wait between each
-- [Mixed origin-length precedents](mixed-origin-length-precedents.md) — 26 of 82 BF/CC methods in Q2-May Test cannot refresh because a precedent's origin length
-- [Percentage developed from DFM factors](percentage-developed-from-dfm-factors.md) — BF and CC read it from the DFM's selected factors, never Latest ÷ Ultimate; the import
-- [Deploy staleness is mtime-based](deploy-staleness-is-mtime-based.md) — --stale compares the deployed EXE mtime against the newest bundled source; verify by
-- [Reserve review source workbook](reserve-review-inputs-workbook.md) — Inputs.xlsx is authoritative, not Inputs_v2.xlsx; they disagree on the 2025 cutoff and
-- [Growth and cutoff adjustment rules](growth-and-cutoff-adjustment-rules.md) — the Factor block is already compounded; DFM period n reads vector row [-n] for at most 3
-- [Reserve review input vectors script](reserve-review-input-vectors-script.md) — tools/create_reserve_review_input_datasets.py uses one period basis per class, so annual
-- [Electron UI screenshot check](electron-ui-screenshot-check.md) — render a mock-up with the bundled electron.exe and Read the PNG; an in-main http server
-- [Unreviewed-dataset import fix](unreviewed-dataset-import-fix.md) — 2026-09-01: the import carries calculated and engine datasets the review hides
-- [BS CRA export of Avg. Selections](bs-cra-export-avg-selections.md) — 2026-09-02: Export macro v2.8.0 writes both Avg. Selections grids via SetUser/SetSelected
-- [pandas read_csv is not round-trip](pandas-read-csv-not-round-trip.md) — the default float parser caps at 17 digit characters; every method service reads CSVs this
-- [Blank CSV row is an empty origin](blank-csv-row-is-an-empty-origin.md) — pandas drops the blank line a writer emits for a missing origin, which caused "returned 39
-- [Method precision: observed, not projected](method-precision-observed-not-projected.md) — since 2026-09-08 methods store/calculate at the observed precision
-- [Worktree baselines mask new failures](worktree-baseline-masks-new-failures.md) — a fresh worktree over-reports failures and hides regressions; stash in the same tree instead
-- [ResQ DFM Curves COM API](resq-dfm-curves-com-api.md) — the Ratios-tab tail is CustomAverages(i).TailFactor, CurveValues(col,0) is a tail
-- [ResQ COM probe: never call members blindly](resq-com-probe-dont-call-blindly.md) — a dir()-driven probe invoked Select/Refresh members and mutated the method; read only named
-- [Refresh problem diagnosis logs](refresh-problem-diagnosis-logs.md) — a rules save shows only its first problem; the full per-class list is in
-- [Triangle roll-up valuation anchor](triangle-rollup-valuation-anchor.md) — 2026-09-06: a coarser view counts development periods back from the Development End Date; a hand-entered triangle from an earlier valuation is read by position (2026-10-26)
-- [Dataset window two open paths](dataset-window-two-open-paths.md) — the PI open uses the /dataset/cache/load response as the sidecar while the run path reloads
-- [Engine stored lengths are source granularity](engine-stored-lengths-are-source-granularity.md) — an engine sidecar's stored_* pair is the source-table granularity, not its CSV shape; every
-- [Stored at must ask the file](stored-at-must-ask-the-file.md) — "is this dataset still empty?" asks the file, not the grid; asking the grid discarded a
-- [Linked origin is the stored origin](linked-origin-is-the-stored-origin.md) — a cell link is entered at the stored origin period; only linked_development_length is
-- [Release vs source comparison](release-vs-source-comparison.md) — diff the installed app's frozen UI/wheel and the deployed arcrho_canonical copies against
-- [Hide trailing tag whole when narrow](hide-trailing-tag-whole-when-narrow.md) — 2026-09-11 PI path tree: flex-wrap + fixed row height + abspos leading arrow drops the
-- [VBA declarations above the first procedure](vba-declarations-above-first-procedure.md) — 2026-09-21: a Const below a procedure compiled per-procedure probes but failed every formula
-- [Excel add-in build needs the server clone](excel-addin-build-needs-server-clone.md) — run the working clone's build/release scripts with path arguments into the E: server clone; each release needs a version bump and RELEASE_NOTES.md entry
-- [Excel COM must suppress alerts](excel-com-must-suppress-alerts.md) — an agent-driven Excel instance is invisible but its modal alerts block the COM call; set
-- [Excel automation needs a GUI check](excel-automation-needs-gui-check.md) — 2026-09-23 user rule: screenshot while a script drives Excel; VBA compile/runtime boxes
-- [Excel rebuild of method results](excel-rebuild-of-method-results.md) — 2026-09-14: Calculate Workbook sent a Result Selection output to the Engine, which wrote
-- [Vector sibling views broke calculated refresh](vector-sibling-views-ambiguous-dependency.md) — stale @3/@6 files beside a vector's own copy tied the candidate scoring, so F 63 was
-- [ResQ double-space type names](resq-double-space-type-names.md) — ResQ carries doubled spaces in 8 of 250 Fake-project type names while files and the add-in
-- [Propagation walk nested cascade cost](propagation-walk-nested-cascade-cost.md) — 2026-09-16: the nested-wave walk rewrote 26 objects 54 times (D 91 subtree x3); fixed the
-- [Share listing blocked, use python](agent-share-listing-blocked-use-python.md) — find/Get-ChildItem under E:\ArcRho Server\projects are denied by the classifier; a py -3.10
-- [Renderer preferences need a host file](renderer-preferences-need-host-file.md) — localStorage is wiped by File > Restart, Clear Cache, and a fallback backend port (new
-- [Installer closes every process and one-click update](installer-close-processes-and-one-click-update.md) — 2026-09-18: "cannot be closed" was a surviving arcrho_server.exe; customCheckAppRunning +
-- [Source refresh job diagnosis](source-refresh-job-diagnosis.md) — status JSON under requests\source_table_refresh\statuses has the full failures list; "claim
-- [Excel link reads go through the Gateway first](excel-link-reads-gateway-first.md) — 2026-09-18 user rule: workbook reads for the link check/refresh/retarget run on the
-- [Write tool unescapes control chars](write-tool-unescapes-control-chars.md) - a \u001f in Write/Edit lands as the literal byte; repair with a Python chr(92) rewrite
-- [Concise UI message copy](concise-ui-message-copy.md) — dialogs say only what the buttons and the linked list do not; two lines at most
-- [Update feed and old-client asset names](update-asset-name-strands-old-clients.md) — new clients read update-feed/Arco-update.json; <=2.0.0 clients match the installer name; a rename needs an old-name copy plus its
-- [Calculated walk reads stale sibling views](calculated-walk-reads-stale-sibling-views.md) — 2026-09-21: `_candidate_csvs` takes an unvalidated `@<period>` sibling of an Engine/input
-- [BF/CC formula change needs republish](bf-cc-formula-change-needs-republish.md) — 2026-09-21: changing how BF/CC derive their calculated columns makes every stored method
-- [Desktop input control works](desktop-input-control-works.md) — for GUI verification use tools/agent_screen_control (click/drag with -Window guard, agent
-- [MSForms run-time multi-column white block](msforms-runtime-multicolumn-white-block.md) — a Controls.Add list given ColumnCount > 1 draws a stray white block under RDP scaling; keep
-- [Arco is the app name](arco-is-the-app-name.md) — "Arco Workspace" is the ArcRho desktop app; reopen the window or project tab to load UI edits
-- [Scripts save through the Gateway client](scripts-save-through-gateway-client.md) — notebooks use arcrho_api.gateway, not the local app URL (another user's Arco can hold 28765); audit log must show the user
-- [Local test root](local-test-root.md) — since 2026-09-26 C:\Arco Server runs a private server via tools/local_server.py (Server PC: E:\XWSpace\Arco Server, never C:); deploy there first, launch-app for the test client
-- [Local-root scripts need the local Gateway env](local-root-scripts-need-local-gateway-env.md) — ARCRHO_SERVER_ROOT alone sends Engine work to production (76 Fake CSVs regenerated 2026-11-04); set the local credential + URL too
-- [Tests never reach a real Gateway](job-tests-read-live-gateway.md) — since 2026-09-27 arcrho_api.gateway_test_guard hides the credential and refuses Gateway URLs in any test run; loopback test Gateways opt in
-- [Fake MA BI Total is the F 63 test class](fake-ma-bi-total-f63-test-class.md) — quarterly P 06 + annual Engine premiums; Fake NY BI Total cannot build F 63
-- [Update blocked by unkillable processes](update-blocked-by-unkillable-processes.md) — 2026-10-06: "still running" PIDs that Task Manager cannot end are stuck in Windows teardown; they clear in minutes
-- [Build listener down: local build_exe](build-listener-down-local-build.md) — on the Server PC run build_exe.py with ARCRHO_DEPLOY_ROOT; delete venvs/builds after
-- [Temp files on E:](temp-files-on-e-drive.md) — standing rule since 2026-10-12: all temp files go in repo tmp_data/ on E:, never C: or the session scratchpad
-- [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme only and short bullet points, not prose
-- [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button at 0-3-0; prefix feature rules with :root or the page id and screenshot both themes
-- [Source column names with spaces](source-column-names-with-spaces.md) — 2026-10-26: Engine accepts spaced columns; a rename touches mapping, dataset_types Source, and rule source_measure
-- [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding an empty vector in the base class, not by editing formulas
-- [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a page-wide shield; reopen the project tab
-- [Excel-linked cells keep absolute position](excel-linked-cells-keep-absolute-position.md) — on a date reshape, Excel-linked in-cell formulas never shift; hard-coded data follows origin labels
-- [Project dates change job](project-dates-change-job.md) — 2026-11-04: one Engine job moves a project to new dates; its pending record relabels precedent rows until it clears
-- [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation hosted in Legacy\HOPxCAT+HOL; ResQ correlation still unconfirmed
-- [ABC demo project build](abc-demo-project-build.md) — 2026-11-04: demo is ABC_Group_Quarterly_Review_202608, built by tools/build_abc_group_demo_project.py; template-copy pitfalls
-- [ResQ import: set up in GUI, run via API](resq-import-settings-gui-run-via-api.md) — wizard owns transforms/mappings; COM only runs or repoints a saved import; the Fake project's five imports
-- [ResQ triangle stored at development 12](resq-dfm-mid-period-valuation.md) — at a May valuation its DFM interpolates a monthly pattern and young origins differ from Arco; store it 12/1 so both read 5m/17m
-- [Fake 202608 is a roll-forward of 202605](fake-202608-is-a-roll-forward-of-202605.md) — since 2026-11-13 its source continues the 202605 table by three months; methods and prior-quarter inputs were not rebuilt
-- [User folder on the server and the Arco rename](user-folder-on-server-and-arco-rename.md) — 2026-11-14: settings, chats, dashboards under users\<login>; coded, not released; server, then app, then add-in
-- [User-folder tests touch real folders](user-folder-tests-touch-real-folders.md) — pin ARCRHO_RUNTIME_SERVER_ROOT and pass explicit paths; check for stray Arco folders after a suite run
+- [DFM offline recompute repro](dfm-offline-recompute-repro.md) — import arcrho_api.dfm_contract against live method JSON to
+- [Gateway deploy swap lock](gateway-deploy-swap-lock.md) — deploys stage into a persistent .<App>.slot and swap with
+- [PI path-load SMB cost](pi-path-load-smb-cost.md) — share cost is per operation, not per byte; the class path
+- [Engine calculation gateway transport](engine-calculation-gateway-transport.md) — Phase 2 live 2026-08-16: exchange + /arcrho/tri* + GET
+- [Adding a hosted workspace read](adding-a-hosted-workspace-read.md) — register the kind in arcrho_workspace_read_contract +
+- [Adding a hosted save kind](adding-a-hosted-save-kind.md) — one SAVE_JOB_KINDS entry plus save_propagation_roots moves
+- [Propagation status SMB cache lag](propagation-status-smb-cache-lag.md) — the client polls status over SMB where Windows' 10s cache
+- [SMB stat metadata alternation](smb-stat-metadata-alternation.md) — os.stat on E: alternates fresh/~9s-stale after a server
+- [Standalone DSV/DFM tabs are legacy](standalone-dsv-dfm-tabs-legacy.md) — PI windows and Workflow steps are the only live hosts to
+- [Hung app-server request diagnosis](hung-app-server-request-diagnosis.md) — uvicorn logs an access line only on response; corroborate
+- [Build listener request read race](build-listener-request-read-race.md) — "build request could not be read: Permission denied" is a
+- [Hosted-save fix needs Engine deploy](hosted-save-fix-needs-engine-deploy.md) — method saves run on the Engine's bundled app_server copy
+- [Bridge worker claim identity](bridge-worker-claim-identity.md) — a queued import runs under whichever user's Bridge worker
+- [Bridge heartbeat false negative](bridge-heartbeat-false-negative.md) — "ArcRho Bridge became unavailable" can be a single-sample
+- [server-components folder rename](server-components-folder-rename.md) — data-engine/ became server-components/ on 2026-08-25; every
+- [ResQ export order diagnosis](resq-export-order-diagnosis.md) — the Bridge status JSON records the real write order; replay
+- [Offline dependent-walk replay](offline-dependent-walk-replay.md) — DANGER: mocking load_workspace_paths does not redirect
+- [Result Selection unchanged-dependent block](result-selection-unchanged-dependent-block.md) — 2026-08-30, deployed: a status-only RS refresh no longer
+- [Bulk method restatement hold](bulk-method-restatement-hold.md) — refreshing many methods in one class needs a 423 wait
+- [Mixed origin-length precedents](mixed-origin-length-precedents.md) — 26 of 82 BF/CC methods in Q2-May Test cannot refresh
+- [Percentage developed from DFM factors](percentage-developed-from-dfm-factors.md) — BF and CC read it from the DFM's selected factors, never
+- [Deploy staleness is mtime-based](deploy-staleness-is-mtime-based.md) — --stale compares the deployed EXE mtime against the newest
+- [Reserve review source workbook](reserve-review-inputs-workbook.md) — Inputs.xlsx is authoritative, not Inputs_v2.xlsx; they
+- [Growth and cutoff adjustment rules](growth-and-cutoff-adjustment-rules.md) — the Factor block is already compounded; DFM period n reads
+- [Reserve review input vectors script](reserve-review-input-vectors-script.md) — tools/create_reserve_review_input_datasets.py uses one
+- [Electron UI screenshot check](electron-ui-screenshot-check.md) — render a mock-up with the bundled electron.exe and Read the
+- [Unreviewed-dataset import fix](unreviewed-dataset-import-fix.md) — 2026-09-01: the import carries calculated and engine
+- [BS CRA export of Avg. Selections](bs-cra-export-avg-selections.md) — 2026-09-02: Export macro v2.8.0 writes both Avg. Selections
+- [pandas read_csv is not round-trip](pandas-read-csv-not-round-trip.md) — the default float parser caps at 17 digit characters; every
+- [Blank CSV row is an empty origin](blank-csv-row-is-an-empty-origin.md) — pandas drops the blank line a writer emits for a missing
+- [Method precision: observed, not projected](method-precision-observed-not-projected.md) — since 2026-09-08 methods store/calculate at the observed
+- [Worktree baselines mask new failures](worktree-baseline-masks-new-failures.md) — a fresh worktree over-reports failures and hides
+- [ResQ DFM Curves COM API](resq-dfm-curves-com-api.md) — the Ratios-tab tail is CustomAverages(i).TailFactor
+- [ResQ COM probe: never call members blindly](resq-com-probe-dont-call-blindly.md) — a dir()-driven probe invoked Select/Refresh members and
+- [Refresh problem diagnosis logs](refresh-problem-diagnosis-logs.md) — a rules save shows only its first problem; the full
+- [Triangle roll-up valuation anchor](triangle-rollup-valuation-anchor.md) — 2026-09-06: a coarser view counts development periods back
+- [Dataset window two open paths](dataset-window-two-open-paths.md) — the PI open uses the /dataset/cache/load response as the
+- [Engine stored lengths are source granularity](engine-stored-lengths-are-source-granularity.md) — an engine sidecar's stored_* pair is the source-table
+- [Stored at must ask the file](stored-at-must-ask-the-file.md) — "is this dataset still empty?" asks the file, not the grid
+- [Linked origin is the stored origin](linked-origin-is-the-stored-origin.md) — a cell link is entered at the stored origin period; only
+- [Release vs source comparison](release-vs-source-comparison.md) — diff the installed app's frozen UI/wheel and the deployed
+- [Hide trailing tag whole when narrow](hide-trailing-tag-whole-when-narrow.md) — 2026-09-11 PI path tree: flex-wrap + fixed row height +
+- [VBA declarations above the first procedure](vba-declarations-above-first-procedure.md) — 2026-09-21: a Const below a procedure compiled
+- [Excel add-in build needs the server clone](excel-addin-build-needs-server-clone.md) — run the working clone's build/release scripts with path
+- [Excel COM must suppress alerts](excel-com-must-suppress-alerts.md) — an agent-driven Excel instance is invisible but its modal
+- [Excel automation needs a GUI check](excel-automation-needs-gui-check.md) — 2026-09-23 user rule: screenshot while a script drives
+- [Excel rebuild of method results](excel-rebuild-of-method-results.md) — 2026-09-14: Calculate Workbook sent a Result Selection
+- [Vector sibling views broke calculated refresh](vector-sibling-views-ambiguous-dependency.md) — stale @3/@6 files beside a vector's own copy tied the
+- [ResQ double-space type names](resq-double-space-type-names.md) — ResQ carries doubled spaces in 8 of 250 Fake-project type
+- [Propagation walk nested cascade cost](propagation-walk-nested-cascade-cost.md) — 2026-09-16: the nested-wave walk rewrote 26 objects 54
+- [Share listing blocked, use python](agent-share-listing-blocked-use-python.md) — find/Get-ChildItem under E:\ArcRho Server\projects are
+- [Renderer preferences need a host file](renderer-preferences-need-host-file.md) — localStorage is wiped by File > Restart, Clear Cache, and a
+- [Installer closes every process and one-click update](installer-close-processes-and-one-click-update.md) — 2026-09-18: "cannot be closed" was a surviving
+- [Source refresh job diagnosis](source-refresh-job-diagnosis.md) — status JSON under requests\source_table_refresh\statuses
+- [Excel link reads go through the Gateway first](excel-link-reads-gateway-first.md) — 2026-09-18 user rule: workbook reads for the link
+- [Write tool unescapes control chars](write-tool-unescapes-control-chars.md) — a \u001f in Write/Edit lands as the literal byte; repair
+- [Concise UI message copy](concise-ui-message-copy.md) — dialogs say only what the buttons and the linked list do
+- [Update feed and old-client asset names](update-asset-name-strands-old-clients.md) — new clients read update-feed/Arco-update.json; <=2.0.0
+- [Calculated walk reads stale sibling views](calculated-walk-reads-stale-sibling-views.md) — 2026-09-21: `_candidate_csvs` takes an unvalidated
+- [BF/CC formula change needs republish](bf-cc-formula-change-needs-republish.md) — 2026-09-21: changing how BF/CC derive their calculated
+- [Desktop input control works](desktop-input-control-works.md) — for GUI verification use tools/agent_screen_control
+- [MSForms run-time multi-column white block](msforms-runtime-multicolumn-white-block.md) — a Controls.Add list given ColumnCount > 1 draws a stray
+- [Arco is the app name](arco-is-the-app-name.md) — "Arco Workspace" is the ArcRho desktop app; reopen the
+- [Scripts save through the Gateway client](scripts-save-through-gateway-client.md) — notebooks use arcrho_api.gateway, not the local app URL
+- [Local test root](local-test-root.md) — since 2026-09-26 C:\Arco Server runs a private server via
+- [Local-root scripts need the local Gateway env](local-root-scripts-need-local-gateway-env.md) — ARCRHO_SERVER_ROOT alone sends Engine work to production
+- [Tests never reach a real Gateway](job-tests-read-live-gateway.md) — since 2026-09-27 arcrho_api.gateway_test_guard hides the
+- [Fake MA BI Total is the F 63 test class](fake-ma-bi-total-f63-test-class.md) — quarterly P 06 + annual Engine premiums; Fake NY BI Total
+- [Update blocked by unkillable processes](update-blocked-by-unkillable-processes.md) — 2026-10-06: "still running" PIDs that Task Manager cannot
+- [Build listener down: local build_exe](build-listener-down-local-build.md) — on the Server PC run build_exe.py with ARCRHO_DEPLOY_ROOT
+- [Temp files on E:](temp-files-on-e-drive.md) — standing rule since 2026-10-12: all temp files go in repo
+- [Presentation style: light, bullets](presentation-style-light-and-bullets.md) — 2026-10-13 user rule: presentation pages use a light theme
+- [Dark theme button rule specificity](dark-theme-button-rule-specificity.md) — dark.css restyles every button at 0-3-0; prefix feature
+- [Source column names with spaces](source-column-names-with-spaces.md) — 2026-10-26: Engine accepts spaced columns; a rename touches
+- [ResQ invalid aggregate trace](resq-invalid-aggregate-trace.md) — invalid = a member class lacks the dataset; fix by adding
+- [PI window stuck drag shield](pi-window-stuck-drag-shield.md) — an agent click on a dataset window resize edge can leave a
+- [Excel-linked cells keep absolute position](excel-linked-cells-keep-absolute-position.md) — on a date reshape, Excel-linked in-cell formulas never
+- [Project dates change job](project-dates-change-job.md) — 2026-11-04: one Engine job moves a project to new dates
+- [HO consolidation progress](ho-oil-bootstrap-parity-open.md) — 2026-10-28: cross-project segments built; HO consolidation
+- [ABC demo project build](abc-demo-project-build.md) — 2026-11-04: demo is ABC_Group_Quarterly_Review_202608
+- [ResQ import: set up in GUI, run via API](resq-import-settings-gui-run-via-api.md) — wizard owns transforms/mappings; COM only runs or repoints
+- [ResQ triangle stored at development 12](resq-dfm-mid-period-valuation.md) — at a May valuation its DFM interpolates a monthly pattern
+- [Fake 202608 is a roll-forward of 202605](fake-202608-is-a-roll-forward-of-202605.md) — since 2026-11-13 its source continues the 202605 table by
+- [User folder on the server and the Arco rename](user-folder-on-server-and-arco-rename.md) — 2026-11-14: settings, chats, dashboards under
+- [User-folder tests touch real folders](user-folder-tests-touch-real-folders.md) — pin ARCRHO_RUNTIME_SERVER_ROOT and pass explicit paths
