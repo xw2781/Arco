@@ -39,10 +39,6 @@ def start_app(
 
     env = os.environ.copy()
     env.setdefault("TRI_DATA_DIR", str(project_dir))
-    env.setdefault(
-        "ARCRHO_WORKFLOW_DIR",
-        str(Path.home() / "Documents" / "ArcRho" / "workflows"),
-    )
 
     print("Working dir:", project_dir)
     print("Command:", " ".join(cmd))
@@ -94,7 +90,7 @@ def start_browser(
     localappdata = os.environ.get("LOCALAPPDATA") or str(
         Path.home() / "AppData" / "Local"
     )
-    user_data_dir = Path(localappdata) / "ArcRho_AppMode_Profile"
+    user_data_dir = Path(localappdata) / "Arco_AppMode_Profile"
     user_data_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [

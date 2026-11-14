@@ -93,7 +93,7 @@ test("Macro lists share keyboard selection and pointer-captured drag", () => {
   // Rows carry no native tooltip; the description pane holds that text.
   assert.doesNotMatch(macro, /item\.title = /);
   assert.doesNotMatch(library, /item\.title = /);
-  // The display order is a local-user preference under %APPDATA%\ArcRho\prefs,
+  // The display order is a local-user preference under %APPDATA%\Arco\prefs,
   // written by the desktop host, never browser storage.
   const preload = read("../electron/preload.js");
   const main = read("../electron/main.js");

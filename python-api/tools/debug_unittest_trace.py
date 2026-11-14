@@ -23,7 +23,7 @@ sys.path.insert(0, str(TESTS))
 
 
 def _documents_debug_dir() -> Path:
-    return Path.home() / "Documents" / "ArcRho" / "debug"
+    return Path.home() / "Documents" / "Arco" / "debug"
 
 
 def _short(value: Any, limit: int = 220) -> str:

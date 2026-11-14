@@ -32,6 +32,7 @@ from .sql_formatting_router import router as sql_formatting_router
 from .data_processing_rules_router import router as data_processing_rules_router
 from .user_identity_router import router as user_identity_router
 from .dashboard_router import router as dashboard_router
+from .user_profile_router import router as user_profile_router
 
 __all__ = [
     "workflow_router",
@@ -68,4 +69,5 @@ __all__ = [
     "data_processing_rules_router",
     "user_identity_router",
     "dashboard_router",
+    "user_profile_router",
 ]

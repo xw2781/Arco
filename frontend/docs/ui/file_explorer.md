@@ -43,7 +43,7 @@ Detected `arcrho:*` message types in key JS files:
 
 ## Data/State/Caches
 <!-- MANUAL:BEGIN -->
-- Persists ordered favorite-folder paths and user nicknames in `%APPDATA%\ArcRho\prefs\home_folders.json`; browser local storage is a non-Electron fallback.
+- Persists ordered favorite-folder paths and user nicknames in `%APPDATA%\Arco\prefs\home_folders.json`; browser local storage is a non-Electron fallback.
 - Persists the Favorites sidebar width as the local-user `arcrho_file_explorer_sidebar_width_v1` browser-storage value.
 - Requests file size and modified-time metadata only for File Explorer listings so existing Arcode listing payloads remain compatible.
 - Uses `ui/shared/file-icons/` as the canonical resolver, mapping, and asset package shared with Arcode.

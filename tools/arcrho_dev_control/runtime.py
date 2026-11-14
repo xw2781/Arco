@@ -349,31 +349,24 @@ def relaunch_arcrho_dev() -> dict[str, Any]:
 
 
 def _appdata_root() -> Path:
-    return Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming")) / "ArcRho"
+    return Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming")) / "Arco"
 
 
 def _local_appdata_root() -> Path:
-    return Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")) / "ArcRho"
+    return Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local")) / "Arco"
 
 
 def _electron_user_data_root() -> Path:
-    appdata = Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming"))
-    try:
-        package = json.loads((FRONTEND_ROOT / "package.json").read_text(encoding="utf-8"))
-        profile_name = str(package.get("name") or "").strip()
-    except (OSError, json.JSONDecodeError):
-        profile_name = ""
-    return appdata / (profile_name or "arcrho-electron")
+    return _appdata_root() / "profile"
 
 
 def _documents_root() -> Path:
-    return Path.home() / "Documents" / "ArcRho"
+    return Path.home() / "Documents" / "Arco"
 
 
 def folder_catalog() -> list[dict[str, Any]]:
     appdata = _appdata_root()
     electron_data = _electron_user_data_root()
-    local_appdata = Path(os.environ.get("LOCALAPPDATA") or (Path.home() / "AppData" / "Local"))
     entries = [
         ("appdata", "Application Data", appdata, "Workspace connection, local preferences, and runtime endpoints"),
         ("preferences", "Application Preferences", appdata / "prefs", "Window, shortcut, notebook, and home-folder preferences"),
@@ -385,8 +378,7 @@ def folder_catalog() -> list[dict[str, Any]]:
         ("backend-clients", "Backend Client Markers", electron_data / "backend_clients", "Running frontend-to-backend ownership markers"),
         ("updates", "Update Files", electron_data / "updates", "Downloaded update staging and cleanup state"),
         ("local-logs", "Local Runtime Logs", _local_appdata_root() / "logs", "Hosted-save latency and local runtime diagnostics"),
-        ("installer-updates", "Installer Update Cache", local_appdata / "arcrho-electron-updater", "Electron installer update cache"),
-        ("temp-runtime", "Temporary Runtime Files", Path(tempfile.gettempdir()) / "ArcRho", "Recoverable calculation and editor scratch state"),
+        ("temp-runtime", "Temporary Runtime Files", Path(tempfile.gettempdir()) / "Arco", "Recoverable calculation and editor scratch state"),
         ("arcbot-logs", "ArcBot Request Logs", _documents_root() / "ArcBot" / "request_logs", "Local ArcBot request diagnostics"),
         ("documents", "User ArcRho Files", _documents_root(), "Local macros, scripts, templates, and workflows"),
     ]

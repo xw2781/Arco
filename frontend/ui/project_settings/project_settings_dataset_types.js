@@ -2010,10 +2010,8 @@ export function createDatasetTypesFeature(deps = {}) {
     const suggestedName = `${safeName}_dataset_types.json`;
     let startDir = "";
     try {
-      const docsPath = String((await hostApi.getDocumentsPath?.()) || "").trim();
-      if (docsPath) {
-        startDir = joinWinPath(docsPath, "ArcRho", "templates");
-      }
+      const dirRes = await fetch("/template/default_dir");
+      if (dirRes.ok) startDir = (await dirRes.json()).path || "";
     } catch {
       startDir = "";
     }
@@ -2063,10 +2061,8 @@ export function createDatasetTypesFeature(deps = {}) {
 
     let startDir = "";
     try {
-      const docsPath = String((await hostApi.getDocumentsPath?.()) || "").trim();
-      if (docsPath) {
-        startDir = joinWinPath(docsPath, "ArcRho", "templates");
-      }
+      const dirRes = await fetch("/template/default_dir");
+      if (dirRes.ok) startDir = (await dirRes.json()).path || "";
     } catch {
       startDir = "";
     }

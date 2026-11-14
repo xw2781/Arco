@@ -198,7 +198,7 @@ lock aborts and rolls back rather than falling back to an in-place overwrite.
 Launcher remains a per-user login program because Bridge requires an interactive
 ResQ session. Setup also adds an Admin Control Start Menu shortcut. If requested,
 it calls the canonical Python API `set_server_root` to configure
-`%APPDATA%\ArcRho\workspace_paths.json` without changing that file's schema.
+`%APPDATA%\Arco\workspace_paths.json` without changing that file's schema.
 
 ## Uninstall and publication
 

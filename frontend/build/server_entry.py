@@ -21,7 +21,6 @@ else:
 
 # Set environment variables before importing app
 os.environ.setdefault("TRI_DATA_DIR", str(EXE_DIR))
-os.environ.setdefault("ARCRHO_WORKFLOW_DIR", str(Path.home() / "Documents" / "ArcRho" / "workflows"))
 
 def main():
     parser = argparse.ArgumentParser(description="ArcRho App Server")

@@ -234,6 +234,32 @@ class WorkspaceMutationExecutorTests(unittest.TestCase):
             self.executor.execute("alice", {"Function": "ArcRhoWorkspaceMutation"})
         self.assertEqual(invalid.exception.status_code, 400)
 
+    def test_each_kind_is_held_to_its_own_request_budget(self) -> None:
+        import arcrho_workspace_mutation_contract as contract
+
+        oversized = "x" * (contract.MAX_WORKSPACE_MUTATION_REQUEST_BYTES + 1)
+
+        def request(kind: str, kwargs: dict) -> dict:
+            return contract.build_workspace_mutation_request(
+                request_id="a" * 32, mutation_kind=kind, kwargs=kwargs, user_name="alice"
+            )
+
+        # The route reads up to the large budget; a kind that carries only
+        # names and settings is still refused past its own.
+        with self.assertRaises(workspace_reads.WorkspaceReadHttpError) as refused:
+            self.executor.execute(
+                "alice", request("user_preferences_update", {"patch": {"notesPanel": {"note": oversized}}})
+            )
+        self.assertEqual(refused.exception.status_code, 413)
+
+        # A whole chat may be that large, and is stored in the signed user's folder.
+        session = {"id": "chat-1", "title": oversized}
+        with patch.dict(os.environ, {"ARCRHO_RUNTIME_SERVER_ROOT": str(self.root)}):
+            saved = self.executor.execute("alice", request("arcbot_chat_session_save", {"session": session}))
+        self.assertTrue(saved["ok"])
+        stored = self.root / "users" / "alice" / "arcbot" / "sessions" / "chat-1.json"
+        self.assertEqual(json.loads(stored.read_text(encoding="utf-8"))["title"], oversized)
+
     def test_capabilities_advertise_every_registered_kind(self) -> None:
         payload = gateway_main.Gateway(self.root).capabilities()
         self.assertEqual(

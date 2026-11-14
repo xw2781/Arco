@@ -19,6 +19,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .config import LOCAL_APP_FOLDER_NAME
 from .ui import UiCommandResult, _base_url, _post_json
 
 __all__ = [
@@ -40,7 +41,7 @@ def app_ui_ready_marker_path(*, app_mode: str = "arcrho", env: dict[str, str] | 
     appdata = str(environ.get("APPDATA") or "").strip()
     if not appdata:
         appdata = str(Path.home() / "AppData" / "Roaming")
-    folder = "Arcode" if str(app_mode).strip().lower() == "arcode" else "ArcRho"
+    folder = "Arcode" if str(app_mode).strip().lower() == "arcode" else LOCAL_APP_FOLDER_NAME
     return Path(appdata) / folder / UI_READY_MARKER_FILE
 
 

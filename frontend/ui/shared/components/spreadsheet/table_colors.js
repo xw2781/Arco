@@ -2,12 +2,12 @@
 ===============================================================================
 Table Custom Colors - the live preference behind the Custom Colors window.
 
-The colours are a local-user preference that every method page shares, kept in
-`%APPDATA%\ArcRho\prefs\table_colors.json` through the desktop host. A copy in
-localStorage paints a window at boot without waiting for the host, and is all
-there is in a browser session without the host. A change is painted at once,
-told to the other open pages over a BroadcastChannel, and written to the host
-file shortly after the last edit.
+The colours belong to the user and every method page shares them. They are kept
+in the `tableColors` section of the user's preferences on the Arco Server,
+through the desktop host. A copy in localStorage paints a window at boot without
+waiting for the host, and is all there is in a browser session without the
+host. A change is painted at once, told to the other open pages over a
+BroadcastChannel, and saved through the host shortly after the last edit.
 ===============================================================================
 */
 import {

@@ -83,9 +83,7 @@ def _normalize_macro_scopes(value: Any) -> List[str]:
 
 
 def _get_macros_dir() -> str:
-    macro_dir = str(getattr(config, "MACRO_DIR", "") or "").strip()
-    if not macro_dir:
-        macro_dir = os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "macros")
+    macro_dir = str(getattr(config, "MACRO_DIR", "") or "").strip() or config._get_macro_dir()
     os.makedirs(macro_dir, exist_ok=True)
     return macro_dir
 

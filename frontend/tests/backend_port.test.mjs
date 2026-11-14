@@ -106,7 +106,7 @@ test("getAppEndpointPath derives the per-user AppData location by mode", () => {
   const env = { APPDATA: "C:\\Users\\demo\\AppData\\Roaming" };
   assert.equal(
     getAppEndpointPath({ appMode: "arcrho", env }),
-    path.join(env.APPDATA, "ArcRho", "app_endpoint.json"),
+    path.join(env.APPDATA, "Arco", "app_endpoint.json"),
   );
   assert.equal(
     getAppEndpointPath({ appMode: "arcode", env }),

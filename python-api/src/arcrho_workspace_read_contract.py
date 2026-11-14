@@ -590,6 +590,33 @@ WORKSPACE_READ_KINDS: dict[str, WorkspaceReadKind] = {
         ("project_name",),
         ("dimensions", "measures"),
     ),
+    # The signed-in user's own folder on the server, ``users\<login>``: their
+    # preferences, their ArcBot chats and their saved dashboards. The login is
+    # the one the request is signed with, never an argument.
+    "user_preferences": WorkspaceReadKind(
+        "server_user_profile_service", "get_preferences", (),
+    ),
+    "scripting_preferences": WorkspaceReadKind(
+        "scripting_preferences_service", "read_scripting_preferences", (),
+    ),
+    "shell_preferences": WorkspaceReadKind(
+        "scripting_preferences_service", "read_local_project_preferences", (),
+    ),
+    "arcbot_chat_sessions": WorkspaceReadKind(
+        "arcbot_chat_store_service", "list_chat_sessions", (),
+    ),
+    "arcbot_chat_session": WorkspaceReadKind(
+        "arcbot_chat_store_service", "read_chat_session", ("session_id",),
+    ),
+    "dashboard_user_list": WorkspaceReadKind(
+        "dashboard_service", "list_user_dashboards", (),
+    ),
+    "dashboard_user_load": WorkspaceReadKind(
+        "dashboard_service", "load_user_dashboard", ("name",),
+    ),
+    "dashboard_user_library": WorkspaceReadKind(
+        "dashboard_service", "list_user_library", (),
+    ),
 }
 
 HTTP_WORKSPACE_READ_KINDS: tuple[str, ...] = tuple(sorted(WORKSPACE_READ_KINDS))

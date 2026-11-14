@@ -42,6 +42,7 @@ from arcrho_dependent_propagation_contract import (
     validate_request_id,
     validate_reserving_class_path,
 )
+from arcrho_hosted_save_http_contract import MAX_REQUEST_BYTES as MAX_HOSTED_SAVE_REQUEST_BYTES
 
 
 WORKSPACE_MUTATION_FUNCTION = "ArcRhoWorkspaceMutation"
@@ -52,6 +53,8 @@ WORKSPACE_MUTATION_CAPABILITY_FIELD = "workspace_mutation_kinds"
 # class's index; it never waits on the Engine, so it needs no save-sized budget.
 WORKSPACE_MUTATION_TIMEOUT_SECONDS = 180.0
 MAX_WORKSPACE_MUTATION_REQUEST_BYTES = 256 * 1024
+# The budget of a kind marked ``large_request``, and so the most the route reads.
+MAX_LARGE_WORKSPACE_MUTATION_REQUEST_BYTES = MAX_HOSTED_SAVE_REQUEST_BYTES
 
 
 class WorkspaceMutationContractError(ValueError):
@@ -78,6 +81,15 @@ class WorkspaceMutationKind:
     # (``project_lock_service``); empty for kinds that leave project data
     # alone, such as a user's own preferences or a regenerable cache.
     locked_project_arg: str = ""
+    # True for a kind whose request carries a whole document rather than names
+    # and settings; it gets the hosted save's request budget.
+    large_request: bool = False
+
+    @property
+    def max_request_bytes(self) -> int:
+        if self.large_request:
+            return MAX_LARGE_WORKSPACE_MUTATION_REQUEST_BYTES
+        return MAX_WORKSPACE_MUTATION_REQUEST_BYTES
 
     @property
     def allowed(self) -> frozenset[str]:
@@ -536,6 +548,49 @@ WORKSPACE_MUTATION_KINDS: dict[str, WorkspaceMutationKind] = {
         ("project_name", "upload_id", "source_type", "chunk_count", "byte_count"),
         ("row_count", "csv_path", "csv_mtime_ns", "csv_size"),
         locked_project_arg="project_name",
+    ),
+    # The signed-in user's own folder on the server, ``users\<login>``. The
+    # login is the one the request is signed with, never an argument, so a
+    # user can only write their own. Every kind is a whole-value write or a
+    # delete of one named file: a preferences patch replaces each section it
+    # names, the scripting and shell saves set each value they carry, a chat
+    # or a dashboard is stored whole under its own name, and a delete of
+    # something already gone is skipped. A repeat therefore lands the same
+    # state. A chat and a dashboard travel whole, and a dashboard may carry
+    # the table each of its sources last returned, so those are large.
+    "user_preferences_update": WorkspaceMutationKind(
+        "server_user_profile_service", "update_preferences", (), ("patch",),
+    ),
+    "scripting_preferences_save": WorkspaceMutationKind(
+        "scripting_preferences_service", "write_scripting_preferences", (), ("prefs",),
+    ),
+    "shell_preferences_save": WorkspaceMutationKind(
+        "scripting_preferences_service", "write_local_project_preferences", (), ("prefs",),
+    ),
+    "arcbot_chat_session_save": WorkspaceMutationKind(
+        "arcbot_chat_store_service", "save_chat_session", ("session",), large_request=True,
+    ),
+    "arcbot_chat_session_delete": WorkspaceMutationKind(
+        "arcbot_chat_store_service", "delete_chat_session", ("session_id",),
+    ),
+    "dashboard_user_save": WorkspaceMutationKind(
+        "dashboard_service",
+        "save_user_dashboard",
+        ("name", "data"),
+        ("prev_name", "overwrite"),
+        large_request=True,
+    ),
+    "dashboard_user_delete": WorkspaceMutationKind(
+        "dashboard_service", "delete_user_dashboard", ("name",),
+    ),
+    "dashboard_user_library_save": WorkspaceMutationKind(
+        "dashboard_service",
+        "save_user_library_asset",
+        ("name", "widget"),
+        ("category", "description"),
+    ),
+    "dashboard_user_library_delete": WorkspaceMutationKind(
+        "dashboard_service", "delete_user_library_asset", ("asset_id",),
     ),
 }
 

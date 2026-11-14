@@ -9,7 +9,6 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
 <!-- AUTO-GEN:BEGIN runtime.config_paths.entry_points -->
 - Path/config helper functions in `app_server/config.py`:
   - `_find_existing_project_dir`
-  - `_get_dashboard_dir`
   - `_get_macro_dir`
   - `_get_macro_library_dir`
   - `_get_project_map_dir`
@@ -17,6 +16,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
   - `_get_scripting_dir`
   - `_get_user_appdata_cache_dir`
   - `_get_user_appdata_dir`
+  - `_get_user_documents_dir`
   - `_get_user_local_appdata_dir`
   - `_get_workflow_dir`
   - `_sanitize_project_dir_name`
@@ -33,7 +33,6 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
   - `get_gateway_config_path`
   - `get_gateway_url`
   - `get_general_settings_path`
-  - `get_local_project_prefs_path`
   - `get_mssql_connections_path`
   - `get_path`
   - `get_project_data_dir`
@@ -55,6 +54,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
   - `get_root_path`
   - `get_scripting_prefs_path`
   - `get_table_summary_cache_path`
+  - `get_template_dir`
   - `get_username_index_path`
   - `load_workspace_paths`
   - `refresh_runtime_paths`
@@ -87,7 +87,7 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
 - App-server modules import `app_server.config` for runtime path resolution.
 - On first-time setup, the Electron shell searches `D:\Arco Server` through `Z:\Arco Server` and fills the Server Connection root path when found.
 - Saving Server Connection hot-applies the new config by refreshing `app_server.config` runtime globals and notifying open UI frames; app restart is not required for new server requests.
-- ArcRho startup and Server Connection saves attempt first-run Gateway sign-up when the local credential is absent. The address comes from `ARCRHO_GATEWAY_URL` or the active profile's `gateway_url` (the Server Connection dialog and the Server tab ask for it); the app probes it, signs up through the Gateway's Windows-authenticated `POST /api/enroll`, and writes `%APPDATA%\ArcRho\arcrho_gateway.json` with the secret the Gateway returned. The shared registry is never read from a client.
+- ArcRho startup and Server Connection saves attempt first-run Gateway sign-up when the local credential is absent. The address comes from `ARCRHO_GATEWAY_URL` or the active profile's `gateway_url` (the Server Connection dialog and the Server tab ask for it); the app probes it, signs up through the Gateway's Windows-authenticated `POST /api/enroll`, and writes `%APPDATA%\Arco\arcrho_gateway.json` with the secret the Gateway returned. The shared registry is never read from a client.
 - DFM RPC Bridge writes request files under `<workspace_root>/<requests_dir>/RPC bridge` and expects remote DFM/SyncDFM JSON files under `<workspace_root>/<projects_dir>/<project>/data/<ReservingClassFolder>/methods/tmp_rpc`.
 - Dataset number-format preferences are read from `<workspace_root>/config/dataset_number_formats.json`; `ARCRHO_DATASET_NUMBER_FORMATS_PATH` may override this path for migration tooling or controlled deployments.
 - `ARCRHO_RUNTIME_SERVER_ROOT` is a trusted process-only override for server-owned workers. It takes precedence over the user-local AppData workspace preference, is never persisted, and lets the deployed ResQ Bridge calculate processing provenance against its own shared ArcRho Server root.
@@ -95,11 +95,11 @@ Document path/config setup, AppData-backed workspace path persistence, and runti
 
 ## Data/State/Caches
 <!-- MANUAL:BEGIN -->
-- `%APPDATA%\ArcRho\workspace_paths.json` is the persistent user-local source-of-truth for workspace root/path mapping. It holds a list of server profiles (`profiles`, each `id`, `name`, `root`, optional `gateway_config` and `gateway_url`) and the `active_profile`; `workspace_root` mirrors the active profile's root. A file with no list reads as one `default` profile, built in memory and never written back. `arcrho_api.config` owns the file and its shape.
-- Each server profile has its own Gateway credential: `%APPDATA%\ArcRho\arcrho_gateway.json` for the `default` profile, `arcrho_gateway.<id>.json` for any other, unless the profile names a file. `ARCRHO_GATEWAY_CONFIG` outranks the active profile, as `ARCRHO_SERVER_ROOT` outranks its root, and `ARCRHO_GATEWAY_URL` outranks its address. The Excel add-in's credential helper always uses `arcrho_gateway.json` and signs up at the `default` profile's address unless given `--url`.
-- `%APPDATA%\ArcRho\arcrho_gateway.json` is an authoritative per-user, per-PC pilot credential. Existing files are never replaced automatically, so `enabled: false` remains an explicit opt-out. `<workspace_root>/config/arcrho_gateway.json` is the server-only HMAC user registry, with no save-kind allowlist — the supported kinds are derived from `SAVE_JOB_KINDS`. Only the Gateway's sign-up route and the server-side tools (`configure_pilot.py`, `tools/local_server.py init`) write it, under a lock so concurrent sign-ups cannot lose users; the released app still reads it over the share until users update.
+- `%APPDATA%\Arco\workspace_paths.json` is the persistent user-local source-of-truth for workspace root/path mapping. It holds a list of server profiles (`profiles`, each `id`, `name`, `root`, optional `gateway_config` and `gateway_url`) and the `active_profile`; `workspace_root` mirrors the active profile's root. A file with no list reads as one `default` profile, built in memory and never written back. `arcrho_api.config` owns the file and its shape.
+- Each server profile has its own Gateway credential: `%APPDATA%\Arco\arcrho_gateway.json` for the `default` profile, `arcrho_gateway.<id>.json` for any other, unless the profile names a file. `ARCRHO_GATEWAY_CONFIG` outranks the active profile, as `ARCRHO_SERVER_ROOT` outranks its root, and `ARCRHO_GATEWAY_URL` outranks its address. The Excel add-in's credential helper always uses `arcrho_gateway.json` and signs up at the `default` profile's address unless given `--url`.
+- `%APPDATA%\Arco\arcrho_gateway.json` is an authoritative per-user, per-PC pilot credential. Existing files are never replaced automatically, so `enabled: false` remains an explicit opt-out. `<workspace_root>/config/arcrho_gateway.json` is the server-only HMAC user registry, with no save-kind allowlist — the supported kinds are derived from `SAVE_JOB_KINDS`. Only the Gateway's sign-up route and the server-side tools (`configure_pilot.py`, `tools/local_server.py init`) write it, under a lock so concurrent sign-ups cannot lose users; the released app still reads it over the share until users update.
 - `ARCRHO_RUNTIME_SERVER_ROOT`, when set by a trusted worker, supersedes the persisted root only for that process. It is not a user preference and must not be written back to `%APPDATA%`. The workspace-read client also treats its presence as "this is a server process" and never routes a read to the gateway from such a process.
-- `%LOCALAPPDATA%\ArcRho\logs\client_save_latency.jsonl` and `client_read_latency.jsonl` (`get_client_save_latency_log_path`, `get_client_read_latency_log_path`) hold the per-operation transport diagnostics for hosted saves and Server-hosted workspace reads; both rotate at 5 MB with three backups and never contain project data.
+- `%LOCALAPPDATA%\Arco\logs\client_save_latency.jsonl` and `client_read_latency.jsonl` (`get_client_save_latency_log_path`, `get_client_read_latency_log_path`) hold the per-operation transport diagnostics for hosted saves and Server-hosted workspace reads; both rotate at 5 MB with three backups and never contain project data.
 - If the AppData workspace path file does not exist yet, the app uses built-in defaults until the Server Connection setting is saved.
 - Runtime globals in `app_server/config.py` are refreshed from config after `/workspace_paths` updates.
 - The workspace-global `config/dataset_number_formats.json` stores a fallback display format plus reserving-class/Dataset Type Name overrides shared by ResQ migration and frontend dataset generation. Override rows use `reserving_class`, `dataset_type_name`, and `number_format`; they are not keyed by dataset instance Name and are not project-specific.

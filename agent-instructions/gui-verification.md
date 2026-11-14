@@ -29,7 +29,7 @@ The tool's [README](../tools/agent_screen_control/README.md) documents every com
 
 - **Read-only unless asked.** Opening, expanding, selecting, scrolling, and resizing panels are fine. Do not click Save, Apply, OK on an edit form, Refresh, Delete, or anything that writes data unless the user asked for that change. Close an edit form with Cancel.
 - **Always pass `-Window`**, and name the specific dialog when one is open.
-- **After a timeout, look before retrying.** A timeout means the click was not confirmed, not that it failed; a blind retry can double-click. `overlay.log` in `%APPDATA%\ArcRho\agent_screen_control` shows how far the command got.
+- **After a timeout, look before retrying.** A timeout means the click was not confirmed, not that it failed; a blind retry can double-click. `overlay.log` in `%APPDATA%\Arco\agent_screen_control` shows how far the command got.
 - **Put the layout back.** When a test drags a divider or resizes a panel, drag it back and compare a screenshot with the one taken before.
 - **The Remote Desktop window must stay open.** When the person minimises it, the remote screen stops drawing and clicks and screenshots fail; ask them to restore it rather than retrying.
 - **Keyboard input is only in the Arco tool.** It has `type` and `key`. The desktop tool has none; when a step outside Arco needs typing, say so rather than improvising a key sender.

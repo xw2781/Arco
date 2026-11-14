@@ -44,14 +44,14 @@ class GatewayCredentialHelperTests(unittest.TestCase):
         # The add-in passes the share folder; it does not exist here, so any read would fail.
         self.workspace = base / "Arco Server"
         self.appdata = base / "AppData"
-        self.local_path = self.appdata / "ArcRho" / CLIENT_CONFIG_FILE_NAME
+        self.local_path = self.appdata / "Arco" / CLIENT_CONFIG_FILE_NAME
 
     def _write_profiles(self, production_url: str = SERVER_URL) -> None:
         profiles = [
             {"id": "default", "name": "Production", "root": str(self.workspace), "gateway_url": production_url},
             {"id": "local", "name": "Local", "root": "C:\\Arco Server", "gateway_url": "http://127.0.0.1:28767"},
         ]
-        path = self.appdata / "ArcRho" / "workspace_paths.json"
+        path = self.appdata / "Arco" / "workspace_paths.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"profiles": profiles, "active_profile": "local"}), encoding="utf-8")
 

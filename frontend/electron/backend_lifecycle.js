@@ -459,10 +459,6 @@ function startBackend() {
     env.ARCODE_BACKEND_TOKEN = BACKEND_TOKEN;
     if (backendArtifactId) env.ARCODE_BACKEND_ARTIFACT_ID = backendArtifactId;
     env.ARCRHO_APP_MODE = "arcode";
-  } else {
-    env.ARCRHO_WORKFLOW_DIR =
-      env.ARCRHO_WORKFLOW_DIR ||
-      path.join(os.homedir(), "Documents", "ArcRho", "workflows");
   }
   env.ARCRHO_BACKEND_TOKEN = BACKEND_TOKEN;
   if (backendArtifactId) env.ARCRHO_BACKEND_ARTIFACT_ID = backendArtifactId;

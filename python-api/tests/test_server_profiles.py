@@ -23,7 +23,7 @@ class ServerProfileTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT)
         base = Path(self.temp.name)
-        self.settings = base / "appdata" / "ArcRho"
+        self.settings = base / "appdata" / "Arco"
         self.config_path = self.settings / "workspace_paths.json"
         self.production = base / "production"
         self.local = base / "local"

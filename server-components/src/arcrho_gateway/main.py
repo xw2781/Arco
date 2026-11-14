@@ -89,7 +89,7 @@ from arcrho_engine_calculation_contract import (  # noqa: E402
     MAX_ENGINE_CALCULATION_REQUEST_BYTES,
 )
 from arcrho_workspace_mutation_contract import (  # noqa: E402
-    MAX_WORKSPACE_MUTATION_REQUEST_BYTES,
+    MAX_LARGE_WORKSPACE_MUTATION_REQUEST_BYTES,
     WORKSPACE_MUTATION_PATH,
 )
 from arcrho_log_retention_contract import apply_log_retention  # noqa: E402
@@ -547,7 +547,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if path == WORKSPACE_MUTATION_PATH:
             self._handle_hosted_execution(
                 self.server.gateway.mutations,
-                MAX_WORKSPACE_MUTATION_REQUEST_BYTES,
+                # The most any kind may send; the executor holds each kind to
+                # its own budget.
+                MAX_LARGE_WORKSPACE_MUTATION_REQUEST_BYTES,
                 "Workspace-mutation",
             )
             return

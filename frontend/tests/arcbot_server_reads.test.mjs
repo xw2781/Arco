@@ -21,7 +21,7 @@ const appRoot = path.join(testRoot, "app");
 const wheelDir = path.join(appRoot, "build", "python_packages");
 const wheelPath = path.join(wheelDir, "arcrho_api-0.2.1-py3-none-any.whl");
 const extraFolder = path.join(testRoot, "Team Notes");
-const exchangeFolder = path.join(documentsDir, "ArcRho", "ArcBot", "workspace");
+const exchangeFolder = path.join(documentsDir, "Arco", "ArcBot", "workspace");
 // Use a different drive from the local fixture: resolving the explicitly
 // allowed Team Notes folder must not look like resolving the server drive.
 const serverDrive = path.parse(testRoot).root.toUpperCase().startsWith("Z:") ? "Y:" : "Z:";

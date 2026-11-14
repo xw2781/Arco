@@ -53,7 +53,7 @@ Detected `arcrho:*` message types in key JS files:
 
 ## Data/State/Caches
 <!-- MANUAL:BEGIN -->
-- Holds no state of its own; the profile list lives in `%APPDATA%\ArcRho\workspace_paths.json`, owned by `arcrho_api.config`.
+- Holds no state of its own; the profile list lives in `%APPDATA%\Arco\workspace_paths.json`, owned by `arcrho_api.config`.
 - While a launch override is set (`set_at_launch`), shows that server as `Set at launch` and turns switching and adding off; `Sign in again` stays on and replaces only that launch's credential file.
 - The Components panel asks again every 5 seconds, and only while it is on screen: an inactive shell tab hides its frame without changing the page's visibility state, so the page also checks its frame's layout, and asks at once when it comes back into view.
 <!-- MANUAL:END -->

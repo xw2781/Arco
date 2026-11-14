@@ -98,10 +98,12 @@ def app_runtime_name() -> str:
 def _get_user_local_appdata_dir() -> str:
     """Return the machine-local application-data folder for runtime logs."""
 
+    if not _is_arcode_mode():
+        return str(api_config.local_data_dir())
     local_appdata = str(os.environ.get("LOCALAPPDATA") or "").strip()
     if not local_appdata:
         local_appdata = os.path.join(os.path.expanduser("~"), "AppData", "Local")
-    return os.path.join(local_appdata, "Arcode" if _is_arcode_mode() else "ArcRho")
+    return os.path.join(local_appdata, "Arcode")
 
 
 def get_client_save_latency_log_path() -> str:
@@ -232,16 +234,23 @@ def _get_requests_dir() -> str:
     return get_path(cfg.get("paths", {}).get("requests_dir", DEFAULT_WORKSPACE_PATHS["requests_dir"]))
 
 
+def _get_user_documents_dir(*parts: str) -> str:
+    """A folder of the user's own files on this PC, under ``Documents\\Arco``.
+
+    Workflows, templates, macros and scripts stay on the PC: they are opened
+    and saved through Windows file dialogs, edited in other programs, and (for
+    macros and scripts) run here.
+    """
+
+    return str(api_config.documents_dir().joinpath(*parts))
+
+
 def _get_workflow_dir() -> str:
-    return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "workflows")
+    return _get_user_documents_dir("workflows")
 
 
-def _get_dashboard_dir() -> str:
-    """This user's saved dashboards. `ARCRHO_DASHBOARD_DIR` moves it for a test."""
-    configured = str(os.environ.get("ARCRHO_DASHBOARD_DIR") or "").strip()
-    if configured:
-        return configured
-    return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "dashboards")
+def get_template_dir() -> str:
+    return _get_user_documents_dir("templates")
 
 
 def _get_scripting_dir() -> str:
@@ -253,14 +262,14 @@ def _get_scripting_dir() -> str:
     configured = str(os.environ.get("ARCRHO_SCRIPTING_DIR") or "").strip()
     if configured:
         return configured
-    return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "scripts")
+    return _get_user_documents_dir("scripts")
 
 
 def _get_macro_dir() -> str:
     configured = str(os.environ.get("ARCRHO_MACRO_DIR") or "").strip()
     if configured:
         return configured
-    return os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "macros")
+    return _get_user_documents_dir("macros")
 
 
 MACRO_LIBRARY_DIR_ENV = "ARCRHO_MACRO_LIBRARY_DIR"
@@ -295,6 +304,13 @@ DASHBOARD_LIBRARY_SUBDIR = "library"
 DEFAULT_DASHBOARDS_DIR = PROJECT_ROOT / "app_server" / "default_dashboards"
 DEFAULT_DASHBOARD_LIBRARY_FILE = "library.json"
 
+# Each user's own folder on the server, ``<workspace_root>\users\<login>``,
+# resolved for the signed-in user by ``server_user_profile_service``.
+SERVER_USERS_DIR = "users"
+SERVER_USER_PREFERENCES_FILE = "preferences.json"
+SERVER_USER_DASHBOARDS_SUBDIR = "dashboards"
+SERVER_USER_ARCBOT_SESSIONS_SUBPATH = ("arcbot", "sessions")
+
 # ---------------------------------------------------------------------------
 # Mutable runtime paths — refreshed from config
 # ---------------------------------------------------------------------------
@@ -302,7 +318,6 @@ DEFAULT_DASHBOARD_LIBRARY_FILE = "library.json"
 DATA_DIR: str = ""
 PROJECT_SETTINGS_DIR: str = ""
 WORKFLOW_DIR: str = ""
-DASHBOARD_DIR: str = ""
 SCRIPTING_DIR: str = ""
 MACRO_DIR: str = ""
 MACRO_LIBRARY_DIR: str = ""
@@ -313,10 +328,9 @@ REQUEST_DIR: str = ""
 def refresh_runtime_paths() -> None:
     """Refresh runtime directories from workspace path config."""
     global DATA_DIR, PROJECT_SETTINGS_DIR, WORKFLOW_DIR, SCRIPTING_DIR, MACRO_DIR
-    global MACRO_LIBRARY_DIR, ALLOWED_BOOK_DIRS, REQUEST_DIR, DASHBOARD_DIR
+    global MACRO_LIBRARY_DIR, ALLOWED_BOOK_DIRS, REQUEST_DIR
     PROJECT_SETTINGS_DIR = _get_project_map_dir()
     WORKFLOW_DIR = _get_workflow_dir()
-    DASHBOARD_DIR = _get_dashboard_dir()
     SCRIPTING_DIR = _get_scripting_dir()
     MACRO_DIR = _get_macro_dir()
     MACRO_LIBRARY_DIR = _get_macro_library_dir()
@@ -364,7 +378,6 @@ RESERVING_CLASS_VALUES_FILE = "reserving_class_values.json"
 RESERVING_CLASS_COMBINATIONS_FILE = "reserving_class_combinations_cache.json"
 RESERVING_CLASS_TYPES_FILE = "reserving_class_types.json"
 SCRIPTING_PREFS_FILE = "scripting_prefs.json"
-LOCAL_PROJECT_PREFS_FILE = "local_project_prefs.json"
 DATASET_TYPES_FILE = "dataset_types.json"
 DATA_PROCESSING_RULES_FILE = "data_processing_rules.json"
 DATA_PROCESSING_RULES_FORMAT = "arcrho-data-processing-rules-v1"
@@ -535,10 +548,6 @@ def _get_user_appdata_cache_dir() -> str:
 
 def get_scripting_prefs_path() -> str:
     return os.path.join(_get_user_appdata_cache_dir(), SCRIPTING_PREFS_FILE)
-
-
-def get_local_project_prefs_path() -> str:
-    return os.path.join(_get_user_appdata_dir(), LOCAL_PROJECT_PREFS_FILE)
 
 
 def get_project_instance_default_preferences_path() -> str:

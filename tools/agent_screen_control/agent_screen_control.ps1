@@ -65,7 +65,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$stateDir = Join-Path $env:APPDATA 'ArcRho\agent_screen_control'
+$stateDir = Join-Path $env:APPDATA 'Arco\agent_screen_control'
 $statePath = Join-Path $stateDir 'state.json'
 $ackPath = Join-Path $stateDir 'cursor_ack.json'
 $pidPath = Join-Path $stateDir 'overlay.pid'

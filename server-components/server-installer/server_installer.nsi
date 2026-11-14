@@ -63,7 +63,7 @@ Function .onInit
     StrCpy $WorkspaceRoot "$PROFILE\Arco Server"
   ${EndIf}
 
-  ${If} ${FileExists} "$APPDATA\ArcRho\workspace_paths.json"
+  ${If} ${FileExists} "$APPDATA\Arco\workspace_paths.json"
   ${OrIf} ${FileExists} "$LOCALAPPDATA\Programs\ArcRho\ArcRho.exe"
   ${OrIf} ${FileExists} "$LOCALAPPDATA\Programs\arcrho-electron\ArcRho.exe"
     StrCpy $ConfigureFrontend "1"

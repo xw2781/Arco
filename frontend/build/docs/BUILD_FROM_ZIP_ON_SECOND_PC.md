@@ -318,7 +318,7 @@ If the version step or the GitHub Release publish step fails, confirm `gh auth s
 
 ### ArcBot reports that Codex cannot launch after installation
 
-Confirm that the build log's ArcBot runtime validation passed and that the installed application contains the same portable Node/npm/Codex files verified in `win-unpacked`. ArcBot launches those child processes from the user's writable `Documents\ArcRho` folder rather than from `app.asar`. Its Repair action uses an ArcRho-owned per-user npm prefix and should not require administrator access or a machine-global Node installation.
+Confirm that the build log's ArcBot runtime validation passed and that the installed application contains the same portable Node/npm/Codex files verified in `win-unpacked`. ArcBot launches those child processes from the user's writable `Documents\Arco` folder rather than from `app.asar`. Its Repair action uses an ArcRho-owned per-user npm prefix and should not require administrator access or a machine-global Node installation.
 
 ## Completion Checklist
 

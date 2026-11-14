@@ -4,7 +4,7 @@ Lets an agent look at and drive one Arco window, and nothing outside it.
 
 .DESCRIPTION
 Talks to the running Arco desktop app, which publishes a loopback endpoint in
-%APPDATA%\ArcRho\agent_window_control.json. Input goes straight into Arco's page, so the real
+%APPDATA%\Arco\agent_window_control.json. Input goes straight into Arco's page, so the real
 mouse pointer never moves and nothing outside Arco can be clicked. While an agent is in
 control, the window shows an edge glow, the agent's own pointer, and a banner. A click, key
 press, or wheel turn in the window, or Ctrl+Alt+Esc anywhere, pauses the agent; only the
@@ -43,8 +43,8 @@ param(
     [string]$Text,
     [string]$Key,
 
-    [ValidateSet('ArcRho', 'Arcode')]
-    [string]$App = 'ArcRho',
+    [ValidateSet('Arco', 'Arcode')]
+    [string]$App = 'Arco',
     [int]$AppPid,
     [int]$TimeoutSeconds = 30
 )

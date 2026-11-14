@@ -1,4 +1,12 @@
-"""Scripting console and local project preference persistence."""
+"""Scripting console and shell preferences.
+
+Both belong to the signed-in user and live in their folder on the Arco Server
+(`server_user_profile_service`), as the `scripting` and `shell` sections of
+their `preferences.json`, so they follow the user to any PC. The `read_*` and
+`write_*` functions run on the server host; the others are what the routes
+call. Standalone Arcode has no server and keeps its scripting preferences in
+its own `%APPDATA%\\Arcode` file.
+"""
 from __future__ import annotations
 
 import json
@@ -7,6 +15,11 @@ import threading
 from typing import Any, Dict, List, Set
 
 from app_server import config
+from app_server.services import (
+    server_user_profile_service,
+    workspace_mutation_client,
+    workspace_read_client,
+)
 
 # ---------------------------------------------------------------------------
 # User preferences
@@ -14,39 +27,60 @@ from app_server import config
 
 _SCRIPTING_PREFS_LOCK = threading.Lock()
 _LOCAL_PROJECT_PREFS_LOCK = threading.Lock()
-_LEGACY_DATASET_VIEWER_PREFS_KEY = "dataset_viewer_local_prefs_v1"
+SCRIPTING_SECTION = "scripting"
+SHELL_SECTION = "shell"
+
+
+def _read_arcode_preferences() -> Dict[str, Any]:
+    try:
+        with open(config.get_scripting_prefs_path(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _section(name: str) -> Dict[str, Any]:
+    data = server_user_profile_service.get_section(name)
+    return data if isinstance(data, dict) else {}
+
+
+def read_scripting_preferences() -> Dict[str, Any]:
+    return _section(SCRIPTING_SECTION)
+
+
+def write_scripting_preferences(prefs: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Merge *prefs* into the user's scripting preferences."""
+
+    with _SCRIPTING_PREFS_LOCK:
+        merged = {**_section(SCRIPTING_SECTION), **(prefs or {})}
+        server_user_profile_service.update_preferences({SCRIPTING_SECTION: merged})
+    return {"success": True, "preferences": merged}
 
 
 def get_preferences() -> Dict[str, Any]:
-    """Load scripting user preferences from APPDATA JSON file."""
-    filepath = config.get_scripting_prefs_path()
-    with _SCRIPTING_PREFS_LOCK:
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                return data
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            pass
-    return {}
+    """Load the scripting user preferences."""
+    if config._is_arcode_mode():
+        with _SCRIPTING_PREFS_LOCK:
+            return _read_arcode_preferences()
+    return workspace_read_client.run_workspace_read(
+        "scripting_preferences", {}, local=read_scripting_preferences
+    )
 
 
 def save_preferences(prefs: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge and save scripting user preferences to APPDATA JSON file."""
+    """Merge and save the scripting user preferences."""
+    if not config._is_arcode_mode():
+        kwargs = {"prefs": dict(prefs or {})}
+        return workspace_mutation_client.run_workspace_mutation(
+            "scripting_preferences_save",
+            kwargs,
+            local=lambda: write_scripting_preferences(**kwargs),
+        )
     filepath = config.get_scripting_prefs_path()
     with _SCRIPTING_PREFS_LOCK:
-        # Load existing, merge with incoming
-        existing: Dict[str, Any] = {}
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            if isinstance(loaded, dict):
-                existing = loaded
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            pass
-
+        existing = _read_arcode_preferences()
         existing.update(prefs)
-
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(existing, f, indent=2, ensure_ascii=False)
@@ -234,36 +268,15 @@ def _normalize_home_shortcuts(raw: Any) -> Dict[str, Any]:
     return {"version": HOME_SHORTCUTS_VERSION, "groups": groups}
 
 
-def get_local_project_preferences() -> Dict[str, Any]:
-    """Load shared last-project preferences from a dedicated APPDATA JSON file."""
-    filepath = config.get_local_project_prefs_path()
+def read_local_project_preferences() -> Dict[str, Any]:
+    return _normalize_local_project_preferences(_section(SHELL_SECTION))
+
+
+def write_local_project_preferences(prefs: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    """Merge *prefs* into the user's shell preferences."""
+
     with _LOCAL_PROJECT_PREFS_LOCK:
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            normalized = _normalize_local_project_preferences(data)
-            if normalized:
-                return normalized
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            pass
-
-    legacy = _normalize_local_project_preferences(
-        get_preferences().get(_LEGACY_DATASET_VIEWER_PREFS_KEY)
-    )
-    return legacy
-
-
-def save_local_project_preferences(prefs: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge shared last-project preferences into %APPDATA%\\ArcRho\\local_project_prefs.json."""
-    filepath = config.get_local_project_prefs_path()
-    with _LOCAL_PROJECT_PREFS_LOCK:
-        existing: Dict[str, Any] = {}
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            existing = _normalize_local_project_preferences(loaded)
-        except (FileNotFoundError, json.JSONDecodeError, OSError):
-            existing = {}
+        existing = _normalize_local_project_preferences(_section(SHELL_SECTION))
 
         incoming = _normalize_local_project_preferences(prefs)
         incoming_source = prefs if isinstance(prefs, dict) else {}
@@ -295,11 +308,22 @@ def save_local_project_preferences(prefs: Dict[str, Any]) -> Dict[str, Any]:
         if incoming_has_recent_projects and merged_recent:
             existing["recentProjectNames"] = merged_recent
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(existing, f, indent=2, ensure_ascii=False)
-            f.write("\n")
+        server_user_profile_service.update_preferences({SHELL_SECTION: existing})
 
     return {"success": True, "preferences": existing}
 
 
+def get_local_project_preferences() -> Dict[str, Any]:
+    """The user's last project, recent projects, explorer state, history and Home shortcuts."""
+    return workspace_read_client.run_workspace_read(
+        "shell_preferences", {}, local=read_local_project_preferences
+    )
+
+
+def save_local_project_preferences(prefs: Dict[str, Any]) -> Dict[str, Any]:
+    kwargs = {"prefs": dict(prefs or {})}
+    return workspace_mutation_client.run_workspace_mutation(
+        "shell_preferences_save",
+        kwargs,
+        local=lambda: write_local_project_preferences(**kwargs),
+    )

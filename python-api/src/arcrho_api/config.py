@@ -58,13 +58,35 @@ SERVER_CONFIG_RELATIVE_PATH = Path("config") / "config.json"
 APP_QUERY_TIMEOUT_SEC = 3.0
 
 
+# The one folder name the app uses for everything it keeps on a PC:
+# ``%APPDATA%\Arco``, ``%LOCALAPPDATA%\Arco`` and ``Documents\Arco``. The
+# desktop host cannot import Python, so ``frontend/electron/local_folders.js``
+# mirrors it and ``frontend/tests/local_folders.test.mjs`` pins the mirror.
+LOCAL_APP_FOLDER_NAME = "Arco"
+
+
 def config_dir() -> Path:
-    """Return the per-user ArcRho config folder (``%APPDATA%\\ArcRho``)."""
+    """Return the per-user Arco config folder (``%APPDATA%\\Arco``)."""
 
     appdata = os.environ.get("APPDATA")
     if appdata:
-        return Path(appdata) / "ArcRho"
-    return Path.home() / "AppData" / "Roaming" / "ArcRho"
+        return Path(appdata) / LOCAL_APP_FOLDER_NAME
+    return Path.home() / "AppData" / "Roaming" / LOCAL_APP_FOLDER_NAME
+
+
+def local_data_dir() -> Path:
+    """This PC's own Arco folder for logs and scratch (``%LOCALAPPDATA%\\Arco``)."""
+
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        return Path(local_appdata) / LOCAL_APP_FOLDER_NAME
+    return Path.home() / "AppData" / "Local" / LOCAL_APP_FOLDER_NAME
+
+
+def documents_dir() -> Path:
+    """The user's own Arco files: macros, scripts, workflows, templates (``Documents\\Arco``)."""
+
+    return Path.home() / "Documents" / LOCAL_APP_FOLDER_NAME
 
 
 def get_config_path() -> Path:
@@ -391,7 +413,7 @@ def get_server_root(*, required: bool = False) -> Path | None:
     2. the ``ARCRHO_SERVER_ROOT`` / ``ARCRHO_RUNTIME_SERVER_ROOT`` environment
        overrides, re-read on every call;
     3. the Arco host app workspace config file
-       (``%APPDATA%\\ArcRho\\workspace_paths.json``);
+       (``%APPDATA%\\Arco\\workspace_paths.json``);
     4. the workspace root reported by the running Arco desktop app;
     5. the packaged default root, when it exists and holds a projects folder.
 

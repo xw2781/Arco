@@ -51,7 +51,7 @@ Runtime workspace path read/update domain, and the server profiles: the servers 
 
 ## Data/State/Caches
 <!-- MANUAL:BEGIN -->
-- Persists config in `%APPDATA%\ArcRho\workspace_paths.json`.
+- Persists config in `%APPDATA%\Arco\workspace_paths.json`.
 - Server profiles live in the same file (`profiles`, `active_profile`) and `workspace_root` mirrors the active one. A file with no list reads as one `default` profile, and nothing is written until a profile or Server Connection save. `arcrho_api.config` owns the shape; `app_server/services/server_profile_service.py` adds only what the app shows and does on a switch.
 - Each profile's credential comes from `arcrho_api.config.profile_gateway_config_path`: `arcrho_gateway.json` for `default`, `arcrho_gateway.<id>.json` otherwise, unless the profile names a file. `app_server/config.get_gateway_config_path` and `arcrho_api.gateway` both resolve it through `arcrho_api.config.gateway_config_path`, after the `ARCRHO_GATEWAY_CONFIG` override.
 - ArcRho Server Components Setup can optionally set this root for the installing Windows user by calling the canonical `arcrho_api.config.set_server_root`; it does not maintain a second installer-specific workspace setting.
@@ -59,7 +59,7 @@ Runtime workspace path read/update domain, and the server profiles: the servers 
 - Resolution order is owned by `arcrho_api/config.py` and shared with the Python API and macros: `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT`, then the config file, then the packaged default root. `app_server/config.py` adds only the Arcode-mode AppData branch and `paths` normalization.
 - `GET /workspace_paths` is also how a macro process outside the app discovers the workspace root when no config file exists.
 - Clears the in-memory dataset registry after updates so stale dataset IDs do not keep writing to the previous workspace root.
-- ArcRho also attempts sign-up during app startup. It creates the active profile's credential (`%APPDATA%\ArcRho\arcrho_gateway.json` for the default profile) only when an address is known (`ARCRHO_GATEWAY_URL`, else the active profile's `gateway_url`), that Gateway's capabilities offer `windows_enrollment` and report the active folder's server id, and its `POST /api/enroll` Windows handshake returns this user's secret (`arcrho_api.hosted_save_enrollment.enroll_once`). The server's registry is never read; existing local files are never overwritten.
+- ArcRho also attempts sign-up during app startup. It creates the active profile's credential (`%APPDATA%\Arco\arcrho_gateway.json` for the default profile) only when an address is known (`ARCRHO_GATEWAY_URL`, else the active profile's `gateway_url`), that Gateway's capabilities offer `windows_enrollment` and report the active folder's server id, and its `POST /api/enroll` Windows handshake returns this user's secret (`arcrho_api.hosted_save_enrollment.enroll_once`). The server's registry is never read; existing local files are never overwritten.
 <!-- MANUAL:END -->
 
 ## Common Change Tasks

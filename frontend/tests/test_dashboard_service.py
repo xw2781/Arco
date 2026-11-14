@@ -7,6 +7,7 @@ CSV file and a SQL query are read on this PC. The tables all share one shape.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -26,14 +27,16 @@ from arcrho_workspace_read_contract import (  # noqa: E402
     WORKSPACE_READ_KINDS,
     build_workspace_read_request,
 )
+from arcrho_api import config as api_config  # noqa: E402
 from app_server import config  # noqa: E402
 from app_server.services import (  # noqa: E402
     dashboard_data_service,
     dashboard_service,
+    user_identity_service,
     workspace_read_client,
 )
 
-TEST_TEMP_ROOT = REPOSITORY_ROOT / "test"
+TEST_TEMP_ROOT = REPOSITORY_ROOT / "tmp_data"
 TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 GATEWAY = {"enabled": True, "url": "http://server:28767", "user": "alice", "secret": "x"}
 
@@ -72,18 +75,25 @@ class DashboardFileTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT)
         self.addCleanup(self.temp.cleanup)
-        self.user_dir = Path(self.temp.name) / "dashboards"
+        # The user's dashboards are in their folder on the server; the test
+        # runs as the server host does, as the user alice.
+        self.user_dir = Path(self.temp.name) / "users" / "alice" / "dashboards"
         self.samples_dir = Path(self.temp.name) / "samples"
         self.samples_dir.mkdir()
-        for target, value in (("DASHBOARD_DIR", str(self.user_dir)), ("DEFAULT_DASHBOARDS_DIR", self.samples_dir)):
-            patcher = patch.object(config, target, value)
-            patcher.start()
-            self.addCleanup(patcher.stop)
+        for context in (
+            patch.object(config, "DEFAULT_DASHBOARDS_DIR", self.samples_dir),
+            patch.dict(os.environ, {api_config.RUNTIME_SERVER_ROOT_ENV: self.temp.name}),
+            user_identity_service.acting_identity("alice"),
+        ):
+            context.__enter__()
+            self.addCleanup(context.__exit__, None, None, None)
 
     def test_save_load_list_rename_and_delete(self) -> None:
         saved = dashboard_service.save_dashboard("Review", _dashboard())
-        path = Path(saved["path"])
-        self.assertEqual(path.name, "Review.arcdash")
+        # A user's dashboard is named by its file name alone.
+        self.assertEqual(saved["path"], "Review.arcdash")
+        path = self.user_dir / saved["path"]
+        self.assertTrue(path.is_file())
         self.assertEqual(dashboard_service.load_dashboard(saved["path"])["data"]["name"], "Review")
 
         listed = dashboard_service.list_dashboards()
@@ -96,21 +106,21 @@ class DashboardFileTests(unittest.TestCase):
 
         renamed = dashboard_service.save_dashboard("Review Q3", _dashboard(), prev_path=saved["path"])
         self.assertFalse(path.exists())
-        self.assertTrue(Path(renamed["path"]).exists())
+        self.assertTrue((self.user_dir / renamed["path"]).exists())
 
         dashboard_service.save_dashboard("Other", _dashboard())
         with self.assertRaises(HTTPException) as refused:
             dashboard_service.save_dashboard("Other", _dashboard(), prev_path=renamed["path"])
         self.assertEqual(refused.exception.status_code, 409)
-        self.assertTrue(Path(renamed["path"]).exists())
+        self.assertTrue((self.user_dir / renamed["path"]).exists())
 
         dashboard_service.delete_dashboard(renamed["path"])
-        self.assertFalse(Path(renamed["path"]).exists())
+        self.assertFalse((self.user_dir / renamed["path"]).exists())
 
     def test_a_saved_table_is_written_one_row_per_line(self) -> None:
         data = _dashboard()
         data["sources"][0]["extract"] = {"columns": [{"name": "A"}], "rows": [["x", 1.5], ["y", None]]}
-        text = Path(dashboard_service.save_dashboard("Rows", data)["path"]).read_text(encoding="utf-8")
+        text = (self.user_dir / dashboard_service.save_dashboard("Rows", data)["path"]).read_text(encoding="utf-8")
         self.assertIn('["x", 1.5],\n', text)
         self.assertEqual(json.loads(text)["sources"][0]["extract"]["rows"], [["x", 1.5], ["y", None]])
 
@@ -123,14 +133,14 @@ class DashboardFileTests(unittest.TestCase):
         self.assertTrue(dashboard_service.list_dashboards()["samples"][0]["sample"])
 
         saved = dashboard_service.save_dashboard("Sample", loaded["data"], prev_path=str(sample))
-        self.assertEqual(Path(saved["path"]).parent, self.user_dir)
+        self.assertTrue((self.user_dir / saved["path"]).is_file())
         self.assertEqual(sample.read_bytes(), before)
         with self.assertRaises(HTTPException):
             dashboard_service.delete_dashboard(str(sample))
 
     def test_other_files_are_refused(self) -> None:
         stray = self.user_dir / "notes.arcdash"
-        self.user_dir.mkdir()
+        self.user_dir.mkdir(parents=True)
         stray.write_text(json.dumps({"format": "something-else"}), encoding="utf-8")
         with self.assertRaises(HTTPException):
             dashboard_service.load_dashboard(str(stray))

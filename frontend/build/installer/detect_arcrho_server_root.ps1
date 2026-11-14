@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$configPath = Join-Path $env:APPDATA "ArcRho\workspace_paths.json"
+$configPath = Join-Path $env:APPDATA "Arco\workspace_paths.json"
 if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     exit 1
 }

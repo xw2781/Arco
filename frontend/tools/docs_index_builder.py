@@ -779,6 +779,17 @@ BACKEND_DOMAIN_META: Mapping[str, Dict[str, object]] = {
             ("app_server/schemas/dashboard.py", "Dashboard request models."),
         ],
     },
+    "user_profile": {
+        "doc": "docs/app_server/domains/user_profile.md",
+        "files": [
+            ("app_server/api/user_profile_router.py", "HTTP routes for the signed-in user's preferences and ArcBot chats, and the one-time import from this PC."),
+            ("app_server/services/server_user_profile_service.py", "The user's folder on the server and the sectioned preferences file in it."),
+            ("app_server/services/arcbot_chat_store_service.py", "The user's ArcBot chats, one file each."),
+            ("app_server/services/scripting_preferences_service.py", "The scripting and shell preference sections."),
+            ("app_server/services/local_profile_import_service.py", "Sends what an older app left on the PC to the server, once."),
+            ("app_server/schemas/user_profile.py", "User profile request models."),
+        ],
+    },
     "workspace_paths": {
         "doc": "docs/app_server/domains/workspace_paths.md",
         "files": [
@@ -1188,21 +1199,21 @@ def module_specs() -> Dict[str, ModuleDocSpec]:
         "file_explorer": {
             "purpose": "Standard ArcRho tab for browsing local files with a customizable Favorite folders sidebar and a persistent details list.",
             "external": "- Opened from the Home File Explorer card as one restorable `file_explorer` shell tab.\n- Uses the Electron preload bridge for folder selection, directory listings, file opening, reveal/copy actions, and folder watches.\n- Receives explicit shell visibility messages so background or minimized tabs do not keep a live folder watcher.",
-            "data": "- Persists ordered favorite-folder paths and user nicknames in `%APPDATA%\\ArcRho\\prefs\\home_folders.json`; browser local storage is a non-Electron fallback.\n- Requests file size and modified-time metadata only for File Explorer listings so existing Arcode listing payloads remain compatible.\n- Uses `ui/shared/file-icons/` as the canonical resolver, mapping, and asset package shared with Arcode.",
+            "data": "- Persists ordered favorite-folder paths and user nicknames in `%APPDATA%\\Arco\\prefs\\home_folders.json`; browser local storage is a non-Electron fallback.\n- Requests file size and modified-time metadata only for File Explorer listings so existing Arcode listing payloads remain compatible.\n- Uses `ui/shared/file-icons/` as the canonical resolver, mapping, and asset package shared with Arcode.",
             "tasks": "1. Change File Explorer behavior or layout: update `ui/file_explorer/` and focused tests together.\n2. Change shell tab lifecycle: update Home launch, tab actions, iframe host, visibility messaging, and shell docs together.\n3. Change folder/file host operations: preserve existing preload IPC names and update Electron main/preload plus integration tests.",
             "risks": "- Folder paths can become inaccessible or disappear while pinned; these must remain visible as favorites and surface recoverable list errors.\n- File opening is delegated to desktop associations; Excel read-only opening requires the explicit `/r` host path.\n- Watchers must stop while the tab is hidden and be replaced when navigation changes folders.",
         },
         "server": {
             "purpose": "Server tab: lists the servers this PC knows by name and Gateway address, marks the one in use, adds a server from its folder, and switches between them by restarting the app.",
             "external": "- Opened from the Home Server card or the Server Connection dialog as one restorable `server` shell tab.\n- Reads `GET /server_profiles`, `GET /server_profiles/health` (the app server probes each Gateway) and `GET /server_profiles/inspect`, and adds with `POST /server_profiles`.\n- Switches by posting `arcrho:server-switch` to the shell, which refuses while any tab is dirty, activates the profile, runs the ordinary restart, and answers with `arcrho:server-switch-result`.\n- Uses the host `pickFolder` bridge when present; the folder text field is the fallback.",
-            "data": "- Holds no state of its own; the profile list lives in `%APPDATA%\\ArcRho\\workspace_paths.json`, owned by `arcrho_api.config`.\n- While a launch override is set (`set_at_launch`), shows that server as `Set at launch` and turns switching and adding off.\n- The Components panel is a placeholder until component status lands.",
+            "data": "- Holds no state of its own; the profile list lives in `%APPDATA%\\Arco\\workspace_paths.json`, owned by `arcrho_api.config`.\n- While a launch override is set (`set_at_launch`), shows that server as `Set at launch` and turns switching and adding off.\n- The Components panel is a placeholder until component status lands.",
             "tasks": "1. Change what a row shows: update `server_model.js`, `server.js`, and `tests/server_tab.test.mjs` together.\n2. Change what a switch does: update the shell handler in `shell_messages.js`, the activate route, and both test files.",
             "risks": "- A switch restarts the app server; it must stay blocked while any tab holds unsaved changes.\n- Never save profiles from a `launch-app` session; the routes refuse with 409 and the page disables the controls.",
         },
         "dashboard": {
             "purpose": "Dashboards tab: build and view interactive charts over Arco project data, a CSV file, or a SQL query, without code. A dashboard is one file with data sources, pages, and widgets on a grid.",
             "external": "- Opened from the Home Dashboards card as a restorable `dashboard` shell tab, one tab per dashboard file.\n- Calls the `/dashboard/*` routes and the existing project, reserving-class, dataset and SQL connection listings.\n- Reports its file, name and unsaved state to the shell with `arcrho:dashboard-state`, and answers ArcBot's context, apply and revert messages.",
-            "data": "- A dashboard is a `.arcdash` JSON file in the user's `Documents\\ArcRho\\dashboards` folder; samples ship read-only with the app.\n- Each data source may keep the last table it returned, so a dashboard opens without waiting for the server.",
+            "data": "- A dashboard is a `.arcdash` JSON file in the user's folder on the Arco Server, so it follows them to any PC; samples ship read-only with the app.\n- Each data source may keep the last table it returned, so a dashboard opens without waiting for the server.",
             "tasks": "1. Add a widget type: `WIDGET_TYPES` in `dashboard_model.js`, a renderer in `dashboard_charts.js`, an icon, and a library entry.\n2. Add an aggregation or format: `dashboard_data.js`, the lists in `dashboard_model.js`, and `tests/dashboard_data.test.mjs`.",
             "risks": "- A cumulative triangle column must be aggregated with `latest`, never summed across development periods.\n- Charts keep one axis and at most eight series; do not add a second y-axis.",
         },
@@ -1321,14 +1332,21 @@ def module_specs() -> Dict[str, ModuleDocSpec]:
         "dashboard": (
             "Dashboard files, the reusable library, and the tables a dashboard charts.",
             "- Consumed by the Dashboards page (`ui/dashboard`).\n- Project data is read on the server host through the registered `dashboard_dataset_table` and `dashboard_source_table` workspace reads; a CSV file and a SQL query are read on this PC.",
-            "- Dashboards are `.arcdash` files in `config.DASHBOARD_DIR`; samples and the built-in library ship in `config.DEFAULT_DASHBOARDS_DIR`.\n- A table holds at most 100,000 rows; a larger grouping is refused, not cut.",
+            "- A user's dashboards are `.arcdash` files in their folder on the server (`users\\<login>\\dashboards`), reached through the `dashboard_user_*` hosted kinds; samples and the built-in library ship in `config.DEFAULT_DASHBOARDS_DIR` and are read on this PC.\n- A table holds at most 100,000 rows; a larger grouping is refused, not cut.",
             "1. Add a data source kind: `SOURCE_KINDS` and `load_source` in `dashboard_service.py`, the source dialog, and a test.\n2. Change the table shape only in `dashboard_data_service.table_payload`.",
             "- A project read must stay a read: `read_source_table` never imports, and `read_dataset_table` loads each dataset at the period it is stored at.",
+        ),
+        "user_profile": (
+            "What the signed-in user keeps on the Arco Server: their preferences and their ArcBot chats.",
+            "- Called by the desktop host (`electron/main.js`, `electron/arcbot_host.js`) and, for the scripting and shell sections, by the pages through `/scripting/preferences` and `/local-project/preferences`.\n- Every route runs on the server host through the Gateway for the login the request is signed with; a Client PC answers 401 or 503 and never opens the folder over the share.",
+            "- Everything lives under `<workspace_root>\\users\\<login>`: `preferences.json` (one section per preference, each written whole), `arcbot\\sessions` (one file per chat) and `dashboards` (owned by the dashboard domain).\n- The login is never an argument, so a user reads and writes only their own folder.",
+            "1. Add a preference that follows the user: pick a section name, load and save it through `/user-preferences/{section}`, and add its old file to `LEGACY_PREFERENCE_FILES` only if an older app wrote one.\n2. Add another kind of user file: a service that builds its path with `server_user_profile_service.user_folder`, registered as hosted read and mutation kinds.",
+            "- A preference that is a path on one PC (favourite folders, recent files) or that standalone Arcode shares stays in `%APPDATA%\\Arco\\prefs`; do not move it here.\n- A test that runs one of these services must pin `ARCRHO_RUNTIME_SERVER_ROOT` to its own folder, or it writes into the real server root.",
         ),
         "workspace_paths": (
             "Runtime workspace path read/update domain.",
             "- Used by shell root-path settings modal.\n- Triggers `config.refresh_runtime_paths()` on updates.\n- `GET /workspace_paths` reports whether the AppData config file already exists so the shell can detect first-time setup.",
-            "- Persists config in `%APPDATA%\\ArcRho\\workspace_paths.json`.\n- Uses built-in defaults until Server Connection is saved.",
+            "- Persists config in `%APPDATA%\\Arco\\workspace_paths.json`.\n- Uses built-in defaults until Server Connection is saved.",
             "1. Add config field: update schema + router serialization + config readers.\n2. Rename config fields by updating producers, consumers, and docs together.",
             "- Invalid path config writes can impact all path-dependent domains.",
         ),
@@ -1526,7 +1544,7 @@ def module_specs() -> Dict[str, ModuleDocSpec]:
         manual_sections={
             "Purpose": "Document path/config setup, AppData-backed workspace path persistence, and runtime path refresh behavior.",
             "External Interfaces": "- Frontend shell settings modal calls `/workspace_paths` routes.\n- App-server modules import `app_server.config` for runtime path resolution.\n- On first-time setup, the Electron shell searches `D:\\Arco Server` through `Z:\\Arco Server` and fills the Server Connection root path when found.",
-            "Data/State/Caches": "- `%APPDATA%\\ArcRho\\workspace_paths.json` is the persistent user-local source-of-truth for workspace root/path mapping.\n- If the AppData workspace path file does not exist yet, the app uses built-in defaults until the Server Connection setting is saved.\n- Runtime globals in `app_server/config.py` are refreshed from config.\n- User-local fixed paths are also refreshed in `app_server/config.py`, including workflow export path (`~/Documents/ArcRho/workflows`), scripting notebook path (`~/Documents/ArcRho/scripts`), and Macro window path (`~/Documents/ArcRho/macros`).",
+            "Data/State/Caches": "- `%APPDATA%\\Arco\\workspace_paths.json` is the persistent user-local source-of-truth for workspace root/path mapping.\n- If the AppData workspace path file does not exist yet, the app uses built-in defaults until the Server Connection setting is saved.\n- Runtime globals in `app_server/config.py` are refreshed from config.\n- User-local fixed paths are also refreshed in `app_server/config.py`, including workflow export path (`~/Documents/ArcRho/workflows`), scripting notebook path (`~/Documents/ArcRho/scripts`), and Macro window path (`~/Documents/ArcRho/macros`).",
             "Common Change Tasks": "1. Add a new configurable path: update the AppData `workspace_paths.json` contract + `app_server/config.py` getters.\n2. Change path refresh behavior: validate all services that depend on runtime globals.",
             "Known Risks": "- Path changes affect every filesystem-backed domain.\n- Environment-specific path assumptions can break packaged deployments.",
         },

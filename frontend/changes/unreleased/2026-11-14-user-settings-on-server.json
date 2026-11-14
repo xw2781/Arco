@@ -1,0 +1,13 @@
+{
+  "type": "improvement",
+  "scope": "settings",
+  "audience": "user",
+  "summary": "Your settings, ArcBot chats and dashboards now live on the Arco Server and follow you to any PC.",
+  "details": [
+    "The first start after the update sends what this PC holds to the server; nothing has to be done by hand.",
+    "The colour theme, table style, table colours, macro order, Flight Deck, notes panel size, recent projects, Home shortcuts and browsing history are the same on every PC you sign in from.",
+    "Macros, scripts, workflows and templates stay on your own PC, now under Documents\\Arco.",
+    "The app's folders on the PC are renamed from ArcRho to Arco on that first start. If a folder is open in Excel, File Explorer or an editor, Arco asks you to close it and start again.",
+    "Favourite folders and recent files stay with each PC, because they are paths on that PC."
+  ]
+}

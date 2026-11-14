@@ -26,6 +26,7 @@ from arcrho_hosted_save_http_contract import (
     AUTH_SIGNATURE_HEADER,
     AUTH_TIMESTAMP_HEADER,
     AUTH_USER_HEADER,
+    canonical_request_bytes,
     mutation_receipt_path,
     normalize_user,
     request_sha256,
@@ -108,6 +109,8 @@ class WorkspaceMutationExecutor:
             ) from exc
 
         spec = WORKSPACE_MUTATION_KINDS[request["MutationKind"]]
+        if len(canonical_request_bytes(request)) > spec.max_request_bytes:
+            raise WorkspaceReadHttpError(413, "Workspace-mutation request is too large.")
         if not spec.receipt:
             return self._run(authenticated_user, request)
 

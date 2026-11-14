@@ -1,6 +1,5 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
-const http = require("http");
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
@@ -17,6 +16,8 @@ const preparedSessions = new PreparedArcBotSessions();
 let arcBotAccounts = null;
 const { formatJsonForSave } = require("./persisted_json_text");
 const { pruneAgedLogFiles } = require("./log_retention");
+const { requestAppServerJson: requestAppServerJsonAt } = require("./app_server_client");
+const { documentsDir } = require("./local_folders");
 const {
   buildClaudeModelCatalog,
   buildCodexModelCatalog,
@@ -36,6 +37,7 @@ let PYTHON_API_WHEEL_DIR = "";
 let getPrefsDir = () => "";
 let getWorkspacePathsPath = () => "";
 let getAppServerUrl = () => "";
+let chatsOnServer = false;
 let findExecutableOnPath = () => "";
 let runHostCommandBase = null;
 let spawnProcessBase = spawn;
@@ -55,6 +57,7 @@ const ARCBOT_SERVER_INSTRUCTION_PLACEHOLDERS = [
 const ARCBOT_READABLE_ROOTS_FILE = "arcbot_readable_roots.json";
 const ARCBOT_UI_SETTINGS_FILE = "arcbot_ui_settings.json";
 const ARCBOT_CHAT_SESSIONS_DIR = "arcbot_chat_sessions";
+const ARCBOT_CHAT_STORE_TIMEOUT_MS = 30000;
 const ARCBOT_CODEX_COMMAND_HINT_FILE = "arcbot_codex_command.json";
 const CODEX_ASSISTANT_TIMEOUT_MS = Math.max(
   15000,
@@ -587,35 +590,54 @@ function deriveArcBotSessionTitle(messages, fallback = "New ArcBot Chat") {
   return title.length > 42 ? `${title.slice(0, 39)}...` : title || fallback;
 }
 
-function readArcBotChatSession(sessionId) {
-  const filePath = getArcBotChatSessionPath(sessionId);
-  if (!filePath || !fs.existsSync(filePath)) return null;
+function normalizeArcBotChatSession(parsed, sessionId) {
+  if (!parsed || sanitizeArcBotSessionId(parsed.id) !== sanitizeArcBotSessionId(sessionId)) return null;
+  return {
+    id: sanitizeArcBotSessionId(parsed.id),
+    title: String(parsed.title || "ArcBot Chat"),
+    createdAt: String(parsed.createdAt || new Date().toISOString()),
+    updatedAt: String(parsed.updatedAt || parsed.createdAt || new Date().toISOString()),
+    mode: String(parsed.mode || "edit"),
+    model: normalizeArcBotModel(parsed.model),
+    reasoningEffort: normalizeArcBotReasoningEffort(parsed.reasoningEffort),
+    archived: parsed.archived === true,
+    messages: normalizeArcBotMessages(parsed.messages),
+    activities: normalizeArcBotActivities(parsed.activities),
+    debugLogs: normalizeArcBotDebugLogs(parsed.debugLogs),
+    context: parsed.context && typeof parsed.context === "object" ? parsed.context : null,
+    usage: parsed.usage && typeof parsed.usage === "object" ? parsed.usage : null,
+  };
+}
+
+// A user's chats are kept in their folder on the Arco Server, reached through
+// the app server, so a chat follows its user to another PC and the team
+// maintaining ArcBot can read what a conversation contained. Standalone Arcode
+// has no server and keeps them as files in its own profile.
+async function requestArcBotChatStore(route, body = null) {
+  const result = await requestAppServerJson(route, body, ARCBOT_CHAT_STORE_TIMEOUT_MS);
+  if (result.error) throw new Error(result.error);
+  return result;
+}
+
+async function readArcBotChatSession(sessionId) {
+  const safeId = sanitizeArcBotSessionId(sessionId);
+  if (!safeId) return null;
+  if (chatsOnServer) {
+    const result = await requestArcBotChatStore("/arcbot/chat-session/load", { session_id: safeId });
+    return normalizeArcBotChatSession(result.session, safeId);
+  }
+  const filePath = getArcBotChatSessionPath(safeId);
+  if (!fs.existsSync(filePath)) return null;
   try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    if (!parsed || sanitizeArcBotSessionId(parsed.id) !== sanitizeArcBotSessionId(sessionId)) return null;
-    return {
-      id: sanitizeArcBotSessionId(parsed.id),
-      title: String(parsed.title || "ArcBot Chat"),
-      createdAt: String(parsed.createdAt || new Date().toISOString()),
-      updatedAt: String(parsed.updatedAt || parsed.createdAt || new Date().toISOString()),
-      mode: String(parsed.mode || "edit"),
-      model: normalizeArcBotModel(parsed.model),
-      reasoningEffort: normalizeArcBotReasoningEffort(parsed.reasoningEffort),
-      archived: parsed.archived === true,
-      messages: normalizeArcBotMessages(parsed.messages),
-      activities: normalizeArcBotActivities(parsed.activities),
-      debugLogs: normalizeArcBotDebugLogs(parsed.debugLogs),
-      context: parsed.context && typeof parsed.context === "object" ? parsed.context : null,
-      usage: parsed.usage && typeof parsed.usage === "object" ? parsed.usage : null,
-    };
+    return normalizeArcBotChatSession(JSON.parse(fs.readFileSync(filePath, "utf8")), safeId);
   } catch {
     return null;
   }
 }
 
-function writeArcBotChatSession(sessionLike) {
+async function writeArcBotChatSession(sessionLike) {
   const now = new Date().toISOString();
-  const existing = sessionLike?.id ? readArcBotChatSession(sessionLike.id) : null;
+  const existing = sessionLike?.id ? await readArcBotChatSession(sessionLike.id) : null;
   const id = sanitizeArcBotSessionId(sessionLike?.id) || createArcBotChatSessionId();
   const messages = normalizeArcBotMessages(sessionLike?.messages || existing?.messages || []);
   const session = {
@@ -635,6 +657,10 @@ function writeArcBotChatSession(sessionLike) {
     context: sessionLike?.context && typeof sessionLike.context === "object" ? sessionLike.context : existing?.context || null,
     usage: sessionLike?.usage && typeof sessionLike.usage === "object" ? sessionLike.usage : existing?.usage || null,
   };
+  if (chatsOnServer) {
+    await requestArcBotChatStore("/arcbot/chat-session/save", { session });
+    return session;
+  }
   fs.mkdirSync(getArcBotChatSessionsDir(), { recursive: true });
   const filePath = getArcBotChatSessionPath(id);
   const tmpPath = `${filePath}.tmp`;
@@ -643,34 +669,47 @@ function writeArcBotChatSession(sessionLike) {
   return session;
 }
 
-function listArcBotChatSessions(options = {}) {
-  const includeArchived = options?.includeArchived === true;
+async function readArcBotChatSessionSummaries() {
+  if (chatsOnServer) return (await requestArcBotChatStore("/arcbot/chat-sessions")).sessions || [];
   fs.mkdirSync(getArcBotChatSessionsDir(), { recursive: true });
-  return fs.readdirSync(getArcBotChatSessionsDir())
-    .filter((name) => /\.json$/i.test(name))
-    .map((name) => readArcBotChatSession(path.basename(name, ".json")))
-    .filter(Boolean)
-    .filter((session) => includeArchived || !session.archived)
-    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
-    .map((session) => ({
+  const sessions = [];
+  for (const name of fs.readdirSync(getArcBotChatSessionsDir())) {
+    if (!/\.json$/i.test(name)) continue;
+    const session = await readArcBotChatSession(path.basename(name, ".json"));
+    if (!session) continue;
+    sessions.push({
       id: session.id,
       title: session.title,
       updatedAt: session.updatedAt,
       createdAt: session.createdAt,
       messageCount: session.messages.length,
       archived: session.archived === true,
-    }));
+    });
+  }
+  return sessions;
 }
 
-function archiveArcBotChatSession(sessionId, archived = true) {
-  const session = readArcBotChatSession(sessionId);
+async function listArcBotChatSessions(options = {}) {
+  const includeArchived = options?.includeArchived === true;
+  return (await readArcBotChatSessionSummaries())
+    .filter((session) => includeArchived || !session.archived)
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+}
+
+async function archiveArcBotChatSession(sessionId, archived = true) {
+  const session = await readArcBotChatSession(sessionId);
   if (!session) return null;
   return writeArcBotChatSession({ ...session, archived: !!archived });
 }
 
-function deleteArcBotChatSession(sessionId) {
-  const filePath = getArcBotChatSessionPath(sessionId);
-  if (!filePath || !fs.existsSync(filePath)) return false;
+async function deleteArcBotChatSession(sessionId) {
+  const safeId = sanitizeArcBotSessionId(sessionId);
+  if (!safeId) return false;
+  if (chatsOnServer) {
+    return (await requestArcBotChatStore("/arcbot/chat-session/delete", { session_id: safeId })).deleted === true;
+  }
+  const filePath = getArcBotChatSessionPath(safeId);
+  if (!fs.existsSync(filePath)) return false;
   fs.unlinkSync(filePath);
   return true;
 }
@@ -700,11 +739,7 @@ function getLocalArcRhoAssistantRoot() {
   } catch {
     // Fall back to the conventional user-local Documents folder.
   }
-  if (!documentsPath) {
-    const userHome = process.env.USERPROFILE || os.homedir();
-    documentsPath = path.join(userHome, "Documents");
-  }
-  return path.join(documentsPath, "ArcRho");
+  return documentsDir(documentsPath);
 }
 
 function ensureLocalArcRhoAssistantRoot() {
@@ -2292,38 +2327,7 @@ function readBundledArcBotPromptTemplate() {
 // server holds no entry prompt, or cannot be asked, ArcBot uses the prompt
 // bundled with the app.
 function requestAppServerJson(route, body = null, timeoutMs = ARCBOT_PROMPT_FILES_TIMEOUT_MS) {
-  const baseUrl = String(getAppServerUrl() || "").trim();
-  if (!baseUrl) return Promise.resolve({ error: "The Arco app server is not available." });
-  return new Promise((resolve) => {
-    const payloadText = body == null ? "" : JSON.stringify(body);
-    const req = http.request(`${baseUrl}${route}`, {
-      method: body == null ? "GET" : "POST",
-      headers: body == null ? {} : { "content-type": "application/json", "content-length": Buffer.byteLength(payloadText) },
-    }, (res) => {
-      let text = "";
-      res.setEncoding("utf8");
-      res.on("data", (chunk) => {
-        text += chunk;
-      });
-      res.on("end", () => {
-        let parsed = null;
-        try {
-          parsed = JSON.parse(text || "{}");
-        } catch {
-          parsed = null;
-        }
-        if (res.statusCode === 200 && parsed && typeof parsed === "object") {
-          resolve(parsed);
-          return;
-        }
-        const detail = parsed?.detail ? String(parsed.detail) : `HTTP ${res.statusCode || "error"}`;
-        resolve({ error: detail });
-      });
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error("timed out")));
-    req.on("error", (err) => resolve({ error: String(err?.message || err || "request failed") }));
-    req.end(payloadText);
-  });
+  return requestAppServerJsonAt(getAppServerUrl(), route, body, timeoutMs);
 }
 
 function requestArcBotPromptFiles() {
@@ -2653,6 +2657,7 @@ function registerArcBotIpc(deps = {}) {
     runHostCommand: runHostCommandBase,
   } = deps);
   getAppServerUrl = typeof deps.getAppServerUrl === "function" ? deps.getAppServerUrl : () => "";
+  chatsOnServer = deps.chatsOnServer === true;
   if (!ipcMain || !app) {
     throw new Error("registerArcBotIpc requires ipcMain and app dependencies");
   }
@@ -3017,7 +3022,7 @@ ipcMain.handle("codex-assistant-account-remove", async (_event, payload) => hand
 
 ipcMain.handle("codex-assistant-sessions-list", async (_event, payload) => {
   try {
-    return { ok: true, sessions: listArcBotChatSessions({ includeArchived: payload?.includeArchived === true }) };
+    return { ok: true, sessions: await listArcBotChatSessions({ includeArchived: payload?.includeArchived === true }) };
   } catch (err) {
     return { ok: false, error: String(err?.message || err || "Could not list ArcBot sessions.") };
   }
@@ -3025,7 +3030,7 @@ ipcMain.handle("codex-assistant-sessions-list", async (_event, payload) => {
 
 ipcMain.handle("codex-assistant-session-create", async (_event, payload) => {
   try {
-    const session = writeArcBotChatSession({
+    const session = await writeArcBotChatSession({
       title: String(payload?.title || "New ArcBot Chat"),
       mode: String(payload?.mode || "edit"),
       model: normalizeArcBotModel(payload?.model),
@@ -3041,7 +3046,7 @@ ipcMain.handle("codex-assistant-session-create", async (_event, payload) => {
 
 ipcMain.handle("codex-assistant-session-load", async (_event, payload) => {
   try {
-    const session = readArcBotChatSession(payload?.sessionId);
+    const session = await readArcBotChatSession(payload?.sessionId);
     return session ? { ok: true, session } : { ok: false, error: "ArcBot session was not found." };
   } catch (err) {
     return { ok: false, error: String(err?.message || err || "Could not load ArcBot session.") };
@@ -3050,7 +3055,7 @@ ipcMain.handle("codex-assistant-session-load", async (_event, payload) => {
 
 ipcMain.handle("codex-assistant-session-save", async (_event, payload) => {
   try {
-    const session = writeArcBotChatSession(payload?.session || {});
+    const session = await writeArcBotChatSession(payload?.session || {});
     return { ok: true, session };
   } catch (err) {
     return { ok: false, error: String(err?.message || err || "Could not save ArcBot session.") };
@@ -3059,7 +3064,7 @@ ipcMain.handle("codex-assistant-session-save", async (_event, payload) => {
 
 ipcMain.handle("codex-assistant-session-archive", async (_event, payload) => {
   try {
-    const session = archiveArcBotChatSession(payload?.sessionId, payload?.archived !== false);
+    const session = await archiveArcBotChatSession(payload?.sessionId, payload?.archived !== false);
     return session ? { ok: true, session } : { ok: false, error: "ArcBot session was not found." };
   } catch (err) {
     return { ok: false, error: String(err?.message || err || "Could not archive ArcBot session.") };
@@ -3068,7 +3073,7 @@ ipcMain.handle("codex-assistant-session-archive", async (_event, payload) => {
 
 ipcMain.handle("codex-assistant-session-delete", async (_event, payload) => {
   try {
-    const deleted = deleteArcBotChatSession(payload?.sessionId);
+    const deleted = await deleteArcBotChatSession(payload?.sessionId);
     return deleted ? { ok: true } : { ok: false, error: "ArcBot session was not found." };
   } catch (err) {
     return { ok: false, error: String(err?.message || err || "Could not delete ArcBot session.") };

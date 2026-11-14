@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -9,10 +10,16 @@ from unittest.mock import patch
 
 
 FRONTEND_ROOT = Path(__file__).resolve().parents[1]
-if str(FRONTEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(FRONTEND_ROOT))
+for path in (FRONTEND_ROOT, FRONTEND_ROOT.parent / "python-api" / "src"):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
+from arcrho_api import config as api_config
 from app_server.services import scripting_preferences_service as service
+from app_server.services import user_identity_service
+
+TEST_TEMP_ROOT = FRONTEND_ROOT.parent / "tmp_data"
+TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 PI_TARGET = {"tabType": "project_instance", "title": "NJ_Annual", "projectName": "NJ_Annual"}
@@ -109,13 +116,18 @@ class HomeShortcutNormalizationTests(unittest.TestCase):
 
 
 class LocalProjectPreferencesMergeTests(unittest.TestCase):
-    """Home shortcuts share `local_project_prefs.json` with the frequently written shell activity
-    history, so a partial save from either producer must leave the other section intact."""
+    """Home shortcuts share the user's `shell` preferences with the frequently written shell
+    activity history, so a partial save from either producer must leave the other intact."""
 
     def test_sections_survive_each_other_s_partial_saves(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            prefs_path = str(Path(tmp) / "local_project_prefs.json")
-            with patch.object(service.config, "get_local_project_prefs_path", return_value=prefs_path):
+        with tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT) as tmp:
+            prefs_path = Path(tmp) / "users" / "alice" / "preferences.json"
+            # The preferences are in the user's folder on the server; the test
+            # runs as the server host does, as the user alice.
+            with (
+                patch.dict(os.environ, {api_config.RUNTIME_SERVER_ROOT_ENV: tmp}),
+                user_identity_service.acting_identity("alice"),
+            ):
                 shortcuts = _shortcuts(_group("grp_a", "Q3 Close", [_card("crd_a", "NJ Annual")]))
                 service.save_local_project_preferences({"homeShortcuts": shortcuts})
 
@@ -130,8 +142,8 @@ class LocalProjectPreferencesMergeTests(unittest.TestCase):
                 self.assertEqual(len(after_shortcuts["shellActivityHistory"]["entries"]), 1)
                 self.assertEqual(after_shortcuts["homeShortcuts"]["groups"][0]["title"], "Renamed")
 
-            with open(prefs_path, "r", encoding="utf-8") as handle:
-                self.assertIn("homeShortcuts", json.load(handle))
+                with open(prefs_path, "r", encoding="utf-8") as handle:
+                    self.assertIn("homeShortcuts", json.load(handle)["shell"])
 
 
 if __name__ == "__main__":

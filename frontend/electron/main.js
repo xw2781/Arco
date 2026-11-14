@@ -32,6 +32,8 @@ const {
 } = require("./backend_lifecycle");
 const { createBackendLaunchToken } = require("./backend_health_compatibility");
 const { publishAppEntry, unpublishAppEntry } = require("./backend_port");
+const { requestAppServerJson } = require("./app_server_client");
+const { configDir, profileDir, tempDir, moveRenamedFolders } = require("./local_folders");
 
 // Detect Windows 11 (build number >= 22000)
 function isWindows11() {
@@ -61,7 +63,28 @@ if (APP_MODE === "arcode") {
 // profile, so it never reuses the backend, window state, or storage of an app
 // already running against the production root.
 const USER_DATA_OVERRIDE = String(process.env.ARCRHO_USER_DATA_DIR || "").trim();
+// A UI test run leaves the user's own folders exactly as it found them.
+if (String(process.env.ARCRHO_UI_TEST_PROFILE || "").trim() !== "1") {
+  // The folders this app used while it was named ArcRho are renamed before
+  // anything opens them. One that cannot be renamed stops the start: carrying
+  // on would open an empty new folder and leave the sign-in and settings behind.
+  const documentsPaths = [path.join(os.homedir(), "Documents")];
+  try {
+    documentsPaths.push(app.getPath("documents"));
+  } catch {
+    // The home Documents folder is still tried.
+  }
+  const [failedRename] = moveRenamedFolders({ documentsPaths });
+  if (failedRename) {
+    dialog.showErrorBox(
+      "Arco could not rename a folder",
+      `${failedRename.from}\n\nClose Excel, File Explorer and any editor that has this folder open, then start Arco again.`
+    );
+    app.exit(1);
+  }
+}
 if (USER_DATA_OVERRIDE) app.setPath("userData", path.resolve(USER_DATA_OVERRIDE));
+else if (APP_MODE !== "arcode") app.setPath("userData", profileDir());
 const HOST = process.env.ARCRHO_HOST || "127.0.0.1";
 const UI_VERSION = process.env.ARCRHO_UI_VERSION || process.env.ARCODE_UI_VERSION || String(Date.now());
 const DISPLAY_VERSION_OVERRIDE = APP_MODE === "arcode"
@@ -134,7 +157,7 @@ initUpdateChecker({
 });
 
 function getDfmRatioUndoRoot() {
-  return path.join(app.getPath("temp"), "ArcRho", "dfm-ratio-undo");
+  return path.join(tempDir(app.getPath("temp")), "dfm-ratio-undo");
 }
 
 function sanitizeDfmRatioUndoSessionId(value) {
@@ -207,17 +230,13 @@ function getMainWindowPrefsPath() {
 }
 
 function getPrefsDir() {
-  return path.join(app.getPath("appData"), "ArcRho", "prefs");
+  return path.join(configDir(), "prefs");
 }
 
 // Sibling of app_endpoint.json, but written only once the main window is actually visible.
 // An automation harness polls for this before its first screenshot.
 function getUiReadyMarkerPath() {
-  return path.join(
-    app.getPath("appData"),
-    APP_MODE === "arcode" ? "Arcode" : "ArcRho",
-    "app_ui_ready.json"
-  );
+  return path.join(configDir(APP_MODE), "app_ui_ready.json");
 }
 
 // Lists every running app, newest first, like app_endpoint.json, so a harness can wait for a
@@ -293,15 +312,15 @@ function normalizeRecentIpynbPaths(value, fallbackPath = "") {
 }
 
 function getWorkspacePathsPath() {
-  return path.join(app.getPath("appData"), "ArcRho", WORKSPACE_PATHS_FILE);
+  return path.join(configDir(), WORKSPACE_PATHS_FILE);
 }
 
 function getArcodeUserSettingsPath() {
-  return path.join(app.getPath("appData"), "Arcode", ARCODE_USER_SETTINGS_FILE);
+  return path.join(configDir("arcode"), ARCODE_USER_SETTINGS_FILE);
 }
 
 function getArcodeLegacyUserSettingsPath() {
-  return path.join(app.getPath("appData"), "Arcode", ARCODE_LEGACY_USER_SETTINGS_FILE);
+  return path.join(configDir("arcode"), ARCODE_LEGACY_USER_SETTINGS_FILE);
 }
 
 function readJsonObjectFile(filePath) {
@@ -783,10 +802,12 @@ function loadColorThemePreference() {
 function saveColorThemePreference(value) {
   const theme = normalizeColorThemePreference(value);
   if (!theme) return false;
-  return writeMainWindowPrefsData({
+  const saved = writeMainWindowPrefsData({
     ...readMainWindowPrefsData(),
     color_theme: theme,
   });
+  if (saved) sendAppearanceToServer();
+  return saved;
 }
 
 function normalizeTableStylePreference(value, fallback = "") {
@@ -801,9 +822,59 @@ function loadTableStylePreference() {
 function saveTableStylePreference(value) {
   const style = normalizeTableStylePreference(value);
   if (!style) return false;
-  return writeMainWindowPrefsData({
+  const saved = writeMainWindowPrefsData({
     ...readMainWindowPrefsData(),
     table_style: style,
+  });
+  if (saved) sendAppearanceToServer();
+  return saved;
+}
+
+function requestAppServer(route, body = null, timeoutMs = undefined) {
+  return requestAppServerJson(`http://${HOST}:${getBackendPort()}`, route, body, timeoutMs);
+}
+
+// The colour theme and table style belong to the user and are kept with their
+// preferences on the Arco Server. The copy in the main-window file is what a
+// start paints with before the server has been asked.
+const APPEARANCE_PREFERENCES_ROUTE = "/user-preferences/appearance";
+
+function sendAppearanceToServer() {
+  if (APP_MODE === "arcode" || UI_TEST_PROFILE) return;
+  const prefs = readMainWindowPrefsData();
+  const preferences = {
+    colorTheme: normalizeColorThemePreference(prefs.color_theme),
+    tableStyle: normalizeTableStylePreference(prefs.table_style),
+  };
+  if (!preferences.colorTheme && !preferences.tableStyle) return;
+  void requestAppServer(APPEARANCE_PREFERENCES_ROUTE, { preferences });
+}
+
+// Runs once the app server is up and before the main window is built, so a
+// PC the user has not used before opens in their own theme. A server that
+// cannot be asked leaves this PC's copy as it is.
+async function adoptServerAppearance() {
+  if (APP_MODE === "arcode" || UI_TEST_PROFILE) return;
+  const result = await requestAppServer(APPEARANCE_PREFERENCES_ROUTE, null, 2500);
+  if (result.error) return;
+  if (!result.exists) {
+    sendAppearanceToServer();
+    return;
+  }
+  const prefs = readMainWindowPrefsData();
+  const colorTheme = normalizeColorThemePreference(result.preferences?.colorTheme, prefs.color_theme);
+  const tableStyle = normalizeTableStylePreference(result.preferences?.tableStyle, prefs.table_style);
+  if (colorTheme === prefs.color_theme && tableStyle === prefs.table_style) return;
+  writeMainWindowPrefsData({ ...prefs, color_theme: colorTheme, table_style: tableStyle });
+}
+
+// What this PC still holds from before the user's settings, chats and
+// dashboards moved to the Arco Server is sent there and removed from the PC.
+function importLocalProfileToServer() {
+  if (APP_MODE === "arcode" || UI_TEST_PROFILE) return;
+  requestAppServer("/user-profile/import-local", { profile_dir: app.getPath("userData") }, 120000).then((result) => {
+    if (result.error) appendElectronLog(`Local profile import did not run: ${result.error}`);
+    else appendElectronLog(`Local profile import: ${JSON.stringify(result)}`);
   });
 }
 
@@ -1727,7 +1798,7 @@ ipcMain.handle("arcode-user-settings-save", async (_event, payload) => {
   }
 });
 
-// A local-user preference kept as one JSON object in its own file under `%APPDATA%\ArcRho\prefs`,
+// A preference of this PC, kept as one JSON object in its own file under `%APPDATA%\Arco\prefs`,
 // read and written whole. Each preference has its own file because one window saving would
 // otherwise erase what another window had just stored in a shared one.
 function preferencesFileHandlers(getPath, label) {
@@ -1765,30 +1836,56 @@ function preferencesFileHandlers(getPath, label) {
   };
 }
 
+// A preference the signed-in user keeps on the Arco Server, as one section of
+// their preferences there, so it follows them to any PC. Standalone Arcode has
+// no server and keeps the file.
+function serverPreferenceHandlers(section, getPath, label) {
+  if (APP_MODE === "arcode") return preferencesFileHandlers(getPath, label);
+  const route = `/user-preferences/${section}`;
+  return {
+    async load() {
+      const result = await requestAppServer(route);
+      if (result.error) return { ok: false, exists: false, preferences: {}, error: result.error };
+      return { ok: true, exists: result.exists === true, preferences: result.preferences || {} };
+    },
+    async save(_event, payload) {
+      const preferences = payload?.preferences;
+      if (!preferences || typeof preferences !== "object" || Array.isArray(preferences)) {
+        return { ok: false, error: `Invalid ${label} preferences payload.` };
+      }
+      const stored = { ...preferences, updatedAt: new Date().toISOString() };
+      const result = await requestAppServer(route, { preferences: stored });
+      return result.error ? { ok: false, error: result.error } : { ok: true, preferences: stored };
+    },
+  };
+}
+
+// The favourite folders are paths on this PC, so they stay in a file here.
 const homeFolderPreferences = preferencesFileHandlers(getHomeFoldersPrefsPath, "Home folder");
 ipcMain.handle("home-folders-preferences-load", homeFolderPreferences.load);
 ipcMain.handle("home-folders-preferences-save", homeFolderPreferences.save);
 
-const macroPreferences = preferencesFileHandlers(getMacroPrefsPath, "macro");
+const macroPreferences = serverPreferenceHandlers("macros", getMacroPrefsPath, "macro");
 ipcMain.handle("macro-preferences-load", macroPreferences.load);
 ipcMain.handle("macro-preferences-save", macroPreferences.save);
 
-const flightDeckPreferences = preferencesFileHandlers(getFlightDeckPrefsPath, "Flight Deck");
+const flightDeckPreferences = serverPreferenceHandlers("flightDeck", getFlightDeckPrefsPath, "Flight Deck");
 ipcMain.handle("flight-deck-preferences-load", flightDeckPreferences.load);
 ipcMain.handle("flight-deck-preferences-save", flightDeckPreferences.save);
 
-// The notes panel size is a file rather than browser storage: File > Restart and Clear Cache
-// & Reload clear that storage, and a fallback backend port moves the app to another origin.
-const notesPanelPreferences = preferencesFileHandlers(getNotesPanelPrefsPath, "notes panel");
+// The notes panel size is not browser storage: File > Restart and Clear Cache & Reload
+// clear that storage, and a fallback backend port moves the app to another origin.
+const notesPanelPreferences = serverPreferenceHandlers("notesPanel", getNotesPanelPrefsPath, "notes panel");
 ipcMain.handle("notes-panel-preferences-load", notesPanelPreferences.load);
 ipcMain.handle("notes-panel-preferences-save", notesPanelPreferences.save);
 
 // The table Custom Colors, shared by every method page of this user.
-const tableColorPreferences = preferencesFileHandlers(getTableColorsPrefsPath, "table colors");
+const tableColorPreferences = serverPreferenceHandlers("tableColors", getTableColorsPrefsPath, "table colors");
 ipcMain.handle("table-colors-preferences-load", tableColorPreferences.load);
 ipcMain.handle("table-colors-preferences-save", tableColorPreferences.save);
 
 // The paths of the settings files each panel saved or loaded last, keyed by the file's kind.
+// They are paths on this PC, so they stay in a file here.
 const recentSettingsFilePreferences = preferencesFileHandlers(getRecentSettingsFilesPrefsPath, "recent settings files");
 ipcMain.handle("recent-settings-files-preferences-load", recentSettingsFilePreferences.load);
 ipcMain.handle("recent-settings-files-preferences-save", recentSettingsFilePreferences.save);
@@ -1961,6 +2058,7 @@ const arcBotHost = registerArcBotIpc({
   findExecutableOnPath,
   runHostCommand,
   getAppServerUrl: () => `http://${HOST}:${getBackendPort()}`,
+  chatsOnServer: APP_MODE !== "arcode",
 });
 registerUiAutomationIpc({
   ipcMain,
@@ -1977,7 +2075,7 @@ const agentWindowControl = createAgentWindowControl({
   screen,
   getMainWindow: () => win,
   getArcodeWindow: () => arcodeWin,
-  entryPath: path.join(app.getPath("appData"), APP_MODE === "arcode" ? "Arcode" : "ArcRho", "agent_window_control.json"),
+  entryPath: path.join(configDir(APP_MODE), "agent_window_control.json"),
   appMode: APP_MODE,
   log: appendElectronLog,
 });
@@ -2136,6 +2234,8 @@ app.whenReady().then(async () => {
 
       updateSplashProgress(60, "Server connected");
       appendElectronLog("App server connected.");
+      await adoptServerAppearance();
+      importLocalProfileToServer();
     }
 
     updateSplashProgress(80, "Loading interface...");

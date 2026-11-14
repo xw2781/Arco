@@ -34,6 +34,7 @@ App-server domain map for FastAPI routers, schemas, and services.
 | `stochastic_consolidation` | [`app_server/api/stochastic_consolidation_router.py`](../../app_server/api/stochastic_consolidation_router.py) | 5 | [`stochastic_consolidation.md`](domains/stochastic_consolidation.md) |
 | `table_summary` | [`app_server/api/table_summary_router.py`](../../app_server/api/table_summary_router.py) | 2 | [`table_summary.md`](domains/table_summary.md) |
 | `ui_automation` | [`app_server/api/ui_automation_router.py`](../../app_server/api/ui_automation_router.py) | 8 | [`ui_automation.md`](domains/ui_automation.md) |
+| `user_profile` | [`app_server/api/user_profile_router.py`](../../app_server/api/user_profile_router.py) | 7 | [`user_profile.md`](domains/user_profile.md) |
 | `workflow` | [`app_server/api/workflow_router.py`](../../app_server/api/workflow_router.py) | 5 | [`workflow.md`](domains/workflow.md) |
 | `workspace_paths` | [`app_server/api/workspace_paths_router.py`](../../app_server/api/workspace_paths_router.py) | 11 | [`workspace_paths.md`](domains/workspace_paths.md) |
 <!-- AUTO-GEN:END -->

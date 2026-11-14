@@ -7,6 +7,7 @@ const path = require("path");
 const { formatJsonForSave } = require("./persisted_json_text");
 const { pruneAgedLogFiles } = require("./log_retention");
 const { isProcessAlive } = require("./backend_port");
+const { profileDir } = require("./local_folders");
 
 let electronLogPath = "";
 
@@ -29,7 +30,7 @@ function getElectronLogPath() {
     pruneAgedLogFiles(logDir);
     electronLogPath = path.join(logDir, `electron-main-${getTimestampForFileName()}.log`);
   } catch {
-    const fallbackDir = path.join(os.homedir(), "AppData", "Roaming", "arcrho-electron", "logs");
+    const fallbackDir = path.join(profileDir(), "logs");
     fs.mkdirSync(fallbackDir, { recursive: true });
     pruneAgedLogFiles(fallbackDir);
     electronLogPath = path.join(fallbackDir, `electron-main-${getTimestampForFileName()}.log`);

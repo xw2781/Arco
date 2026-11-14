@@ -14,7 +14,7 @@ const installDir = path.join(testRoot, "Install", "ArcRho");
 const resourcesDir = path.join(installDir, "resources");
 const cliRoot = path.join(testRoot, "Install", "ArcBot CLI");
 const packagedAppRoot = path.join(resourcesDir, "app.asar");
-const expectedHostCwd = path.join(documentsDir, "ArcRho");
+const expectedHostCwd = path.join(documentsDir, "Arco");
 fs.mkdirSync(userDataDir, { recursive: true });
 fs.mkdirSync(resourcesDir, { recursive: true });
 

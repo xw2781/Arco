@@ -128,7 +128,7 @@ why. Only the person can resume; an agent cannot resume itself.
 ## How it works
 
 The Arco desktop app runs a small endpoint on `127.0.0.1` and publishes its port and a token,
-new at every launch, in `%APPDATA%\ArcRho\agent_window_control.json`. This script reads that
+new at every launch, in `%APPDATA%\Arco\agent_window_control.json`. This script reads that
 file and posts one command at a time. The app sends the input with Electron's
 `webContents.sendInputEvent`, which goes through Chromium's real hit-testing: a click on a
 control hidden behind another one fails the way the person's would. The overlay runs in an

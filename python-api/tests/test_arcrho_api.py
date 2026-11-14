@@ -225,7 +225,7 @@ class ArcRhoApiTests(unittest.TestCase):
         original_root = api_config._server_root
         with tempfile.TemporaryDirectory(dir=str(_TMP_ROOT)) as appdata, patch.dict(os.environ, {"APPDATA": appdata}, clear=False):
             try:
-                config_path = Path(appdata) / "ArcRho" / "workspace_paths.json"
+                config_path = Path(appdata) / "Arco" / "workspace_paths.json"
                 config_path.parent.mkdir(parents=True)
                 config_path.write_text(json.dumps({"workspace_root": str(self.root)}), encoding="utf-8")
                 api_config._explicit_server_root = None
@@ -244,7 +244,7 @@ class ArcRhoApiTests(unittest.TestCase):
             try:
                 api_config._explicit_server_root = None
                 api_config._server_root = None
-                config_path = Path(appdata) / "ArcRho" / "workspace_paths.json"
+                config_path = Path(appdata) / "Arco" / "workspace_paths.json"
                 configured = set_server_root(self.root)
                 self.assertEqual(configured, self.root.resolve())
                 saved = json.loads(config_path.read_text(encoding="utf-8"))
@@ -599,7 +599,7 @@ class AppUrlResolutionTests(unittest.TestCase):
         self.addCleanup(self._tempdir.cleanup)
 
     def _write_endpoint(self, payload) -> None:
-        endpoint_dir = self.appdata / "ArcRho"
+        endpoint_dir = self.appdata / "Arco"
         endpoint_dir.mkdir(parents=True, exist_ok=True)
         (endpoint_dir / "app_endpoint.json").write_text(
             payload if isinstance(payload, str) else json.dumps(payload),
@@ -698,7 +698,7 @@ class ServerRootResolutionTests(unittest.TestCase):
         self.addCleanup(self._tempdir.cleanup)
         base = Path(self._tempdir.name)
         self.appdata = base / "appdata"
-        (self.appdata / "ArcRho").mkdir(parents=True)
+        (self.appdata / "Arco").mkdir(parents=True)
         self.file_root = self._make_root(base / "file server")
         self.env_root = self._make_root(base / "env server")
         self.app_root = self._make_root(base / "app server")
@@ -727,7 +727,7 @@ class ServerRootResolutionTests(unittest.TestCase):
         api_config._discovery_attempted = False
 
     def _write_host_config(self, root: Path) -> None:
-        (self.appdata / "ArcRho" / "workspace_paths.json").write_text(
+        (self.appdata / "Arco" / "workspace_paths.json").write_text(
             json.dumps({"workspace_root": str(root)}), encoding="utf-8"
         )
 

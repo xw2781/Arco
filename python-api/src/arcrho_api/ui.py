@@ -10,6 +10,7 @@ from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from .config import config_dir
 from .exceptions import ArcRhoApiError
 
 
@@ -124,14 +125,11 @@ def _pid_alive(pid: int) -> bool:
 def running_apps() -> list[dict[str, Any]]:
     """Every running Arco desktop app on this PC for this Windows user, newest first.
 
-    The Electron host lists each app in ``%APPDATA%\\ArcRho\\app_endpoint.json`` once its
+    The Electron host lists each app in ``%APPDATA%\\Arco\\app_endpoint.json`` once its
     app server is ready. A second app, or one whose preferred port was taken, runs on its
     own port, so this file is the only record of where each app is.
     """
-    appdata = str(os.environ.get("APPDATA") or "").strip()
-    if not appdata:
-        appdata = os.path.join(os.path.expanduser("~"), "AppData", "Roaming")
-    endpoint_path = os.path.join(appdata, "ArcRho", "app_endpoint.json")
+    endpoint_path = os.path.join(config_dir(), "app_endpoint.json")
     try:
         with open(endpoint_path, "r", encoding="utf-8") as handle:
             payload = json.load(handle)

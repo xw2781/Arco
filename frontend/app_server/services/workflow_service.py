@@ -58,7 +58,7 @@ def get_workflow_default_dir(workflow_dir: str) -> Dict[str, Any]:
 
 
 def get_template_default_dir() -> Dict[str, Any]:
-    template_dir = os.path.join(os.path.expanduser("~"), "Documents", "ArcRho", "templates")
+    template_dir = config.get_template_dir()
     os.makedirs(template_dir, exist_ok=True)
     return {"path": template_dir}
 

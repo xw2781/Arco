@@ -186,9 +186,8 @@ function canDeleteMacro(macro) {
   return !!macro?.path;
 }
 
-// The display order is a local-user preference, so it lives in
-// %APPDATA%\ArcRho\prefs\macro_prefs.json through the desktop host, like the
-// File Explorer favorites, rather than in browser storage.
+// The display order belongs to the user, so it is kept in the `macros` section of their
+// preferences on the Arco Server, through the desktop host, rather than in browser storage.
 async function readMacroOrder() {
   const result = await getHostApi()?.loadMacroPreferences?.();
   const order = result?.preferences?.order;

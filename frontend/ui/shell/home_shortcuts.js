@@ -4,9 +4,8 @@
 // always something `openShellActivityHistoryEntry` can reopen, and clicking a card follows each
 // page's own open/focus rule instead of inventing a second one.
 //
-// Persisted as the `homeShortcuts` section of the local-user document
-// `%APPDATA%\ArcRho\local_project_prefs.json` through the existing `/local-project/preferences`
-// routes. Saves post only that section; the app-server merges by key, so shortcuts and the shell
+// Persisted as `homeShortcuts` in the `shell` section of the user's preferences on the Arco
+// Server, through the existing `/local-project/preferences` routes. Saves post only that section; the app-server merges by key, so shortcuts and the shell
 // activity history written beside them never overwrite each other.
 
 // Relative specifier resolves to the same `/ui/shell/shell_activity_history.js` URL the rest of the

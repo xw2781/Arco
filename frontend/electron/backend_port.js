@@ -2,6 +2,7 @@ const fs = require("fs");
 const net = require("net");
 const os = require("os");
 const path = require("path");
+const { configDir } = require("./local_folders");
 
 const APP_ENDPOINT_FILE = "app_endpoint.json";
 const APP_ENDPOINT_FORMAT = "arcrho-app-endpoint-v1";
@@ -63,9 +64,7 @@ function decideBackendShutdownOnExit({ pid, port, mode, markers = [] }) {
 }
 
 function getAppEndpointPath({ appMode, env = process.env } = {}) {
-  const appdata = String(env.APPDATA || "").trim()
-    || path.join(os.homedir(), "AppData", "Roaming");
-  return path.join(appdata, appMode === "arcode" ? "Arcode" : "ArcRho", APP_ENDPOINT_FILE);
+  return path.join(configDir(appMode, env), APP_ENDPOINT_FILE);
 }
 
 function isProcessAlive(pid) {

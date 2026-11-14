@@ -25,7 +25,7 @@ rc = project.reserving_class(r"Segment\Path")
 dfm = rc.dfm("Method Name")
 ```
 
-`ArcRhoClient()` uses the default server root resolved by `arcrho_api.config`, the canonical owner of that resolution: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, then the ArcRho host app config file `%APPDATA%\ArcRho\workspace_paths.json`, then the running ArcRho desktop app's own workspace root, then the packaged default `E:\Arco Server` when it holds a `projects` folder. Use `set_server_root(path)` to update that shared host config, `get_server_root()` to inspect it, `reload_server_root()` to retry app discovery, or pass `ArcRhoClient(path)` for a one-off explicit root.
+`ArcRhoClient()` uses the default server root resolved by `arcrho_api.config`, the canonical owner of that resolution: the `ARCRHO_SERVER_ROOT`/`ARCRHO_RUNTIME_SERVER_ROOT` environment overrides, then the ArcRho host app config file `%APPDATA%\Arco\workspace_paths.json`, then the running ArcRho desktop app's own workspace root, then the packaged default `E:\Arco Server` when it holds a `projects` folder. Use `set_server_root(path)` to update that shared host config, `get_server_root()` to inspect it, `reload_server_root()` to retry app discovery, or pass `ArcRhoClient(path)` for a one-off explicit root.
 
 Legacy migration:
 
@@ -40,7 +40,7 @@ dfm = session.DFM("Method Name")
 
 ## Gateway Client
 
-`arcrho_api.gateway.GatewayClient` sends the same signed reads, mutations and hosted saves the desktop app sends, using the running user's own Gateway credential (`%APPDATA%\ArcRho\arcrho_gateway.json`). Arco does not need to be open, the save runs the canonical server-side service including its dependent walk, and the audit log records the script's user. Prefer it over the local app URL in `arcrho_api.ui` for data work: on a shared machine that URL can reach another user's app, which then saves under their name.
+`arcrho_api.gateway.GatewayClient` sends the same signed reads, mutations and hosted saves the desktop app sends, using the running user's own Gateway credential (`%APPDATA%\Arco\arcrho_gateway.json`). Arco does not need to be open, the save runs the canonical server-side service including its dependent walk, and the audit log records the script's user. Prefer it over the local app URL in `arcrho_api.ui` for data work: on a shared machine that URL can reach another user's app, which then saves under their name.
 
 ```python
 from arcrho_api.gateway import GatewayClient

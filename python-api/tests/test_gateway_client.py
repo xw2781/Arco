@@ -128,7 +128,7 @@ class GatewayClientTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=TEST_TEMP_ROOT) as folder, patch.dict(
             os.environ, {"APPDATA": folder, "ARCRHO_GATEWAY_CONFIG": ""}
         ):
-            settings = Path(folder) / "ArcRho"
+            settings = Path(folder) / "Arco"
             settings.mkdir()
             (settings / "workspace_paths.json").write_text(json.dumps({
                 "profiles": [{"id": "local", "name": "Local test", "root": folder}],

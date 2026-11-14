@@ -51,8 +51,6 @@ def ensure_env_defaults(env: dict[str, str]) -> dict[str, str]:
     env.setdefault("TRI_DATA_DIR", str(BASE_DIR))
     if env.get("ARCRHO_APP_MODE", "").strip().lower() == "arcode":
         env.setdefault("ARCODE_DATA_DIR", str(Path.home() / "Documents" / "Arcode" / "scripts"))
-    else:
-        env.setdefault("ARCRHO_WORKFLOW_DIR", str(Path.home() / "Documents" / "ArcRho" / "workflows"))
     return env
 
 

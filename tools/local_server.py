@@ -25,7 +25,7 @@ Usage
 ``init`` creates the folders and ``config`` files, installs a prebuilt
 Orchestrator copied from production, binds the local Gateway to this PC only,
 and writes this user's credential for it to a separate file, so the production
-credential in ``%APPDATA%\ArcRho\arcrho_gateway.json`` is never touched.
+credential in ``%APPDATA%\Arco\arcrho_gateway.json`` is never touched.
 ``deploy`` builds the named components from this working tree into the local
 root. ``launch-app`` starts the dev-mode desktop app against the local root,
 with its own Electron profile and backend port, beside any app already running
@@ -55,7 +55,7 @@ for _source in (REPO_ROOT / "server-components" / "src", REPO_ROOT / "python-api
     if str(_source) not in sys.path:
         sys.path.insert(0, str(_source))
 
-from arcrho_api.config import DEFAULT_WORKSPACE_ROOT  # noqa: E402
+from arcrho_api.config import DEFAULT_WORKSPACE_ROOT, config_dir  # noqa: E402
 from arcrho_api.hosted_save_enrollment import provision_gateway_user  # noqa: E402
 from arcrho_api.io import write_json_atomic  # noqa: E402
 from arcrho_dependent_propagation_contract import (  # noqa: E402
@@ -96,7 +96,7 @@ LOCAL_GATEWAY_PORT = 28767
 LOCAL_GATEWAY_URL = f"http://{LOCAL_GATEWAY_HOST}:{LOCAL_GATEWAY_PORT}"
 LOCAL_CREDENTIAL_NAME = "arcrho_gateway.local.json"
 LOCAL_APP_PORT = 28785
-LOCAL_USER_DATA_NAME = "arcrho-electron-local"
+LOCAL_USER_DATA_NAME = "profile-local"
 DEFAULT_PROJECT = "NJ_Annual_Prod_202605_Fake"
 ROOT_FOLDERS = ("apps", "config", "projects", "requests", "runtime")
 SHARED_CONFIG_FILES = (
@@ -114,12 +114,8 @@ ROOT_BACKUP_NAME = re.compile(r"\.bak$|\.before[-_]", re.IGNORECASE)
 LocalServerError = ServerControlError
 
 
-def _appdata() -> Path:
-    return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
-
-
 def local_credential_path() -> Path:
-    return _appdata() / "ArcRho" / LOCAL_CREDENTIAL_NAME
+    return config_dir() / LOCAL_CREDENTIAL_NAME
 
 
 def _set_apps(root: Path, updates: dict[str, dict[str, Any]]) -> None:
@@ -381,7 +377,7 @@ def launch_app(root: Path, credential_path: Path) -> None:
         ARCRHO_SERVER_ROOT=str(root),
         ARCRHO_GATEWAY_CONFIG=str(credential_path),
         ARCRHO_GATEWAY_URL=LOCAL_GATEWAY_URL,
-        ARCRHO_USER_DATA_DIR=str(_appdata() / LOCAL_USER_DATA_NAME),
+        ARCRHO_USER_DATA_DIR=str(config_dir() / LOCAL_USER_DATA_NAME),
         ARCRHO_PORT=str(LOCAL_APP_PORT),
     )
     env.pop("ELECTRON_RUN_AS_NODE", None)

@@ -51,7 +51,7 @@ Detected `arcrho:*` message types in key JS files:
 
 ## Data/State/Caches
 <!-- MANUAL:BEGIN -->
-- A dashboard is a `.arcdash` JSON file in the user's `Documents\ArcRho\dashboards` folder; samples ship read-only with the app, and saving one writes a copy to the user's folder.
+- A dashboard is a `.arcdash` JSON file in the user's folder on the Arco Server, so it follows them to any PC; samples ship read-only with the app, and saving one writes a copy to the user's folder.
 - Document shape (`normalizeDashboard` is the owner): `{format: "arco-dashboard", version, name, description, sources: [...], pages: [{id, name, filters: [{field, values}], widgets: [...]}]}`. A widget is `{id, type, title, layout: {x, y, w, h}, source, category, series, measures, filters, compare, sort, limit, options}`.
 - A source is one of four kinds: `arco_datasets` (`projects`, `reserving_classes`, `datasets`, optional `level_names`), `arco_source_table` (`projects`, `dimensions`, `measures`), `csv` (`path`, optional `dimensions` and `measures`), and `sql` (`engine`, `connection`, `sql`). `projects` is a list of `{name, label}`; with more than one, every row carries its project's label in the `Project` field.
 - Each source keeps the last table it returned in `extract`, so a dashboard opens with its charts drawn and without waiting for the server. Refresh Data reads every source again; a source with no saved table is read when the dashboard opens.

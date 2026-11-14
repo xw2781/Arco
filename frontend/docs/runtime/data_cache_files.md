@@ -46,7 +46,6 @@ Cache/lock constants detected:
 - `DEFAULT_DASHBOARD_LIBRARY_FILE`
 - `FIELD_MAPPING_FILE`
 - `GENERAL_SETTINGS_FILE`
-- `LOCAL_PROJECT_PREFS_FILE`
 - `PROJECT_INDEX_FILE`
 - `PROJECT_LOCK_FILE`
 - `PROJECT_SETTINGS_XLSX_FILE`
@@ -55,6 +54,7 @@ Cache/lock constants detected:
 - `RESERVING_CLASS_TYPES_FILE`
 - `RESERVING_CLASS_VALUES_FILE`
 - `SCRIPTING_PREFS_FILE`
+- `SERVER_USER_PREFERENCES_FILE`
 - `TABLE_SUMMARY_CACHE_FILE`
 - `USERNAME_INDEX_FILE`
 - `_AUDIT_LOG_LOCK`
@@ -71,9 +71,9 @@ Cache/lock constants detected:
 - File names and limits are defined in `app_server/config.py` constants.
 - `projects/<project>/data_processing_values.json` is the lazy `arcrho-source-vocab-v1` cache used by the Data Processing Rules editor. It contains de-duplicated mapped reserving-class key combinations for each source measure and is invalidated by the source CSV path/mtime/size fingerprint or a Field Mapping signature change.
 - Project data is organized by reserving class as `data/<ReservingClassFolder>/datasets` for CSV caches, `data/<ReservingClassFolder>/methods` for method JSON and method RPC temp files, `data/<ReservingClassFolder>/sidecars` for dataset metadata and notes, and `data/<ReservingClassFolder>/index.json` for the Project Instance cache index. Background `WriteSidecar: false` engine requests keep per-CSV processing provenance in `data/<ReservingClassFolder>/.arcrho-cache-provenance/`; each atomic technical record includes the current processing hash and the CSV size, modification time, and SHA-256 content fingerprint, letting non-mutating Dataset/DFM/Result Selection loads reuse only the recorded file without changing the user-editable base sidecar. An app-calculated CSV keeps a record in the same folder holding the formula it was built with and, for each dependency, the exact file it was read from with that file's size, modification time, and SHA-256 fingerprint (plus the input a DFM method output was rebuilt from); the dataset sidecar beside it names precedents only. Dataset deletion and generated-cache clearing remove the corresponding technical record; a mismatched or replaced CSV invalidates it automatically.
-- Dataset Viewer and DFM store the local last selected Project Name in `%APPDATA%\ArcRho\local_project_prefs.json` so it can be checked and edited manually without opening the server project folder. The same file also stores `recentProjectNames`, capped to the last three project names selected from the project tree picker, which appear in the picker's blue virtual `Recent Projects` folder above real project folders, and `projectExplorer.expandedFolders`, which restores the Project Settings folder expansion state.
+- Dataset Viewer and DFM store the local last selected Project Name in `%APPDATA%\Arco\local_project_prefs.json` so it can be checked and edited manually without opening the server project folder. The same file also stores `recentProjectNames`, capped to the last three project names selected from the project tree picker, which appear in the picker's blue virtual `Recent Projects` folder above real project folders, and `projectExplorer.expandedFolders`, which restores the Project Settings folder expansion state.
 - That file also holds `homeShortcuts`, the user's Home custom groups and shortcut cards, as `{ "version": 1, "groups": [{ "id", "title", "cards": [{ "id", "label", "target" }] }] }`. A card `target` is the same normalized descriptor `shellActivityHistory` entries use, minus the activity timestamp, so a card opens through the same restore path as Browsing History. Caps are 24 groups, 48 cards per group, and 60-character titles and labels; `ui/shell/home_shortcuts.js` owns the document schema and `scripting_preferences_service.py` validates structure and caps on save. Because `save_local_project_preferences` merges only the keys present in a request, the frequent `shellActivityHistory` writes and Home shortcut saves never overwrite each other.
-- Reserving-class tree filter specs are stored in each project-user preference file under `projects/<project>/users/<windows-login>/preferences.json`; `%APPDATA%\ArcRho\cache\reserving_class_filter_spec.json` is obsolete and is no longer read or written.
+- Reserving-class tree filter specs are stored in each project-user preference file under `projects/<project>/users/<windows-login>/preferences.json`; `%APPDATA%\Arco\cache\reserving_class_filter_spec.json` is obsolete and is no longer read or written.
 - Dependency Graph's last filter choices are local-user browser storage under `arcrho_dependency_graph_filters`, owned by `ui/project_instance/dependency_graph_preferences.js`. The payload holds Status, Category, and Method Type value arrays plus `matchedOnly`; it applies across projects in this PC profile and is saved on each change. It does not write project metadata or project-user preference files.
 - Refresh endpoints can clear and rebuild cache files.
 - ResQ method imports persist the output object's review status in the dataset sidecar: vector-backed methods use `OutputVector.Status`, while Berquist-Sherman methods use `OutputTriangle.Status`. Status `2` remains Needs Review through graph refresh even when precedent timestamps are current; status `0` can still become Needs Review when ArcRho detects a newer precedent.

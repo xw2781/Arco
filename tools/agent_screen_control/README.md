@@ -158,7 +158,7 @@ step rather than only at the end.
 - `AgentScreenControl.cs` — the overlay itself, compiled at run time by `Add-Type`. It must
   stay C# 5 and ASCII, because `Add-Type` reads it with the console's default encoding. It
   also performs the real clicks, so it knows exactly when the drawn pointer has arrived.
-- State lives in `%APPDATA%\ArcRho\agent_screen_control\state.json`. Each pointer command
+- State lives in `%APPDATA%\Arco\agent_screen_control\state.json`. Each pointer command
   carries a sequence number, and the overlay answers in `cursor_ack.json` beside it. The
   helper's process id is kept there too. All of it is transient runtime state, not ArcRho
   project data.
