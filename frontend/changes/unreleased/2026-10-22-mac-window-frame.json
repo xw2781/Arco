@@ -1,0 +1,6 @@
+{
+  "type": "fix",
+  "scope": "shell",
+  "audience": "user",
+  "summary": "The app window on macOS no longer shows the purple Windows 10 border."
+}
