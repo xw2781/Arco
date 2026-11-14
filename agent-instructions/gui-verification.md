@@ -20,10 +20,10 @@ The tool's [README](../tools/agent_screen_control/README.md) documents every com
 
 1. **Find the window.** `windows -Window <text>` lists matching windows front to back with their positions. Dialogs are separate windows; a program's taskbar entry can be a zero-size window.
 2. **Take control.** `start -Agent '<model name>' -Action '<first step>'`. Use `-Position TopRight` or another corner when the panel would cover what you need.
-3. **Look.** `screenshot -Out temp\gui\<name>.png` for a region or `-Window <text>`, then read the image. Capture only the area you need, and zoom in (`-Zoom 2` or `3`) on thin targets. The command prints the region's origin; convert image points back to screen points with it.
+3. **Look.** `screenshot -Out tmp_data\gui\<name>.png` for a region or `-Window <text>`, then read the image. Capture only the area you need, and zoom in (`-Zoom 2` or `3`) on thin targets. The command prints the region's origin; convert image points back to screen points with it.
 4. **Act.** `click -X -Y -Window <text> -Action '<what and why>'`, with `-Button Right` or `-Button Double` as needed, or `drag -X -Y -ToX -ToY -Window <text>`. Check `$LASTEXITCODE` after every command: `3` means the person pressed Release, so stop at once; `4` means the tool refused or could not confirm, and the warning says why.
 5. **Check.** Take a fresh screenshot after every action that changes the screen. Windows move and resize between steps, so never reuse coordinates from an older screenshot.
-6. **Finish.** `stop` in the same block that ends the work, and delete your screenshots under `temp\`.
+6. **Finish.** `stop` in the same block that ends the work, and delete your screenshots under `tmp_data\`.
 
 ## Rules
 

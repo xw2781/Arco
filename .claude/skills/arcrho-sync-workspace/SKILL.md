@@ -13,8 +13,7 @@ losing work that exists only here.
 
 Use this skill automatically for requests such as "sync the repo", "update the
 local repo", "pull the latest", "I just switched machines", "is this machine
-behind?", or "get a clean copy from the remote". Do not ask the user whether to
-use the skill first.
+behind?", or "get a clean copy from the remote".
 
 The survey in Step 2 is read-only and needs no approval — run it immediately.
 Everything that moves a ref or the working tree follows the rules below.
@@ -171,7 +170,7 @@ Hard limits on that step:
 Integrating local commits does not put them on the other machine; only a push
 does. When the clone is left ahead of the remote after a rebase or merge, say so
 and offer to push — but do not push until the user approves it in that turn.
-This matches the repository's standing rule in `tools/agent_commit_workflow.md`.
+This matches the repository's standing rule in the `arcrho-commit-workflow` skill.
 
 The one exception is `agent-memory/`, which its own hook pushes unattended.
 

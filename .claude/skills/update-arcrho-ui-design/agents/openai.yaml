@@ -1,4 +1,0 @@
-interface:
-  display_name: "Update ArcRho UI Design"
-  short_description: "Codify tested ArcRho UI design lessons"
-  default_prompt: "Use $update-arcrho-ui-design to turn this tested UI fix into durable ArcRho UI design guidance."

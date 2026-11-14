@@ -7,7 +7,7 @@ description: Prepare, review, stage, and create commits safely in the ArcRho mon
 
 ## Invocation
 
-Use this skill automatically for ArcRho commit, staging, and push requests. Do not ask the user whether to use the skill first.
+Use this skill for ArcRho commit, staging, and push requests.
 
 When the user explicitly asks to create a commit using this skill, treat that request as approval to inspect, plan, stage, and commit the current stated scope without stopping for another approval prompt. Do not ask "are you sure?" or require a second confirmation unless the requested scope is ambiguous, the worktree contains changes clearly outside the user's request, or the operation includes a push.
 
@@ -15,9 +15,9 @@ When the user explicitly asks to create a commit using this skill, treat that re
 
 Read the applicable repository instructions before preparing a commit:
 
-- Read `AGENTS.md` and `AGENT_GUIDELINES.md` at the ArcRho repo root.
-- Read any nested `AGENTS.md` files that apply to the files being committed, including `frontend/AGENTS.md` before committing files under `frontend/`.
-- Read `tools/agent_commit_workflow.md` when present. Treat it as the detailed source of truth if it differs from this skill.
+- Read `AGENT_GUIDELINES.md` at the ArcRho repo root.
+- Read `frontend/FRONTEND_AGENT_GUIDELINES.md` before committing files under `frontend/`.
+- This skill is the single home of the repository's commit and push rules.
 
 ## Hard Rule
 
@@ -43,7 +43,7 @@ git diff --name-status
 
 Review relevant diffs before summarizing. Use targeted file diffs when the full diff is large.
 
-Run targeted validation when appropriate and feasible within the repository validation limit. Respect ArcRho runtime preferences from `AGENT_GUIDELINES.md`, including Python 3.10 preference, bundled frontend Node/npm preference, and the 120-second default validation limit.
+Run targeted validation when appropriate and feasible. Respect ArcRho runtime preferences from `AGENT_GUIDELINES.md`, including Python 3.10 preference and bundled frontend Node/npm preference.
 
 ## Commit Plan
 
@@ -62,6 +62,8 @@ If the user asked only for a commit plan or review, ask for final approval with 
 ```text
 Please review this commit plan. If it looks right, reply with explicit approval to create these commits, and tell me whether to include all groups or only specific groups.
 ```
+
+Approval must be explicit. When the scope is large or risky, treat vague replies such as "looks okay" or "continue" as insufficient and ask for a clear confirmation.
 
 If the user already asked to commit using this skill, present the plan briefly and proceed without waiting for another reply.
 

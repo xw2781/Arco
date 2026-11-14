@@ -8,15 +8,14 @@
     ]
   },
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
             "shell": "powershell",
             "statusMessage": "Reading AGENT_GUIDELINES.md...",
-            "command": "$r=(git rev-parse --show-toplevel 2>$null); if(-not $r){exit 0}; $a=''; if(Test-Path \"$r/AGENT_GUIDELINES.md\"){$a+=Get-Content \"$r/AGENT_GUIDELINES.md\" -Raw}; if(Test-Path \"$r/frontend/FRONTEND_AGENT_GUIDELINES.md\"){$a+=[System.Environment]::NewLine+[System.Environment]::NewLine+'--- frontend/FRONTEND_AGENT_GUIDELINES.md ---'+[System.Environment]::NewLine+(Get-Content \"$r/frontend/FRONTEND_AGENT_GUIDELINES.md\" -Raw)}; if($a){$o=@{hookSpecificOutput=@{hookEventName='PreToolUse';additionalContext='AGENT_GUIDELINES.md:'+[System.Environment]::NewLine+$a}};$o|ConvertTo-Json -Depth 5}"
+            "command": "$r=(git rev-parse --show-toplevel 2>$null); if(-not $r){exit 0}; $a=''; if(Test-Path \"$r/AGENT_GUIDELINES.md\"){$a+=Get-Content \"$r/AGENT_GUIDELINES.md\" -Raw}; if(Test-Path \"$r/frontend/FRONTEND_AGENT_GUIDELINES.md\"){$a+=[System.Environment]::NewLine+[System.Environment]::NewLine+'--- frontend/FRONTEND_AGENT_GUIDELINES.md ---'+[System.Environment]::NewLine+(Get-Content \"$r/frontend/FRONTEND_AGENT_GUIDELINES.md\" -Raw)}; if($a){$o=@{hookSpecificOutput=@{hookEventName='SessionStart';additionalContext='AGENT_GUIDELINES.md:'+[System.Environment]::NewLine+$a}};$o|ConvertTo-Json -Depth 5}"
           }
         ]
       }

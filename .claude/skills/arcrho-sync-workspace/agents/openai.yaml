@@ -1,6 +1,0 @@
-interface:
-  display_name: "ArcRho Workspace Sync"
-  short_description: "Match this clone to the remote when switching machines"
-  default_prompt: "Use $arcrho-sync-workspace to check this clone against the remote and bring it up to date."
-policy:
-  allow_implicit_invocation: true

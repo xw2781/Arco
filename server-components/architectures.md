@@ -87,7 +87,7 @@ made stale, so the Build Manager GUI and the `deploy.py` CLI cannot disagree.
 A request carries source rather than a version. In the default `working-tree`
 mode the client sends a patch of the affected trees against the newest commit
 the server can already resolve, plus any untracked files, so a change that is
-still uncommitted deploys normally — which matters because AGENTS.md asks for a
+still uncommitted deploys normally — which matters because AGENT_GUIDELINES.md asks for a
 rebuild *before* a change is committed. `ref` mode builds a pushed ref instead
 and is the reproducible form.
 

@@ -1,6 +1,0 @@
-interface:
-  display_name: "ArcRho Commit Workflow"
-  short_description: "Review ArcRho commits before staging"
-  default_prompt: "Use $arcrho-commit-workflow to prepare a safe ArcRho commit plan before staging changes."
-policy:
-  allow_implicit_invocation: true

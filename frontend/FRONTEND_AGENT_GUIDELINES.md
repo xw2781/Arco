@@ -13,13 +13,8 @@ These contracts are mandatory whenever a task touches:
 - App-server API, service, or runtime config files under `app_server/api/`, `app_server/services/`, or `app_server/config.py`.
 - Electron runtime bridge/host files under `electron/`.
 
-Before initiating a new window, table, UI design, layout, or styling task, use `$arcrho-ui-design` and follow its UI design reference guidance. If the skill is not available in the current session, read `.claude/skills/arcrho-ui-design/SKILL.md` directly.
-
-## UI Fix Design Reference
-Before making any frontend UI fix or visual/styling/layout/control change, use:
-- `$arcrho-ui-design`
-
-Apply the existing rules in that skill during implementation. Do not edit the ArcRho UI Design skill unless the user explicitly asks to record, update, or codify a durable design rule; use `$update-arcrho-ui-design` for that post-fix update workflow.
+## UI Design Reference
+Before any frontend UI work — a new window, table, layout, or styling task, or a UI fix or visual/control change — use the `arcrho-ui-design` skill and apply its rules during implementation. Do not edit that skill unless the user explicitly asks to record, update, or codify a durable design rule; use the `update-arcrho-ui-design` skill for that.
 
 ## Hard Rules (MUST)
 1. Keep `arcrho:*` message names backward-compatible unless all producers/consumers are updated in the same change.
@@ -53,37 +48,19 @@ After relevant code changes:
 6. If `--check` fails, fix docs before finishing.
 
 ## Commit and Push Workflow
-When the user asks an agent to commit and/or push frontend code, follow the root `AGENT_GUIDELINES.md` Commit and Push Workflow.
+When the user asks an agent to commit and/or push frontend code, use the `arcrho-commit-workflow` skill.
 
 Frontend-specific additions:
 1. Use `-Pathspec frontend` or a comma-list such as `-Pathspec frontend,tools` when intentionally limiting commit scope.
 2. Use `-StageMode none` only when intentionally committing already staged changes.
 3. The compatibility wrapper at `frontend/tools/agent_commit_push.ps1` delegates to the same root helper, but prefer running the root helper from `ArcRho/`.
 
-## Decision Priority
-When code and docs conflict:
-1. Explicit user request in current task.
-2. This `FRONTEND_AGENT_GUIDELINES.md`.
-3. Contract documents under `docs/contracts/` and `docs/architecture/`.
-4. Generated inventories under `docs/generated/`.
-
-## CSS Editing Safety
-For CSS edits, patch with selector-level context and inspect the diff before reporting success.
+## CSS Rules
 Apply the root `AGENT_GUIDELINES.md` single-source-of-truth rule to styling: CSS rules and CSS custom properties own static visual defaults. Do not duplicate those defaults in JavaScript or write them as inline styles during initialization. JavaScript may set a visual CSS property only when the value is dynamically computed from runtime state or when a caller explicitly supplies an override; omitted override options must leave the stylesheet value untouched.
 For sticky table headers inside scroll wrappers, keep header seam/bleed-through fixes out of layout flow. Do not add spacer or mask pseudo-elements on the scroll wrapper that create height, margin, or padding. Prefer `border-collapse: separate; border-spacing: 0;` for sticky-header tables and put any paint-only cover on the sticky `th` cells themselves, such as an absolutely positioned `th::before`, so body content cannot show through without creating a visible gap above the header.
 
 ## Change Safety
-Before modifying code, stop and double-check with the user if any of the following are detected:
-1. The request is unclear or missing important implementation details.
-2. The request appears to conflict with standard or best-practice application development.
-3. The new request conflicts with existing code logic, contracts, or architecture.
-4. The request is likely not the best option for long-term architecture, optimization, or maintainability.
-
-In those cases:
-1. Start the user-facing response with `[!!!!!]` to make the triggered safety/contract concern explicit.
-2. Call out the concern clearly.
-3. Ask targeted clarifying question(s) or propose better options.
-4. Proceed only after the user confirms the direction.
+Before modifying code, stop and ask when the request is unclear or missing important implementation details, or when it conflicts with existing code logic, contracts, or architecture. Call out the concern, ask a targeted question or propose a better option, and proceed only after the user confirms the direction.
 
 If a requested change appears to violate these contracts:
 1. Stop and call out the exact contract rule.

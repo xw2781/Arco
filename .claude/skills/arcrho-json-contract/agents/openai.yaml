@@ -1,4 +1,0 @@
-interface:
-  display_name: "ArcRho JSON Contract"
-  short_description: "Keep ArcRho migration JSON contracts aligned"
-  default_prompt: "Use $arcrho-json-contract when refining ArcRho dataset sidecar JSON, reserving-class index JSON, or ResQ migration behavior."

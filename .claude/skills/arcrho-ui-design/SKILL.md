@@ -41,7 +41,7 @@ Read [tables-and-scrollbars.md](references/tables-and-scrollbars.md) for tables,
 
 ### R05 - Cross-group work
 
-Read every matching reference before editing when a task spans multiple groups. Keep reference loading one level deep from this file.
+Read every matching reference before editing when a task spans multiple groups.
 
 ### R06 - Detailed rules win
 

@@ -92,5 +92,4 @@ When a requested change conflicts with guardrails:
 Before finishing architecture-impacting changes:
 1. Mark affected AR-* rules.
 2. Update relevant docs (`docs/INDEX.md`, module indexes, domain indexes, contracts).
-3. Run `python tools/docs_index_builder.py --write`.
-4. Run `python tools/docs_index_builder.py --check`.
+3. Run the docs index steps in `FRONTEND_AGENT_GUIDELINES.md` (Required Documentation Workflow).

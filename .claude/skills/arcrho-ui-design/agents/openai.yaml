@@ -1,4 +1,0 @@
-interface:
-  display_name: "ArcRho UI Design"
-  short_description: "Apply ArcRho frontend UI design rules"
-  default_prompt: "Use $arcrho-ui-design to guide this ArcRho frontend UI change."

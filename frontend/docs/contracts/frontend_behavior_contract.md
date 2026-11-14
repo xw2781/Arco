@@ -80,5 +80,4 @@ reply is running; credentials stay in each account's own folder.
 
 1. State which behavior area changed, or state "no frontend behavior impact."
 2. Update relevant MANUAL sections in `docs/ui/*.md` when behavior changes.
-3. Run `python tools/docs_index_builder.py --write`.
-4. Run `python tools/docs_index_builder.py --check`.
+3. Run the docs index steps in `FRONTEND_AGENT_GUIDELINES.md` (Required Documentation Workflow).

@@ -1,6 +1,28 @@
 # Component Deployment Authorization
 
-Read this before rebuilding or redeploying any frozen server component. `AGENT_GUIDELINES.md` covers how to run a deploy; this file covers what each component's rebuild costs, what to verify afterwards, and how far the standing authorization reaches.
+Read this before rebuilding or redeploying any frozen server component. It covers how to run a deploy, what each component's rebuild costs, what to verify afterwards, and how far the standing authorization reaches.
+
+## Running a deploy (MUST)
+
+Every frozen server component — Bridge, Engine, Gateway, Orchestrator, Admin Control, Launcher — is rebuilt and redeployed through `server-components/deploy.py`, which asks the ArcRho Build Listener on the server machine to do the work. Do not run a component's `build_exe.py` from a client machine unless the listener is unavailable: a client deploy pushes the frozen build across the workspace share, measured on 2026-08-17 at 0.18 MB/s of writes against that same share's 50 MB/s reads, so five of every six minutes was transfer rather than build.
+
+```
+python server-components/deploy.py            # every component the change made stale
+python server-components/deploy.py bridge engine
+python server-components/deploy.py --stale    # report freshness, build nothing
+python server-components/deploy.py --ref main # build a pushed ref instead of local source
+```
+
+- **Do not work out which components are stale by hand.** With no arguments the CLI derives that from each component's bundled source roots, which is the only reliable answer — an edit under `frontend/app_server/` makes the Bridge, the Engine **and** the Gateway stale, and reasoning about it by memory has already caused a missed Gateway deploy.
+- **Uncommitted work deploys.** The CLI sends a patch of the affected trees against the newest commit the server can resolve, so a rebuild required before a change is committed works normally. Do not commit or push merely to deploy.
+- **Check what the payload contains before accepting a deploy.** A working-tree deploy ships the state of the whole tree under the affected roots, so a colleague's or another agent's half-finished edits in the same clone go to the server too. The CLI prints the changed and new files for that reason: if the list contains work that is not yours, stop and ask rather than deploying it. `--ref` builds a pushed ref instead and never carries local state.
+- **The listener owns its clone, so it must have one nobody edits.** Every claimed request checks out a detached base commit in the listener's clone, resets the working tree and deletes untracked files. That clone is not a setting — it is wherever the listener's own code was started from. It runs from `E:\XWSpace\Repos\ArcRho-buildbot`, which carries the working clone as a second remote so an unpushed commit still resolves. Before deploying, check that the newest heartbeat under `E:\Arco Server\runtime\instances\arcrho_build_listener\` names that clone; if it names a clone anyone edits, stop and move the listener with `tools\arcrho_service_control.ps1` rather than deploying, or the next deploy will revert their uncommitted work.
+- **Exit codes are the result**: `0` success, `1` the build or deploy failed, `2` a usage or precondition problem, `3` no listener is running. Report a non-zero result plainly and do not retry blindly.
+- **No listener on the Server PC is handled for you**: there, the CLI starts the Build Manager from the one sibling clone marked `.git/arcrho-build-clone`, which listens by itself, and waits for it. Exit code `3` therefore means a Client PC, or a Server PC with no single marked clone.
+- **The one human step**: on exit code `3`, ask the user to run `server-components\build_manager.bat` on the ArcRho Server machine and turn on "Listen for build requests". Relay the CLI's message; do not attempt to start it remotely.
+- **A forced stop blocks the next Engine deploy.** The deploy waits on the heartbeat files under `E:\Arco Server\runtime\instances\` to decide the old Engine is gone, and a component killed rather than closed leaves its file behind, so the wait cannot succeed and the deploy aborts. Clear them with `tools\arcrho_service_control.ps1 -Action clear-stale-heartbeats`, which removes only a heartbeat with no live process behind it.
+
+`server-components/build_manager.bat` remains the direct interface for a human at the server.
 
 ## Standing authorization
 
@@ -62,3 +84,8 @@ Do not substitute manual process termination or an in-place executable overwrite
 ## Local test root first
 
 On the developer PC a private root at `C:\Arco Server` takes the same Engine and Gateway builds without reaching any other user: `py -3.10 tools/local_server.py deploy` builds from the working tree into it, and `launch-app` opens the dev app against it. Deploy there first whenever the change can be checked without ResQ, then deploy to production as above. A deploy to the local root needs no ship-impact check, since no released app talks to it; the production deploy that follows still does. The root, its limits, and what keeps it apart are in [docs/plans/completed/local_server_root_and_server_switcher.md](../docs/plans/completed/local_server_root_and_server_switcher.md).
+
+The developer PC `L-H2MQ6280FVP` keeps a private server root at `C:\Arco Server`; on the Server PC `NE7SASWPN02` it lives at `E:\XWSpace\Arco Server`, never on C:. Both are run by `tools/local_server.py` (`init`, `copy-project`, `deploy`, `start`, `stop`, `status`, `launch-app`). Nothing in it reaches production or other users; see [docs/plans/completed/local_server_root_and_server_switcher.md](../docs/plans/completed/local_server_root_and_server_switcher.md) for what keeps it apart and its limits.
+- For work on the SMB retirement ([docs/plans/client_smb_retirement.md](../docs/plans/client_smb_retirement.md)), and for any server-component change whose effect can be checked without ResQ, deploy to the local root first (`py -3.10 tools/local_server.py deploy`), check it there with `launch-app`, and only then run `server-components/deploy.py` for production.
+- Never point a build at the local root by hand without both `ARCRHO_DEPLOY_ROOT` and `ARCRHO_ROOT`; the tool sets both. Never give a client process `ARCRHO_RUNTIME_SERVER_ROOT`: it marks the process as a server and turns the Gateway off.
+- In a `launch-app` session never save the Server Connection page; it writes the per-machine file the production app reads.

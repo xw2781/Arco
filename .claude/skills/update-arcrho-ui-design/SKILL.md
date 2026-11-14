@@ -13,7 +13,7 @@ Convert a completed, user-tested ArcRho UI fix into concise, reusable guidance i
 
 1. Confirm the user is asking to document a specific UI fix that is already completed and tested by the user. If the fix is still being designed, implemented, or validated, do not use this skill yet.
 2. Read the current request and recent implementation context. Identify the durable design principle behind the verified fix, not just the specific bug.
-3. Read `frontend/AGENTS.md` and `.claude/skills/arcrho-ui-design/SKILL.md` before editing.
+3. Read `frontend/FRONTEND_AGENT_GUIDELINES.md` and `.claude/skills/arcrho-ui-design/SKILL.md` before editing.
 4. Check the requested lesson against the current ArcRho UI Design rules before making changes:
    - If the requested lesson is already covered, explicitly tell the user which existing rule covers it and do not edit unless the user asks for a wording refinement.
    - If the requested lesson conflicts with an existing rule, explicitly name both the requested lesson and the conflicting rule, explain the conflict, and ask for clarification before editing.

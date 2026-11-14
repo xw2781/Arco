@@ -8,11 +8,11 @@ Every release is a new version with its own notes:
 - Add a `## <version> - <yyyy-mm-dd>` entry at the top of `excel-addin/RELEASE_NOTES.md` with one plain-English bullet per change a user would notice. If the version has not been released yet, add to its existing entry instead.
 - The build refuses to run when the newest notes entry is not `ARCRHO_VERSION`, and the release refuses a version that is already on the share. The release publishes the notes beside the add-in as `Arco Release Notes.md`, which the About window opens.
 
-Run the scripts from the clone you edited. The beta workbook, the signature files, and the rollback archive exist only in the Server PC clone `E:\XWSpace\Repos\ArcRho`, so point the scripts there:
+Run the scripts from the clone you edited. The beta workbook, the signature files, and the rollback archive exist only in the Server PC clone `E:\XWSpace\Repos\Arco`, so point the scripts there:
 
-- Step 1: `powershell -NoProfile -ExecutionPolicy Bypass -File "<clone>\excel-addin\tools\build_xlam.ps1" -TargetPath "E:\XWSpace\Repos\ArcRho\excel-addin\beta\ARCRHO_BETA.xlam"`
-- Check: `py -3.10 <clone>\excel-addin\tools\verify_built_addin.py "E:\XWSpace\Repos\ArcRho\excel-addin\beta\ARCRHO_BETA.xlam"`
-- Step 2: `powershell -NoProfile -ExecutionPolicy Bypass -File "<clone>\excel-addin\tools\release_xlam.ps1" -BetaPath "E:\XWSpace\Repos\ArcRho\excel-addin\beta\ARCRHO_BETA.xlam" -SignatureDir "E:\XWSpace\Repos\ArcRho\excel-addin\signature" -ArchiveDir "E:\XWSpace\Repos\ArcRho\excel-addin\beta\Archive" -ExtractDir "E:\XWSpace\Repos\ArcRho\excel-addin\beta\_release_unpack"`
+- Step 1: `powershell -NoProfile -ExecutionPolicy Bypass -File "<clone>\excel-addin\tools\build_xlam.ps1" -TargetPath "E:\XWSpace\Repos\Arco\excel-addin\beta\ARCRHO_BETA.xlam"`
+- Check: `py -3.10 <clone>\excel-addin\tools\verify_built_addin.py "E:\XWSpace\Repos\Arco\excel-addin\beta\ARCRHO_BETA.xlam"`
+- Step 2: `powershell -NoProfile -ExecutionPolicy Bypass -File "<clone>\excel-addin\tools\release_xlam.ps1" -BetaPath "E:\XWSpace\Repos\Arco\excel-addin\beta\ARCRHO_BETA.xlam" -SignatureDir "E:\XWSpace\Repos\Arco\excel-addin\signature" -ArchiveDir "E:\XWSpace\Repos\Arco\excel-addin\beta\Archive" -ExtractDir "E:\XWSpace\Repos\Arco\excel-addin\beta\_release_unpack"`
 
 Run from the Server PC clone itself, the scripts need no path arguments.
 

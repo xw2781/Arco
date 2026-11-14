@@ -282,7 +282,7 @@ Write-Host ""
 
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
 
-foreach ($file in @("AGENTS.md", "AGENT_GUIDELINES.md", "CLAUDE.md", "README.md", ".gitignore")) {
+foreach ($file in @("AGENT_GUIDELINES.md", "CLAUDE.md", "README.md", ".gitignore")) {
     Copy-FileChecked -Source (Join-Path $SourceRoot $file) -Target (Join-Path $Destination $file)
 }
 

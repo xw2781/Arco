@@ -84,5 +84,4 @@ A dashboard reads project data only through the registered `dashboard_dataset_ta
 
 1. State which business-logic area changed, or state "no business-logic impact."
 2. Update affected MANUAL sections in `docs/app_server/*.md`, `docs/app_server/domains/*.md`, or `docs/runtime/*.md` when behavior changes.
-3. Run `python tools/docs_index_builder.py --write`.
-4. Run `python tools/docs_index_builder.py --check`.
+3. Run the docs index steps in `FRONTEND_AGENT_GUIDELINES.md` (Required Documentation Workflow).
