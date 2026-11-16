@@ -1,8 +1,41 @@
 # Local Runtime Log Retention Plan
 
-Version: v1.0
-Last updated: 2026-08-09
-Status: Audit complete; remediation not started
+Version: v1.1
+Last updated: 2026-11-16
+Status: Closed 2026-11-16. Decided, implemented and deployed; the request-line
+change reaches users with the next app release
+
+## Outcome (2026-11-16)
+
+The sections below this one are the original 2026-08-09 audit and proposal,
+kept as the record. What was actually built is narrower:
+
+- **Thirty-day rule for every log** — landed earlier (commit `ac9feb83`) and
+  owned by `python-api/src/arcrho_log_retention_contract.py`; see "Log File
+  Retention" in [AGENT_GUIDELINES.md](../../../AGENT_GUIDELINES.md). It replaced
+  the per-class policy table and the `config/runtime_retention_policy.json`
+  proposal below.
+- **Routine request lines** — the installed app's local server no longer
+  writes one line per request (`frontend/build/server_entry.py`). Reaches users
+  with the next app release.
+- **Finished job statuses** — kept 90 days, then removed by the Engine as it
+  starts, with a duplication job's receipt, lock and cancel marker going with
+  its status. Owned by
+  `python-api/src/arcrho_job_status_retention_contract.py`. Checked on the
+  local test server, then deployed to production with the Bridge, Engine,
+  Gateway and Credential on 2026-11-16.
+
+Closed by the user's decision with no change:
+
+- Per-file and per-folder size limits: dropped, the 30-day rule is enough.
+- The Bridge migration debug log stays inside the deployed Bridge folder and
+  the build still carries the repo copy; the 30-day trim bounds it.
+- Admin Control keeps writing both of its logs; both are trimmed.
+- No start-up sweep for crash-orphaned temporary files.
+- No storage totals, `Clean now` action, dry run or per-run summary in Admin
+  Control.
+- ArcBot chat history, edit backups and staged workspace files are out of
+  scope and kept until the user deletes them.
 
 ## Summary
 
@@ -326,6 +359,8 @@ entire age allowance before cleanup runs.
   dry run, followed by an explicitly scoped cleanup verification.
 
 ## Open Decisions
+
+All five were answered on 2026-11-16; see "Outcome" at the top.
 
 1. Confirm or revise the proposed 30-day log and 90-day terminal-status windows.
 2. Decide whether production Uvicorn access logs are needed for support, or only
