@@ -2,7 +2,7 @@
 
 A SQL Server import authenticates as the user's own Windows login, and a CSV
 source may sit on a drive only this PC has, so both are read here (decision 3
-of docs/plans/client_smb_retirement.md). Only the master-table write moves: the
+of docs/plans/completed/client_smb_retirement.md). Only the master-table write moves: the
 rows travel to the Gateway in numbered chunks and the server writes the table,
 so a Client PC never writes the share.
 

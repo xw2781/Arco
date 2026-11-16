@@ -19,7 +19,7 @@ lease, or dependent-propagation behaviour changed — only the transport between
 the client app server and the Engine.
 
 The client's SMB request-file path was removed on 2026-09-27 (step 19 of
-[client_smb_retirement.md](client_smb_retirement.md)), without waiting for TLS
+[client_smb_retirement.md](completed/client_smb_retirement.md)), without waiting for TLS
 (its decision 1): a Client PC saves only through the Gateway.
 
 ```mermaid
@@ -143,7 +143,7 @@ time plus ordinary HTTP latency.
 - **Traffic limits.** Per-user and global concurrency limits are not
   implemented. Request and response size caps are.
 - **Retiring the SMB transport.** Taken without waiting for TLS by decision 1 of
-  [client_smb_retirement.md](client_smb_retirement.md). Its step 18
+  [client_smb_retirement.md](completed/client_smb_retirement.md). Its step 18
   (2026-09-27) made every workspace read, mutation and Engine calculation
   Gateway-only on a Client PC: not signed in, a silent Gateway, a Gateway
   without the operation and a refused signature are each a plain error, never

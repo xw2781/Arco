@@ -51,7 +51,7 @@ No new browser-facing route. This existing route selects the transport per reque
 | `POST /source_table/import`, `POST /source_table/refresh` (once, after the last chunk) | `source_table_upload_commit` | `source_table_upload_service.commit_source_table_upload` |
 | `POST /source_table/refresh_job` | `source_table_refresh_submit` | `source_refresh_service.submit_source_table_refresh_job` |
 
-The three preference writes (step 8 of [client_smb_retirement.md](../../../../docs/plans/client_smb_retirement.md)) change only the signed-in user's own `users/<login>/preferences.json`: the login is the acting identity of the signed request, never an argument. Each is Gateway-required. They are idempotent because each is a whole-value write: the hidden-path list and the filter spec (with the tree preferences when sent) replace the stored value outright, and a preferences patch sets each value it names, so a repeat lands the same state and only `updated_at` moves.
+The three preference writes (step 8 of [client_smb_retirement.md](../../../../docs/plans/completed/client_smb_retirement.md)) change only the signed-in user's own `users/<login>/preferences.json`: the login is the acting identity of the signed request, never an argument. Each is Gateway-required. They are idempotent because each is a whole-value write: the hidden-path list and the filter spec (with the tree preferences when sent) replace the stored value outright, and a preferences patch sets each value it names, so a repeat lands the same state and only `updated_at` moves.
 
 The header cache clear (step 11) is Gateway-required. It deletes the project's period-heading CSVs so the Engine rebuilds them; it is idempotent because a repeat finds the files already gone and answers `cleared_count: 0`.
 

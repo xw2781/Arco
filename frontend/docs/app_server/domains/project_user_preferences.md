@@ -14,7 +14,7 @@ Routes:
 | `GET` | `/project-user-preferences?project_name=<name>` | Read the current Windows user's project preference JSON for a project. |
 | `POST` | `/project-user-preferences` | Merge preference updates into the current Windows user's project preference JSON. |
 
-Both routes run on the server host through the Gateway, as the `project_user_preferences` read and the `project_user_preferences_update` mutation (step 8 of [client_smb_retirement.md](../../../../docs/plans/client_smb_retirement.md)). The user is the login the request is signed with, never a payload field; a Client PC answers `503` when the Gateway is unavailable. An update is idempotent: each value the patch names replaces the stored one and nested objects merge key by key, so a repeat lands the same state and only `updated_at` moves. A caller may name key paths (`whole_values`) that replace outright instead of merging; the reserving-class tree's filter spec and preferences use it.
+Both routes run on the server host through the Gateway, as the `project_user_preferences` read and the `project_user_preferences_update` mutation (step 8 of [client_smb_retirement.md](../../../../docs/plans/completed/client_smb_retirement.md)). The user is the login the request is signed with, never a payload field; a Client PC answers `503` when the Gateway is unavailable. An update is idempotent: each value the patch names replaces the stored one and nested objects merge key by key, so a repeat lands the same state and only `updated_at` moves. A caller may name key paths (`whole_values`) that replace outright instead of merging; the reserving-class tree's filter spec and preferences use it.
 <!-- MANUAL:END -->
 
 ## Key Files

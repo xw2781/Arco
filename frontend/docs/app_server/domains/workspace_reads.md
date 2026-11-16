@@ -73,7 +73,7 @@ No new browser-facing route. These existing routes select the transport per requ
 | `POST /dashboard/source/load` for an Arco Datasets source, once per project | `dashboard_dataset_table` | `dashboard_data_service.read_dataset_table` |
 | `POST /dashboard/source/load` and `POST /dashboard/source/fields` for an Arco Source Table source, once per project | `dashboard_source_table` | `dashboard_data_service.read_source_table` |
 
-The project configuration reads from `project_settings_sources` down were added by step 7 of [client_smb_retirement.md](../../../../docs/plans/client_smb_retirement.md). Each was Gateway-required from the start (since step 18 every read is), so a Client PC answers `401` or `503` rather than reading the share, and each service returns the route's whole answer, refusals included, so the two transports answer alike.
+The project configuration reads from `project_settings_sources` down were added by step 7 of [client_smb_retirement.md](../../../../docs/plans/completed/client_smb_retirement.md). Each was Gateway-required from the start (since step 18 every read is), so a Client PC answers `401` or `503` rather than reading the share, and each service returns the route's whole answer, refusals included, so the two transports answer alike.
 
 The reserving-class and project-user-preference reads from `reserving_class_combinations` down were added by step 8, on the same terms; step 8 also made the existing `reserving_classes_with_data` read Gateway-required.
 

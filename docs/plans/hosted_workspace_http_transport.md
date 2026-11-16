@@ -378,7 +378,7 @@ auth remains the answer to trigger 2, not a prerequisite for Excel.
 ### Sign-up threat model (2026-09-27)
 
 A PC gets its credential from the Gateway's sign-up route, `POST /api/enroll`
-([client_smb_retirement.md](client_smb_retirement.md) step 20), instead of
+([client_smb_retirement.md](completed/client_smb_retirement.md) step 20), instead of
 reading the shared registry. Every other request keeps the per-user HMAC above.
 
 - **What a client on the LAN can get:** its own secret, and only after a
