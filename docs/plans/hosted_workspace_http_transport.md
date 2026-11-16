@@ -2,7 +2,7 @@
 
 Status: Decisions confirmed 2026-08-15; Phase 1 reads and Phase 2 engine calculations implemented
 Last updated: 2026-08-16
-Related: [hosted_save_http_transport.md](hosted_save_http_transport.md) (the save-only pilot this plan extends)
+Related: [hosted_save_http_transport.md](completed/hosted_save_http_transport.md) (the save-only pilot this plan extends)
 
 ## Implemented So Far
 
@@ -241,9 +241,9 @@ save. Carrying reads for the fleet requires, in this order:
 1. A bounded threaded request server. The pilot already runs on
    `ThreadingHTTPServer` with daemon threads (one thread per connection); one
    process on one port stays sufficient for the current user count. What is
-   missing is a cap on concurrent handlers (per user and global), a separate
-   small pool for long-lived SSE connections so they do not consume the request
-   cap, per-request timeouts, and request/response size limits. A
+   missing is per-request timeouts and request/response size limits. A cap on
+   concurrent handlers (per user and global) was dropped on 2026-11-16 as not
+   needed for the current user count. A
    single-threaded handler is not an option: one hosted-save commit (up to
    180 s), one open SSE stream, or one streamed CSV would block every other
    user.
@@ -485,7 +485,7 @@ gateway bundle changes, follows the deployment authorizations in `AGENTS.md`.
   a second conditional `GET`.
 - SSE subscription granularity (per class vs per object) and event retention
   for `Last-Event-ID`.
-- Concurrency limits and payload size caps.
+- Payload size caps.
 - Whether the API process should also own the header-cache CSV lifecycle that
   the client currently deletes when stale.
 - Whether the `arcrho_hosted_save_http_contract` module should be split, now
@@ -495,7 +495,7 @@ gateway bundle changes, follows the deployment authorizations in `AGENTS.md`.
 
 ## Documentation Drift to Reconcile
 
-[hosted_save_http_transport.md](hosted_save_http_transport.md) still describes
+[hosted_save_http_transport.md](completed/hosted_save_http_transport.md) still describes
 the gateway allowlist as `dataset_sidecar` and `dfm_method` and sketches a
 `202 Accepted` + SSE submit flow. The implemented contract derives
 `HTTP_SAVE_KINDS` from the full `SAVE_JOB_KINDS` registry and drops any stored

@@ -127,4 +127,4 @@ Step 2, built as [python-api/src/arcrho_mcp](../../python-api/src/arcrho_mcp/REA
 
 - Whether outside agents may call `arco_read` with any read kind, or only a curated list as ArcBot does today.
 - Who may issue an `edit` token, and whether a token expires.
-- Whether cloud agents (outside the corporate network) are in scope; that would need TLS on the Gateway, which [hosted_save_http_transport.md](hosted_save_http_transport.md) already lists as remaining.
+- Whether cloud agents (outside the corporate network) are in scope; that would need TLS on the Gateway, which [hosted_save_http_transport.md](completed/hosted_save_http_transport.md) closed without (plain HTTP accepted for the internal network).

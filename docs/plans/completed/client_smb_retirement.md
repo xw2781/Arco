@@ -3,7 +3,7 @@
 Status: Closed 2026-11-16. Implementation, server deployment, the desktop release and macro publication are complete. The remaining validation and operational items were closed by the user's decision on 2026-11-16, recorded under each section below.
 Last updated: 2026-11-16
 Completed work: [implementation, decisions and validation record](client_smb_retirement_implementation.md)
-Related: [hosted save transport](../hosted_save_http_transport.md), [hosted workspace transport](../hosted_workspace_http_transport.md)
+Related: [hosted save transport](hosted_save_http_transport.md), [hosted workspace transport](../hosted_workspace_http_transport.md)
 
 This file records how the rollout was closed. The completed record owns the original 24 steps and the six September 29 audit fixes. General Arcode editing remains enabled by the user's decision; no new restriction on explicitly opened project files is planned.
 

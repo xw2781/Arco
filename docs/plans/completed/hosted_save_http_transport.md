@@ -1,8 +1,9 @@
 # Hosted Save HTTP Transport
 
-Status: Implemented for every hosted-save kind, and the only save transport a
-Client PC has since 2026-09-27; TLS and traffic limits remain
-Last updated: 2026-09-27
+Status: Closed 2026-11-16. Implemented for every hosted-save kind, and the only
+save transport a Client PC has since 2026-09-27; plain HTTP accepted and
+traffic limits dropped by the user's decision
+Last updated: 2026-11-16
 
 ## Summary
 
@@ -19,7 +20,7 @@ lease, or dependent-propagation behaviour changed — only the transport between
 the client app server and the Engine.
 
 The client's SMB request-file path was removed on 2026-09-27 (step 19 of
-[client_smb_retirement.md](completed/client_smb_retirement.md)), without waiting for TLS
+[client_smb_retirement.md](client_smb_retirement.md)), without waiting for TLS
 (its decision 1): a Client PC saves only through the Gateway.
 
 ```mermaid
@@ -56,7 +57,7 @@ sequenceDiagram
   requires the Gateway to refuse address reuse — Python's `HTTPServer` default
   would otherwise let two processes split the traffic. The same process also
   serves hosted workspace reads, mutations, and engine calculations; see
-  [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md).
+  [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md).
 - **Idempotent by receipt.** A receipt is written before Engine publication and
   binds the request ID to the canonical request SHA-256. A replay of the same ID
   returns the stored outcome; different content under the same ID returns `409`.
@@ -76,7 +77,7 @@ sequenceDiagram
   meets). Since 2026-09-27 the client never reads the shared registry: the Gateway's
   `POST /api/enroll` proves the caller by a Windows handshake and returns only
   that caller's secret (threat model in
-  [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md#sign-up-threat-model-2026-09-27)).
+  [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md#sign-up-threat-model-2026-09-27)).
   An existing file is authoritative, `enabled: false` included; invalid
   configuration fails explicitly rather than falling back silently.
 - **First-time server setup.**
@@ -133,17 +134,19 @@ request, 350–490 ms per status read, the polling detection delay, and about
 removes all of it from the client's critical path, leaving Engine execution
 time plus ordinary HTTP latency.
 
-## Remaining Work
+## Closing Decisions (2026-11-16)
 
-- **TLS.** Traffic is plain HTTP with an HMAC credential per user on the
-  controlled internal network. HMAC prevents credential disclosure and payload
-  tampering, but dataset and method content is not encrypted. Production
-  rollout requires HTTPS, which also settles certificate issuance, hostname,
-  and renewal ownership — server operations, not individual clients.
-- **Traffic limits.** Per-user and global concurrency limits are not
-  implemented. Request and response size caps are.
-- **Retiring the SMB transport.** Taken without waiting for TLS by decision 1 of
-  [client_smb_retirement.md](completed/client_smb_retirement.md). Its step 18
+- **TLS: plain HTTP accepted.** Traffic is plain HTTP with an HMAC credential
+  per user on the controlled internal network. HMAC prevents credential
+  disclosure and payload tampering, but dataset and method content is not
+  encrypted. The user accepted this for the current cohort; the triggers that
+  would require HTTPS are owned by
+  [Authentication Posture](../hosted_workspace_http_transport.md#authentication-posture).
+- **Traffic limits: dropped as not needed.** Per-user and global concurrency
+  limits are not implemented and are not planned for the current user count.
+  Request and response size caps are implemented.
+- **Retiring the SMB transport: done.** Taken without waiting for TLS by decision 1 of
+  [client_smb_retirement.md](client_smb_retirement.md). Its step 18
   (2026-09-27) made every workspace read, mutation and Engine calculation
   Gateway-only on a Client PC: not signed in, a silent Gateway, a Gateway
   without the operation and a refused signature are each a plain error, never
