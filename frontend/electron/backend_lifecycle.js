@@ -100,7 +100,8 @@ function getBundledServerPath() {
   if (app.isPackaged) {
     const serverName = APP_MODE === "arcode" ? "arcode_server" : "arcrho_server";
     const resourcesPath = process.resourcesPath;
-    return path.join(resourcesPath, serverName, `${serverName}.exe`);
+    const exeSuffix = process.platform === "win32" ? ".exe" : "";
+    return path.join(resourcesPath, serverName, `${serverName}${exeSuffix}`);
   }
   return null;
 }

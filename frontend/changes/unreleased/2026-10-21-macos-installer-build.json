@@ -1,0 +1,11 @@
+{
+  "type": "feature",
+  "scope": "build",
+  "audience": "internal",
+  "summary": "Added a macOS (Apple Silicon) installer build, run with build/build_mac.sh on a Mac.",
+  "details": [
+    "The packaged app now finds its bundled server without the Windows .exe suffix on macOS.",
+    "The Mac build skips Windows-only Python packages and signs the app locally so it opens on Apple Silicon.",
+    "Gateway sign-in, Excel automation and ArcBot remain Windows-only."
+  ]
+}
