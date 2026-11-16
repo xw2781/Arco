@@ -15,9 +15,8 @@ layout, status shape, reserving-class lease parameters, and the live-Engine
 heartbeat preflight for this workflow. Request, status, and lock files are
 transient runtime files outside the persisted ArcRho JSON text-format rule.
 
-Status files follow the project-duplication retention policy: they are
-retained after terminal states for pollers and operators, with no automatic
-pruning beyond operator cleanup.
+Status files are retained after terminal states for pollers and operators,
+then removed under the shared rule in ``arcrho_job_status_retention_contract``.
 """
 
 from __future__ import annotations

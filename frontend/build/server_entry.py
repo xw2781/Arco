@@ -38,6 +38,9 @@ def main():
         host=args.host,
         port=args.port,
         log_level="info",
+        # One line per routine request would grow this session's log file
+        # without bound; start-up lines, warnings and errors are kept.
+        access_log=False,
     )
 
 if __name__ == "__main__":

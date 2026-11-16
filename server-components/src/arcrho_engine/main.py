@@ -25,6 +25,7 @@ from arcrho_data_processing_rules_job_contract import DATA_PROCESSING_RULES_JOB_
 from arcrho_dataset_types_change_contract import DATASET_TYPES_CHANGE_FUNCTION
 from arcrho_dependent_propagation_contract import DEPENDENT_PROPAGATION_FUNCTION
 from arcrho_engine_save_contract import SAVE_JOB_FUNCTION
+from arcrho_job_status_retention_contract import prune_finished_job_statuses
 from arcrho_project_dates_job_contract import PROJECT_DATES_JOB_FUNCTION
 from arcrho_project_duplication_contract import PROJECT_DUPLICATION_FUNCTION
 from arcrho_source_refresh_contract import SOURCE_REFRESH_FUNCTION
@@ -824,6 +825,7 @@ def _warm_canonical_runtime(handler: RequestHandler | None = None) -> None:
 
 def start_monitoring(path):
     prune_runtime_logs(get_project_root())
+    prune_finished_job_statuses(get_project_root())
     event_handler = RequestHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)

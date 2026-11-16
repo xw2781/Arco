@@ -1,0 +1,6 @@
+{
+  "type": "improvement",
+  "scope": "build",
+  "audience": "internal",
+  "summary": "The installed app's local server log no longer records a line for every routine request, so one long session cannot grow it without limit."
+}

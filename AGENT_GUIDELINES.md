@@ -67,6 +67,10 @@ Every log file any ArcRho component writes is kept for 30 days and no longer. No
 - Size rotation may bound a single busy log in addition to the 30-day rule, never instead of it.
 - The Electron host cannot import Python, so `frontend/electron/log_retention.js` mirrors the rule and `frontend/tests/log_retention.test.mjs` pins the mirror to the contract. Change the Python constant; the test fails until the mirror follows.
 
+## Job Status Retention (MUST)
+A finished job's status file on the Arco Server is kept for 90 days and no longer. `python-api/src/arcrho_job_status_retention_contract.py` owns the window, the list of status folders, and the clean-up the Engine runs as it starts; it removes only a status that says its job finished.
+- A new durable job kind adds its status folder to `job_status_directories` in the same change, and defines no retention of its own.
+
 ## Conditional Instruction Entry Points
 
 | Read only this file when triggered | Trigger words |

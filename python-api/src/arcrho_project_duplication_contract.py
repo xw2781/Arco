@@ -395,16 +395,21 @@ def project_duplication_lock_directory(
     return _root_path(server_root) / "requests" / "project_duplication" / "locks"
 
 
+def project_duplication_status_directory(
+    server_root: str | os.PathLike[str],
+) -> Path:
+    """Return the folder holding one status file per duplication job."""
+
+    return _root_path(server_root) / "requests" / "project_duplication" / "status"
+
+
 def project_duplication_status_path(
     server_root: str | os.PathLike[str], request_id: Any
 ) -> Path:
     """Return the server-root-relative status path for a duplication job."""
 
     return (
-        _root_path(server_root)
-        / "requests"
-        / "project_duplication"
-        / "status"
+        project_duplication_status_directory(server_root)
         / f"{validate_request_id(request_id)}.json"
     )
 
