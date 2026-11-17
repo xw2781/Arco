@@ -408,6 +408,43 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(timings["gateway_attempts"], 1)
         self.assertGreater(timings["request_bytes"], 0)
 
+    def test_a_stalled_client_loses_only_its_own_connection(self) -> None:
+        """A request whose body never arrives is cut off at the idle limit."""
+
+        import socket
+        import urllib.request
+
+        server = gateway_main.GatewayServer(("127.0.0.1", 0), self.gateway)
+        server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+        server_thread.start()
+        url = f"http://127.0.0.1:{server.server_port}"
+        self.addCleanup(allow_test_gateway(url))
+        try:
+            with patch.object(gateway_main.GatewayHandler, "timeout", 0.5):
+                stalled = socket.create_connection(("127.0.0.1", server.server_port))
+                stalled.settimeout(5)
+                stalled.sendall(
+                    b"POST /api/workspace-reads HTTP/1.0\r\n"
+                    b"Content-Length: 100\r\n\r\n{\"partial\":"
+                )
+                # Another client is served while the first one stalls.
+                with urllib.request.urlopen(f"{url}/api/health", timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                started = time.monotonic()
+                try:
+                    closed = stalled.recv(1024)
+                except ConnectionError:
+                    closed = b""
+                elapsed = time.monotonic() - started
+                stalled.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            server_thread.join(timeout=5)
+        self.assertEqual(closed, b"")
+        self.assertLess(elapsed, 4)
+        self.assertFalse((self.root / "runtime" / "logs" / "gateway.log").exists())
+
     def test_authentication_rejects_a_modified_body(self) -> None:
         request = self._request()
         body = canonical_request_bytes(request)

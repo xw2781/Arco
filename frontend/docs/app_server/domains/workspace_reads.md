@@ -126,7 +126,7 @@ Gateway side: `POST /api/workspace-reads` on the Gateway (`arcrho_workspace_read
 
 ## Known Risks
 <!-- MANUAL:BEGIN -->
-- The gateway is one process for the whole fleet. Its `ThreadingHTTPServer` gives every connection a thread but has no concurrency cap yet; a burst of loads competes with hosted saves in the same process. See `docs/plans/hosted_workspace_http_transport.md` for the bounded-server foundation work.
+- The gateway is one process for the whole fleet. Its `ThreadingHTTPServer` gives every connection a thread and cuts off a connection that blocks one read or write for 60 s, but has no concurrency cap; a burst of loads competes with hosted saves in the same process. The cap was dropped as not needed for the current user count; see `docs/plans/completed/hosted_workspace_http_transport.md`.
 - A read whose service refusal text embeds a server path is redacted (`[path]`) on the wire, so the client sees slightly less detail than a local refusal would show.
 - Rebasing matches on the server root string; a payload string that merely mentions the root (a note) is rebased too. That is harmless and arguably desirable, but it is not a typed field list.
 - The pilot transport is plain HTTP with HMAC; full dataset and method payloads now travel unencrypted on the internal network. TLS is the first gate before broader rollout (see the plan's Authentication Posture).

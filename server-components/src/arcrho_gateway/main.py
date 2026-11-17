@@ -113,6 +113,11 @@ from arcrho_gateway.workspace_reads import (  # noqa: E402
 HEARTBEAT_SECONDS = 5.0
 # Sign-up carries no body; a larger one is refused before it is read.
 MAX_ENROLLMENT_REQUEST_BYTES = 4 * 1024
+# The longest one read from or write to a client connection may block. A client
+# that stalls past it loses only its own connection instead of holding a thread
+# for good. Waiting on the Engine is not a socket operation, so a long hosted
+# save is unaffected.
+CONNECTION_IDLE_SECONDS = 60.0
 STATUS_POLL_SECONDS = 0.05
 GATEWAY_KILL_ALL_KEY = "apps.gateway.kill_all"
 
@@ -459,9 +464,18 @@ class GatewayServer(ThreadingHTTPServer):
         self.gateway = gateway
         super().__init__(address, GatewayHandler)
 
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # A client that stalled past the idle limit or dropped its connection
+        # ends only its own request; anything else goes to the Gateway log
+        # rather than a console the packaged Gateway does not have.
+        if isinstance(sys.exc_info()[1], (TimeoutError, ConnectionError)):
+            return
+        _log(self.gateway.root, traceback.format_exc())
+
 
 class GatewayHandler(BaseHTTPRequestHandler):
     server: GatewayServer
+    timeout = CONNECTION_IDLE_SECONDS
 
     def log_message(self, _format: str, *_args: Any) -> None:
         return
