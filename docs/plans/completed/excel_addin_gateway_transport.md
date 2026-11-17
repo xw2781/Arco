@@ -2,7 +2,7 @@
 
 Status: Done. Investigated and decided 2026-09-12, implemented across 10 session-sized steps 2026-09-12 to 2026-09-13, released 2026-09-13 and checked against a real workbook the same day. The share path is deleted, the add-in reaches project data only over HTTP, no coarser view is written to disk any more, a PC with no credential installs its own when Excel opens, and [excel-addin/README.md](../../../excel-addin/README.md) is the one-page note for users.
 Last updated: 2026-09-16
-Related: [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md) (the transport this plan finally extends to Excel, and whose "coexist on SMB" decision this plan reverses)
+Related: [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md) (the transport this plan finally extends to Excel, and whose "coexist on SMB" decision this plan reverses)
 
 ## Progress
 
@@ -37,7 +37,7 @@ Step 10 was added on 2026-09-12, after steps 1 to 7 were already done, so it car
 
 The add-in reads every dataset off the workspace share. On a Client PC each filesystem operation is a network round trip, and [Core.bas](../../../excel-addin/src_vba/Core.bas) performs several per formula before it opens the CSV: a look and a timestamp on the project's dataset-type table, a look and a timestamp on the reserving-class index, a directory check, a file check, then the read. A calculated dataset adds a request file written onto the share and a poll loop that checks for the Engine's answer every tenth of a second.
 
-[hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md) decided in August 2026 that Excel would coexist on SMB indefinitely, on the grounds that "HMAC and byte-exact canonical JSON in VBA is the expensive part". That premise was tested on 2026-09-12 and is wrong, which is why this plan exists.
+[hosted_workspace_http_transport.md](hosted_workspace_http_transport.md) decided in August 2026 that Excel would coexist on SMB indefinitely, on the grounds that "HMAC and byte-exact canonical JSON in VBA is the expensive part". That premise was tested on 2026-09-12 and is wrong, which is why this plan exists.
 
 ## What was measured
 

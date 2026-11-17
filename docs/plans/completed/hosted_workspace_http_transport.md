@@ -1,8 +1,31 @@
 # Hosted Workspace Transport: Moving All Client PC Workspace I/O to the HTTP Gateway
 
-Status: Decisions confirmed 2026-08-15; Phase 1 reads and Phase 2 engine calculations implemented
-Last updated: 2026-08-16
-Related: [hosted_save_http_transport.md](completed/hosted_save_http_transport.md) (the save-only pilot this plan extends)
+Status: Closed 2026-11-16. The Client PC reaches project data only through the Gateway; the live event stream and most of the server foundation were dropped by the user's decision.
+Last updated: 2026-11-16
+Related: [hosted_save_http_transport.md](hosted_save_http_transport.md) (the save-only pilot this plan extends), [client_smb_retirement_implementation.md](client_smb_retirement_implementation.md) (where the remaining reads, the small writes and the SMB fallback removal landed)
+
+## Closing Record (2026-11-16)
+
+Most of this plan landed through later plans rather than its own phases. This
+section is the authoritative summary; the sections below are kept as the
+design record and are not updated item by item.
+
+| Part | Outcome |
+| --- | --- |
+| Phase 1 reads | Done. Every page reads through the Gateway's read registry; the rest landed in the client SMB retirement (steps 7-11, 24). |
+| Phase 2 engine calculations | Done 2026-08-16; the request-file branch on a Client PC was removed in client SMB retirement step 18. |
+| Phase 3 live events (SSE) | Dropped. The change-watch, index-signature and job polls became Gateway reads (client SMB retirement step 10) at about 5-10 ms each with no share access, which is cheap enough for 5-6 users. The Electron `fs.watch` on the Project Instance data folder is gone; the remaining one serves Arcode folders only. |
+| Phase 4 small writes | Done in client SMB retirement: preferences and picker settings (step 8), audit log on the server (step 3), reserving-class caches (steps 8, 15), out-of-band method writes (steps 1, 2, 5). `_mark_review_needed` runs only inside a method refresh, which now runs on the server. |
+| Remove SMB fallback (rollout step 6) | Done in client SMB retirement step 18, released in Arco 2.0.0. |
+| Request size limits | Done: each Gateway route refuses a body over its limit before reading it. |
+| Request time limit | Done 2026-11-16: a client connection that blocks one read or write for 60 s is cut off, and only that connection is lost. Waiting on the Engine is not a socket operation, so a long hosted save is unaffected. Gateway deployed the same day. |
+| Concurrency cap | Dropped 2026-11-16 as not needed for the current user count. |
+| Request metrics, streamed CSV, conditional GET | Dropped. The client read-latency log already records per-read timing and transport. |
+| Request-scoped project folder lookup | Dropped: the lookup now runs on the server's local disk, where it is cheap. |
+| Header-cache lifecycle | Resolved: clearing stale heading caches is the server-side `arcrho_headers_cache_clear` mutation; the client deletes nothing. |
+| Splitting `arcrho_hosted_save_http_contract` | Not done, by decision: every component imports it and a rename gains nothing users see. The module name not matching the Gateway is accepted. |
+| Route naming | Moot: reads, mutations and calculations each use one generic route over a kind registry. |
+| `arcrho_api` and the migration on SMB | Unchanged, as decided: they keep the legacy request contract. |
 
 ## Implemented So Far
 
@@ -50,7 +73,7 @@ hosted read and `sync` / `keep-local` / `cleanup` / `update-remote` are hosted
 mutations, so the request file the ArcRho Bridge claims is written on the
 server host where that folder is local disk and the wait for its answer is a
 file-system event. `apply` deliberately stayed local; see
-[hosted_rpc_bridge_transport.md](completed/hosted_rpc_bridge_transport.md).
+[hosted_rpc_bridge_transport.md](hosted_rpc_bridge_transport.md).
 
 The bounded-server foundation, SSE, and small writes remain as planned below.
 
@@ -113,7 +136,7 @@ file-protocol consumers keep working on SMB unchanged.
 | End state | Full HTTP client: the Client PC never touches the share for project data | Removes every per-file SMB round trip, not only the expensive ones; a single transport is easier to reason about, instrument, and secure |
 | Sequencing | Straight to gateway endpoints; no separate SMB micro-fix phase | The affected SMB paths are being replaced; effort goes into the replacement. Measurement comes from the client latency log added alongside the first endpoints |
 | Authentication / transport | Keep the pilot's per-user HMAC over plain HTTP for the current 5–6 user cohort | Adequate authentication and integrity for a small, hand-managed group on a controlled network with limited IT support. See [Authentication Posture](#authentication-posture) for the triggers that require change |
-| Excel add-in and legacy consumers | Coexist on SMB indefinitely. Revised 2026-09-12, done 2026-09-13: the add-in migrated in [completed/excel_addin_gateway_transport.md](completed/excel_addin_gateway_transport.md); `arcrho_api` and the migration still coexist | The Engine keeps watching `requests\` for the legacy contract at negligible cost. The two conditions named here are met: HTTP reads are proven, and the auth question turned out not to gate VBA at all |
+| Excel add-in and legacy consumers | Coexist on SMB indefinitely. Revised 2026-09-12, done 2026-09-13: the add-in migrated in [completed/excel_addin_gateway_transport.md](excel_addin_gateway_transport.md); `arcrho_api` and the migration still coexist | The Engine keeps watching `requests\` for the legacy contract at negligible cost. The two conditions named here are met: HTTP reads are proven, and the auth question turned out not to gate VBA at all |
 | Server shape | Grow the Gateway into a threaded general server API | One process, one port, existing Orchestrator supervision and kill switch; read handlers call the same `app_server` services on local disk; heavy mutations still go to Engine workers through the local queue |
 | First endpoints | Reserving-class index and cached-dataset load bundle together, each behind its own capability probe | Fixes the two reported symptoms (PI class listing, DSV open) in the first phase |
 | Change notifications | Server-Sent Events from the start | One stream per client replaces every per-window SMB stat poller and the Electron `fs.watch` over SMB |
@@ -378,7 +401,7 @@ auth remains the answer to trigger 2, not a prerequisite for Excel.
 ### Sign-up threat model (2026-09-27)
 
 A PC gets its credential from the Gateway's sign-up route, `POST /api/enroll`
-([client_smb_retirement.md](completed/client_smb_retirement.md) step 20), instead of
+([client_smb_retirement.md](client_smb_retirement.md) step 20), instead of
 reading the shared registry. Every other request keeps the per-user HMAC above.
 
 - **What a client on the LAN can get:** its own secret, and only after a
@@ -412,7 +435,7 @@ signature covers the SHA-256 of the bytes the client itself sends, so no
 canonical JSON is involved, and late-bound .NET cryptography reproduced the
 server's signature byte for byte on a Client PC. The add-in's migration is
 done, as recorded in
-[completed/excel_addin_gateway_transport.md](completed/excel_addin_gateway_transport.md);
+[completed/excel_addin_gateway_transport.md](excel_addin_gateway_transport.md);
 `arcrho_api` and the migration keep the decision below.
 
 Decision: coexist on SMB. The Engine keeps watching `requests\` for the legacy
@@ -495,7 +518,7 @@ gateway bundle changes, follows the deployment authorizations in `AGENTS.md`.
 
 ## Documentation Drift to Reconcile
 
-[hosted_save_http_transport.md](completed/hosted_save_http_transport.md) still describes
+[hosted_save_http_transport.md](hosted_save_http_transport.md) still describes
 the gateway allowlist as `dataset_sidecar` and `dfm_method` and sketches a
 `202 Accepted` + SSE submit flow. The implemented contract derives
 `HTTP_SAVE_KINDS` from the full `SAVE_JOB_KINDS` registry and drops any stored

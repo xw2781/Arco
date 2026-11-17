@@ -57,7 +57,7 @@ sequenceDiagram
   requires the Gateway to refuse address reuse — Python's `HTTPServer` default
   would otherwise let two processes split the traffic. The same process also
   serves hosted workspace reads, mutations, and engine calculations; see
-  [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md).
+  [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md).
 - **Idempotent by receipt.** A receipt is written before Engine publication and
   binds the request ID to the canonical request SHA-256. A replay of the same ID
   returns the stored outcome; different content under the same ID returns `409`.
@@ -77,7 +77,7 @@ sequenceDiagram
   meets). Since 2026-09-27 the client never reads the shared registry: the Gateway's
   `POST /api/enroll` proves the caller by a Windows handshake and returns only
   that caller's secret (threat model in
-  [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md#sign-up-threat-model-2026-09-27)).
+  [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md#sign-up-threat-model-2026-09-27)).
   An existing file is authoritative, `enabled: false` included; invalid
   configuration fails explicitly rather than falling back silently.
 - **First-time server setup.**
@@ -141,7 +141,7 @@ time plus ordinary HTTP latency.
   disclosure and payload tampering, but dataset and method content is not
   encrypted. The user accepted this for the current cohort; the triggers that
   would require HTTPS are owned by
-  [Authentication Posture](../hosted_workspace_http_transport.md#authentication-posture).
+  [Authentication Posture](hosted_workspace_http_transport.md#authentication-posture).
 - **Traffic limits: dropped as not needed.** Per-user and global concurrency
   limits are not implemented and are not planned for the current user count.
   Request and response size caps are implemented.

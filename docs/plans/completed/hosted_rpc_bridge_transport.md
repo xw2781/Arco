@@ -2,7 +2,7 @@
 
 Status: Implemented and deployed 2026-08-19 (Gateway, Engine, Bridge), except
 the `apply` item under [Deferred and optional](#deferred-and-optional)
-Related: [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md) — this
+Related: [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md) — this
 plan fills the one gap that document names but does not cover: "the DFM/RS
 RPC-bridge request files (`requests/RPC bridge/`), consumed by the Bridge, not
 the Engine."
@@ -274,7 +274,7 @@ No router registration changes are needed — both routers are already wired int
 18. `frontend/docs/app_server/domains/workspace_reads.md` and
     `workspace_mutations.md` — list the new kinds.
 19. Append an "Implemented" note to
-    [hosted_workspace_http_transport.md](../hosted_workspace_http_transport.md),
+    [hosted_workspace_http_transport.md](hosted_workspace_http_transport.md),
     which currently records the RPC bridge as not moved.
 20. One fragment in `frontend/changes/unreleased/`, `type: improvement`,
     `scope: dfm`, audience `user`: DFM and Result Selection sync now run on the
