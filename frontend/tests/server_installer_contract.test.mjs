@@ -36,6 +36,8 @@ test("desktop setup reads the configured workspace before drive-name scanning", 
     /SetOutPath "\$PLUGINSDIR"[\s\S]*File \/oname=detect_arcrho_server_root\.ps1/
   );
   assert.match(detector, /workspace_paths\.json/);
+  // An upgrade runs before the app renames its settings folder to Arco.
+  assert.match(detector, /@\("Arco", "ArcRho"\)/);
   assert.match(detector, /\.workspace_root/);
   assert.match(detector, /Test-Path -LiteralPath \$root -PathType Container/);
 });
