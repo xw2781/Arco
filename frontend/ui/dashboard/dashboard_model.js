@@ -40,6 +40,14 @@ export const NUMBER_FORMATS = [
   { id: "currency", label: "Currency" },
 ];
 
+// What a comparison between two values of a field charts: target - base, that change as a share
+// of the base, or target / base.
+export const COMPARE_MODES = [
+  { id: "delta", label: "Change", suffix: "Change" },
+  { id: "percent", label: "Percent Change", suffix: "% Change" },
+  { id: "ratio", label: "Ratio", suffix: "Ratio" },
+];
+
 const SOURCE_KINDS = new Set(["arco_datasets", "arco_source_table", "csv", "sql"]);
 
 const text = (value) => String(value ?? "").trim();
@@ -98,7 +106,7 @@ function normalizeCompare(raw) {
     field: text(raw.field),
     base: text(raw.base),
     target: text(raw.target),
-    mode: raw.mode === "percent" ? "percent" : "delta",
+    mode: COMPARE_MODES.some((mode) => mode.id === raw.mode) ? raw.mode : "delta",
   };
 }
 
@@ -135,7 +143,8 @@ export function normalizeWidget(raw, takenIds = []) {
   if (limit) widget.limit = limit;
   const options = isObject(source.options) ? source.options : {};
   widget.options = {};
-  for (const flag of ["stacked", "horizontal", "table", "labels"]) {
+  // `tail` turns the limit around: it keeps the last categories of the order instead of the first.
+  for (const flag of ["stacked", "horizontal", "table", "labels", "tail"]) {
     if (options[flag]) widget.options[flag] = true;
   }
   return widget;
@@ -185,6 +194,11 @@ function normalizePage(raw, takenIds) {
     const filter = normalizeFilter(item);
     if (!filter || filters.some((existing) => existing.field === filter.field)) continue;
     if (text(item.label)) filter.label = text(item.label);
+    // A `single` filter holds one value at most: the viewer picks exactly one, or all.
+    if (item.single && !filter.exclude) {
+      filter.single = true;
+      filter.values = filter.values.slice(0, 1);
+    }
     filters.push(filter);
   }
   return { id, name: text(source.name) || "Page", filters, widgets: resolveLayout(widgets) };
@@ -279,7 +293,7 @@ export function defaultAggregation(column) {
 export function measureLabel(measure, compare = null) {
   const base = text(measure?.label) || text(measure?.field) || text(measure?.expr) || "Value";
   if (!compare) return base;
-  return compare.mode === "percent" ? `${base} % Change` : `${base} Change`;
+  return `${base} ${COMPARE_MODES.find((mode) => mode.id === compare.mode).suffix}`;
 }
 
 // A widget placed from the library or the palette has no fields yet. Give it the first sensible
@@ -366,11 +380,11 @@ export function fromAssistantJson(edited, current) {
 export const ASSISTANT_GUIDE = [
   "The active page is an Arco dashboard. Its JSON has `sources` (tables), and `pages` holding `widgets` on a 12-column grid.",
   "Each source lists `fields`: a `dimension` groups, a `measure` is a number. Use field names exactly as listed; never invent one.",
-  "Widget: {id, type, title, layout:{x,y,w,h}, source:<source id>, category:<dimension>, series:<dimension or \"\">, measures:[...], filters:[{field, values:[...]}], compare, sort:{by:\"value\"|\"category\", dir}, limit, options:{stacked, horizontal, table, labels}}.",
+  "Widget: {id, type, title, layout:{x,y,w,h}, source:<source id>, category:<dimension>, series:<dimension or \"\">, measures:[...], filters:[{field, values:[...]}], compare, sort:{by:\"value\"|\"category\", dir}, limit, options:{stacked, horizontal, table, labels, tail}}. `limit` keeps the first categories of the order; with `options.tail` it keeps the last, such as the newest origin periods.",
   `Widget types: ${Object.keys(WIDGET_TYPES).join(", ")}. bar/line/area chart measures by category; heatmap needs category, series and one measure; scatter needs two measures; kpi and share take one measure; text has only {text}.`,
   "A measure is {field, agg, label, format, decimals} with agg one of sum, latest, avg, min, max, count, or a calculation {expr, label, format} such as `latest([Net Loss--Paid]) / sum([Earned Premium])`. Use `latest` for a cumulative triangle column. format is auto, number, compact, percent or currency.",
-  "compare:{field, base, target, mode:\"delta\"|\"percent\"} charts the change in each measure between two values of a field, such as two projects.",
-  "A page's `filters` list the fields offered in the filter row: [{field, values:[]}] where empty values means no filtering.",
+  "compare:{field, base, target, mode:\"delta\"|\"percent\"|\"ratio\"} charts each measure at `target` against `base`, two values of a field such as two projects: the change, the percent change, or target / base.",
+  "A page's `filters` list the fields offered in the filter row: [{field, values:[], single}] where empty values means no filtering and `single:true` lets the viewer pick one value only.",
   "Never use two y-axes, and keep a chart to eight series or fewer. Leave `sources` unchanged unless the user asks to change the data; do not add an `extract`.",
   "To add a widget give it a new id and a layout that does not overlap the others. Keep every existing id.",
 ].join("\n");

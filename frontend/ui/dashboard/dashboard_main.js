@@ -15,6 +15,7 @@ import {
   iconButton,
   multiPickField,
   openPickMenu,
+  pickField,
   plusGlyph,
   promptDialog,
   tip,
@@ -530,19 +531,37 @@ function renderFilterBar() {
   const editing = state.mode === "edit";
   page.filters.forEach((filter, index) => {
     const item = el("div", "dbFilter");
-    item.appendChild(el("span", "dbFilterLabel", filter.label || filter.field));
-    item.appendChild(multiPickField({
-      options: filterValues(filter.field).map((value) => ({ value, label: value })),
-      values: filter.values.map(String),
-      onChange: (values) => {
-        // Choosing filter values is using the dashboard, not editing it, so it is not an undo step.
-        page.filters[index].values = values;
-        state.dirty = true;
-        renderTopbar();
-        reportState();
-        canvas.render();
-      },
-    }));
+    // The three ways a filter is used: show the picked values, show one value, or hide the picked.
+    const kind = filter.single ? "one" : filter.exclude ? "hide" : "show";
+    const name = el(editing ? "button" : "span", "dbFilterLabel", `${filter.label || filter.field}${kind === "hide" ? " Except" : ""}`);
+    if (editing) {
+      name.type = "button";
+      name.appendChild(el("span", "dbCaret"));
+      name.addEventListener("click", () => openPickMenu(name, {
+        options: [{ value: "show", label: "Show Picked" }, { value: "one", label: "Show One" }, { value: "hide", label: "Hide Picked" }],
+        selected: new Set([kind]),
+        onPick: (choice) => commit((dashboard) => {
+          const target = dashboard.pages.find((entry) => entry.id === page.id).filters[index];
+          delete target.single;
+          delete target.exclude;
+          if (choice === "one") { target.single = true; target.values = target.values.slice(0, 1); }
+          if (choice === "hide") target.exclude = true;
+        }),
+      }));
+    }
+    item.appendChild(name);
+    const options = filterValues(filter.field).map((value) => ({ value, label: value }));
+    const onChange = (values) => {
+      // Choosing filter values is using the dashboard, not editing it, so it is not an undo step.
+      page.filters[index].values = values;
+      state.dirty = true;
+      renderTopbar();
+      reportState();
+      canvas.render();
+    };
+    item.appendChild(filter.single
+      ? pickField({ options, value: filter.values[0] ?? "", allowNone: "All", placeholder: "All", search: true, onChange: (value) => onChange(value ? [value] : []) })
+      : multiPickField({ options, values: filter.values.map(String), onChange }));
     if (editing) item.appendChild(iconButton(closeGlyph(), "Remove filter", () => commit((dashboard) => {
       dashboard.pages.find((entry) => entry.id === page.id).filters.splice(index, 1);
     })));

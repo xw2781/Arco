@@ -263,6 +263,7 @@ function withCompare(table, evaluate, compare) {
     const base = evaluate(rows.filter((row) => String(row[position]) === compare.base));
     if (target == null || base == null) return null;
     if (compare.mode === "percent") return base === 0 ? null : (target - base) / Math.abs(base);
+    if (compare.mode === "ratio") return base === 0 ? null : target / base;
     return target - base;
   };
 }
@@ -347,7 +348,8 @@ export function buildWidgetResult(table, widget, extraFilters = []) {
       }
     }
 
-    const format = (index) => ({ ...measures[index], label: measureLabel(measures[index], compare), compare: !!compare, compareMode: compare?.mode });
+    // `compare` marks a signed change, which a ratio is not: it takes no plus sign and one hue.
+    const format = (index) => ({ ...measures[index], label: measureLabel(measures[index], compare), compare: !!compare && compare.mode !== "ratio", compareMode: compare?.mode });
     const result = { categoryField: hasCategory ? widget.category : "", seriesField: breakdown, folded, measures: measures.map((_, index) => format(index)) };
 
     if (widget.type === "scatter") {
@@ -396,7 +398,7 @@ export function buildWidgetResult(table, widget, extraFilters = []) {
     }
     if (widget.limit && categories.length > widget.limit) {
       result.cut = categories.length - widget.limit;
-      categories = categories.slice(0, widget.limit);
+      categories = widget.options?.tail ? categories.slice(-widget.limit) : categories.slice(0, widget.limit);
     }
 
     result.categories = categories.map((value) => ({ key: value, label: label(value) }));
@@ -443,7 +445,8 @@ function compact(value, decimals) {
 export function formatValue(value, measure = {}, { short = false } = {}) {
   if (value == null || !Number.isFinite(value)) return "";
   const decimals = Number.isFinite(measure.decimals) ? measure.decimals : null;
-  const format = measure.compareMode === "percent" ? "percent" : (measure.format || "auto");
+  // A percent change is a percentage and a ratio a plain number, whatever the measure itself is.
+  const format = measure.compareMode === "percent" ? "percent" : measure.compareMode === "ratio" ? "number" : (measure.format || "auto");
   const sign = measure.compare && value > 0 ? "+" : "";
   if (format === "percent") return `${sign}${(value * 100).toFixed(decimals ?? 1)}%`;
   if (format === "compact" || (format === "auto" && short && Math.abs(value) >= 10000)) return `${sign}${compact(value, decimals)}`;

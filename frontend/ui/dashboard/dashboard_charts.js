@@ -587,8 +587,9 @@ function renderKpi(host, widget, result, ctx) {
   tile.appendChild(html("div", "dbKpiValue", formatValue(kpi.value, { ...measure, compare: false, compareMode: "" }, { short: true }) || "–"));
   if (kpi.delta != null) {
     const delta = html("div", "dbKpiDelta");
+    // An arrow says which way a change went; a ratio is not a change, so it has none.
+    if (kpi.deltaMeasure.compare) delta.appendChild(html("span", "dbKpiArrow", kpi.delta > 0 ? "▲" : kpi.delta < 0 ? "▼" : "●"));
     delta.append(
-      html("span", "dbKpiArrow", kpi.delta > 0 ? "▲" : kpi.delta < 0 ? "▼" : "●"),
       html("span", "", formatValue(kpi.delta, kpi.deltaMeasure, { short: true })),
       html("span", "dbKpiBase", `vs ${widget.compare.base}`),
     );

@@ -1,0 +1,12 @@
+{
+  "type": "improvement",
+  "scope": "dashboards",
+  "audience": "user",
+  "summary": "Dashboards can chart a ratio between two values of a field, filter a page to one value, and show the last N periods.",
+  "details": [
+    "Compare has a Ratio choice beside Change and Percent Change.",
+    "In Edit, click a page filter's name to make it show one value only, or hide the picked values.",
+    "Keep Last under Show Top keeps the newest categories in order; it also trims a number tile's trend line.",
+    "Each measure has a box for its decimal places."
+  ]
+}

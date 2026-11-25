@@ -89,6 +89,40 @@ test("compare charts the movement between two values of a field", () => {
   assert.equal(formatValue(percent.series[0].values[0], percent.measures[0]), "+7.8%");
 });
 
+test("a ratio compare divides the target by the base and reads as a plain number", () => {
+  const result = buildWidgetResult(table, widget({
+    category: "Origin",
+    measures: [{ field: "Ultimate", agg: "sum", format: "currency" }, { expr: "sum([Ultimate]) / (latest([Paid]) - 300)" }],
+    compare: { field: "Project", base: "May", target: "Aug", mode: "ratio" },
+  }));
+  assert.deepEqual(result.series[0].values, [520 / 500, 450 / 400]);
+  assert.equal(result.series[0].label, "Ultimate Ratio");
+  assert.equal(formatValue(result.series[0].values[0], result.measures[0]), "1.04");
+  // The base's own value is blank for 2024 (a zero divisor), so the ratio is blank there too.
+  assert.equal(result.series[1].values[0], null);
+  assert.equal(normalizeWidget({ compare: { field: "Project", base: "May", target: "Aug", mode: "nope" } }).compare.mode, "delta");
+});
+
+test("a limit keeps the first categories, or the last ones in their own order with tail", () => {
+  const base = { category: "Development", measures: [{ field: "Paid", agg: "sum" }], limit: 2 };
+  assert.deepEqual(buildWidgetResult(table, widget(base)).categories.map((category) => category.label), ["5m", "8m"]);
+  const last = buildWidgetResult(table, widget({ ...base, options: { tail: true } }));
+  assert.deepEqual(last.categories.map((category) => category.label), ["17m", "20m"]);
+  assert.equal(last.cut, 2);
+});
+
+test("a page filter may be single, holding one value, or exclude its values", () => {
+  const [page] = normalizeDashboard({ pages: [{ filters: [
+    { field: "Project", values: ["May", "Aug"], single: true },
+    { field: "Origin", values: ["2024"], exclude: true },
+  ] }] }).pages;
+  assert.deepEqual(page.filters, [
+    { field: "Project", values: ["May"], single: true },
+    { field: "Origin", values: ["2024"], exclude: true },
+  ]);
+  assert.deepEqual([...new Set(applyFilters(table, page.filters).map((row) => `${row[0]} ${row[2]}`))], ["May 2025"]);
+});
+
 test("a breakdown makes one series per value in the field's own order, with filters applied", () => {
   const result = buildWidgetResult(
     table,

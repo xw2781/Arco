@@ -3,7 +3,7 @@
 // draft of the widget, and the page commits that as one undoable step.
 
 import { distinctValues } from "./dashboard_data.js";
-import { AGGREGATIONS, NUMBER_FORMATS, WIDGET_TYPES, defaultAggregation } from "./dashboard_model.js";
+import { AGGREGATIONS, COMPARE_MODES, NUMBER_FORMATS, WIDGET_TYPES, defaultAggregation } from "./dashboard_model.js";
 import { button, closeGlyph, el, formRow, icon, iconButton, multiPickField, pickField, textInput } from "./dashboard_controls.js";
 
 const SERIES_LABELS = { heatmap: "Columns", scatter: "Color By", table: "Columns" };
@@ -77,6 +77,11 @@ function measureEditor(measure, index, { columns, options, change }) {
     options: NUMBER_FORMATS.map((item) => ({ value: item.id, label: item.label })),
     value: measure.format || "auto",
     onChange: (value) => change((draft) => { draft.measures[index].format = value === "auto" ? "" : value; }),
+  }));
+  detail.appendChild(textInput({
+    value: measure.decimals ?? "",
+    placeholder: "Dec.",
+    onChange: (value) => change((draft) => { draft.measures[index].decimals = value.trim(); }),
   }));
   card.append(head, detail);
   return card;
@@ -200,7 +205,7 @@ export function renderInspector(host, { dashboard, widget, tables, change }) {
     compare.appendChild(formRow("From", pickField({ options: values, value: widget.compare.base, onChange: (value) => change((draft) => { draft.compare.base = value; }) })));
     compare.appendChild(formRow("To", pickField({ options: values, value: widget.compare.target, onChange: (value) => change((draft) => { draft.compare.target = value; }) })));
     compare.appendChild(formRow("Show", pickField({
-      options: [{ value: "delta", label: "Change" }, { value: "percent", label: "Percent Change" }],
+      options: COMPARE_MODES.map((mode) => ({ value: mode.id, label: mode.label })),
       value: widget.compare.mode,
       onChange: (value) => change((draft) => { draft.compare.mode = value; }),
     })));
@@ -216,6 +221,8 @@ export function renderInspector(host, { dashboard, widget, tables, change }) {
   filters.appendChild(addFilter);
 
   const display = section(host, "Display");
+  // A number tile has no order of its own; its limit trims the trend line.
+  const trend = widget.type === "kpi" && !!widget.category;
   if (spec.category && widget.type !== "kpi" && widget.type !== "heatmap") {
     const sortValue = widget.sort ? `${widget.sort.by}:${widget.sort.dir}` : "";
     display.appendChild(formRow("Sort", pickField({
@@ -232,6 +239,8 @@ export function renderInspector(host, { dashboard, widget, tables, change }) {
         draft.sort = { by, dir };
       }),
     })));
+  }
+  if ((spec.category && widget.type !== "kpi" && widget.type !== "heatmap") || trend) {
     const limit = textInput({
       value: widget.limit ? String(widget.limit) : "",
       placeholder: "All",
@@ -241,7 +250,12 @@ export function renderInspector(host, { dashboard, widget, tables, change }) {
       }),
     });
     limit.classList.add("dbShortInput");
-    display.appendChild(formRow("Show Top", limit));
+    display.appendChild(formRow(widget.options?.tail ? "Show Last" : "Show Top", limit));
+    if (widget.limit) {
+      display.appendChild(switchRow("Keep Last", widget.options?.tail, (on) => change((draft) => {
+        draft.options = { ...draft.options, tail: on };
+      })));
+    }
   }
   for (const [flag, label] of TOGGLES[widget.type] || []) {
     display.appendChild(switchRow(label, widget.options?.[flag], (on) => change((draft) => {

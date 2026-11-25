@@ -30,7 +30,8 @@ export function computeWidgetResult(table, widget, filters) {
     kpi.value = plain.series?.[0]?.values[0] ?? null;
   }
   if (widget.category) {
-    const trend = buildWidgetResult(table, { ...widget, type: "line", series: "", compare: undefined, sort: undefined, limit: undefined }, scoped);
+    // The trend keeps the tile's limit, so "last 8" draws the newest eight periods.
+    const trend = buildWidgetResult(table, { ...widget, type: "line", series: "", compare: undefined, sort: undefined }, scoped);
     if (!trend.error) kpi.trend = trend.series[0].values;
   }
   result.kpi = kpi;
